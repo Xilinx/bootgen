@@ -29,7 +29,7 @@
 CROSS_COMPILER ?= g++
 
 OBJ = o
-CXXFLAGS ?= -std=c++0x -O -Wall -Wno-reorder -Wno-deprecated-declarations -Werror
+CXXFLAGS ?= -std=c++0x -O -Wall -Wno-reorder -Wno-deprecated-declarations
 
 EXEC = bootgen
 UNAME := $(shell uname)
