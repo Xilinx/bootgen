@@ -86,6 +86,7 @@ ZynqMpEncryptionContext::ZynqMpEncryptionContext()
     , kI(NULL)
     , fixedInputDataByteLength(0)
     , fixedInputData(NULL)
+    , verifyKo(NULL)
 {
     encryptionAlgorithm = new AesGcmEncryptionContext();
 };
@@ -108,6 +109,7 @@ ZynqMpEncryptionContext::ZynqMpEncryptionContext(const EncryptionContext* other)
     , kI(NULL)
     , fixedInputDataByteLength(0)
     , fixedInputData(NULL)
+    , verifyKo(NULL)
 {
     aesFilename = other->aesFilename;
     encryptionAlgorithm = new AesGcmEncryptionContext();
@@ -151,6 +153,10 @@ ZynqMpEncryptionContext::~ZynqMpEncryptionContext()
     if (fixedInputData)
     {
         delete fixedInputData;
+    }
+    if (verifyKo)
+    {
+        delete verifyKo;
     }
 };
 

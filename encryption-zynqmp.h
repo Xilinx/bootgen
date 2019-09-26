@@ -98,6 +98,7 @@ public:
     uint8_t* kI;
     uint32_t fixedInputDataByteLength;
     uint8_t* fixedInputData;
+    uint8_t* verifyKo;
 
 protected:
     uint32_t* aesKey;

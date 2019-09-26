@@ -816,158 +816,170 @@ namespace BIF {
   case 103:
 /* Line 670 of lalr1.cc  */
 #line 383 "../s/bif.y"
-    { currentPartitionBifOptions->pid  = (yysemantic_stack_[(3) - (3)].number); }
+    { currentPartitionBifOptions->bigEndian  = true; }
     break;
 
   case 104:
 /* Line 670 of lalr1.cc  */
-#line 386 "../s/bif.y"
-    { currentPartitionBifOptions->presignFile = (yysemantic_stack_[(3) - (3)].string); }
+#line 384 "../s/bif.y"
+    { currentPartitionBifOptions->a32Mode  = true; }
     break;
 
   case 105:
 /* Line 670 of lalr1.cc  */
-#line 387 "../s/bif.y"
+#line 385 "../s/bif.y"
+    { currentPartitionBifOptions->pid  = (yysemantic_stack_[(3) - (3)].number); }
+    break;
+
+  case 106:
+/* Line 670 of lalr1.cc  */
+#line 388 "../s/bif.y"
+    { currentPartitionBifOptions->presignFile = (yysemantic_stack_[(3) - (3)].string); }
+    break;
+
+  case 107:
+/* Line 670 of lalr1.cc  */
+#line 389 "../s/bif.y"
     { currentPartitionBifOptions->udfDataFile = (yysemantic_stack_[(3) - (3)].string); }
     break;
 
-  case 121:
+  case 123:
 /* Line 670 of lalr1.cc  */
-#line 411 "../s/bif.y"
+#line 413 "../s/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP) 
                                                             LOG_ERROR("BIF attribute error !!!\n\t\t[auth_params] not supported in ZYNQ architecture");
                                                           currentBifOptions->SetPPKSelection((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
-  case 122:
+  case 124:
 /* Line 670 of lalr1.cc  */
-#line 414 "../s/bif.y"
+#line 416 "../s/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP) 
                                                             LOG_ERROR("BIF attribute error !!!\n\t\t[auth_params] not supported in ZYNQ architecture");
                                                           currentBifOptions->SetSPKSelection((yysemantic_stack_[(3) - (3)].spkselect_t)); }
     break;
 
-  case 123:
+  case 125:
 /* Line 670 of lalr1.cc  */
-#line 417 "../s/bif.y"
+#line 419 "../s/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP) 
                                                             LOG_ERROR("BIF attribute error !!!\n\t\t[auth_params] not supported in ZYNQ architecture");
                                                           currentBifOptions->SetSpkId((yysemantic_stack_[(3) - (3)].number));  }
     break;
 
-  case 124:
+  case 126:
 /* Line 670 of lalr1.cc  */
-#line 420 "../s/bif.y"
+#line 422 "../s/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP) 
                                                             LOG_ERROR("BIF attribute error !!!\n\t\t[auth_params] not supported in ZYNQ architecture");
                                                           currentBifOptions->SetHeaderAuthentication(); }
     break;
 
-  case 127:
+  case 129:
 /* Line 670 of lalr1.cc  */
-#line 429 "../s/bif.y"
+#line 431 "../s/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP)
                                                     LOG_ERROR("BIF attribute error !!!\n\t\t[split] not supported in ZYNQ architecture");
                                                   currentBifOptions->SetSplitMode((yysemantic_stack_[(3) - (3)].splitmode_t)); }
     break;
 
-  case 131:
+  case 133:
 /* Line 670 of lalr1.cc  */
-#line 439 "../s/bif.y"
+#line 441 "../s/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP)
                                     LOG_ERROR("BIF attribute error !!!\n\t\t[split] not supported in ZYNQ architecture");
                                   currentBifOptions->SetSplitFmt(File::MCS); }
     break;
 
-  case 132:
+  case 134:
 /* Line 670 of lalr1.cc  */
-#line 442 "../s/bif.y"
+#line 444 "../s/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP)
                                     LOG_ERROR("BIF attribute error !!!\n\t\t[split] not supported in ZYNQ architecture");
                                   currentBifOptions->SetSplitFmt(File::BIN); }
     break;
 
-  case 137:
+  case 139:
 /* Line 670 of lalr1.cc  */
-#line 454 "../s/bif.y"
+#line 456 "../s/bif.y"
     { (yyval.number) = (yysemantic_stack_[(3) - (2)].number); }
     break;
 
-  case 139:
+  case 141:
 /* Line 670 of lalr1.cc  */
-#line 463 "../s/bif.y"
+#line 465 "../s/bif.y"
     {(yyval.number) =  (yysemantic_stack_[(2) - (2)].number);     *options.debugstr << (yyval.number) << "    + " << (yysemantic_stack_[(2) - (2)].number) << std::endl;}
-    break;
-
-  case 140:
-/* Line 670 of lalr1.cc  */
-#line 464 "../s/bif.y"
-    {(yyval.number) = ~(yysemantic_stack_[(2) - (2)].number);     *options.debugstr << (yyval.number) << "    ~ " << (yysemantic_stack_[(2) - (2)].number) << std::endl;}
     break;
 
   case 142:
 /* Line 670 of lalr1.cc  */
-#line 469 "../s/bif.y"
-    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) *  (yysemantic_stack_[(3) - (3)].number); *options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " + " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
-    break;
-
-  case 143:
-/* Line 670 of lalr1.cc  */
-#line 470 "../s/bif.y"
-    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) /  (yysemantic_stack_[(3) - (3)].number); *options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " / " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
+#line 466 "../s/bif.y"
+    {(yyval.number) = ~(yysemantic_stack_[(2) - (2)].number);     *options.debugstr << (yyval.number) << "    ~ " << (yysemantic_stack_[(2) - (2)].number) << std::endl;}
     break;
 
   case 144:
 /* Line 670 of lalr1.cc  */
 #line 471 "../s/bif.y"
-    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) %  (yysemantic_stack_[(3) - (3)].number); *options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " % " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
+    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) *  (yysemantic_stack_[(3) - (3)].number); *options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " + " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
+    break;
+
+  case 145:
+/* Line 670 of lalr1.cc  */
+#line 472 "../s/bif.y"
+    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) /  (yysemantic_stack_[(3) - (3)].number); *options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " / " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 146:
 /* Line 670 of lalr1.cc  */
-#line 476 "../s/bif.y"
-    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) +  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " + " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
+#line 473 "../s/bif.y"
+    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) %  (yysemantic_stack_[(3) - (3)].number); *options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " % " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
-  case 147:
+  case 148:
 /* Line 670 of lalr1.cc  */
-#line 477 "../s/bif.y"
-    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) -  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " - " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
+#line 478 "../s/bif.y"
+    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) +  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " + " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 149:
 /* Line 670 of lalr1.cc  */
-#line 482 "../s/bif.y"
-    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) << (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " << " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
+#line 479 "../s/bif.y"
+    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) -  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " - " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
-  case 150:
+  case 151:
 /* Line 670 of lalr1.cc  */
-#line 483 "../s/bif.y"
-    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) >> (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " >> " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
+#line 484 "../s/bif.y"
+    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) << (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " << " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 152:
 /* Line 670 of lalr1.cc  */
-#line 488 "../s/bif.y"
-    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) &  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " & " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
+#line 485 "../s/bif.y"
+    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) >> (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " >> " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 154:
 /* Line 670 of lalr1.cc  */
-#line 493 "../s/bif.y"
-    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) ^  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " ^ " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
+#line 490 "../s/bif.y"
+    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) &  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " & " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 156:
 /* Line 670 of lalr1.cc  */
-#line 499 "../s/bif.y"
+#line 495 "../s/bif.y"
+    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) ^  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " ^ " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
+    break;
+
+  case 158:
+/* Line 670 of lalr1.cc  */
+#line 501 "../s/bif.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) |  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " | " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
 
 /* Line 670 of lalr1.cc  */
-#line 971 "../bisonflex/bif.tab.cpp"
+#line 983 "../bisonflex/bif.tab.cpp"
       default:
         break;
       }
@@ -1179,36 +1191,36 @@ namespace BIF {
 
   /* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
      STATE-NUM.  */
-  const signed char BisonParser::yypact_ninf_ = -116;
+  const signed char BisonParser::yypact_ninf_ = -118;
   const short int
   BisonParser::yypact_[] =
   {
-      -116,     5,   -43,  -116,  -116,  -116,    18,    45,  -116,   107,
-    -116,    68,  -116,  -116,  -116,  -116,  -116,    39,    49,    63,
-    -116,    73,   113,    28,   -16,    29,   -10,   116,    59,   -29,
-    -116,  -116,  -116,  -116,   112,   122,   129,   130,   132,   134,
-     144,   147,   148,   149,   150,   151,   152,   153,   154,   155,
-    -116,  -116,  -116,  -116,  -116,  -116,   156,   159,   160,   161,
-    -116,  -116,  -116,  -116,  -116,  -116,  -116,   162,  -116,  -116,
-    -116,   163,   164,   165,  -116,  -116,   166,   167,  -116,  -116,
-    -116,  -116,  -116,  -116,  -116,  -116,  -116,  -116,  -116,  -116,
-    -116,    29,    29,    29,  -116,   168,  -116,  -116,    16,   -95,
-     -24,    70,    72,    74,  -116,  -116,    55,   172,   173,   174,
-    -116,   175,   176,   177,   180,   -56,   -47,   -57,    95,    29,
-      90,    91,    89,    92,    29,    29,    29,    29,    29,    29,
-      88,    29,    29,    56,    56,    56,    56,    56,    56,    56,
-      28,  -116,  -116,   -99,    29,    29,    29,    29,    29,    29,
-      29,    29,    29,    29,    29,  -116,   184,  -116,  -116,  -116,
-    -116,  -116,  -116,  -116,  -116,   187,  -116,  -116,  -116,  -116,
-    -116,  -116,  -116,    29,    29,    88,    59,    93,    66,   -29,
-    -116,  -116,  -116,  -116,  -116,  -116,  -116,  -116,  -116,  -116,
-    -116,    74,  -116,  -116,  -116,  -116,  -116,  -116,  -116,    74,
-      74,    74,    74,    74,    74,  -116,  -116,  -116,   185,   -96,
-    -116,    74,  -116,  -116,  -116,  -116,  -116,  -116,  -116,  -116,
-    -116,  -116,  -116,  -116,  -116,    16,    16,   -95,   -95,   -24,
-      70,    72,    29,    55,    74,    74,  -116,   175,  -116,  -116,
-    -116,  -116,  -116,   180,    29,   -30,    74,  -116,  -116,    81,
-     -98,  -116,  -116
+      -118,     5,   -46,  -118,  -118,  -118,     6,    12,  -118,    75,
+    -118,    67,  -118,  -118,  -118,  -118,  -118,    14,    37,    39,
+    -118,    51,    56,    28,   -21,    26,    -3,   102,   -27,    55,
+    -118,  -118,  -118,  -118,   114,   122,   123,   138,   139,   140,
+     141,   142,   143,   144,   147,   148,   149,   150,  -118,  -118,
+     151,   152,  -118,  -118,  -118,  -118,  -118,  -118,   153,   154,
+     162,   163,  -118,  -118,  -118,  -118,  -118,  -118,  -118,   164,
+    -118,  -118,  -118,   165,   166,   167,  -118,  -118,   168,   169,
+    -118,  -118,  -118,  -118,  -118,  -118,  -118,  -118,  -118,  -118,
+    -118,  -118,  -118,    26,    26,    26,  -118,   170,  -118,  -118,
+     -17,   -15,    10,    70,    72,    74,  -118,  -118,    71,   174,
+     175,   176,  -118,   177,   178,   179,   182,   -48,   -59,   -57,
+      95,    26,    90,    91,    89,    92,    26,    26,    26,    26,
+      26,    26,    88,    26,    26,    58,    58,    58,    58,    58,
+      58,    58,    28,  -118,  -118,  -102,    26,    26,    26,    26,
+      26,    26,    26,    26,    26,    26,    26,  -118,   186,  -118,
+    -118,  -118,  -118,  -118,  -118,  -118,  -118,   189,  -118,  -118,
+    -118,  -118,  -118,  -118,  -118,    26,    26,    88,   -27,    93,
+      73,    55,  -118,  -118,  -118,  -118,  -118,  -118,  -118,  -118,
+    -118,  -118,  -118,    74,  -118,  -118,  -118,  -118,  -118,  -118,
+    -118,    74,    74,    74,    74,    74,    74,  -118,  -118,  -118,
+     187,   -98,  -118,    74,  -118,  -118,  -118,  -118,  -118,  -118,
+    -118,  -118,  -118,  -118,  -118,  -118,  -118,   -17,   -17,   -15,
+     -15,    10,    70,    72,    26,    71,    74,    74,  -118,   177,
+    -118,  -118,  -118,  -118,  -118,   182,    26,     4,    74,  -118,
+    -118,    81,  -100,  -118,  -118
   };
 
   /* YYDEFACT[S] -- default reduction number in state S.  Performed when
@@ -1218,55 +1230,55 @@ namespace BIF {
   BisonParser::yydefact_[] =
   {
          3,     0,     2,     1,     5,     4,     0,     0,     7,     0,
-       6,    28,   133,   134,     9,     8,    30,     0,     0,     0,
+       6,    28,   135,   136,     9,     8,    30,     0,     0,     0,
       11,     0,     0,     0,     0,     0,     0,     0,     0,     0,
       46,    55,    53,    54,     0,     0,     0,     0,     0,     0,
-       0,     0,    60,     0,     0,     0,     0,     0,     0,     0,
-      47,    48,    49,    50,    51,    52,     0,     0,     0,     0,
-     112,   111,   113,    57,   120,    56,   119,   106,   114,   115,
-     116,   117,   118,   108,   109,   110,     0,    31,    37,    33,
-      78,    34,    35,    36,    58,   107,    59,    94,    13,   136,
-     135,     0,     0,     0,    16,    42,   138,   141,   145,   148,
-     151,   153,   155,    44,    86,    10,     0,     0,     0,     0,
-     124,    14,     0,     0,    15,     0,     0,     0,     0,     0,
+       0,     0,    60,     0,     0,     0,     0,     0,   103,   104,
+       0,     0,    47,    48,    49,    50,    51,    52,     0,     0,
+       0,     0,   114,   113,   115,    57,   122,    56,   121,   108,
+     116,   117,   118,   119,   120,   110,   111,   112,     0,    31,
+      37,    33,    78,    34,    35,    36,    58,   109,    59,    94,
+      13,   138,   137,     0,     0,     0,    16,    42,   140,   143,
+     147,   150,   153,   155,   157,    44,    86,    10,     0,     0,
+       0,     0,   126,    14,     0,     0,    15,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,   139,   140,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,    26,     0,    87,    88,    89,
-      90,    91,    92,    93,    12,    17,    19,    20,    21,    22,
-      23,    25,    24,     0,     0,     0,     0,     0,     0,     0,
-      79,    80,    65,    81,    82,    66,    83,    84,    67,    85,
-      68,   103,    96,    70,    95,    69,    97,    71,    61,    98,
-      99,   100,   101,   102,    76,   126,    75,    38,    40,    62,
-      39,    45,   104,   105,    72,    73,    74,    77,    29,    32,
-     137,    43,   142,   143,   144,   146,   147,   149,   150,   152,
-     154,   156,     0,     0,   121,   123,   122,   125,   130,   127,
-     131,   132,   128,   129,     0,     0,    27,    18,    41,     0,
-       0,    64,    63
+       0,     0,     0,   141,   142,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,    26,     0,    87,
+      88,    89,    90,    91,    92,    93,    12,    17,    19,    20,
+      21,    22,    23,    25,    24,     0,     0,     0,     0,     0,
+       0,     0,    79,    80,    65,    81,    82,    66,    83,    84,
+      67,    85,    68,   105,    96,    70,    95,    69,    97,    71,
+      61,    98,    99,   100,   101,   102,    76,   128,    75,    38,
+      40,    62,    39,    45,   106,   107,    72,    73,    74,    77,
+      29,    32,   139,    43,   144,   145,   146,   148,   149,   151,
+     152,   154,   156,   158,     0,     0,   123,   125,   124,   127,
+     132,   129,   133,   134,   130,   131,     0,     0,    27,    18,
+      41,     0,     0,    64,    63
   };
 
   /* YYPGOTO[NTERM-NUM].  */
   const signed char
   BisonParser::yypgoto_[] =
   {
-      -116,  -116,  -116,  -116,  -116,  -116,  -116,  -116,   -37,  -116,
-    -116,  -116,    57,  -116,  -116,   -46,    58,  -116,  -116,  -116,
-    -116,  -116,  -116,  -116,  -116,  -116,  -116,  -116,  -116,  -116,
-    -116,  -116,  -116,  -116,  -116,  -116,  -116,  -116,  -116,  -116,
-    -116,  -116,  -116,  -116,    23,    25,    22,  -116,  -116,  -115,
-    -116,   -82,   -23,   -18,    51,    52,    50,   -93
+      -118,  -118,  -118,  -118,  -118,  -118,  -118,  -118,   -37,  -118,
+    -118,  -118,    57,  -118,  -118,   -45,    54,  -118,  -118,  -118,
+    -118,  -118,  -118,  -118,  -118,  -118,  -118,  -118,  -118,  -118,
+    -118,  -118,  -118,  -118,  -118,  -118,  -118,  -118,  -118,  -118,
+    -118,  -118,  -118,  -118,    24,    27,    22,  -118,  -118,  -117,
+    -118,   -65,   -24,   -10,    52,    50,    53,   -95
   };
 
   /* YYDEFGOTO[NTERM-NUM].  */
   const short int
   BisonParser::yydefgoto_[] =
   {
-        -1,     1,     2,     5,     6,     9,    14,    27,   164,   165,
-      15,    23,    76,    77,    78,   207,    94,    95,   210,    79,
-      80,   208,    81,   182,   185,   188,   190,   105,   166,   167,
-     168,   169,   170,   171,   172,    88,   195,   193,   197,    82,
-      83,    84,    85,    86,   111,   206,   114,   239,   242,    16,
-      96,    97,    98,    99,   100,   101,   102,   103
+        -1,     1,     2,     5,     6,     9,    14,    27,   166,   167,
+      15,    23,    78,    79,    80,   209,    96,    97,   212,    81,
+      82,   210,    83,   184,   187,   190,   192,   107,   168,   169,
+     170,   171,   172,   173,   174,    90,   197,   195,   199,    84,
+      85,    86,    87,    88,   113,   208,   116,   241,   244,    16,
+      98,    99,   100,   101,   102,   103,   104,   105
   };
 
   /* YYTABLE[YYPACT[STATE-NUM]].  What to do in state STATE-NUM.  If
@@ -1276,54 +1288,54 @@ namespace BIF {
   const unsigned char
   BisonParser::yytable_[] =
   {
-       143,   186,   180,   154,   154,     3,   154,   112,   113,   141,
-     142,   183,     4,   148,   149,   220,   252,   245,   212,   213,
-     214,   215,   216,   217,   218,     7,   191,   181,   187,    89,
-      90,   199,   200,   201,   202,   203,   204,   184,   209,   211,
-      30,    31,    32,    33,    34,    35,    36,    37,     8,    38,
-      24,    39,    40,    41,    42,    43,    44,    45,    46,    47,
-      25,    48,    49,   222,   223,   224,    50,    51,    52,    53,
-      54,    55,    56,    57,    26,    58,    59,   104,    91,    87,
-     234,   235,    92,    93,    28,   249,   150,   151,    89,    90,
-      17,   107,   108,   109,   110,    60,    61,    62,    63,    64,
+       145,   185,   156,   188,   156,     3,   156,   109,   110,   111,
+     112,     4,   182,     7,   222,     8,   254,   247,   214,   215,
+     216,   217,   218,   219,   220,    24,   193,   186,   143,   144,
+     189,   201,   202,   203,   204,   205,   206,   183,   211,   213,
+      30,    31,    32,    33,    34,    35,    36,    37,    25,    38,
+      26,    39,    40,    41,    42,    43,    44,    45,    46,    47,
+      48,    49,    28,    50,    51,    91,    92,    29,    52,    53,
+      54,    55,    56,    57,    58,    59,    89,    60,    61,    10,
+     236,   237,   224,   225,   226,    11,   106,    91,    92,    17,
+     147,   148,   149,   114,   115,   150,   151,    62,    63,    64,
       65,    66,    67,    68,    69,    70,    71,    72,    73,    74,
-      75,    10,    12,    13,    18,   240,   241,    11,   115,   155,
-     156,   145,   146,   147,    29,   225,   226,   106,   116,    19,
-      20,    21,   227,   228,    22,   117,   118,    91,   119,   246,
-     120,    92,    93,   157,   158,   159,   160,   161,   162,   163,
-     121,   209,   250,   122,   123,   124,   125,   126,   127,   128,
-     129,   130,   131,    12,    13,   132,   133,   134,   135,   136,
-     137,   138,   140,   144,   152,   153,   154,   139,   173,   174,
-     175,   189,   177,   178,   176,   179,   192,   196,   194,   205,
-     232,   198,   233,   238,   244,   251,   247,   219,   248,   237,
-     236,   243,   221,   229,   231,   230
+      75,    76,    77,   108,    93,    18,    12,    13,    94,    95,
+     117,   251,   152,   153,   242,   243,   227,   228,   118,   119,
+      19,    20,    21,    12,    13,    22,    93,   157,   158,   248,
+      94,    95,   229,   230,   120,   121,   122,   123,   124,   125,
+     126,   211,   252,   127,   128,   129,   130,   131,   132,   133,
+     134,   159,   160,   161,   162,   163,   164,   165,   135,   136,
+     137,   138,   139,   140,   142,   146,   154,   155,   156,   141,
+     175,   176,   177,   191,   179,   180,   178,   181,   194,   198,
+     196,   207,   234,   200,   235,   240,   246,   253,   249,   221,
+     223,   250,   239,   245,   238,   232,   231,     0,     0,   233
   };
 
   /* YYCHECK.  */
-  const unsigned char
+  const short int
   BisonParser::yycheck_[] =
   {
-        93,    58,    58,   102,   102,     0,   102,    36,    37,    91,
-      92,    58,    55,   108,   109,   114,   114,   113,   133,   134,
-     135,   136,   137,   138,   139,     7,   119,    83,    85,    59,
-      60,   124,   125,   126,   127,   128,   129,    84,   131,   132,
-      12,    13,    14,    15,    16,    17,    18,    19,     3,    21,
+        95,    60,   104,    60,   104,     0,   104,    34,    35,    36,
+      37,    57,    60,     7,   116,     3,   116,   115,   135,   136,
+     137,   138,   139,   140,   141,    11,   121,    86,    93,    94,
+      87,   126,   127,   128,   129,   130,   131,    85,   133,   134,
+      12,    13,    14,    15,    16,    17,    18,    19,    11,    21,
       11,    23,    24,    25,    26,    27,    28,    29,    30,    31,
-      11,    33,    34,   145,   146,   147,    38,    39,    40,    41,
-      42,    43,    44,    45,    11,    47,    48,    87,   108,    95,
-     173,   174,   112,   113,    11,   115,   110,   111,    59,    60,
-      22,    32,    33,    34,    35,    67,    68,    69,    70,    71,
+      32,    33,    11,    35,    36,    61,    62,    11,    40,    41,
+      42,    43,    44,    45,    46,    47,    97,    49,    50,     4,
+     175,   176,   147,   148,   149,    10,    89,    61,    62,    22,
+     107,   108,   109,    38,    39,   110,   111,    69,    70,    71,
       72,    73,    74,    75,    76,    77,    78,    79,    80,    81,
-      82,     4,    56,    57,    46,    49,    50,    10,     6,    64,
-      65,   105,   106,   107,    11,   148,   149,    11,     6,    61,
-      62,    63,   150,   151,    66,     6,     6,   108,     6,   232,
-       6,   112,   113,    88,    89,    90,    91,    92,    93,    94,
-       6,   244,   245,     6,     6,     6,     6,     6,     6,     6,
-       6,     6,     6,    56,    57,     6,     6,     6,     6,     6,
-       6,     6,     5,     5,   104,   103,   102,    11,     6,     6,
-       6,    86,     6,     6,     9,     5,    96,    98,    97,   101,
-       6,    99,     5,   100,     9,   114,   233,   140,   244,   176,
-     175,   179,   144,   152,   154,   153
+      82,    83,    84,    11,   110,    48,    58,    59,   114,   115,
+       6,   117,   112,   113,    51,    52,   150,   151,     6,     6,
+      63,    64,    65,    58,    59,    68,   110,    66,    67,   234,
+     114,   115,   152,   153,     6,     6,     6,     6,     6,     6,
+       6,   246,   247,     6,     6,     6,     6,     6,     6,     6,
+       6,    90,    91,    92,    93,    94,    95,    96,     6,     6,
+       6,     6,     6,     6,     5,     5,   106,   105,   104,    11,
+       6,     6,     6,    88,     6,     6,     9,     5,    98,   100,
+      99,   103,     6,   101,     5,   102,     9,   116,   235,   142,
+     146,   246,   178,   181,   177,   155,   154,    -1,    -1,   156
   };
 
   /* STOS_[STATE-NUM] -- The (internal number of the) accessing
@@ -1331,32 +1343,32 @@ namespace BIF {
   const unsigned char
   BisonParser::yystos_[] =
   {
-         0,   117,   118,     0,    55,   119,   120,     7,     3,   121,
-       4,    10,    56,    57,   122,   126,   165,    22,    46,    61,
-      62,    63,    66,   127,    11,    11,    11,   123,    11,    11,
+         0,   119,   120,     0,    57,   121,   122,     7,     3,   123,
+       4,    10,    58,    59,   124,   128,   167,    22,    48,    63,
+      64,    65,    68,   129,    11,    11,    11,   125,    11,    11,
       12,    13,    14,    15,    16,    17,    18,    19,    21,    23,
-      24,    25,    26,    27,    28,    29,    30,    31,    33,    34,
-      38,    39,    40,    41,    42,    43,    44,    45,    47,    48,
-      67,    68,    69,    70,    71,    72,    73,    74,    75,    76,
-      77,    78,    79,    80,    81,    82,   128,   129,   130,   135,
-     136,   138,   155,   156,   157,   158,   159,    95,   151,    59,
-      60,   108,   112,   113,   132,   133,   166,   167,   168,   169,
-     170,   171,   172,   173,    87,   143,    11,    32,    33,    34,
-      35,   160,    36,    37,   162,     6,     6,     6,     6,     6,
+      24,    25,    26,    27,    28,    29,    30,    31,    32,    33,
+      35,    36,    40,    41,    42,    43,    44,    45,    46,    47,
+      49,    50,    69,    70,    71,    72,    73,    74,    75,    76,
+      77,    78,    79,    80,    81,    82,    83,    84,   130,   131,
+     132,   137,   138,   140,   157,   158,   159,   160,   161,    97,
+     153,    61,    62,   110,   114,   115,   134,   135,   168,   169,
+     170,   171,   172,   173,   174,   175,    89,   145,    11,    34,
+      35,    36,    37,   162,    38,    39,   164,     6,     6,     6,
        6,     6,     6,     6,     6,     6,     6,     6,     6,     6,
-       6,     6,     6,     6,     6,     6,     6,     6,     6,    11,
-       5,   167,   167,   173,     5,   105,   106,   107,   108,   109,
-     110,   111,   104,   103,   102,    64,    65,    88,    89,    90,
-      91,    92,    93,    94,   124,   125,   144,   145,   146,   147,
-     148,   149,   150,     6,     6,     6,     9,     6,     6,     5,
-      58,    83,   139,    58,    84,   140,    58,    85,   141,    86,
-     142,   173,    96,   153,    97,   152,    98,   154,    99,   173,
-     173,   173,   173,   173,   173,   101,   161,   131,   137,   173,
-     134,   173,   165,   165,   165,   165,   165,   165,   165,   128,
-     114,   132,   167,   167,   167,   168,   168,   169,   169,   170,
-     171,   172,     6,     5,   173,   173,   161,   160,   100,   163,
-      49,    50,   164,   162,     9,   113,   173,   124,   131,   115,
-     173,   114,   114
+       6,     6,     6,     6,     6,     6,     6,     6,     6,     6,
+       6,    11,     5,   169,   169,   175,     5,   107,   108,   109,
+     110,   111,   112,   113,   106,   105,   104,    66,    67,    90,
+      91,    92,    93,    94,    95,    96,   126,   127,   146,   147,
+     148,   149,   150,   151,   152,     6,     6,     6,     9,     6,
+       6,     5,    60,    85,   141,    60,    86,   142,    60,    87,
+     143,    88,   144,   175,    98,   155,    99,   154,   100,   156,
+     101,   175,   175,   175,   175,   175,   175,   103,   163,   133,
+     139,   175,   136,   175,   167,   167,   167,   167,   167,   167,
+     167,   130,   116,   134,   169,   169,   169,   170,   170,   171,
+     171,   172,   173,   174,     6,     5,   175,   175,   163,   162,
+     102,   165,    51,    52,   166,   164,     9,   115,   175,   126,
+     133,   117,   175,   116,   116
   };
 
 #if YYDEBUG
@@ -1376,7 +1388,7 @@ namespace BIF {
      335,   336,   337,   338,   339,   340,   341,   342,   343,   344,
      345,   346,   347,   348,   349,   350,   351,   352,   353,   354,
      355,   356,   357,   358,   359,   360,   361,   362,   363,   364,
-     365,   366,   367,   368,   369,   370
+     365,   366,   367,   368,   369,   370,   371,   372
   };
 #endif
 
@@ -1384,22 +1396,22 @@ namespace BIF {
   const unsigned char
   BisonParser::yyr1_[] =
   {
-         0,   116,   117,   118,   118,   120,   119,   121,   121,   121,
-     122,   123,   122,   122,   122,   122,   122,   124,   124,   125,
-     125,   125,   125,   125,   125,   125,   125,   125,   127,   126,
-     126,   128,   128,   129,   129,   129,   129,   129,   130,   130,
-     131,   131,   132,   132,   133,   134,   135,   135,   135,   135,
-     135,   135,   135,   135,   135,   135,   135,   135,   135,   135,
-     136,   136,   137,   137,   137,   138,   138,   138,   138,   138,
-     138,   138,   138,   138,   138,   138,   138,   138,   138,   139,
-     139,   140,   140,   141,   141,   142,   143,   144,   145,   146,
-     147,   148,   149,   150,   151,   152,   153,   154,   155,   155,
-     155,   155,   155,   155,   156,   156,   157,   157,   157,   157,
-     157,   157,   157,   157,   157,   158,   158,   158,   158,   159,
-     159,   160,   160,   160,   160,   160,   161,   162,   162,   162,
-     163,   164,   164,   165,   165,   166,   166,   166,   167,   167,
-     167,   168,   168,   168,   168,   169,   169,   169,   170,   170,
-     170,   171,   171,   172,   172,   173,   173
+         0,   118,   119,   120,   120,   122,   121,   123,   123,   123,
+     124,   125,   124,   124,   124,   124,   124,   126,   126,   127,
+     127,   127,   127,   127,   127,   127,   127,   127,   129,   128,
+     128,   130,   130,   131,   131,   131,   131,   131,   132,   132,
+     133,   133,   134,   134,   135,   136,   137,   137,   137,   137,
+     137,   137,   137,   137,   137,   137,   137,   137,   137,   137,
+     138,   138,   139,   139,   139,   140,   140,   140,   140,   140,
+     140,   140,   140,   140,   140,   140,   140,   140,   140,   141,
+     141,   142,   142,   143,   143,   144,   145,   146,   147,   148,
+     149,   150,   151,   152,   153,   154,   155,   156,   157,   157,
+     157,   157,   157,   157,   157,   157,   158,   158,   159,   159,
+     159,   159,   159,   159,   159,   159,   159,   160,   160,   160,
+     160,   161,   161,   162,   162,   162,   162,   162,   163,   164,
+     164,   164,   165,   166,   166,   167,   167,   168,   168,   168,
+     169,   169,   169,   170,   170,   170,   170,   171,   171,   171,
+     172,   172,   172,   173,   173,   174,   174,   175,   175
   };
 
   /* YYR2[YYN] -- Number of symbols composing right hand side of rule YYN.  */
@@ -1416,12 +1428,12 @@ namespace BIF {
        3,     3,     3,     3,     3,     3,     3,     3,     1,     1,
        1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
        1,     1,     1,     1,     1,     1,     1,     1,     3,     3,
-       3,     3,     3,     3,     3,     3,     1,     1,     1,     1,
+       3,     3,     3,     1,     1,     3,     3,     3,     1,     1,
        1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
-       1,     3,     3,     3,     1,     3,     1,     3,     3,     3,
-       1,     1,     1,     1,     1,     1,     1,     3,     1,     2,
-       2,     1,     3,     3,     3,     1,     3,     3,     1,     3,
-       3,     1,     3,     1,     3,     1,     3
+       1,     1,     1,     3,     3,     3,     1,     3,     1,     3,
+       3,     3,     1,     1,     1,     1,     1,     1,     1,     3,
+       1,     2,     2,     1,     3,     3,     3,     1,     3,     3,
+       1,     3,     3,     1,     3,     1,     3,     1,     3
   };
 
 #if YYDEBUG
@@ -1435,35 +1447,36 @@ namespace BIF {
   "XIP_MODE", "EARLY_HANDOFF", "HIVEC", "AUTHENTICATION", "ENCRYPTION",
   "CHECKSUM", "PARTITION_OWNER", "PARTITION_TYPE", "PARTITION_NUM",
   "BOOT_DEVICE", "DEST_DEVICE", "DEST_CPU", "EXCEPTION_LEVEL", "TRUSTZONE",
-  "ALIGNMENT", "OFFSET", "RESERVE", "LOAD", "STARTUP", "PPK_SELECT",
-  "SPK_ID", "SPK_SELECT", "HEADER_AUTH", "SPLIT_MODE", "SPLIT_FMT", "BOOT",
-  "USER", "STATIC", "NOAUTOSTART", "MULTIBOOT", "PROTECTED", "BLOCKS",
-  "AUTHBLOCKS", "BOOTVECTORS", "PRESIGN", "UDF_DATA", "MCS", "BIN",
-  "IMAGE", "ID", "NAME", "PFILE", "WORD", "FILENAME", "QFILENAME", "NONE",
-  "DECVALUE", "HEXVALUE", "KEYSRC_ENCRYPTION", "FSBL_CONFIG",
-  "AUTH_PARAMS", "PUF4KMODE", "SHUTTER", "SPLIT", "PUF_HELPER_FILE",
-  "BH_KEY_FILE", "BH_KEY_IV", "BOOTIMAGE", "UDF_BH", "INIT", "PMUFW_IMAGE",
-  "AES_KEY_FILE", "FAMILY_KEY", "PPK_FILE", "PSK_FILE", "SPK_FILE",
-  "SSK_FILE", "SPK_SIGNATURE_FILE", "BH_SIGNATURE_FILE",
-  "HEADER_SIGNATURE_FILE", "AUTHVALUE", "ENCRVALUE", "CHECKSUMVALUE",
-  "POWNERVALUE", "KEY_SRC", "CORE", "BH_RSA", "AUTH_HASH", "INT_HASH",
-  "PUFHD_LOC", "OPT_KEY", "AUTH_ONLY", "BOOT_DEVICE_TYPE",
-  "DEST_DEVICE_TYPE", "DEST_CPU_TYPE", "EXCEPTION_LEVEL_TYPE",
-  "TRUSTZONE_TYPE", "SPLITMODE", "SPKSELECT", "OR", "XOR", "AND", "MULT",
-  "DIVIDE", "MODULO", "PLUS", "MINUS", "LSHIFT", "RSHIFT", "NEGATION",
-  "LPAREN", "RPAREN", "ASTERISK", "$accept", "bif", "group_list",
-  "bifoptions", "$@1", "file_list", "other_spec", "$@2", "fsbl_attr_list",
-  "fsbl_attr", "file_spec", "$@3", "attribute_list", "attribute",
-  "blocksattr_list", "blocksattr", "bootvectors_list", "bootvector",
-  "authblockattr", "boolattr", "trustzone_type", "blockattr", "optattr",
-  "authvalue", "encrvalue", "checkvalue", "pownervalue", "key_src", "core",
-  "bh_rsa", "auth_hash", "int_hash", "pufhd_loc", "opt_key", "auth_only",
-  "boot_device_type", "dest_cpu_type", "dest_device_type",
-  "exception_level_type", "numattr", "fileattr", "key_file",
-  "rsa_key_file", "other_files", "auth_parameters", "spkselect",
-  "split_options", "splitmode", "splitfmt", "filename", "number",
-  "unary_expression", "multiplicative_expression", "additive_expression",
-  "shift_expression", "and_expression", "xor_expression", "expression", YY_NULL
+  "ALIGNMENT", "OFFSET", "RESERVE", "LOAD", "STARTUP", "BIGENDIAN",
+  "A32_MODE", "PPK_SELECT", "SPK_ID", "SPK_SELECT", "HEADER_AUTH",
+  "SPLIT_MODE", "SPLIT_FMT", "BOOT", "USER", "STATIC", "NOAUTOSTART",
+  "MULTIBOOT", "PROTECTED", "BLOCKS", "AUTHBLOCKS", "BOOTVECTORS",
+  "PRESIGN", "UDF_DATA", "MCS", "BIN", "IMAGE", "ID", "NAME", "PFILE",
+  "WORD", "FILENAME", "QFILENAME", "NONE", "DECVALUE", "HEXVALUE",
+  "KEYSRC_ENCRYPTION", "FSBL_CONFIG", "AUTH_PARAMS", "PUF4KMODE",
+  "SHUTTER", "SPLIT", "PUF_HELPER_FILE", "BH_KEY_FILE", "BH_KEY_IV",
+  "BOOTIMAGE", "UDF_BH", "INIT", "PMUFW_IMAGE", "AES_KEY_FILE",
+  "FAMILY_KEY", "PPK_FILE", "PSK_FILE", "SPK_FILE", "SSK_FILE",
+  "SPK_SIGNATURE_FILE", "BH_SIGNATURE_FILE", "HEADER_SIGNATURE_FILE",
+  "AUTHVALUE", "ENCRVALUE", "CHECKSUMVALUE", "POWNERVALUE", "KEY_SRC",
+  "CORE", "BH_RSA", "AUTH_HASH", "INT_HASH", "PUFHD_LOC", "OPT_KEY",
+  "AUTH_ONLY", "BOOT_DEVICE_TYPE", "DEST_DEVICE_TYPE", "DEST_CPU_TYPE",
+  "EXCEPTION_LEVEL_TYPE", "TRUSTZONE_TYPE", "SPLITMODE", "SPKSELECT", "OR",
+  "XOR", "AND", "MULT", "DIVIDE", "MODULO", "PLUS", "MINUS", "LSHIFT",
+  "RSHIFT", "NEGATION", "LPAREN", "RPAREN", "ASTERISK", "$accept", "bif",
+  "group_list", "bifoptions", "$@1", "file_list", "other_spec", "$@2",
+  "fsbl_attr_list", "fsbl_attr", "file_spec", "$@3", "attribute_list",
+  "attribute", "blocksattr_list", "blocksattr", "bootvectors_list",
+  "bootvector", "authblockattr", "boolattr", "trustzone_type", "blockattr",
+  "optattr", "authvalue", "encrvalue", "checkvalue", "pownervalue",
+  "key_src", "core", "bh_rsa", "auth_hash", "int_hash", "pufhd_loc",
+  "opt_key", "auth_only", "boot_device_type", "dest_cpu_type",
+  "dest_device_type", "exception_level_type", "numattr", "fileattr",
+  "key_file", "rsa_key_file", "other_files", "auth_parameters",
+  "spkselect", "split_options", "splitmode", "splitfmt", "filename",
+  "number", "unary_expression", "multiplicative_expression",
+  "additive_expression", "shift_expression", "and_expression",
+  "xor_expression", "expression", YY_NULL
   };
 
 
@@ -1471,51 +1484,51 @@ namespace BIF {
   const BisonParser::rhs_number_type
   BisonParser::yyrhs_[] =
   {
-       117,     0,    -1,   118,    -1,    -1,   118,   119,    -1,    -1,
-      55,   120,     7,     3,   121,     4,    -1,    -1,   121,   126,
-      -1,   121,   122,    -1,    10,    61,    11,   143,    -1,    -1,
-      10,    62,   123,    11,   124,    -1,    10,    22,    11,   151,
-      -1,    10,    63,    11,   160,    -1,    10,    66,    11,   162,
-      -1,    10,    46,    11,   132,    -1,   125,    -1,   125,     5,
-     124,    -1,   144,    -1,   145,    -1,   146,    -1,   147,    -1,
-     148,    -1,   150,    -1,   149,    -1,    64,    -1,    65,     6,
-     173,    -1,    -1,    10,   127,   128,    11,   165,    -1,   165,
-      -1,   129,    -1,   129,     5,   128,    -1,   135,    -1,   138,
-      -1,   155,    -1,   156,    -1,   130,    -1,    44,     6,   131,
-      -1,    45,     6,   134,    -1,   137,    -1,   137,     9,   131,
-      -1,   133,    -1,   133,     5,   132,    -1,   173,    -1,   173,
-      -1,    12,    -1,    38,    -1,    39,    -1,    40,    -1,    41,
-      -1,    42,    -1,    43,    -1,    14,    -1,    15,    -1,    13,
-      -1,    72,    -1,    70,    -1,   157,    -1,   159,    -1,    26,
-      -1,    26,     6,    99,    -1,   173,    -1,   173,   113,   173,
-     114,    -1,   173,   113,   115,   114,    -1,    16,     6,   139,
-      -1,    17,     6,   140,    -1,    18,     6,   141,    -1,    19,
-       6,   142,    -1,    24,     6,   152,    -1,    23,     6,   153,
-      -1,    25,     6,   154,    -1,    74,     6,   165,    -1,    78,
-       6,   165,    -1,    79,     6,   165,    -1,    34,     6,   161,
-      -1,    33,     6,   173,    -1,    80,     6,   165,    -1,   136,
-      -1,    58,    -1,    83,    -1,    58,    -1,    84,    -1,    58,
-      -1,    85,    -1,    86,    -1,    87,    -1,    88,    -1,    89,
-      -1,    90,    -1,    91,    -1,    92,    -1,    93,    -1,    94,
-      -1,    95,    -1,    97,    -1,    96,    -1,    98,    -1,    27,
-       6,   173,    -1,    28,     6,   173,    -1,    29,     6,   173,
-      -1,    30,     6,   173,    -1,    31,     6,   173,    -1,    21,
-       6,   173,    -1,    47,     6,   165,    -1,    48,     6,   165,
-      -1,    74,    -1,   158,    -1,    80,    -1,    81,    -1,    82,
-      -1,    68,    -1,    67,    -1,    69,    -1,    75,    -1,    76,
-      -1,    77,    -1,    78,    -1,    79,    -1,    73,    -1,    71,
-      -1,    32,     6,   173,    -1,    34,     6,   161,    -1,    33,
-       6,   173,    -1,    35,    -1,   160,     9,   160,    -1,   101,
-      -1,    36,     6,   163,    -1,    37,     6,   164,    -1,   162,
-       5,   162,    -1,   100,    -1,    49,    -1,    50,    -1,    56,
-      -1,    57,    -1,    60,    -1,    59,    -1,   113,   173,   114,
-      -1,   166,    -1,   108,   167,    -1,   112,   167,    -1,   167,
-      -1,   168,   105,   167,    -1,   168,   106,   167,    -1,   168,
-     107,   167,    -1,   168,    -1,   169,   108,   168,    -1,   169,
-     109,   168,    -1,   169,    -1,   170,   110,   169,    -1,   170,
-     111,   169,    -1,   170,    -1,   171,   104,   170,    -1,   171,
-      -1,   172,   103,   171,    -1,   172,    -1,   173,   102,   172,
-      -1
+       119,     0,    -1,   120,    -1,    -1,   120,   121,    -1,    -1,
+      57,   122,     7,     3,   123,     4,    -1,    -1,   123,   128,
+      -1,   123,   124,    -1,    10,    63,    11,   145,    -1,    -1,
+      10,    64,   125,    11,   126,    -1,    10,    22,    11,   153,
+      -1,    10,    65,    11,   162,    -1,    10,    68,    11,   164,
+      -1,    10,    48,    11,   134,    -1,   127,    -1,   127,     5,
+     126,    -1,   146,    -1,   147,    -1,   148,    -1,   149,    -1,
+     150,    -1,   152,    -1,   151,    -1,    66,    -1,    67,     6,
+     175,    -1,    -1,    10,   129,   130,    11,   167,    -1,   167,
+      -1,   131,    -1,   131,     5,   130,    -1,   137,    -1,   140,
+      -1,   157,    -1,   158,    -1,   132,    -1,    46,     6,   133,
+      -1,    47,     6,   136,    -1,   139,    -1,   139,     9,   133,
+      -1,   135,    -1,   135,     5,   134,    -1,   175,    -1,   175,
+      -1,    12,    -1,    40,    -1,    41,    -1,    42,    -1,    43,
+      -1,    44,    -1,    45,    -1,    14,    -1,    15,    -1,    13,
+      -1,    74,    -1,    72,    -1,   159,    -1,   161,    -1,    26,
+      -1,    26,     6,   101,    -1,   175,    -1,   175,   115,   175,
+     116,    -1,   175,   115,   117,   116,    -1,    16,     6,   141,
+      -1,    17,     6,   142,    -1,    18,     6,   143,    -1,    19,
+       6,   144,    -1,    24,     6,   154,    -1,    23,     6,   155,
+      -1,    25,     6,   156,    -1,    76,     6,   167,    -1,    80,
+       6,   167,    -1,    81,     6,   167,    -1,    36,     6,   163,
+      -1,    35,     6,   175,    -1,    82,     6,   167,    -1,   138,
+      -1,    60,    -1,    85,    -1,    60,    -1,    86,    -1,    60,
+      -1,    87,    -1,    88,    -1,    89,    -1,    90,    -1,    91,
+      -1,    92,    -1,    93,    -1,    94,    -1,    95,    -1,    96,
+      -1,    97,    -1,    99,    -1,    98,    -1,   100,    -1,    27,
+       6,   175,    -1,    28,     6,   175,    -1,    29,     6,   175,
+      -1,    30,     6,   175,    -1,    31,     6,   175,    -1,    32,
+      -1,    33,    -1,    21,     6,   175,    -1,    49,     6,   167,
+      -1,    50,     6,   167,    -1,    76,    -1,   160,    -1,    82,
+      -1,    83,    -1,    84,    -1,    70,    -1,    69,    -1,    71,
+      -1,    77,    -1,    78,    -1,    79,    -1,    80,    -1,    81,
+      -1,    75,    -1,    73,    -1,    34,     6,   175,    -1,    36,
+       6,   163,    -1,    35,     6,   175,    -1,    37,    -1,   162,
+       9,   162,    -1,   103,    -1,    38,     6,   165,    -1,    39,
+       6,   166,    -1,   164,     5,   164,    -1,   102,    -1,    51,
+      -1,    52,    -1,    58,    -1,    59,    -1,    62,    -1,    61,
+      -1,   115,   175,   116,    -1,   168,    -1,   110,   169,    -1,
+     114,   169,    -1,   169,    -1,   170,   107,   169,    -1,   170,
+     108,   169,    -1,   170,   109,   169,    -1,   170,    -1,   171,
+     110,   170,    -1,   171,   111,   170,    -1,   171,    -1,   172,
+     112,   171,    -1,   172,   113,   171,    -1,   172,    -1,   173,
+     106,   172,    -1,   173,    -1,   174,   105,   173,    -1,   174,
+      -1,   175,   104,   174,    -1
   };
 
   /* YYPRHS[YYN] -- Index of the first RHS symbol of rule number YYN in
@@ -1533,12 +1546,12 @@ namespace BIF {
      197,   201,   205,   209,   213,   217,   221,   225,   229,   231,
      233,   235,   237,   239,   241,   243,   245,   247,   249,   251,
      253,   255,   257,   259,   261,   263,   265,   267,   269,   273,
-     277,   281,   285,   289,   293,   297,   301,   303,   305,   307,
+     277,   281,   285,   289,   291,   293,   297,   301,   305,   307,
      309,   311,   313,   315,   317,   319,   321,   323,   325,   327,
-     329,   331,   335,   339,   343,   345,   349,   351,   355,   359,
-     363,   365,   367,   369,   371,   373,   375,   377,   381,   383,
-     386,   389,   391,   395,   399,   403,   405,   409,   413,   415,
-     419,   423,   425,   429,   431,   435,   437
+     329,   331,   333,   335,   339,   343,   347,   349,   353,   355,
+     359,   363,   367,   369,   371,   373,   375,   377,   379,   381,
+     385,   387,   390,   393,   395,   399,   403,   407,   409,   413,
+     417,   419,   423,   427,   429,   433,   435,   439,   441
   };
 
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
@@ -1555,12 +1568,12 @@ namespace BIF {
      316,   317,   318,   319,   320,   321,   322,   323,   324,   327,
      328,   331,   332,   335,   336,   339,   342,   345,   348,   351,
      354,   357,   360,   363,   366,   369,   372,   375,   378,   379,
-     380,   381,   382,   383,   386,   387,   390,   391,   392,   393,
-     394,   395,   396,   397,   398,   401,   402,   403,   404,   407,
-     408,   411,   414,   417,   420,   423,   426,   429,   432,   433,
-     436,   439,   442,   448,   449,   452,   453,   454,   462,   463,
-     464,   468,   469,   470,   471,   475,   476,   477,   481,   482,
-     483,   487,   488,   492,   493,   498,   499
+     380,   381,   382,   383,   384,   385,   388,   389,   392,   393,
+     394,   395,   396,   397,   398,   399,   400,   403,   404,   405,
+     406,   409,   410,   413,   416,   419,   422,   425,   428,   431,
+     434,   435,   438,   441,   444,   450,   451,   454,   455,   456,
+     464,   465,   466,   470,   471,   472,   473,   477,   478,   479,
+     483,   484,   485,   489,   490,   494,   495,   500,   501
   };
 
   // Print the state stack on the debug stream.
@@ -1637,7 +1650,7 @@ namespace BIF {
       85,    86,    87,    88,    89,    90,    91,    92,    93,    94,
       95,    96,    97,    98,    99,   100,   101,   102,   103,   104,
      105,   106,   107,   108,   109,   110,   111,   112,   113,   114,
-     115
+     115,   116,   117
     };
     if ((unsigned int) t <= yyuser_token_number_max_)
       return translate_table[t];
@@ -1646,24 +1659,24 @@ namespace BIF {
   }
 
   const int BisonParser::yyeof_ = 0;
-  const int BisonParser::yylast_ = 205;
+  const int BisonParser::yylast_ = 209;
   const int BisonParser::yynnts_ = 58;
   const int BisonParser::yyempty_ = -2;
   const int BisonParser::yyfinal_ = 3;
   const int BisonParser::yyterror_ = 1;
   const int BisonParser::yyerrcode_ = 256;
-  const int BisonParser::yyntokens_ = 116;
+  const int BisonParser::yyntokens_ = 118;
 
-  const unsigned int BisonParser::yyuser_token_number_max_ = 370;
+  const unsigned int BisonParser::yyuser_token_number_max_ = 372;
   const BisonParser::token_number_type BisonParser::yyundef_token_ = 2;
 
 /* Line 1141 of lalr1.cc  */
 #line 23 "../s/bif.y"
 } // BIF
 /* Line 1141 of lalr1.cc  */
-#line 1665 "../bisonflex/bif.tab.cpp"
+#line 1678 "../bisonflex/bif.tab.cpp"
 /* Line 1142 of lalr1.cc  */
-#line 502 "../s/bif.y"
+#line 504 "../s/bif.y"
 
 void BIF::BisonParser::error(const BIF::BisonParser::location_type &loc, const std::string &msg) {
         Parsing::Error(loc,msg);

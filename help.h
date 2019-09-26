@@ -395,10 +395,10 @@
              | For encryption :                                               |\n\
              | image:                                                         |\n\
              | {                                                              |\n\
-             |     [keysrc_encryption] bbram_red_key                          |\n\
              |     [aeskeyfile] aes.nky                                       |\n\
              |     [bh_key_iv] bhkeyiv.txt                                    |\n\
              |     [familykey] familykey.txt                                  |\n\
+             | }                                                              |\n\
 -------------+----------------------------------------------------------------+\n\
  NOTES       | PEM Key Format:                                                |\n\
              |   -----BEGIN RSA PRIVATE KEY-----                              |\n\
@@ -1889,5 +1889,52 @@
              | PUF helper data is of 1544 bytes.                              |\n\
              | 1536 bytes of PUF HD + 4 bytes of CHASH                        |\n\
              |                        + 3 bytes of AUX + 1 byte alignment     |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+ big_endian
+******************************************************************************/
+#define H_BIF_BIG_ENDIAN_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | big_endian                                                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | *** Only for ZynqMP Architecture ***                           |\n\
+             | To specify the binary file is in big endian format.            |\n\
+             | Bootgen automatically detects the endianness of .elf files.    |\n\
+             | This is valid only for binary files.                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | [big_endian] <partition>                                       |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    [bootloader,destination_cpu=a53-0,encryption=aes]fsbl.elf   |\n\
+             |    [destination_cpu=a53-0, big_endian] hello.bin               |\n\
+             |    [destination_cpu=r5-0] hello_world.elf                      |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+ aarch32_mode
+******************************************************************************/
+#define H_BIF_AARCH32_MODE_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | aarch32_mode                                                   |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | *** Only for ZynqMP Architecture ***                           |\n\
+             | To specify the binary file is to be executed in 32-bit mode.   |\n\
+             | Bootgen automatically detects the  execution mode of the       |\n\
+             | processors from .elf files.                                    |\n\
+             | This is valid only for binary files.                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | [aarch32_mode] <partition>                                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    [bootloader,destination_cpu=a53-0,encryption=aes]fsbl.elf   |\n\
+             |    [destination_cpu=a53-0, aarch32_mode] hello.bin             |\n\
+             |    [destination_cpu=r5-0] hello_world.elf                      |\n\
+             | }                                                              |\n\
 -------------+----------------------------------------------------------------+\n"
 #endif

@@ -460,7 +460,8 @@ void ZynqMpBootImage::ParsePartitionDataToImage(BifOptions* bifoptions, Partitio
     image->SetTrustZone(partitionBifOptions->trustzone);
     image->SetEarlyHandoff(partitionBifOptions->early_handoff);
     image->SetHivec(partitionBifOptions->hivec);
-
+    image->SetA32ExecMode(partitionBifOptions->a32Mode);
+    image->SetBigEndian(partitionBifOptions->bigEndian);
     image->SetBhSignFile(bifoptions->GetBHSignFileName());
     image->SetPpkSelect(bifOptions->GetPpkSelection());
 

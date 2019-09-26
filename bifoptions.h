@@ -113,6 +113,8 @@ public:
     Override<Binary::Length_t> reserve;
     Override<Binary::Address_t> load;
     Override<Binary::Address_t> startup;
+    bool bigEndian;
+    bool a32Mode;
     
     uint32_t partitionId;
     bool boot;

@@ -193,6 +193,8 @@ ImageHeader::ImageHeader(std::string& filename)
     , bufferSize(0)
     , buffer(NULL)
     , authType(Authentication::None)
+    , bigEndian(false)
+    , a32Mode(false)
 { }
 
 /******************************************************************************/
@@ -238,6 +240,8 @@ ImageHeader::ImageHeader(std::ifstream& ifs)
     , bufferSize(0)
     , buffer(NULL)
     , authType(Authentication::None)
+    , bigEndian(false)
+    , a32Mode(false)
 { }
 
 /******************************************************************************/
@@ -283,6 +287,8 @@ ImageHeader::ImageHeader(uint8_t* data, uint64_t len)
     , spkSelect(1)
     , ppkSelect(0)
     , defEncrBlockSize(0)
+    , bigEndian(false)
+    , a32Mode(false)
 {
 }
 

@@ -107,6 +107,8 @@ public:
     void InsertPartitionHeaderList(PartitionHeader* ph) { partitionHeaderList.push_back(ph); }
     virtual void SetAuthBlock(size_t blockSize, bool flag) { };
     virtual void SetPartitionUid(uint32_t id) { }
+    virtual void SetBigEndian(bool) { }
+    virtual void SetA32ExecMode(bool) { }
     
     void SetUserPartitionNum(size_t num)
     { 
@@ -237,6 +239,8 @@ protected:
     Override<Binary::Address_t> Startup;
     size_t userPartitionNum;
     bool isUserPartitionNum;
+    bool a32Mode;
+    bool bigEndian;
 
     std::list<PartitionHeader*> partitionHeaderList;
 

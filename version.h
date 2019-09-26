@@ -190,6 +190,10 @@
 ----------------------+-------------------------------------------------------|\n\
  pid                  + Partition id/Number                                   |\n\
 ----------------------+-------------------------------------------------------+\n\
+ aarch32_mode         + 32-bit mode execution state for bin file partitions   |\n\
+----------------------+-------------------------------------------------------+\n\
+ big_endian           + Big endian format for bin file partitions             |\n\
+----------------------+-------------------------------------------------------+\n\
  Note     : For more info on bif parameters, use the command                  |\n\
             bootgen -bif_help <bif parameter name>                            |\n\
  Example  : bootgen -bif_help aeskeyfile                                      |\n\

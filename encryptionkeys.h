@@ -447,7 +447,7 @@ void gen_cmac_subkeys(uint8_t *key)
         K2[i] = (K1[i] << 1) | (K1[i + 1] >> 7);
     }
     K2[15] = K1[i] << 1;
-    if ((K1[0] && 0x80) != 0)
+    if ((K1[0] & 0x80) != 0)
     {
         for (i = 0; i<16; i = i + 1) 
         {

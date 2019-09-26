@@ -138,6 +138,8 @@ public:
     void SetDataSectionCount(uint32_t cnt);
     void SetImageNameLength(uint32_t len);
     void SetImageName(void);
+    void SetBigEndian(bool);
+    void SetA32ExecMode(bool);
 
 private:
     ZynqMpImageHeaderStructure *imageHeader;

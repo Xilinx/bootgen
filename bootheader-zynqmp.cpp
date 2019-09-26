@@ -432,7 +432,7 @@ void ZynqMpBootHeader::SetGreyOrBlackKey(std::string keyFile)
         FileImport fileReader;
         if (!fileReader.LoadHexData(keyFile, bhKeyData, BLK_GRY_KEY_LENGTH * 4))
         {
-            LOG_ERROR("More data bytes than expected (32 bytes) for Grey/Black key in BootHeader");
+            LOG_ERROR("Invalid no. of data bytes for Grey/Black key in BootHeader.\n           Expected length for Grey/Black key is 32 bytes");
         }
     }
     memcpy(&bHTable->greyOrBlackKey, bhKeyData, BLK_GRY_KEY_LENGTH * 4);
@@ -504,14 +504,14 @@ void ZynqMpBootHeader::SetGreyOrBlackIv(std::string ivFile)
         FileImport fileReader;
         if (!fileReader.LoadHexData(ivFile, ivData, IV_LENGTH * 4))
         {
-            LOG_ERROR("More data bytes than expected (12 bytes) for Black/Grey Key IV");
+            LOG_ERROR("Invalid no. of data bytes for Black/Grey Key IV.\n           Expected length for Grey/Black IV is 12 bytes");
         }
     }
     else
     {
         if (keyIvMust)
         {
-            LOG_ERROR("Black/Grey IV is mandatory in case of Black/Grey key sources\n           Please use [bh_key_iv] to specify the IV in BIF file");
+            LOG_ERROR("Black/Grey IV is mandatory in case of Black/Grey key sources\n          Please use [bh_key_iv] to specify the IV in BIF file");
         }
     }
     memcpy(&bHTable->greyOrBlackIV, ivData, IV_LENGTH * 4);
@@ -531,7 +531,7 @@ void ZynqMpBootHeader::SetPufData(BootImage &bi)
             FileImport fileReader;
             if (!fileReader.LoadHexData(bi.bifOptions->GetPufHelperFile(), pufData, PUF_DATA_LENGTH))
             {
-                LOG_ERROR("More data bytes than expected (1544 bytes) for PUF Helper Data");
+                LOG_ERROR("Invalid no. of data bytes for PUF Helper Data.\n           Expected length for PUF Helper Data is 1544 bytes");
             }
         }
 

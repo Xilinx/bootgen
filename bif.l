@@ -74,6 +74,10 @@ blocks                                                              return tok::
 
 authblocks                                                          return tok::AUTHBLOCKS;
 
+big_endian                                                          return tok::BIGENDIAN;
+
+aarch32_mode                                                        return tok::A32_MODE;
+
 offset              yylval->number = tok::OFFSET;                   return tok::OFFSET;
 
 reserve             yylval->number = tok::RESERVE;                  return tok::RESERVE;
@@ -229,7 +233,8 @@ split               yylval->number = tok::SPLIT;                return tok::SPLI
         
                                         
 [0-9]+                  yylval->number=atoi(yytext);                return tok::DECVALUE;
-0[xX][0-9a-fA-F]+       yylval->number=strtoul(yytext+2,NULL,16);   return tok::HEXVALUE;
+0[xX][0-9a-fA-F]+       yylval->number=strtoull(yytext+2,NULL,16);  return tok::HEXVALUE;
+
 :                       return tok::COLON;
 ;                       return tok::SEMICOLON;
 =                       return tok::EQUAL;

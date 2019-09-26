@@ -68,8 +68,8 @@ PartitionBifOptions* currentPartitionBifOptions ;
 
 %union 
 {
-    int token;
-    unsigned long number;
+    uint32_t token;
+    uint64_t number;
     char *string;
     Authentication::Type    authvalue_t;
     Encryption::Type        encrvalue_t;
@@ -102,7 +102,7 @@ PartitionBifOptions* currentPartitionBifOptions ;
 %token                  PARTITION_OWNER PARTITION_TYPE PARTITION_NUM
 %token                  BOOT_DEVICE DEST_DEVICE DEST_CPU
 %token                  EXCEPTION_LEVEL TRUSTZONE 
-%token                  ALIGNMENT OFFSET RESERVE LOAD STARTUP
+%token                  ALIGNMENT OFFSET RESERVE LOAD STARTUP BIGENDIAN A32_MODE
 %token                  PPK_SELECT SPK_ID SPK_SELECT HEADER_AUTH 
 %token                  SPLIT_MODE SPLIT_FMT
 %token                  BOOT USER STATIC NOAUTOSTART MULTIBOOT PROTECTED  
@@ -380,6 +380,8 @@ numattr         : ALIGNMENT EQUAL expression        { currentPartitionBifOptions
                 | RESERVE   EQUAL expression        { currentPartitionBifOptions->reserve  = $3; }
                 | LOAD      EQUAL expression        { currentPartitionBifOptions->load     = $3; }
                 | STARTUP   EQUAL expression        { currentPartitionBifOptions->startup  = $3; }
+                | BIGENDIAN                         { currentPartitionBifOptions->bigEndian  = true; }
+                | A32_MODE                          { currentPartitionBifOptions->a32Mode  = true; }
                 | PARTITION_NUM EQUAL expression    { currentPartitionBifOptions->pid  = $3; }
                 ;
 

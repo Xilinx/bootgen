@@ -53,11 +53,10 @@ secret seed or root key.
 
 void ZynqMpEncryptionContext::CounterModeKDF(uint32_t blocks, std::string keyFilename, bool encrDump)
 {
-    uint32_t x, y;
-    int number_of_i_bytes = 4;
+    uint8_t number_of_i_bytes = 4;
     uint8_t i[4] = { 0x00, 0x00, 0x00, 0x00 };
-    int number_of_L_bytes = 8;
-    int number_of_Separator_bytes = 1;
+    uint8_t number_of_L_bytes = 8;
+    uint8_t number_of_Separator_bytes = 1;
     int number_of_Label_bytes = aesLabelBytes;
     int number_of_Context_bytes = aesContextBytes; //3 to make input 48 - was 6
     static bool kdfLogInit = false;
@@ -139,6 +138,8 @@ void ZynqMpEncryptionContext::CounterModeKDF(uint32_t blocks, std::string keyFil
     uint32_t cmac_iterations = number_of_Ko_bytes / 16;
     cmac_iterations += ((number_of_Ko_bytes % 16) == 0 ? 0 : 1);
     /* Run the KDF for the amount of data needed */
+    uint32_t x; 
+    int32_t y;
     for (x = 0; x<cmac_iterations; x++) 
     {
         /* Increment i. The first value used is 1 */
@@ -181,16 +182,16 @@ void ZynqMpEncryptionContext::CounterModeKDF(uint32_t blocks, std::string keyFil
     if (encrDump)
     {
         /* Ko can then be used for key/iv pairs */
-        for (x = 0; x < blocks; x++)
+        for (uint32_t x = 0; x < blocks; x++)
         {
             VERBOSE_OUT_KDF << std::endl << "  Key " << x << "  ";
-            for (y = 0; y < 32; y++)
+            for (uint32_t y = 0; y < 32; y++)
             {
                 VERBOSE_OUT_KDF << std::setfill('0') << std::setw(2) << std::hex << uint32_t(Ko[44 * x + y]);
             }
 
             VERBOSE_OUT_KDF << std::endl << "  IV  " << x << "  ";
-            for (y = 32; y < 44; y++)
+            for (uint32_t y = 32; y < 44; y++)
             {
                 VERBOSE_OUT_KDF << std::setfill('0') << std::setw(2) << std::hex << uint32_t(Ko[44 * x + y]);
             }
@@ -238,7 +239,7 @@ void ZynqMpEncryptionContext::ParseKDFTestVectorFile(std::string filename)
             if (word == "=")
             {
                 testFile >> word;
-                koLength = strtoul(word.c_str(), NULL, 10);
+                koLength = (uint32_t)strtoul(word.c_str(), NULL, 10);
             }
             else
             {
@@ -269,7 +270,7 @@ void ZynqMpEncryptionContext::ParseKDFTestVectorFile(std::string filename)
             if (word == "=")
             {
                 testFile >> word;
-                fixedInputDataByteLength = strtoul(word.c_str(), NULL, 10);
+                fixedInputDataByteLength = (uint32_t)strtoul(word.c_str(), NULL, 10);
             }
             else
             {
@@ -290,9 +291,23 @@ void ZynqMpEncryptionContext::ParseKDFTestVectorFile(std::string filename)
                 LOG_ERROR("Error parsing KDF test vector file - %s \n\t Expected '=''.", filename.c_str());
             }
         }
+        else if (word == "KO")
+        {
+            testFile >> word;
+            if (word == "=")
+            {
+                testFile >> word;
+                verifyKo = new uint8_t[koLength / 8];
+                PackHex(word, verifyKo);
+            }
+            else
+            {
+                LOG_ERROR("Error parsing KDF test vector file - %s \n\t Expected '=''.", filename.c_str());
+            }
+        }
         else
         {
-            LOG_ERROR("Error parsing KDF test vector file - %s \n\t Expected 'L','KI','FixedInputDataByteLen', and 'FixedInputData'.", filename.c_str());
+            LOG_ERROR("Error parsing KDF test vector file - %s \n\t   Expected 'L','KI','FixedInputDataByteLen', and 'FixedInputData'.", filename.c_str());
         }
     }
 }
@@ -300,13 +315,13 @@ void ZynqMpEncryptionContext::ParseKDFTestVectorFile(std::string filename)
 /******************************************************************************/
 void ZynqMpEncryptionContext::CAVPonCounterModeKDF(std::string filename)
 {
-    LOG_MSG("Generating Ko using Counter-Mode KDF...");
     ParseKDFTestVectorFile(filename);
 
-    uint32_t number_of_i_bytes = 4;
+    LOG_MSG("Generating Ko using Counter-Mode KDF...");
+    uint8_t number_of_i_bytes = 4;
     uint8_t i[4] = { 0x00, 0x00, 0x00, 0x00 };
 
-    uint32_t number_of_Input_bytes = number_of_i_bytes + fixedInputDataByteLength;
+    uint64_t number_of_Input_bytes = number_of_i_bytes + fixedInputDataByteLength;
     uint8_t* Input = new uint8_t[number_of_Input_bytes];
 
     uint32_t number_of_Ko_bytes = koLength / 8;
@@ -320,9 +335,10 @@ void ZynqMpEncryptionContext::CAVPonCounterModeKDF(std::string filename)
     uint32_t cmac_iterations = number_of_Ko_bytes / 16;
     cmac_iterations += ((number_of_Ko_bytes % 16) == 0 ? 0 : 1);
 
-    printf("KO = ");
+    std::cout << "KO = ";
     /* Run the KDF for the amount of data needed */
-    uint32_t x, y;
+    uint32_t x;
+    int32_t y;
     for (x = 0; x<cmac_iterations; x++)
     {
         /* Increment i. The first value used is 1 */
@@ -339,22 +355,32 @@ void ZynqMpEncryptionContext::CAVPonCounterModeKDF(std::string filename)
             uint8_t* LastKo = new uint8_t[16];
             cmac(&LastKo[0], Input, number_of_Input_bytes);
             memcpy(&Ko[16 * x], &LastKo[0], (number_of_Ko_bytes - (16 * x)));
-            for (y = 0; y<16; y++)
-            {
-                printf("%02X", LastKo[y]);
-            }
             delete[] LastKo;
         }
         else
         {
             cmac(&Ko[16 * x], Input, number_of_Input_bytes);
-            for (y = 0; y<16; y++)
-            {
-                printf("%02X", Ko[16 * x + y]);
-            }
         }
     }
-    printf("\n");
+
+    for (uint32_t y = 0; y<number_of_Ko_bytes; y++)
+    {
+        std::cout << std::setfill('0') << std::setw(2) << std::hex << std::uppercase << uint32_t(Ko[y]);
+    }
+    std::cout << std::endl << std::endl;
+    
+    if (verifyKo != NULL)
+    {
+        if (memcmp(Ko, verifyKo, number_of_Ko_bytes) == 0)
+        {
+            std::cout << "Verified with given Ko" << std::endl;
+        }
+        else
+        {
+            std::cout << "Failed to verify with given Ko" << std::endl;
+        }
+    }
+    std::cout << std::endl;
     delete[] Input;
     delete[] Ko;
 }

@@ -60,7 +60,11 @@ void BIF_File::Process(Options& options)
         LOG_ERROR("Can't read BIF file - %s ", basefile.c_str());
     }
     scanner.switch_streams(&s);
-    parser.parse();
+    int res = parser.parse();
+    if (res)
+    {
+        LOG_ERROR("BIF file parsing failed with code %d", res);
+    }
 
     LOG_INFO("BIF file parsing completed successfully");
 

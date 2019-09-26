@@ -374,6 +374,16 @@ void ZynqMpImageHeader::ImportBin(BootImage& bi)
         hdr->loadAddress = Load.Value();
     }
     
+    if (bigEndian)
+    {
+        hdr->elfEndianess = Endianness::BigEndian;
+    }
+
+    if (a32Mode)
+    {
+        hdr->execState = A53ExecState::AARCH32;
+    }
+
     hdr->partition = new Partition(hdr, data.bytes, data.len);
     hdr->partitionSize = data.len;
     partitionHeaderList.push_back(hdr);
@@ -667,6 +677,18 @@ void ZynqMpImageHeader::SetImageName(void)
         uint32_t j = (i & ~3) + (3 - (i & 3));
         imageHeader->imageName[j] = Name[i];
     }
+}
+
+/******************************************************************************/
+void ZynqMpImageHeader::SetBigEndian(bool flag)
+{
+    bigEndian = flag;
+}
+
+/******************************************************************************/
+void ZynqMpImageHeader::SetA32ExecMode(bool flag)
+{
+    a32Mode = flag;
 }
 
 /******************************************************************************/

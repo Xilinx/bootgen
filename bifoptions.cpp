@@ -112,6 +112,8 @@ PartitionBifOptions::PartitionBifOptions()
     , multiboot(false)
     , noautostart(false)
     , blockSize(0)
+    , bigEndian(false)
+    , a32Mode(false)
 { }
 
 /******************************************************************************/

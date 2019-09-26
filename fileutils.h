@@ -123,6 +123,11 @@ public:
                     LOG_ERROR("Unable to read hex characters from file - %s", fileName.c_str());
                 }
             }
+            if (nbytes < count)
+            {
+                fclose(f);
+                return false;
+            }
         }
         else
         {
