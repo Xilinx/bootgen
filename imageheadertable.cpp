@@ -306,6 +306,7 @@ void ImageHeader::ImportElf(BootImage& bi)
 {
     uint8_t proc_state = 0;
 
+    xipMode = bi.XipMode;
     ByteFile data(Filename);
 
     /* Get the ELF Class format - 32-bit elf vs 64-bit elf */
