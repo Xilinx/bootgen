@@ -632,6 +632,7 @@ void ZynqMpAuthenticationContext::GeneratePPKHash(const std::string& filename)
     RearrangeEndianess((char*)ppkTemp.N_extension, sizeof(ppkTemp.N_extension));
     RearrangeEndianess((char*)ppkTemp.E, sizeof(ppkTemp.E));
 
+    hashLength = hash->GetHashLength();
     uint8_t* rsa_signature = new uint8_t[hashLength];
     hash->CalculateHash(false, (uint8_t*)&ppkTemp, sizeof(ACKey4096), rsa_signature);
 

@@ -349,16 +349,16 @@ void BootImage::OutputOptionalEfuseHash()
     std::string hashFile = options.GetEfuseHashFileName();
     if ( hashFile != "") 
     {
-        // find first mention of PPK, then hash it
-        for(std::list<ImageHeader*>::iterator image = imageList.begin();image != imageList.end(); image++) 
+        if (bifOptions->GetPPKFileName() != "" || bifOptions->GetPSKFileName() != "")
         {
-            AuthenticationContext* authCtx = (*image)->GetAuthContext();
-            if (authCtx && authCtx->authAlgorithm->Type() == Authentication::RSA) 
+            if (currentAuthCtx)
             {
-                AuthenticationContext* rac = (AuthenticationContext*)authCtx;
-                rac->GeneratePPKHash(hashFile);
-                break;
+                currentAuthCtx->GeneratePPKHash(hashFile);
             }
+        }
+        else
+        {
+            LOG_ERROR("Cannot read PPK/PSK. PPK/PSK is mandatory to generate PPK hash bits, using '-efuseppkbits'.");
         }
     }
 }

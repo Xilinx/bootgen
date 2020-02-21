@@ -341,6 +341,8 @@ void ZynqAuthenticationContext::GeneratePPKHash(const std::string& filename)
 {
     ACKey2048 ppkTemp;
     primaryKey->Export(&ppkTemp);
+    
+    hashLength = hash->GetHashLength();
     uint8_t* rsa_signature = new uint8_t[hashLength];
     hash->CalculateHash(false, (uint8_t*)&ppkTemp, sizeof(ACKey2048), rsa_signature);
 
