@@ -38,6 +38,10 @@ else
  CC	= gcc
 endif
 
+INSTALL = install
+INSTALL_PROGRAM = $(INSTALL)
+bindir = /usr/local/bin
+
 OBJ = o
 CXXFLAGS ?= -std=c++0x -O -Wall -Wno-reorder -Wno-deprecated-declarations
 CFLAGS ?= -O -Wall
@@ -77,6 +81,10 @@ ${EXEC}: $(OBJECTS)
 	${CXX} $(CXXFLAGS) $(LDFLAGS) $(OPTIONS_USER) -o $@ $(OBJECTS) $(LIBS)
 
 execs: ${EXEC}
+
+install:
+	$(INSTALL) -d $(DESTDIR)$(bindir)
+	$(INSTALL_PROGRAM) ${EXEC} $(DESTDIR)$(bindir)
 
 clean:
 	echo
