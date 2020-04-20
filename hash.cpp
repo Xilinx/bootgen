@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@
 -------------------------------------------------------------------------------
 */
 #include "hash.h"
+#include "Keccak-compact-versal.h"
 
 /*
 -------------------------------------------------------------------------------
@@ -93,6 +94,12 @@ void HashSha3::CalculateHash(bool nist, const uint8_t *data, size_t length, uint
     {
         crypto_hash(out, data, length);
     }
+}
+
+/******************************************************************************/
+void HashSha3::CalculateVersalHash(bool nist, const uint8_t *data, size_t length, uint8_t* out)
+{
+    Versalcrypto_hash(out, data, length, nist);
 }
 
 /******************************************************************************/

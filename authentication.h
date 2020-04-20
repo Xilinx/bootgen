@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -55,6 +55,7 @@ class Binary;
 class AuthenticationCertificate;
 class PartitionHeader;
 class Key;
+class VersalKey;
 
 
 /*
@@ -64,7 +65,7 @@ class Key;
 */
 #define T_PAD_LENGTH            19
 #define UDF_DATA_SIZE           56
-
+#define AUTH_HEADER             0x115
 
 /*
 -------------------------------------------------------------------------------
@@ -152,7 +153,7 @@ public:
 
     void GetModulusExtension(uint8_t* ptr, BIGNUM& m, size_t len) 
     {
-        if(len == RSA_KEY_LENGTH_ZYNQ)
+        if(len == RSA_2048_KEY_LENGTH)
         {
             if (len != mont->RR.top * sizeof(BN_ULONG)) 
             {
@@ -172,7 +173,7 @@ public:
             BN_one(r);
             BN_lshift(res, r, 4160);
             BN_mod_mul(m_x, res, res, &m, ctx);
-            memcpy(ptr, m_x->d, RSA_KEY_LENGTH_ZYNQMP);
+            memcpy(ptr, m_x->d, RSA_4096_KEY_LENGTH);
             BN_free(r);
             BN_free(res);
             BN_free(m_x);
@@ -191,8 +192,11 @@ public:
     ~AuthenticationAlgorithm() { };
 
     virtual Authentication::Type Type() = 0;
-    virtual void CreateSignature(const uint8_t *base, Key *primaryKey, uint8_t *result0) {};
+    virtual void CreateSignature(const uint8_t *base, uint8_t* primaryKey, uint8_t *result0) {};
     void RSA_Exponentiation(const uint8_t *base, const uint8_t* modular, const uint8_t *modular_ext, const uint8_t *exponent, uint8_t *result0);
+    virtual void RearrangeEndianess(uint8_t *array, uint32_t size) {};
+    virtual void CreatePadding(uint8_t* signature, uint8_t* hash, uint8_t hashLength) {};
+    virtual uint32_t GetAuthHeader(void) { return AUTH_HEADER; }
 };
 
 /******************************************************************************/
@@ -206,7 +210,7 @@ public:
     {
         return Authentication::RSA;
     }
-    void CreateSignature(const uint8_t *base, Key *primaryKey, uint8_t *result0);
+    void CreateSignature(const uint8_t* base, uint8_t* primaryKey, uint8_t* result0);
 };
 
 /******************************************************************************/
@@ -249,6 +253,7 @@ public:
         , pskFile("")
         , spkFile("")
         , sskFile("")
+        , firstChunkSize(0)
     { };
 
     virtual ~AuthenticationContext() { };
@@ -264,8 +269,10 @@ public:
     virtual void GenerateBHSignature() {};
     virtual void CreatePadding(uint8_t* signature, const uint8_t* hash) {};
     virtual void CopyPartitionSignature(BootImage& bi, std::list<Section*> sections, uint8_t* signatureBlock, Section* acSection) {};
-    virtual void RearrangeEndianess(char *array, uint32_t size) {};
+    virtual void RearrangeEndianess(uint8_t *array, uint32_t size) {};
     virtual void AddAuthCertSizeToTotalFSBLSize(PartitionHeader* header) {};
+    virtual void CopySPKSignature(uint8_t* ptr) {};
+    virtual void SetKeyLength(Authentication::Type type) {};
 
     void CreateSPKSignature(void);
     void SetSPKSignatureFile(const std::string & filename);
@@ -291,7 +298,9 @@ public:
     void SetSpkIdentification(uint32_t spkid);
     void SetHeaderAuthentication(uint32_t headerauth);
     void SetHashType(AuthHash::Type);
+    void SetFirstChunkSize(uint64_t);
     AuthHash::Type GetHashType(void);
+    uint64_t GetFirstChunkSize(void) { return firstChunkSize; }
 
     static void SetRsaKeyLength(uint16_t);
     static uint16_t GetRsaKeyLength(void);
@@ -325,12 +334,14 @@ public:
     Key *secondaryKey;
     AuthenticationAlgorithm *authAlgorithm;
     AuthenticationCertificate *authCertificate;
+    
     std::string presignFile;
     std::string udfFile;
 protected:
     static uint16_t rsaKeyLength;
     static uint8_t hashLength;
     static bool zynpmpVerEs1;
+    uint64_t firstChunkSize;
 };
 
 /******************************************************************************/
@@ -347,14 +358,9 @@ class AuthenticationCertificate : public BaseThing
 {
 public:
     AuthenticationCertificate(AuthenticationContext* context);
-    AuthenticationCertificate()
-        : AuthContext(NULL)
-        , fsbl(false)
-        , isTableHeader(false)
-    { }
-
+    AuthenticationCertificate() {};
     void Build(BootImage& bi, Binary& cache, Section* section, bool fsbl, bool isTableHeader);
-    void Link(BootImage& bi, Section* section);
+    virtual void Link(BootImage& bi, Section* section);
     virtual Section* AttachBootHeaderToFsbl(BootImage& bi) { return NULL; }
 
     AuthenticationContext* AuthContext;

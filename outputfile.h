@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@
 /* Forward Class References */
 class Options;
 class BootImage;
+class OutputStream;
 
 
 /*
@@ -72,11 +73,15 @@ public:
     static OutputFile* Factory(const std::string& filename);
 
     void Output(Options& options, Binary& binary);
+    void OutputVersal(Options& options, Binary& binary);
     void CreateOutputFiles(Options& options);
     void ProcessSplitMode(Section& section, Options& options);
     void ProcessSplitSlaveBootMode(Section& section, Options& options);
     void ProcessBitstreamMode(Section& section);
     void WritePostscriptAndClose(void);
+
+    void OutputInterface(Options & options, uint8_t*, uint32_t);
+    void WriteBootHeaderToFile(std::string fileName, uint8_t* data, uint64_t size);
 
     std::string filename;
     QspiMode::Type qspiDualMode;
@@ -201,6 +206,18 @@ public:
     PartitionArch::Type Type(void)
     {
         return PartitionArch::FPGA;
+    }
+};
+
+/******************************************************************************/
+class VersalPartitionOutput : public PartitionOutput
+{
+public:
+    void GeneratePartitionFiles(BootImage& bi, Binary& cache) { };
+
+    PartitionArch::Type Type(void)
+    {
+        return PartitionArch::VERSAL;
     }
 };
 

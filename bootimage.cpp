@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@
 #include "bootimage.h"
 #include "bootimage-zynq.h"
 #include "bootimage-zynqmp.h"
+#include "bootimage-versal.h"
 #include "bifscanner.h"
 #include "bootheader.h"
 #include "options.h"
@@ -35,6 +36,7 @@
 #include "stringutils.h"
 #include "checksum.h"
 #include "logger.h"
+#include "bitutils.h"
 
 /*
 ------------------------------------------------------------------------------
@@ -57,7 +59,7 @@ void BIF_File::Process(Options& options)
     
     if (!s) 
     {
-        LOG_ERROR("Can't read BIF file - %s ", basefile.c_str());
+        LOG_ERROR("Cannot read BIF file - %s ", basefile.c_str());
     }
     scanner.switch_streams(&s);
     int res = parser.parse();
@@ -77,6 +79,10 @@ void BIF_File::Process(Options& options)
         {
             currentbi = new ZynqMpBootImage(options);
         }
+        else if (options.archType == Arch::VERSAL)
+        {
+            currentbi = new VersalBootImage(options);
+        }
         else
         {
             currentbi = new ZynqBootImage(options);
@@ -89,12 +95,6 @@ void BIF_File::Process(Options& options)
         }
     }
     Output(options);
-}
-
-/******************************************************************************/
-static std::string RemoveExtension(std::string fName) 
-{
-    return fName.substr(0, fName.find_last_of("."));
 }
 
 /******************************************************************************/
@@ -135,7 +135,7 @@ void BIF_File::Output(Options& options)
         if (outputMode == OutputMode::OUT_SPLIT_NORMAL || outputMode == OutputMode::OUT_SPLIT_SLAVEBOOT || splitFileType != File::Unknown)
         {
             outFilename.clear();
-            std::string fName = RemoveExtension(biffilename);
+            std::string fName = StringUtils::RemoveExtension(biffilename);
             fName = fName.substr(fName.find_last_of("\\")+1, std::string::npos);
             if(splitFileType == File::Unknown)
             {
@@ -172,6 +172,9 @@ void BIF_File::Output(Options& options)
 
         /* Efuse PPK hash for burning the efuse */
         (*bi)->OutputOptionalEfuseHash();
+
+        /* Secure Debug Image to enable the JTAG during a secure boot scenario */
+        (*bi)->OutputOptionalSecureDebugImage();
     }
 }
 
@@ -193,10 +196,16 @@ BootImage::BootImage(Options& options)
     , totalFsblFwSize(0)
     , sourceAddr(0)
     , bootloaderFound(false)
+    , bootloaderAuthenticate(false)
+    , bootloaderEncrypt(false)
+    , bootloaderKeySource(KeySource::None)
     , keygen(NULL)
     , partCount(0)
     , authHash(AuthHash::Sha3)
     , assumeEncryption(false)
+    , convertAieElfToCdo(false)
+    , createSubSystemPdis(false)
+    , encryptedHeaders(NULL)
     , bootHeader(NULL)
     , imageHeaderTable(NULL)
     , partitionHeaderTable(NULL)
@@ -279,6 +288,26 @@ BootImage::~BootImage()
 }
 
 /******************************************************************************/
+void BootImage::OutputOptionalEfuseHash()
+{
+    std::string hashFile = options.GetEfuseHashFileName();
+    if (hashFile != "")
+    {
+        if (bifOptions->GetPPKFileName() != "" || bifOptions->GetPSKFileName() != "")
+        {
+            if (currentAuthCtx)
+            {
+                currentAuthCtx->GeneratePPKHash(hashFile);
+            }
+        }
+        else
+        {
+            LOG_ERROR("Cannot read PPK/PSK. PPK/PSK is mandatory to generate PPK hash bits, using '-efuseppkbits'.");
+        }
+    }
+}
+
+/******************************************************************************/
 void BootImage::BuildAndLink(Binary* cache) 
 {  
     if( imageList.size() == 0 ) 
@@ -340,26 +369,6 @@ void BootImage::PrintPartitionInformation(void)
             lastImageName = (*pH)->imageHeader->GetName();
         }
         LOG_INFO("       Partition %d: %s,  Size: %d", index++, (*pH)->partition->section->Name.c_str(), (*pH)->GetPartitionSize());
-    }
-}
-
-/******************************************************************************/
-void BootImage::OutputOptionalEfuseHash() 
-{
-    std::string hashFile = options.GetEfuseHashFileName();
-    if ( hashFile != "") 
-    {
-        if (bifOptions->GetPPKFileName() != "" || bifOptions->GetPSKFileName() != "")
-        {
-            if (currentAuthCtx)
-            {
-                currentAuthCtx->GeneratePPKHash(hashFile);
-            }
-        }
-        else
-        {
-            LOG_ERROR("Cannot read PPK/PSK. PPK/PSK is mandatory to generate PPK hash bits, using '-efuseppkbits'.");
-        }
     }
 }
 
@@ -605,28 +614,14 @@ void BootImage::SetAssumeEncryptionFlag(bool flag)
     assumeEncryption = flag;
 }
 
-#if 0
 /******************************************************************************/
-void BootImage::SetPmuFwImageFile(const std::string& filename)
-//void BootImage::SetPmuFwImageFile(BifOptions* bifoptions)
-{
-    if (filespec->AuthType != Authentication::None)
-    {
-        LOG_ERROR("BIF attribute error !!!\n\t\tBif option 'authentication' is not supported with [pmufw_image].\n\t\tpmufw will be signed along with bootloader, if authentication is enabled for bootloader.");
-    }
-    if (filespec->EncryptType != Encryption::None)
-    {
-        LOG_ERROR("BIF attribute error !!!\n\t\tBif option 'encryption' is not supported with [pmufw_image].\n\t\tpmufw will be encrypted if encryption is enabled for bootloader.");
-    }
-    if (filespec->ChecksumType != Checksum::None)
-    {
-        LOG_ERROR("BIF attribute error !!!\n\t\tBif option 'checksum' is not supported with [pmufw_image].\n\t\tpmufw will be checksummed if checksum is enabled for bootloader.");
-    }
-    if (filespec->destCPUType != DestinationCPU::NONE)
-    {
-        LOG_ERROR("BIF attribute error !!!\n\t\tBif option 'destination_cpu' is not supported with [pmufw_image].");
-    }
-
-    pmuFwImageFile = filename;
+std::vector<std::string>& BootImage::GetEncryptionKeyFileVec()
+{ 
+    return encryptionKeyFileVec; 
 }
-#endif
+
+/******************************************************************************/
+void BootImage::InsertEncryptionKeyFile(std::string filename)
+{
+    encryptionKeyFileVec.push_back(filename); 
+}

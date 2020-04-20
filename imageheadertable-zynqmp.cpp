@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -93,7 +93,7 @@ ZynqMpImageHeader::ZynqMpImageHeader(std::ifstream& ifs)
     imageHeader = (ZynqMpImageHeaderStructure*)section->Data;
     ifs.read((char*)imageHeader, size);
 
-    /* This is a work around of a bug in the old bootgen. The partion header counter is stored in
+    /* This is a work around of a bug in the old bootgen. The partition header counter is stored in
     the wrong field. */
     long count = (importedIH.dataSectionCount == 0) ? importedIH.imageNameLength : importedIH.dataSectionCount;
     long offset = importedIH.partitionHeaderWordOffset * sizeof(uint32_t);
@@ -293,7 +293,7 @@ void ZynqMpImageHeader::ImportBit(BootImage& bi)
     std::ifstream stream(Filename.c_str(), std::ios_base::binary);
     if (!stream)
     {
-        LOG_ERROR("Can't read BIT file - %s ", Filename.c_str());
+        LOG_ERROR("Cannot read BIT file - %s ", Filename.c_str());
     }
     BitFile *bit = new ZynqMpBitFile(stream);
     bit->ParseBit(bi);

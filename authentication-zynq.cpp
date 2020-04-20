@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -98,7 +98,8 @@ void ZynqAuthenticationContext::CopyPartitionSignature(BootImage& bi,
     }
 
     /* Sign the hash */
-    authAlgorithm->CreateSignature(shaHashPadded, secondaryKey, signatureBlock);
+    authAlgorithm->CreateSignature(shaHashPadded, (uint8_t*)secondaryKey, signatureBlock);
+    RearrangeEndianess(signatureBlock, rsaKeyLength);
     LOG_TRACE("The partition signature is copied into Authentication Certificate");
 
     /* Delete the temporarily created arrays */
@@ -110,7 +111,7 @@ void ZynqAuthenticationContext::CopyPartitionSignature(BootImage& bi,
 /******************************************************************************/
 ZynqAuthenticationContext::ZynqAuthenticationContext()
 {
-    SetRsaKeyLength(RSA_KEY_LENGTH_ZYNQ);
+    SetRsaKeyLength(RSA_2048_KEY_LENGTH);
     hashType = AuthHash::Sha2;
     spksignature = new uint8_t[GetRsaKeyLength()];
     spkSignLoaded = false;
@@ -127,11 +128,11 @@ ZynqAuthenticationContext::ZynqAuthenticationContext()
 /******************************************************************************/
 ZynqAuthenticationContext::ZynqAuthenticationContext(const AuthenticationContext* refAuthContext)
 {
-    SetRsaKeyLength(RSA_KEY_LENGTH_ZYNQ);
-    hashType = refAuthContext->hashType;
+    SetRsaKeyLength(RSA_2048_KEY_LENGTH);
+    hashType = AuthHash::Sha2;
     primaryKey = new Key2048("Primary Key");
     secondaryKey = new Key2048("Secondary Key");
-    spksignature = new uint8_t[RSA_KEY_LENGTH_ZYNQ];
+    spksignature = new uint8_t[RSA_2048_KEY_LENGTH];
     spkSignLoaded = refAuthContext->spkSignLoaded;
     memcpy(primaryKey, refAuthContext->primaryKey, sizeof(Key2048));
     memcpy(secondaryKey, refAuthContext->secondaryKey, sizeof(Key2048));
@@ -148,15 +149,15 @@ ZynqAuthenticationContext::ZynqAuthenticationContext(const AuthenticationContext
 /******************************************************************************/
 ZynqAuthenticationContext::ZynqAuthenticationContext(const AuthCertificate2048Structure* existingCert)
 {
-    SetRsaKeyLength(RSA_KEY_LENGTH_ZYNQ);
+    SetRsaKeyLength(RSA_2048_KEY_LENGTH);
     hashType = AuthHash::Sha2;
-    spksignature = new uint8_t[RSA_KEY_LENGTH_ZYNQ];
+    spksignature = new uint8_t[RSA_2048_KEY_LENGTH];
     spkSignLoaded = true;
     primaryKey = new Key2048("Primary Key");
     secondaryKey = new Key2048("Secondary Key");
     primaryKey->Import(&existingCert->acPpk, "Primary Key");
     secondaryKey->Import(&existingCert->acSpk, "Secondary Key");
-    memcpy(spksignature, existingCert->acSpkSignature.Signature, RSA_KEY_LENGTH_ZYNQ);
+    memcpy(spksignature, existingCert->acSpkSignature.Signature, RSA_2048_KEY_LENGTH);
     memcpy(udf_data, existingCert->acUdf, UDF_DATA_SIZE);
     certSize = sizeof(AuthCertificate2048Structure);
     authAlgorithm = new RSAAuthenticationAlgorithm();
@@ -341,7 +342,7 @@ void ZynqAuthenticationContext::GeneratePPKHash(const std::string& filename)
 {
     ACKey2048 ppkTemp;
     primaryKey->Export(&ppkTemp);
-    
+
     hashLength = hash->GetHashLength();
     uint8_t* rsa_signature = new uint8_t[hashLength];
     hash->CalculateHash(false, (uint8_t*)&ppkTemp, sizeof(ACKey2048), rsa_signature);
@@ -359,4 +360,13 @@ void ZynqAuthenticationContext::GeneratePPKHash(const std::string& filename)
 
     fclose(filePtr);
     LOG_INFO("PPK Hash is written to file %s successfully", filename.c_str());
+}
+
+/******************************************************************************/
+void ZynqAuthenticationContext::SetKeyLength(Authentication::Type type)
+{
+    if (type == Authentication::RSA)
+    {
+        AuthenticationContext::rsaKeyLength = RSA_2048_KEY_LENGTH;
+    }
 }

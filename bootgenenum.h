@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -34,6 +34,20 @@ struct KeySource
         BhKupKey,
         BbramBlkKey,
         BbramGryKey,
+        UserKey0,
+        UserKey1,
+        UserKey2,
+        UserKey3,
+        UserKey4,
+        UserKey5,
+        UserKey6,
+        UserKey7,
+        EfuseUserKey0,
+        EfuseUserBlkKey0,
+        EfuseUserGryKey0,
+        EfuseUserKey1,
+        EfuseUserBlkKey1,
+        EfuseUserGryKey1,
     } Type;
 };
 
@@ -56,6 +70,7 @@ struct Authentication
     {
         None,
         RSA, 
+        ECDSA,
     } Type;
 };
 
@@ -137,6 +152,15 @@ struct BootDevice
        ETHERNET,
        PCIE,
        SATA,
+       OSPI,
+       SMAP,
+       SBI,
+       SD0RAW,
+       SD1RAW,
+       SDLSRAW,
+       MMCRAW,
+       MMC0,
+       MMC0RAW
     } Type;
 };
 
@@ -181,6 +205,16 @@ struct BhRsa
         BhRsaDisable = 0,
         BhRsaEnable = 3,
     }Type;
+};
+
+/* DPA Counter measure */
+struct DpaCM
+{
+    typedef enum
+    {
+        DpaCMDisable = 0,
+        DpaCMEnable = 3,
+    } Type;
 };
 
 /* Authentication Hash Selection */
@@ -241,6 +275,7 @@ struct GenAuthKeys
         None,
         PEM,
         RSA,
+        ECDSA,
     }Type;
 };
 
@@ -303,6 +338,7 @@ struct DestinationCPU
         R5_1,
         R5_lockstep,
         PMU,
+        AIE
     } Type;
 };
 
@@ -313,6 +349,7 @@ struct PartitionArch
     {
         FPGA,
         NON_FPGA,
+        VERSAL,
     } Type;
 };
 
@@ -347,6 +384,29 @@ struct OutputMode {
     } Type;
 };
 
+/* Partition Type */
+struct PartitionType
+{
+    typedef enum
+    {
+        RESERVED,
+        ELF,
+        CONFIG_DATA_OBJ,
+        CFI,
+        RAW,
+        RAW_ELF,
+        CFI_GSC,
+        CFI_GSC_UNMASK,
+        CDO,
+        PMC_CDO,
+        NPI,
+        REG_INIT,
+        BOOTLOADER,
+	SLR_BOOT,
+        SLR_CONFIG
+    } Type;
+};
+
 /* Read image options */
 struct ReadImageOption
 {
@@ -368,6 +428,9 @@ struct DumpOption
     {
         NONE,
         BH,
+        PLM,
+        PMC_CDO,
+        BOOT_FILES,
         PARTITIONS,
     } Type;
 };

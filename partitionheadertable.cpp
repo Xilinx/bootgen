@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@
 #include "authentication-zynq.h"
 #include "authentication-zynqmp.h"
 #include "partitionheadertable-zynqmp.h"
+#include "partitionheadertable-versal.h"
 #include "logger.h"
 
 
@@ -108,12 +109,12 @@ void PartitionHeaderTable::Build(BootImage &bi, Binary& cache)
             {
                 if (bi.options.archType == Arch::ZYNQMP)
                 {
-                    AuthenticationContext::SetRsaKeyLength(RSA_KEY_LENGTH_ZYNQMP);
+                    AuthenticationContext::SetRsaKeyLength(RSA_4096_KEY_LENGTH);
                     biAuth = (AuthenticationContext*) new ZynqMpAuthenticationContext(imageAuth);
                 }
                 else
                 {
-                    AuthenticationContext::SetRsaKeyLength(RSA_KEY_LENGTH_ZYNQ);
+                    AuthenticationContext::SetRsaKeyLength(RSA_2048_KEY_LENGTH);
                     biAuth = (AuthenticationContext*) new ZynqAuthenticationContext(imageAuth);
                 }
                 biAuth->hashType = bi.GetAuthHashAlgo();
@@ -122,12 +123,12 @@ void PartitionHeaderTable::Build(BootImage &bi, Binary& cache)
             {
                 if (bi.options.archType == Arch::ZYNQMP)
                 {
-                    AuthenticationContext::SetRsaKeyLength(RSA_KEY_LENGTH_ZYNQMP);
+                    AuthenticationContext::SetRsaKeyLength(RSA_4096_KEY_LENGTH);
                     biAuth = (AuthenticationContext*) new ZynqMpAuthenticationContext(imageAuth);
                 }
                 else
                 {
-                    AuthenticationContext::SetRsaKeyLength(RSA_KEY_LENGTH_ZYNQ);
+                    AuthenticationContext::SetRsaKeyLength(RSA_2048_KEY_LENGTH);
                     biAuth = (AuthenticationContext*) new ZynqAuthenticationContext(imageAuth);
                 }
                 biAuth->hashType = bi.GetAuthHashAlgo();
@@ -137,12 +138,12 @@ void PartitionHeaderTable::Build(BootImage &bi, Binary& cache)
         {
             if (bi.options.archType == Arch::ZYNQMP)
             {
-                AuthenticationContext::SetRsaKeyLength(RSA_KEY_LENGTH_ZYNQMP);
+                AuthenticationContext::SetRsaKeyLength(RSA_4096_KEY_LENGTH);
                 biAuth = (AuthenticationContext*) new ZynqMpAuthenticationContext(bi.currentAuthCtx);
             }
             else
             {
-                AuthenticationContext::SetRsaKeyLength(RSA_KEY_LENGTH_ZYNQ);
+                AuthenticationContext::SetRsaKeyLength(RSA_2048_KEY_LENGTH);
                 biAuth = (AuthenticationContext*) new ZynqAuthenticationContext(bi.currentAuthCtx);
             }
             biAuth->hashType = bi.GetAuthHashAlgo();
@@ -150,10 +151,12 @@ void PartitionHeaderTable::Build(BootImage &bi, Binary& cache)
         if (bi.bifOptions->GetSPKFileName() != "")
         {
             biAuth->SetSPKeyFile(bi.bifOptions->GetSPKFileName());
+            biAuth->ParseSPKeyFile(bi.bifOptions->GetSPKFileName());
         }
         if (bi.bifOptions->GetSSKFileName() != "")
         {
             biAuth->SetSSKeyFile(bi.bifOptions->GetSSKFileName());
+            biAuth->ParseSSKeyFile(bi.bifOptions->GetSSKFileName());
         }
         if (bi.bifOptions->GetSPKSignFileName() != "")
         {
@@ -175,8 +178,7 @@ void PartitionHeaderTable::Build(BootImage &bi, Binary& cache)
         {
             biAuth->spkIdentification = bi.bifOptions->GetSpkId();
         }
-        
-               
+
         biAuth->SetPresignFile(bi.bifOptions->GetHeaderSignatureFile());
         
         /* Resize sections to guarantee size is mod 64. */
@@ -283,6 +285,9 @@ PartitionHeader::PartitionHeader(ImageHeader* imageheader, int index)
     , elfEndianess(Endianness::LittleEndian)
     , generateAesKeyFile(false)
     , partitionSecHdrIv(NULL)
+    , firstChunkSize(0)
+    , isPmcdata(false)
+    , partitionType(PartitionType::RESERVED)
 {
     if(imageheader != NULL)
     {

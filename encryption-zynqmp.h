@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@
 *********************************************************   C L A S S E S   ***
 -------------------------------------------------------------------------------
 */
+
 /******************************************************************************/
 class ZynqMpEncryptionContext : public EncryptionContext
 {
@@ -45,16 +46,13 @@ public:
     }
 
     void ReadEncryptionKeyFile(const std::string& keyFileName);
-    void GenerateEncryptionKeyFile(const std::string& baseFileName, Options& options);
     void WriteEncryptionKeyFile(const std::string& baseFileName, bool useOptionalKey, uint32_t blocks);
     void Process(BootImage& bi, PartitionHeader* partition);
-
     void GenerateAesKey(void);
 
-    /* For aesSeed used for Key Generation in ZynqMp. GenerateAesSeed() uses SetRandomSeed(); from the Encryption Contex */
-    void GenerateAesSeed(void);
     void SetAesSeedString(const std::string & key);
     void SetAesSeed(const uint8_t * key);
+    void SetAesFixedInputData(const uint8_t * key, int bytes);
     const uint32_t* GetAesSeed(void);
 
     void SetAesLabelString(const std::string & key);
@@ -62,6 +60,7 @@ public:
     const uint8_t* GetAesLabel(void);
 
     void SetAesContextString(const std::string & key);
+    void SetAesFixedInputDataString(const std::string & key);
     void SetAesContext(const uint8_t * key, int bytes);
     const uint8_t* GetAesContext(void);
 
@@ -86,36 +85,12 @@ public:
     void GetEncryptionKeys(Options& options, uint8_t* aesKey, uint8_t* aesOptKey, uint8_t* aesIV);
     void GenerateRemainingKeys(Options& options, std::string aesFilename);
 
-    std::string ConvertKeyIvToString(uint8_t *keyIv, uint8_t size);
-
-    std::vector<std::string> aesKeyVec;
-    std::vector<std::string> aesIvVec;
-
-    void CAVPonCounterModeKDF(std::string filename);
-    void ParseKDFTestVectorFile(std::string filename);
-
-    uint32_t koLength;
-    uint8_t* kI;
-    uint32_t fixedInputDataByteLength;
-    uint8_t* fixedInputData;
-    uint8_t* verifyKo;
-
 protected:
-    uint32_t* aesKey;
-    uint32_t* aesOptKey;
-    uint32_t* aesIv;
-    uint32_t* aesSeed;
-    uint8_t* aesContext;
-    uint8_t* aesLabel;
-    uint32_t* outBufKDF;
-    int aesContextBytes;
-    int aesLabelBytes;
     bool isBootloader;
     bool aesSeedexits;
     int partNum;
 
     void ChunkifyAndEncrypt(Options& options, const uint8_t *inBuf, uint32_t inLen, uint8_t* outBuf, uint32_t& outLen);
-    void CounterModeKDF(uint32_t blocks, std::string filename, bool dump);
     void SetMetalKeyString(const std::string & key, uint8_t * metalKey);
     void GenerateGreyKey();
     void GenerateMetalKey();

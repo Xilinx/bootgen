@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -56,8 +56,10 @@
 
 #ifdef VERBOSE_FILE
 #define VERBOSE_OUT options.aesLogFile
+#define VERBOSE_OUT_MH bi.options.aesLogFile
 #else
 #define VERBOSE_OUT std::cout
+#define VERBOSE_OUT_MH std::cout
 #endif
 
 

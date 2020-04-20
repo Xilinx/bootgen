@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -67,8 +67,8 @@ public:
     }
     virtual ~ReadImage() { }
 
-    virtual void ReadBinaryFile(void) = 0;
-    void DisplayImageDetails(ReadImageOption::Type type, DumpOption::Type dump);
+    virtual void ReadBinaryFile(DumpOption::Type dump = DumpOption::NONE, std::string path = "") = 0;
+    virtual void DisplayImageDetails(ReadImageOption::Type type, DumpOption::Type dump, std::string path="");
     virtual void DisplayBootHeader(void) = 0;
     virtual void DisplayImageHeaderTable(void) = 0;
     virtual void DisplayImageHeaders(void) = 0;
@@ -82,10 +82,10 @@ public:
     void DisplayAscii(std::string name1, std::string value1);
     void DisplayIV(std::string name, uint32_t* ptr);
     void DisplayKey(std::string name, uint32_t* ptr);
-    virtual  void DisplayPhtAttributes(uint32_t value) = 0;
     void DisplayAttributes(std::string name1, std::string value1, std::string name2, std::string value2);
-    virtual void DisplayBootVectors(void) = 0;
+    virtual void DisplayBootVectors(void) {};
 
+    virtual void VerifyAuthentication(bool) {};
     void Separator();
 protected:
     std::string binFilename;

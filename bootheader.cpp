@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ BootHeader::BootHeader()
 }
 
 /******************************************************************************/
-void BootHeader::BootladerAddressAndSizeCheck(PartitionHeader & hdr)
+void BootHeader::BootloaderAddressAndSizeCheck(PartitionHeader & hdr)
 {
     if (!Binary::CheckAddress(hdr.partition->section->Address))
     {
@@ -70,7 +70,7 @@ void BootHeader::Copy(BootHeader* otherHeader)
 {
     if (prebuilt) 
     {
-        LOG_ERROR("Can't copy bootheader, since it has already been imported");
+        LOG_ERROR("Cannot copy bootheader, since it has already been imported");
     }
 
     /* The BH Section Length can vary due to PUF Helper Data */ 

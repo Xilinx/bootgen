@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -52,9 +52,7 @@ class ByteFile;
 class ChecksumContext;
 class MD5ChecksumContext;
 class Key;
-class IntegrityContext;
 class ChecksumTable;
-
 
 /*
 -------------------------------------------------------------------------------
@@ -86,9 +84,8 @@ public:
     virtual void DetermineEncryptionDefaults() {};
     virtual void ParseBootImage(PartitionBifOptions * it) = 0;
     virtual void ConfigureProcessingStages(ImageHeader* image, PartitionBifOptions* partitionbifoptions) = 0;
-
+    virtual void OutputOptionalEfuseHash();
     virtual void BuildAndLink(Binary* cache);
-    void OutputOptionalEfuseHash();
     void OutputPartitionFiles(Options& options, Binary& cache);
     void PrintPartitionInformation(void);
     void SetLegacyEncryptionFlag(bool flag);
@@ -98,6 +95,7 @@ public:
     void SetOutputSplitModeFormat(SplitMode::Type splitMode, File::Type fmt);
     void ValidateOutputModes(File::Type split, OutputMode::Type outMode);
     bool IsBootloaderFound();
+    virtual void OutputOptionalSecureDebugImage() {};
 
     void SetAssumeEncryptionFlag (bool);
     void SetCore (Core::Type);
@@ -111,8 +109,8 @@ public:
     void SetDestCpuFromCore(Core::Type coreType, DestinationCPU::Type cpuType);
     
     std::vector<std::string> encryptionKeyFileVec;
-    virtual std::vector<std::string>& GetEncryptionKeyFileVec(void) { return encryptionKeyFileVec;} 
-    virtual void InsertEncryptionKeyFile(std::string filename) { };
+    std::vector<std::string>& GetEncryptionKeyFileVec();
+    void InsertEncryptionKeyFile(std::string filename);
 
     Core::Type GetCore(void);
     uint32_t GetPmuFwSize (void);
@@ -124,9 +122,12 @@ public:
 
     std::string Name;
     BootHeader* bootHeader;
+    std::list<Section*> headers;
+    Section* encryptedHeaders;
     ImageHeaderTable* imageHeaderTable;
     std::list<ImageHeader*> imageList;
-    PartitionHeaderTable*    partitionHeaderTable;
+    std::list<SubSysImageHeader*> subSysImageList;
+    PartitionHeaderTable* partitionHeaderTable;
     std::list<PartitionHeader*> partitionHeaderList;
     Section* nullPartHeaderSection;
     ChecksumTable* checksumTable;
@@ -144,10 +145,10 @@ public:
     uint32_t totalHeadersSize;
     uint32_t partCount;
     Binary* cache;
-
+    bool createSubSystemPdis;
+    bool convertAieElfToCdo;
     std::string fsblFilename;
-    std::string bitFilename;
-    std::list<Section*> headers;
+    std::string bitFilename;    
 
 //private:
     bool assumeEncryption;
@@ -163,5 +164,8 @@ public:
     Binary::Address_t sourceAddr;
     bool legacyEncryptionEnabled;
     bool bootloaderFound;
+    bool bootloaderEncrypt;
+    KeySource::Type bootloaderKeySource;
+    bool bootloaderAuthenticate;
 };
 #endif

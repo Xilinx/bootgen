@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@
 #include "options.h"
 #include "bootgenenum.h"
 #include "bootimage.h"
-
+#include "bitutils.h"
 
 /*
 -------------------------------------------------------------------------------
@@ -119,88 +119,95 @@ static std::string AddSplitModeExtention(std::string fName, File::Type type, boo
 /******************************************************************************/
 void OutputFile::Output(Options& options, Binary& cache) 
 {
-    /* Get all modes */
-    bool splitMode = options.GetSplitType() != File::Unknown;
-    //bool processBitstream = options.GetProcessBitstreamType() != File::Unknown;
-    mode = options.GetOutputMode();
-    
-    /* Setup the options for Dual QSPI mode */
-    qspiDualMode = options.GetDualQspiMode();
-    if ((qspiDualMode == QspiMode::PARALLEL_LQSPI) && options.GetArchType() == Arch::ZYNQMP)
+    if (options.GetArchType() == Arch::VERSAL)
     {
-        qspiDualMode = QspiMode::PARALLEL_GQSPI;
-    }
-    qspiSizeInBytes = options.GetQspiSize() * 1024 * 1024;
-    totalImageSize = cache.TotalSize;
-    
-    splitOffset = 0;
-    encrypted = false;
-    
-    
-    /* Create output files as per mode, depending on overwrite flag */
-    CreateOutputFiles(options);
-    
-    /* Open the file handle for the filename set above & write preamble (if any) */
-    Open();
-    WritePreamble();
-    
-    /* Iterate through all sections and push the section to approprite file,
-    depending on mode */
-    Binary::Address_t runningAddress = 0;
-    for (SectionList::iterator i = cache.Sections.begin(); i != cache.Sections.end(); i++)
+        OutputVersal(options, cache);
+    } 
+    else
     {
-        Section& section(**i);
-    
-        /* Process Bitstream Mode
-        Only bitstream files will be output to a file */
-        if (mode == OutputMode::OUT_BITSTREAM)
+        /* Get all modes */
+        bool splitMode = options.GetSplitType() != File::Unknown;
+        //bool processBitstream = options.GetProcessBitstreamType() != File::Unknown;
+        mode = options.GetOutputMode();
+
+        /* Setup the options for Dual QSPI mode */
+        qspiDualMode = options.GetDualQspiMode();
+        if ((qspiDualMode == QspiMode::PARALLEL_LQSPI) && options.GetArchType() == Arch::ZYNQMP)
         {
-            if (section.isBitStream)
+            qspiDualMode = QspiMode::PARALLEL_GQSPI;
+        }
+        qspiSizeInBytes = options.GetQspiSize() * 1024 * 1024;
+        totalImageSize = cache.TotalSize;
+
+        splitOffset = 0;
+        encrypted = false;
+
+
+        /* Create output files as per mode, depending on overwrite flag */
+        CreateOutputFiles(options);
+
+        /* Open the file handle for the filename set above & write preamble (if any) */
+        Open();
+        WritePreamble();
+
+        /* Iterate through all sections and push the section to approprite file,
+        depending on mode */
+        Binary::Address_t runningAddress = 0;
+        for (SectionList::iterator i = cache.Sections.begin(); i != cache.Sections.end(); i++)
+        {
+            Section& section(**i);
+
+            /* Process Bitstream Mode
+            Only bitstream files will be output to a file */
+            if (mode == OutputMode::OUT_BITSTREAM)
             {
-                ProcessBitstreamMode(section);
+                if (section.isBitStream)
+                {
+                    ProcessBitstreamMode(section);
+                }
+                else
+                {
+                    continue;
+                }
             }
             else
             {
-                continue;
+                if (section.Address < runningAddress)
+                {
+                    LOG_ERROR("Sequential addresses are going backwards!");
+                }
+
+                /* Fill the gap(if any) between sections will fill byte */
+                if (section.Address > runningAddress)
+                {
+                    Fill(runningAddress, section.Address, options.GetDoFill(), options.GetOutputFillByte());
+                }
+
+                /* Split Mode
+                All headers and FSBL are part of the main output file and all other partitions have one output file each */
+                //if (splitMode) 
+                if ((mode == OutputMode::OUT_SPLIT_NORMAL) || splitMode)
+                {
+                    ProcessSplitMode(section, options);
+                }
+
+                /* Slave Boot Split Mode
+                Bootheader+FSBL are part of the main output file, headers are part of one output file
+                and all other partitions to another output file */
+                if (mode == OutputMode::OUT_SPLIT_SLAVEBOOT)
+                {
+                    ProcessSplitSlaveBootMode(section, options);
+                }
             }
+
+            /* Write to output file */
+            Write(section.Address, section.Length, section.Data);
+            runningAddress = section.Address + section.Length;
         }
-        else
-        {
-            if (section.Address < runningAddress)
-            {
-                LOG_ERROR("Sequential addresses are going backwards!");
-            }
-    
-            /* Fill the gap(if any) between sections will fill byte */
-            if (section.Address > runningAddress)
-            {
-                Fill(runningAddress, section.Address, options.GetDoFill(), options.GetOutputFillByte());
-            }
-    
-            /* Split Mode
-            All headers and FSBL are part of the main output file and all other partitions have one output file each */
-            //if (splitMode) 
-            if ((mode == OutputMode::OUT_SPLIT_NORMAL) || splitMode)
-            {
-                ProcessSplitMode(section, options);
-            }
-    
-            /* Slave Boot Split Mode
-            Bootheader+FSBL are part of the main output file, headers are part of one output file
-            and all other partitions to another output file */
-            if (mode == OutputMode::OUT_SPLIT_SLAVEBOOT)
-            {
-                ProcessSplitSlaveBootMode(section, options);
-            }
-        }
-    
-        /* Write to output file */
-        Write(section.Address, section.Length, section.Data);
-        runningAddress = section.Address + section.Length;
+
+        /* Close the file handle, after writing the post script */
+        WritePostscriptAndClose();
     }
-    
-    /* Close the file handle, after writing the post script */
-    WritePostscriptAndClose();
 }
 
 /******************************************************************************/
@@ -394,4 +401,48 @@ void FpgaPartitionOutput::GeneratePartitionFiles(BootImage& bi, Binary& cache)
     }
     cache.Sections = tempSecList;
     delete[] addr;
+}
+
+/******************************************************************************/
+void OutputFile::OutputInterface(Options& options, uint8_t* buffer, uint32_t size)
+{
+    encrypted = false;
+    /* If overwrite flag not enabled, throw error if already exists */
+    if (!options.DoOverwrite())
+    {
+        if (std::ifstream(filename.c_str()))
+        {
+            LOG_ERROR("Output File %s already exists in the path\n           Use '-w on' option to force overwrite", filename.c_str());
+        }
+    }
+
+    /* Open the file handle for the filename set above & write preamble (if any) */
+    Open();
+    WritePreamble();
+
+    Write(0, size, buffer);
+
+    /* Close the file handle, after writing the post script */
+    WritePostscriptAndClose();
+}
+
+/******************************************************************************/
+void OutputFile::WriteBootHeaderToFile(std::string fileName, uint8_t* data, uint64_t size)
+{
+    FILE* filePtr;
+    size_t result;
+    std::string fName = StringUtils::RemoveExtension(fileName);
+    fName += "_bh.bin";
+    filePtr = fopen(fName.c_str(), "wb");
+    if (filePtr != NULL)
+    {
+        /* First 16 bytes are not required by BootRoM/PLM, they should not be part of BH */
+        result = fwrite(data + 16, 1, size - 16, filePtr);
+        if (result != (size - 16))
+        {
+            LOG_ERROR("Error dumping Boot Header to a file");
+        }
+        fclose(filePtr);
+    }
+    LOG_INFO("Boot header binary file created - %s", fName.c_str());
 }

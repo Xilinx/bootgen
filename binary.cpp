@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -128,8 +128,10 @@ Section::Section(const std::string& name, Binary::Length_t length)
     ,  isCertificate(false)
     ,  isBitStream(false)
     ,  isBootloader(false)
+    ,  isPmcdata(false)
     ,  isFirstElfSection(false) 
     ,  index(0)
+    , firstChunkSize(0)
 {
     std::string logmsg;
     Data = new uint8_t[length];

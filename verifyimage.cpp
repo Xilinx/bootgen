@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@
 
 
 /*******************************************************************************/
-static void RearrangeEndianess(char *array, uint32_t size)
+static void RearrangeEndianess(uint8_t *array, uint32_t size)
 {
     uint32_t lastIndex = size - 1;
     char tempInt = 0;
@@ -92,8 +92,8 @@ bool ZynqMpReadImage::VerifySignature(bool nist, uint8_t * data, size_t dataLeng
 
     BIGNUM* n = BN_new();
     n->d = (BN_ULONG*)acKey->N;
-    n->dmax = RSA_KEY_LENGTH_ZYNQMP / sizeof(BN_ULONG);
-    n->top = RSA_KEY_LENGTH_ZYNQMP / sizeof(BN_ULONG);
+    n->dmax = RSA_4096_KEY_LENGTH / sizeof(BN_ULONG);
+    n->top = RSA_4096_KEY_LENGTH / sizeof(BN_ULONG);
     n->flags = 0;
     n->neg = 0;
     
@@ -107,33 +107,33 @@ bool ZynqMpReadImage::VerifySignature(bool nist, uint8_t * data, size_t dataLeng
 #if OPENSSL_VERSION_NUMBER > 0x10100000L
     BIGNUM *d = NULL;
     RSA_set0_key(rsa, n, e, d);
-    RearrangeEndianess((char*)RSA_get0_e(rsa)->d, sizeof(uint32_t));
-    RearrangeEndianess((char*)RSA_get0_n(rsa)->d, RSA_KEY_LENGTH_ZYNQMP);
+    RearrangeEndianess((uint8_t*)RSA_get0_e(rsa)->d, sizeof(uint32_t));
+    RearrangeEndianess((uint8_t*)RSA_get0_n(rsa)->d, RSA_4096_KEY_LENGTH);
 #else
     rsa->n = n;
     rsa->e = e;
-    RearrangeEndianess((char*)rsa->e->d, sizeof(uint32_t));
-    RearrangeEndianess((char*)rsa->n->d, RSA_KEY_LENGTH_ZYNQMP);
+    RearrangeEndianess((uint8_t*)rsa->e->d, sizeof(uint32_t));
+    RearrangeEndianess((uint8_t*)rsa->n->d, RSA_4096_KEY_LENGTH);
 #endif
 
     /* Find SHA-384 hash from signature */    
-    uint8_t* opensslHashPadded = new uint8_t[RSA_KEY_LENGTH_ZYNQMP]; //chnage key length to signature length
+    uint8_t* opensslHashPadded = new uint8_t[RSA_4096_KEY_LENGTH]; //chnage key length to signature length
     
-    if (RSA_public_encrypt(RSA_KEY_LENGTH_ZYNQMP, signature, (unsigned char*)opensslHashPadded, rsa, RSA_NO_PADDING) < 0)
+    if (RSA_public_encrypt(RSA_4096_KEY_LENGTH, signature, (unsigned char*)opensslHashPadded, rsa, RSA_NO_PADDING) < 0)
     {
         LOG_ERROR("RSA_public_encrypt error");
     }
     /* comment */
 #if OPENSSL_VERSION_NUMBER > 0x10100000L
-    RearrangeEndianess((char*)RSA_get0_n(rsa)->d, RSA_KEY_LENGTH_ZYNQMP);
-    RearrangeEndianess((char*)RSA_get0_e(rsa)->d, sizeof(uint32_t));
+    RearrangeEndianess((uint8_t*)RSA_get0_n(rsa)->d, RSA_4096_KEY_LENGTH);
+    RearrangeEndianess((uint8_t*)RSA_get0_e(rsa)->d, sizeof(uint32_t));
 #else
-    RearrangeEndianess((char*)rsa->n->d, RSA_KEY_LENGTH_ZYNQMP);
-    RearrangeEndianess((char*)rsa->e->d, sizeof(uint32_t));
+    RearrangeEndianess((uint8_t*)rsa->n->d, RSA_4096_KEY_LENGTH);
+    RearrangeEndianess((uint8_t*)rsa->e->d, sizeof(uint32_t));
 #endif
 
     uint8_t* opensslHash = new uint8_t[hashLength];
-    memcpy(opensslHash,opensslHashPadded + RSA_KEY_LENGTH_ZYNQMP - hashLength, hashLength);
+    memcpy(opensslHash,opensslHashPadded + RSA_4096_KEY_LENGTH - hashLength, hashLength);
     LOG_TRACE("Hash from signature");
     LOG_DUMP_BYTES(opensslHash, hashLength);
     
@@ -171,7 +171,7 @@ void ZynqMpReadImage::VerifyHeaderTableSignature()
     VerifySPKSignature(auth_cert);
 
     /* Partition Signature should not be included for hash calculation. */
-    size_t headersSize = bH->sourceOffset - bH->imageHeaderByteOffset - RSA_KEY_LENGTH_ZYNQMP;
+    size_t headersSize = bH->sourceOffset - bH->imageHeaderByteOffset - RSA_4096_KEY_LENGTH;
     uint8_t* tempBuffer = new uint8_t[headersSize];
 
     offset = bH->imageHeaderByteOffset;
@@ -310,7 +310,7 @@ void ZynqMpReadImage::VerifyPartitionSignature(void)
             VerifySPKSignature(auth_cert);
 
             /* Partition Signature should not be included for hash calculation. */
-            uint32_t bufferLength = ((*partitionHdr)->totalPartitionLength * 4) - RSA_KEY_LENGTH_ZYNQMP;
+            uint32_t bufferLength = ((*partitionHdr)->totalPartitionLength * 4) - RSA_4096_KEY_LENGTH;
             uint8_t* tempBuffer = new uint8_t[bufferLength];
             offset = (*partitionHdr)->partitionWordOffset * 4;
             if (!(fseek(binFile, offset, SEEK_SET)))

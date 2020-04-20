@@ -82,7 +82,7 @@ namespace BIF {
     union semantic_type
     {
 /* Line 33 of lalr1.cc  */
-#line 70 "../s/bif.y"
+#line 72 "../s/bif.y"
 
     uint32_t token;
     uint64_t number;
@@ -101,16 +101,18 @@ namespace BIF {
     DestinationCPU::Type    destcpu_t;
     Checksum::Type          checksumvalue_t;
     PartitionOwner::Type    powner_t;
+    PartitionType::Type     ptype_t;
     ExceptionLevel::Type    el_t;
     SplitMode::Type         splitmode_t;
     TrustZone::Type         trustzone_t;
     BifOptions*             bifoptions;
     PartitionBifOptions*    partitionBifOptions;
+    DpaCM::Type             dpacm_t;
     SpkSelect::Type         spkselect_t;
 
 
 /* Line 33 of lalr1.cc  */
-#line 114 "../bisonflex/bif.tab.hpp"
+#line 116 "../bisonflex/bif.tab.hpp"
     };
 #else
     typedef YYSTYPE semantic_type;
@@ -144,99 +146,120 @@ namespace BIF {
      BOOT_DEVICE = 277,
      DEST_DEVICE = 278,
      DEST_CPU = 279,
-     EXCEPTION_LEVEL = 280,
-     TRUSTZONE = 281,
-     ALIGNMENT = 282,
-     OFFSET = 283,
-     RESERVE = 284,
-     LOAD = 285,
-     STARTUP = 286,
-     BIGENDIAN = 287,
-     A32_MODE = 288,
-     PPK_SELECT = 289,
-     SPK_ID = 290,
-     SPK_SELECT = 291,
-     HEADER_AUTH = 292,
-     SPLIT_MODE = 293,
-     SPLIT_FMT = 294,
-     BOOT = 295,
-     USER = 296,
-     STATIC = 297,
-     NOAUTOSTART = 298,
-     MULTIBOOT = 299,
-     PROTECTED = 300,
-     BLOCKS = 301,
-     AUTHBLOCKS = 302,
-     BOOTVECTORS = 303,
-     PRESIGN = 304,
-     UDF_DATA = 305,
-     MCS = 306,
-     BIN = 307,
-     IMAGE = 308,
-     ID = 309,
-     NAME = 310,
-     PFILE = 311,
-     WORD = 312,
-     FILENAME = 313,
-     QFILENAME = 314,
-     NONE = 315,
-     DECVALUE = 316,
-     HEXVALUE = 317,
-     KEYSRC_ENCRYPTION = 318,
-     FSBL_CONFIG = 319,
-     AUTH_PARAMS = 320,
-     PUF4KMODE = 321,
-     SHUTTER = 322,
-     SPLIT = 323,
-     PUF_HELPER_FILE = 324,
-     BH_KEY_FILE = 325,
-     BH_KEY_IV = 326,
-     BOOTIMAGE = 327,
-     UDF_BH = 328,
-     INIT = 329,
-     PMUFW_IMAGE = 330,
-     AES_KEY_FILE = 331,
-     FAMILY_KEY = 332,
-     PPK_FILE = 333,
-     PSK_FILE = 334,
-     SPK_FILE = 335,
-     SSK_FILE = 336,
-     SPK_SIGNATURE_FILE = 337,
-     BH_SIGNATURE_FILE = 338,
-     HEADER_SIGNATURE_FILE = 339,
-     AUTHVALUE = 340,
-     ENCRVALUE = 341,
-     CHECKSUMVALUE = 342,
-     POWNERVALUE = 343,
-     KEY_SRC = 344,
-     CORE = 345,
-     BH_RSA = 346,
-     AUTH_HASH = 347,
-     INT_HASH = 348,
-     PUFHD_LOC = 349,
-     OPT_KEY = 350,
-     AUTH_ONLY = 351,
-     BOOT_DEVICE_TYPE = 352,
-     DEST_DEVICE_TYPE = 353,
-     DEST_CPU_TYPE = 354,
-     EXCEPTION_LEVEL_TYPE = 355,
-     TRUSTZONE_TYPE = 356,
-     SPLITMODE = 357,
-     SPKSELECT = 358,
-     OR = 359,
-     XOR = 360,
-     AND = 361,
-     MULT = 362,
-     DIVIDE = 363,
-     MODULO = 364,
-     PLUS = 365,
-     MINUS = 366,
-     LSHIFT = 367,
-     RSHIFT = 368,
-     NEGATION = 369,
-     LPAREN = 370,
-     RPAREN = 371,
-     ASTERISK = 372
+     ADDRESS = 280,
+     EXCEPTION_LEVEL = 281,
+     TRUSTZONE = 282,
+     ALIGNMENT = 283,
+     OFFSET = 284,
+     RESERVE = 285,
+     LOAD = 286,
+     STARTUP = 287,
+     BIGENDIAN = 288,
+     A32_MODE = 289,
+     PPK_SELECT = 290,
+     SPK_ID = 291,
+     SPK_SELECT = 292,
+     HEADER_AUTH = 293,
+     REVOKE_ID = 294,
+     SPLIT_MODE = 295,
+     SPLIT_FMT = 296,
+     BOOT = 297,
+     USER = 298,
+     STATIC = 299,
+     NOAUTOSTART = 300,
+     MULTIBOOT = 301,
+     PROTECTED = 302,
+     BLOCKS = 303,
+     AUTHBLOCKS = 304,
+     BOOTVECTORS = 305,
+     PRESIGN = 306,
+     UDF_DATA = 307,
+     MCS = 308,
+     BIN = 309,
+     SLR_NUM = 310,
+     PARENT_ID = 311,
+     ID_CODE = 312,
+     EXT_ID_CODE = 313,
+     BYPASS_IDCODE_CHECK = 314,
+     IMAGE = 315,
+     ID = 316,
+     NAME = 317,
+     DELAY_HANDOFF = 318,
+     DELAY_LOAD = 319,
+     COPY = 320,
+     PARTITION = 321,
+     PFILE = 322,
+     METAHEADER = 323,
+     WORD = 324,
+     FILENAME = 325,
+     QFILENAME = 326,
+     NONE = 327,
+     DECVALUE = 328,
+     HEXVALUE = 329,
+     KEYSRC_ENCRYPTION = 330,
+     FSBL_CONFIG = 331,
+     AUTH_PARAMS = 332,
+     PUF4KMODE = 333,
+     SHUTTER = 334,
+     SPLIT = 335,
+     SMAP_WIDTH = 336,
+     PUF_HELPER_FILE = 337,
+     BH_KEY_FILE = 338,
+     BH_KEY_IV = 339,
+     BH_KEK_IV = 340,
+     BBRAM_KEK_IV = 341,
+     EFUSE_KEK_IV = 342,
+     EFUSE_USER_KEK0_IV = 343,
+     EFUSE_USER_KEK1_IV = 344,
+     PMCDATA = 345,
+     BOOTIMAGE = 346,
+     UDF_BH = 347,
+     INIT = 348,
+     PMUFW_IMAGE = 349,
+     AES_KEY_FILE = 350,
+     FAMILY_KEY = 351,
+     PPK_FILE = 352,
+     PSK_FILE = 353,
+     SPK_FILE = 354,
+     SSK_FILE = 355,
+     SPK_SIGNATURE_FILE = 356,
+     BH_SIGNATURE_FILE = 357,
+     HEADER_SIGNATURE_FILE = 358,
+     AUTHVALUE = 359,
+     ENCRVALUE = 360,
+     CHECKSUMVALUE = 361,
+     POWNERVALUE = 362,
+     PTYPEVALUE = 363,
+     KEY_SRC = 364,
+     CORE = 365,
+     BH_RSA = 366,
+     AUTH_HASH = 367,
+     INT_HASH = 368,
+     PUFHD_LOC = 369,
+     OPT_KEY = 370,
+     AUTH_ONLY = 371,
+     BOOT_DEVICE_TYPE = 372,
+     DEST_DEVICE_TYPE = 373,
+     DEST_CPU_TYPE = 374,
+     EXCEPTION_LEVEL_TYPE = 375,
+     TRUSTZONE_TYPE = 376,
+     SPLITMODE = 377,
+     DPA_CM = 378,
+     SPKSELECT = 379,
+     OR = 380,
+     XOR = 381,
+     AND = 382,
+     MULT = 383,
+     DIVIDE = 384,
+     MODULO = 385,
+     PLUS = 386,
+     MINUS = 387,
+     LSHIFT = 388,
+     RSHIFT = 389,
+     NEGATION = 390,
+     LPAREN = 391,
+     RPAREN = 392,
+     ASTERISK = 393
    };
 
     };
@@ -323,14 +346,14 @@ namespace BIF {
     /* Tables.  */
     /// For a state, the index in \a yytable_ of its portion.
     static const short int yypact_[];
-    static const signed char yypact_ninf_;
+    static const short int yypact_ninf_;
 
     /// For a state, default reduction number.
     /// Unless\a  yytable_ specifies something else to do.
     /// Zero means the default is an error.
-    static const unsigned char yydefact_[];
+    static const unsigned short int yydefact_[];
 
-    static const signed char yypgoto_[];
+    static const short int yypgoto_[];
     static const short int yydefgoto_[];
 
     /// What to do in a state.
@@ -338,7 +361,7 @@ namespace BIF {
     /// - if positive, shift that token.
     /// - if negative, reduce the rule which number is the opposite.
     /// - if zero, do what YYDEFACT says.
-    static const unsigned char yytable_[];
+    static const unsigned short int yytable_[];
     static const signed char yytable_ninf_;
 
     static const short int yycheck_[];
@@ -413,7 +436,7 @@ namespace BIF {
 #line 23 "../s/bif.y"
 } // BIF
 /* Line 33 of lalr1.cc  */
-#line 417 "../bisonflex/bif.tab.hpp"
+#line 440 "../bisonflex/bif.tab.hpp"
 
 
 

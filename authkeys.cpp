@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -116,7 +116,7 @@ void Key::Parse(const std::string& filename, bool isSecret0)
     f = fopen(filename.c_str(),"r");
     if (f == NULL)
     {
-        LOG_ERROR("Can't open key %s", filename.c_str());
+        LOG_ERROR("Cannot open key %s", filename.c_str());
     }
 
     try 

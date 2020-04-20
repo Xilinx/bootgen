@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -54,7 +54,7 @@ public:
     }
     ~ZynqMpReadImage() { }
 
-    void ReadBinaryFile(void);
+    void ReadBinaryFile(DumpOption::Type dump = DumpOption::NONE, std::string path = "");
     void DisplayBootHeader(void);
     void DisplayImageHeaderTable(void);
     void DisplayImageHeaders(void);

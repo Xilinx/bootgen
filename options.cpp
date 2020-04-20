@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -24,6 +24,10 @@
 #include <string> 
 #include "options.h"
 #include "cmdoptionsscanner.h"
+#include "readimage.h"
+#include "readimage-zynq.h"
+#include "readimage-zynqmp.h"
+#include "readimage-versal.h"
 #include "logger.h"
 
 
@@ -75,12 +79,68 @@ void Options::ParseArgs(int argc, const char * argv[])
 }
 
 /******************************************************************************/
+void Options::ProcessVerifyKDF()
+{
+    if (GetKDFTestVectorFile() != "")
+    {
+        if (archType == Arch::ZYNQ)
+        {
+            LOG_ERROR("'-verify_kdf' option not supported for Zynq architecture, '-arch zynq'.");
+        }
+        else
+        {
+            EncryptionContext* encryptCtx = new EncryptionContext;
+            encryptCtx->CAVPonCounterModeKDF(GetKDFTestVectorFile());
+            delete encryptCtx;
+            exit(0);
+        }
+    }
+}
+
+/******************************************************************************/
+void Options::ProcessReadImage()
+{
+    std::string readFile = GetReadImageFile();
+    if (readFile != "")
+    {
+        ReadImage* readImage = NULL;
+        if (archType == Arch::ZYNQ)
+        {
+            readImage = new ZynqReadImage(readFile);
+        }
+        else if (archType == Arch::ZYNQMP)
+        {
+            readImage = new ZynqMpReadImage(readFile);
+        }
+        else if (archType == Arch::VERSAL)
+        {
+            readImage = new VersalReadImage(readFile);
+        }
+
+        if (GetVerifyImageOption())
+        {
+            if (archType != Arch::ZYNQMP)
+            {
+                LOG_ERROR("'-verify' option supported only for ZynqMP architecture, '-arch zynqmp'.");
+            }
+            readImage->VerifyAuthentication(GetVerifyImageOption());
+        }
+        else
+        {
+            readImage->DisplayImageDetails(GetReadImageOption(), GetDumpOption(), GetDumpDirectory());
+        }
+        delete readImage;
+        exit(0);
+    }
+}
+
+/******************************************************************************/
 void Options::SetBifFilename (std::string filename)
 {
     std::ifstream f(filename.c_str());
     if (!f)
     {
-        LOG_ERROR("Can't read file - %s", filename.c_str());
+        LOG_ERROR("Cannot read file - %s", filename.c_str());
     }
     bifFileName = filename;
 }
@@ -97,7 +157,10 @@ void Options::SetEncryptedKeySource (KeySource::Type type)
         }
     }
     cmdEncryptOptions->encryptedKeySource = type;
-    LOG_TRACE("Setting Encryption Key Source as %d", type);
+    if (type != KeySource::None)
+    {
+        LOG_TRACE("Setting Encryption Key Source as %d", type);
+    }
 }
 
 /******************************************************************************/
@@ -137,6 +200,12 @@ void Options::SetOutputFillByte(uint8_t byte)
 }
 
 /******************************************************************************/
+void Options::SetSecureDebugAuthType(Authentication::Type type)
+{
+    secureDebugAuthType = type;
+}
+
+/******************************************************************************/
 void Options::SetSplitType(File::Type type)
 {
     splitType = type;
@@ -157,7 +226,27 @@ void Options::SetDualQspiMode(QspiMode::Type type)
 /******************************************************************************/
 void Options::SetQspiSize(uint16_t size)
 {
-    qspiSize = size;
+    if (size == 16 || size == 32 || size == 64 || size == 128)
+    {
+        qspiSize = size;
+    }
+    else
+    {
+        LOG_ERROR("Supported QSPI sizes (in MB) for -dual_qspi_mode option are 16, 32, 64 & 128");
+    }
+}
+
+/******************************************************************************/
+void Options::SetOspiSize(uint16_t size)
+{
+    if (size == 16 || size == 32 || size == 64 || size == 128 || size == 256)
+    {
+        qspiSize = size;
+    }
+    else
+    {
+        LOG_ERROR("Supported OSPI sizes (in MB) for -dual_ospi_mode option are 16, 32, 64, 128 & 256");
+    }
 }
 
 /******************************************************************************/
@@ -288,6 +377,11 @@ void Options::SetReadImageFile(std::string file)
 }
 
 /******************************************************************************/
+void Options::SetDumpDirectory(std::string path)
+{
+    dumpPath = path;
+}
+/******************************************************************************/
 OutputMode::Type  Options::GetOutputMode(void)
 {
     return outputMode;
@@ -352,6 +446,12 @@ std::string Options::GetKey0(void)
 std::string Options::GetStartCbc(void)
 {
     return cmdEncryptOptions->startCBC;
+}
+
+/******************************************************************************/
+Authentication::Type Options::GetSecureDebugAuthType(void)
+{
+    return secureDebugAuthType;
 }
 
 /******************************************************************************/
@@ -529,9 +629,8 @@ GenAuthKeys::Type Options::GetAuthKeyGeneration(void)
 }
 
 /******************************************************************************/
-void Options::SetZynqMpEncrDump(bool type)
+void Options::SetZynqMpEncrDump(bool type, std::string filename)
 {
-    std::string filename = "aes_log.txt";
     zynqmpEncrDump = type;
     std::ofstream exists(filename);
     if (exists)
@@ -567,4 +666,10 @@ bool Options::GetZynqmpes1Flag(void)
 DumpOption::Type Options::GetDumpOption(void)
 {
     return dumpOption;
+}
+
+/******************************************************************************/
+std::string Options::GetDumpDirectory(void)
+{
+    return dumpPath;
 }

@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -39,6 +39,7 @@ Partition::Partition(PartitionHeader* header0, Section* section0)
 : header(header0)
 {
     section = section0;
+    section->isBootloader = header->imageHeader->IsBootloader();
 }
 
 /******************************************************************************/
@@ -150,7 +151,7 @@ void Partition::Build( BootImage& bi, Binary& cache)
     /* Encryption process on the partition */
     if(header->preencrypted && encryptCtx->Type() != Encryption::None)
     {
-        LOG_ERROR("Can't reencrypt a partition that is already encrypted for %s", section->Name.c_str());
+        LOG_ERROR("Cannot reencrypt a partition that is already encrypted for %s", section->Name.c_str());
     }
     encryptCtx->Process(bi, header);
 
@@ -220,7 +221,7 @@ void Partition::Build( BootImage& bi, Binary& cache)
         bi.SetTotalPmuFwSize(imageHeader.GetTotalPmuFwSizeIh());
         bi.SetPmuFwSize(imageHeader.GetPmuFwSizeIh());
         bi.SetFsblFwSize(imageHeader.GetFsblFwSizeIh());
-        if(header->imageHeader->GetXipMode())
+        if(bi.XipMode)
         {
             // Just to make sure, not to get a negative no. as address
             if(imageHeader.GetFsblSourceAddrIh() > imageHeader.GetTotalPmuFwSizeIh())

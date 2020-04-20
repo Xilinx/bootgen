@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -43,21 +43,21 @@ public:
         std::ifstream fl(name.c_str(), std::ios::binary);
         if (!fl)
         {
-            LOG_ERROR("Can't read file - %s", name.c_str());
+            LOG_ERROR("Cannot read file - %s", name.c_str());
         }
         
         fl.seekg(0, std::ios::end);
         if(!fl)
         {
-            LOG_ERROR("Can't seek to end of file - %s", name.c_str());
+            LOG_ERROR("Cannot seek to end of file - %s", name.c_str());
         }
         if(fl.bad() || fl.fail())
         {
-            LOG_ERROR("Can't seek to end of file - %s", name.c_str());
+            LOG_ERROR("Cannot seek to end of file - %s", name.c_str());
         }
         if(! fl.good())
         {
-            LOG_ERROR("Can't seek to end of file - %s", name.c_str());
+            LOG_ERROR("Cannot seek to end of file - %s", name.c_str());
         }
         len = fl.tellg();
         bytes = new uint8_t[len];
@@ -135,6 +135,20 @@ public:
         }
         fclose(f);
         return true;
+    }
+};
+
+class FileUtils
+{
+public:
+    static uint32_t GetFileSize(std::string filename)
+    {
+        FILE *p_file = NULL;
+        p_file = fopen(filename.c_str(), "rb");
+        fseek(p_file, 0, SEEK_END);
+        uint32_t size = ftell(p_file);
+        fclose(p_file);
+        return size;
     }
 };
 #endif

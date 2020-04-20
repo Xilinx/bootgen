@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -65,7 +65,7 @@ Endianness::Type EndianMachine( void )
         }
         else 
         {
-            LOG_ERROR("Can't determine endianess of the ELF file");
+            LOG_ERROR("Cannot determine endianess of the ELF file");
         }
     }
     return gEndianMachine;
@@ -385,14 +385,18 @@ void ElfFormat32::TrimUnwantedELFHeaders( Elf32ProgramHeader& prgHeader, uint8_t
         if( ( sectionHdr.sh_type == xSHT_PROGBITS ) && ( sectionHdr.sh_flags & xSHF_ALLOC ) )
         {
             // If this section is mapped to within this program section, then keep it
-            if( ( sectionHdr.sh_addr                          >= prgHeader.p_vaddr ) &&
-                ( sectionHdr.sh_addr + sectionHdr.sh_size     <= prgHeader.p_paddr + prgHeader.p_filesz ) )
+            if( ( sectionHdr.sh_addr >= prgHeader.p_vaddr ) &&
+                ( sectionHdr.sh_addr + sectionHdr.sh_size <= prgHeader.p_paddr + prgHeader.p_filesz ) )
             {
                 // Save section if this is the first, or it is lowest in memory order.
-                if( isFoundSection == false || sectionHdr.sh_addr < foundSection.sh_addr)
+                if (isFoundSection == false)
                 {
                     foundSection = sectionHdr;
                     isFoundSection = true;
+                }
+                if ((isFoundSection = true) && (sectionHdr.sh_addr < foundSection.sh_addr))
+                {
+                    foundSection = sectionHdr;
                 }
             }
         }
@@ -656,10 +660,14 @@ void ElfFormat64::TrimUnwantedELFHeaders(Elf64ProgramHeader& prgHeader, uint8_t*
                 ( sectionHdr.sh_addr + sectionHdr.sh_size     <= prgHeader.p_paddr + prgHeader.p_filesz ) )
             {
                 // Save section if this is the first, or it is lowest in memory order.
-                if( isFoundSection == false || sectionHdr.sh_addr < foundSection.sh_addr)
+                if (isFoundSection == false)
                 {
                     foundSection = sectionHdr;
                     isFoundSection = true;
+                }
+                if ((isFoundSection = true) && (sectionHdr.sh_addr < foundSection.sh_addr))
+                {
+                    foundSection = sectionHdr;
                 }
             }
         }

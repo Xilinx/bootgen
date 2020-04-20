@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -28,6 +28,33 @@
 #include "authentication.h"
 #include "elftools.h"
 
+
+typedef enum
+{
+    BOOT,
+    CONFIG,
+    NOC_FREQ,
+} SlrPdiType;
+
+struct SlrId
+{
+    typedef enum
+    {
+        INVALID,
+        SLR_1,
+        SLR_2,
+        SLR_3,
+        MASTER,
+    } Type;
+};
+
+typedef struct
+{
+    std::string file;
+    SlrId::Type index;
+    SlrPdiType type;
+} SlrPdiInfo;
+
 /* Forward Class References */
 class BaseThing;
 class Options;
@@ -38,6 +65,7 @@ class ChecksumContext;
 class MD5ChecksumContext;
 class AuthenticationContext;
 class EncryptionContext;
+class BifOptions;
 
 
 /*
@@ -72,6 +100,7 @@ public:
     virtual uint32_t GetDataSectionCount(void) { return 0; }
     virtual uint32_t GetImageNameLength(void) { return 0; }
     virtual uint32_t GetPartitionUid(void) { return 0; }
+    virtual KeySource::Type GetEncryptionKeySrc() { return KeySource::None; }
 
     int NumPartitions()
     {
@@ -95,6 +124,7 @@ public:
     void SetEncryptContext(EncryptionContext* ctx) { Encrypt = ctx; }
     void SetChecksumContext(ChecksumContext* ctx) { Checksum = ctx; }
     void SetPartOwner(PartitionOwner::Type type) { PartOwner = type; }
+    void SetPartitionType(PartitionType::Type type) { partitionType = type; }
     void SetDestCpu(DestinationCPU::Type type);
     void SetDestDevice(DestinationDevice::Type type);
     void SetExceptionLevel(ExceptionLevel::Type type) { exceptionLevel = type; }
@@ -106,11 +136,21 @@ public:
     void SetStartup(Override<Binary::Address_t> data) { Startup = data; }
     void InsertPartitionHeaderList(PartitionHeader* ph) { partitionHeaderList.push_back(ph); }
     virtual void SetAuthBlock(size_t blockSize, bool flag) { };
-    virtual void SetPartitionUid(uint32_t id) { }
-    virtual void SetBigEndian(bool) { }
-    virtual void SetA32ExecMode(bool) { }
-    
-    void SetUserPartitionNum(size_t num)
+    virtual void SetPartitionUid(uint32_t id) { };
+    virtual void SetBigEndian(bool) { };
+    virtual void SetA32ExecMode(bool) { };
+    virtual void SetDpacm(DpaCM::Type) { };
+    virtual void SetPufHdLocation(PufHdLoc::Type type) { };
+
+    virtual void SetEncryptionKeySrc(KeySource::Type type) { };
+    virtual void SetPartitionRevocationId(uint32_t id) { };
+    virtual uint32_t GetPartitionRevocationId() { return 0; }
+    virtual void SetSlrBootPartitions(std::list<SlrPdiInfo*>) { };
+    virtual void SetSlrConfigPartitions(std::list<SlrPdiInfo*>) { };
+    void SetMemCopyAddress(uint64_t addr) { ihMemCpyAddr = addr; }
+    void SetDelayLoadHandOffFlags(bool load_flag, bool handoff_flag) { ihDelayLoad = load_flag; ihDelayHandoff = handoff_flag; }
+
+    void SetUserPartitionNum(size_t num) 
     { 
         userPartitionNum = num;
         if (num != 0)
@@ -136,6 +176,7 @@ public:
     EncryptionContext* GetEncryptContext(void) { return Encrypt; }
     ChecksumContext* GetChecksumContext(void) { return Checksum; }
     PartitionOwner::Type GetPartOwner(void) { return PartOwner; }
+    PartitionType::Type GetPartitionType(void) { return partitionType; }
     DestinationCPU::Type GetDestCpu(void) { return destCpu; }
     DestinationDevice::Type GetDestinationDevice(void) { return destDevice; }
     ExceptionLevel::Type GetExceptionLevel(void) { return exceptionLevel; }
@@ -146,15 +187,20 @@ public:
     Override<Binary::Address_t> GetLoad(void) { return Load; }
     Override<Binary::Address_t> GetStartup(void) { return Startup; }
     std::list<PartitionHeader*>& GetPartitionHeaderList(void) { return partitionHeaderList; }
-    bool GetXipMode(void) { return xipMode; }
     ElfClass::Type GetElfClass(uint8_t* elfdata);
     size_t GetAuthBlock(void);
     size_t GetUserPartitionNum(void) { return userPartitionNum; }
     bool IsUserPartitionNumSet(void) { return isUserPartitionNum; }
+    uint64_t GetMemCopyAddress(void) { return ihMemCpyAddr; }
+    virtual DpaCM::Type GetDpacm(void) { return DpaCM::DpaCMDisable; }
+    virtual std::string GetKekIV() { return ""; }
+    virtual PufHdLoc::Type GetPufHdLocation(void) { return PufHdLoc::PUFinEFuse; }
 
     // For multiple key files and auth parameters
     void SetAesKeyFile(std::string filename) { aesKeyFile = filename; }
     void SetAesKeyFileGeneration(bool flag) { generateAesKeyFile = flag; }
+    void SetPpkFile(std::string filename) { ppkFile = filename; }
+    void SetPskFile(std::string filename) { pskFile = filename; }
     void SetSpkFile(std::string filename) { spkFile = filename; }
     void SetSskFile(std::string filename) { sskFile = filename; }
     void SetSpkSignFile(std::string filename) { spkSignFile = filename; }
@@ -165,6 +211,8 @@ public:
 
     std::string GetAesKeyFile (void) { return aesKeyFile; }
     bool GetAesKeyFileGeneration(void) { return generateAesKeyFile; }
+    std::string GetPpkFile(void) { return ppkFile; }
+    std::string GetPskFile(void) { return pskFile; }
     std::string GetSpkFile (void) { return spkFile; }
     std::string GetSskFile (void) { return sskFile; }
     std::string GetSpkSignFile (void) { return spkSignFile; }
@@ -178,6 +226,9 @@ public:
     void SetTotalPmuFwSizeIh(uint32_t);
     void SetTotalFsblFwSizeIh(uint32_t);
     void SetFsblSourceAddrIh(Binary::Address_t);
+    void SetTotalPmcDataSizeIh(uint32_t size);
+    void SetPmcDataSizeIh(uint32_t size);
+    void SetTotalPmcFwSizeIh(uint32_t size);
 
     uint32_t GetPmuFwSizeIh(void);
     uint32_t GetFsblFwSizeIh(void);
@@ -186,6 +237,8 @@ public:
     Binary::Address_t GetFsblSourceAddrIh(void);
     std::vector<uint32_t>&  GetEncrBlocksList(void);
     uint32_t  GetDefaultEncrBlockSize(void);
+    uint32_t GetTotalPmcFwSizeIh(void);
+    uint32_t GetPmcFwSizeIh(void);
     void InsertEncrBlocksList(uint32_t blk);
     void SetDefaultEncrBlockSize(uint32_t blk);
 
@@ -206,14 +259,21 @@ protected:
     bool early_handoff;
     bool hivec;
     uint32_t pmuFwSize;
+    uint32_t pmcdataSize;
     uint32_t fsblFwSize;
     uint32_t totalPmuFwSize;
+    uint32_t totalpmcdataSize;
     uint32_t totalFsblFwSize;
     Binary::Address_t sourceAddr;
+    uint64_t ihMemCpyAddr;
+    bool ihDelayLoad;
+    bool ihDelayHandoff;
 
     // For multiple key files & auth parameters
     std::string aesKeyFile;
     bool generateAesKeyFile;
+    std::string ppkFile;
+    std::string pskFile;
     std::string spkFile;
     std::string sskFile;
     std::string spkSignFile;
@@ -226,12 +286,15 @@ protected:
     AuthenticationContext* Auth;
     EncryptionContext* Encrypt;
     ChecksumContext* Checksum;
+    PartitionType::Type partitionType;
     PartitionOwner::Type PartOwner;
     DestinationCPU::Type destCpu;
     DestinationDevice::Type destDevice;
     ExceptionLevel::Type exceptionLevel;
     TrustZone::Type trustzone;
     uint32_t partitionUid;
+    uint32_t partitionRevokeId;
+    KeySource::Type keySrc;
     Override<int> Alignment;
     Override<Binary::Length_t> Offset;
     Override<Binary::Length_t> Reserve;
@@ -241,6 +304,9 @@ protected:
     bool isUserPartitionNum;
     bool a32Mode;
     bool bigEndian;
+    DpaCM::Type dpacm;
+    PufHdLoc::Type pufHdLoc;
+    std::string kekIvFile;
 
     std::list<PartitionHeader*> partitionHeaderList;
 
@@ -261,6 +327,8 @@ protected:
     bool slaveBootSplitMode;
     uint32_t fullBhSize;
     uint32_t allHdrSize;
+    std::list<SlrPdiInfo*> slrBootPdiInfo;
+    std::list<SlrPdiInfo*> slrConfigPdiInfo;
 };
 
 /******************************************************************************/
@@ -271,6 +339,10 @@ public:
         : slaveBootSplitMode(false)
         , fullBhSize(0)
         , allHdrSize(0)
+        , metaHeaderLength(0)
+        , metaHdrSecHdrIv(NULL)
+        , metaHdrKeySrc(KeySource::None)
+        , encrypt(NULL)
     { }
 
     virtual ~ImageHeaderTable() {}
@@ -284,25 +356,39 @@ public:
 
     virtual void SetImageHeaderTableVersion(uint32_t version) = 0;
     virtual void SetHeaderTablesSize() {};
+    virtual void SetTotalMetaHdrLength(uint32_t size) {};
+    virtual void SetMetaHdrSecureHdrIv(uint8_t* iv) {};
+    virtual void SetMetaHdrKeySrc(KeySource::Type, BifOptions* bifOptions) {};
     virtual void SetPartitionCount(uint32_t count) = 0;
     virtual void SetFirstPartitionHeaderOffset(uint32_t offset) = 0;
     virtual void SetFirstImageHeaderOffset(uint32_t offset) = 0;
-    virtual void SetHeaderAuthCertificateOffset(uint32_t offset) {}
+    virtual void SetHeaderAuthCertificateOffset(uint32_t offset) = 0;
     virtual void SetReservedFields(void) = 0;
     virtual void SetChecksum(void) = 0;
-    virtual void SetBootDevice(BootDevice::Type type) = 0;
+    virtual void SetBootDevice(BootDevice::Type type) {};
+    virtual void SetBootDeviceAddress(uint32_t address) {};
     virtual void ValidateSecurityCombinations(Authentication::Type, Encryption::Type, Checksum::Type) = 0;
 
     virtual uint32_t GetImageHeaderTableVersion(void) { return 0; }
     virtual uint32_t GetPartitionCount(void) { return 0; }
+    virtual uint32_t GetImageCount(void) { return 0; }
     virtual uint32_t GetFirstPartitionHeaderOffset(void) { return 0; }
     virtual uint32_t GetFirstImageHeaderOffset(void) { return 0; }
     virtual uint32_t GetHeaderAuthCertificateOffset(void) { return 0; }
-    virtual uint8_t	GetMaxNumOfPartitions(void) { return 0; }
+    virtual uint8_t GetMaxNumOfPartitions(void) { return 0; }
+    virtual uint32_t GetTotalMetaHdrLength(void) { return 0; }
+
+    void SetEncryptContext(EncryptionContext* ctx) { encrypt = ctx; }
+    EncryptionContext* GetEncryptContext(void) { return encrypt; }
+
+    uint32_t metaHeaderLength;
+    KeySource::Type metaHdrKeySrc;
+    uint8_t* metaHdrSecHdrIv;
 
 protected:
     bool slaveBootSplitMode;
     uint32_t fullBhSize;
     uint32_t allHdrSize;
+    EncryptionContext* encrypt;
 };
 #endif

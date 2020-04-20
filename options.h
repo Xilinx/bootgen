@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -49,6 +49,7 @@ struct Arch
         ZYNQ,
         ZYNQMP,
         FPGA,
+        VERSAL,
     } Type;
 };
 
@@ -107,7 +108,11 @@ public:
         , verifyImage(false)
         , bifOptions(NULL)
         , secHdrIv(NULL)
+        , secHdrIvPmcData(NULL)
+        , secureDebugAuthType(Authentication::None)
         , dumpOption(DumpOption::NONE)
+        , dumpPath("")
+        , deviceKeyStored(false)
     {
         cmdEncryptOptions = new CommndLineEncryptOptions();
     };
@@ -130,8 +135,9 @@ public:
 
     void ParseArgs(int argc,const char* argv[]);
     std::ostream* debugstr;
-    
-    
+    void ProcessVerifyKDF(void);
+    void ProcessReadImage(void);
+
     void SetBifFilename (std::string);
     void SetEncryptedKeySource (KeySource::Type);
     void SetEncryptionKeyFile (std::string);
@@ -145,6 +151,7 @@ public:
     void SetProcessBitstreamType (File::Type);
     void SetDualQspiMode (QspiMode::Type);
     void SetQspiSize (uint16_t);
+    void SetOspiSize(uint16_t size);
     void SetBaseAddress (Binary::Address_t);
     void SetDefaultAlignment (uint32_t);
     void SetDevicePartName (std::string);
@@ -164,13 +171,15 @@ public:
     void SetAuthKeyGeneration (GenAuthKeys::Type);
     void SetGreyKeyGeneration (bool flag);
     void SetMetalKeyGeneration (bool flag);
-    void SetZynqMpEncrDump (bool);
+    void SetZynqMpEncrDump (bool, std::string filename);
     void SetZynqmpes1Flag (bool);
     void SetOutputMode (OutputMode::Type, File::Type);
     void SetDumpOption(DumpOption::Type);
+    void SetDumpDirectory(std::string);
     void SetVerifyImageOption(bool);
     void SetReadImageOption(ReadImageOption::Type);
     void SetReadImageFile(std::string);
+    void SetSecureDebugAuthType(Authentication::Type type);
     
     std::string GetBifFilename (void);
     KeySource::Type GetEncryptedKeySource (void);
@@ -214,12 +223,15 @@ public:
     ReadImageOption::Type GetReadImageOption(void);
     bool GetVerifyImageOption();
     DumpOption::Type GetDumpOption(void);
+    std::string GetDumpDirectory(void);
+    Authentication::Type GetSecureDebugAuthType(void);
 
     uint32_t totalHeadersSize;
     uint32_t bootheaderSize;
     uint32_t allHeaderSize;
     uint32_t bootloaderSize;
     uint8_t *secHdrIv;
+    uint8_t *secHdrIvPmcData;
 
 //private:
     std::string bifFileName;
@@ -241,6 +253,7 @@ public:
     ReadImageOption::Type readImageOption;
     bool verifyImage;
     DumpOption::Type dumpOption;
+    std::string dumpPath;
     bool overwriteMode;
     bool doFill;
     bool legacy;
@@ -252,6 +265,7 @@ public:
     bool noauthblocks;
     bool generateGreyKey;
     bool generateMetalKey;
+    bool deviceKeyStored;
     std::ofstream aesLogFile;
     uint8_t outputFillByte;
     uint16_t qspiSize;
@@ -260,6 +274,7 @@ public:
     CommndLineEncryptOptions *cmdEncryptOptions;
     BifOptions* bifOptions;
     std::string fsblFilename;
+    Authentication::Type secureDebugAuthType;
 };
 
 #endif

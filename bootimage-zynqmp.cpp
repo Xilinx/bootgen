@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -334,7 +334,7 @@ void ZynqMpBootImage::ParseBootImage(PartitionBifOptions* it)
                 for (int i = 0; i < acSize; i++)
                 {
                     void *cert = (ph->partition->section->Data + ph->GetCertificateRelativeByteOffset());
-                    AuthenticationContext::SetRsaKeyLength(RSA_KEY_LENGTH_ZYNQMP);
+                    AuthenticationContext::SetRsaKeyLength(RSA_4096_KEY_LENGTH);
                     AuthenticationContext* auth = new ZynqMpAuthenticationContext((AuthCertificate4096Structure*)cert);
                     AuthenticationCertificate* tempac;
                     tempac = new RSA4096AuthenticationCertificate(auth);
@@ -343,10 +343,6 @@ void ZynqMpBootImage::ParseBootImage(PartitionBifOptions* it)
                     ph->ac.push_back(tempac);
                     newImage->SetAuthContext(auth);
                 }
-            }
-            else
-            {
-                LOG_INFO("Not loading AC context for section %s ", ph->section->Name.c_str());
             }
         }
         offset = image->GetNextImageHeaderOffset();
@@ -527,11 +523,6 @@ void ZynqMpBootImage::ParsePartitionDataToImage(BifOptions* bifoptions, Partitio
         for (uint32_t itr = 0; itr < encrBlocks.size(); itr++)
         {
             image->InsertEncrBlocksList(encrBlocks[itr]);
-            if ((encrBlocks[itr] & 0x3) != 0)
-            {
-                LOG_DEBUG(DEBUG_STAMP, "Encryption Block Size Error - Block # - %d, Block Size - %d", itr + 1, encrBlocks[itr]);
-                LOG_ERROR("BIF attribute 'blocks' must specify sizes which are multiples of 4, for word alignment");
-            }
         }
         image->SetDefaultEncrBlockSize(partitionBifOptions->GetDefaultEncryptionBlockSize());
     }
@@ -554,7 +545,6 @@ void ZynqMpBootImage::Add(BifOptions* bifoptions)
         if (options.GetGreyKeyGeneration() )
         {
             currentEncryptCtx->SetAesFileName(bifoptions->GetAESKeyFileName());
-            //check-R Generate Grey Key and exit
             options.SetEncryptionKeyFile(bifoptions->GetAESKeyFileName());
         }
         else
@@ -612,7 +602,7 @@ void ZynqMpBootImage::Add(BifOptions* bifoptions)
         currentAuthCtx->SetBHSignatureFile(bifoptions->GetBHSignFileName());
     }
 
-    currentEncryptCtx->SetBhIvFile(bifoptions->GetBHKeyIVFile());
+    currentEncryptCtx->SetBHKekIVFile(bifoptions->GetBHKekIVFile());
     XipMode = bifoptions->GetXipMode();
 
     if (options.GetAuthKeyGeneration() != GenAuthKeys::None)
@@ -622,7 +612,7 @@ void ZynqMpBootImage::Add(BifOptions* bifoptions)
     }
     if (options.GetGreyKeyGeneration())
     {
-        LOG_WARNING("A bootimage cannot be generated on the go, with '-generate_keys'.\n           However, the requested keys will be generated.");
+        LOG_WARNING("A bootimage cannot be generated on the go, with '-generate_keys'.\n           However, the requested keys will be generated.\n           Do note to use the same Key0/IV0 pair in AES key file while generating a bootimage.");
         return;
     }
 
@@ -640,12 +630,3 @@ void ZynqMpBootImage::Add(BifOptions* bifoptions)
     }
 }
 
-std::vector<std::string>& ZynqMpBootImage::GetEncryptionKeyFileVec(void)
-{
-    return encryptionKeyFileVec;
-}
-
-void ZynqMpBootImage::InsertEncryptionKeyFile(std::string filename)
-{
-    encryptionKeyFileVec.push_back(filename);
-}

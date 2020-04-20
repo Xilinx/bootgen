@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -303,19 +303,14 @@ void ZynqBootImage::ParseBootImage(PartitionBifOptions* it)
     if (!bHImported)
     {
         LOG_INFO("Copying bootheader from %s ", baseFile.c_str());
-
         SetAssumeEncryptionFlag(false);
-
         options.SetEncryptedKeySource(importedBh->GetEncryptionKeySource());
-
         bootHeader->Copy(importedBh);
         bHImported = true;
     }
 
     src.seekg(importedBh->GetImageHeaderByteOffset());
-
     ImageHeaderTable* imageHeaderTable = new ZynqImageHeaderTable(src);
-
     long offset = imageHeaderTable->GetFirstImageHeaderOffset() * sizeof(uint32_t);
 
     do
@@ -330,7 +325,6 @@ void ZynqBootImage::ParseBootImage(PartitionBifOptions* it)
             bool isItBootloader = (checkLoadAddrInBhAndPht && (importedBh->GetSourceOffset() != 0));
 
             image->SetBootloader(isItBootloader);
-
             if (image->IsBootloader())
             {
                 LOG_INFO("Found Bootloader in %s at offset 0x%x ", baseFile.c_str(), importedBh->GetSourceOffset());
@@ -342,45 +336,17 @@ void ZynqBootImage::ParseBootImage(PartitionBifOptions* it)
         image->SetReserve(it->reserve);
         image->SetLoad(it->load);
         image->SetStartup(it->startup);
-        image->SetPpkSelect(bifOptions->GetPpkSelection());
 
         /* Local key files/signatures within partition attributes have more priority than global key/signature files, 
            if both specified */
         image->SetSpkFile(options.bifOptions->GetSPKFileName());
-        if (it->spkFile != "")
-        {
-            image->SetSpkFile(it->spkFile);
-        }
         image->SetSskFile(options.bifOptions->GetSSKFileName());
-        if (it->sskFile != "")
-        {
-            image->SetSskFile(it->sskFile);
-        }
         image->SetSpkSignFile(options.bifOptions->GetSPKSignFileName());
-        if (it->spkSignatureFile != "")
-        {
-            image->SetSpkSignFile(it->spkSignatureFile);
-        }
-        image->SetSpkId(bifOptions->GetSpkId());
-        if (it->spkIdLocal)
-        {
-            image->SetSpkId(it->spkId);
-        }
-        image->SetSpkSelect(bifOptions->GetSpkSelection());
-        if (it->spkSelLocal)
-        {
-            image->SetSpkSelect(it->spkSelect);
-        }
-        image->SetBhSignFile(options.bifOptions->GetBHSignFileName());
 
         // Local AES key file is mandatory when the partition is encrypted
-        if ((it->aesKeyFile != "") && (options.GetArchType() == Arch::ZYNQ))
-        {
-            LOG_ERROR("This usage of 'aeskeyfile' is not supported for ZYNQ. Please refer 'bootgen -bif_help aeskeyfile' for more info.");
-        }
         if (it->aesKeyFile != "")
         {
-            image->SetAesKeyFile(it->aesKeyFile);
+            LOG_ERROR("This usage of 'aeskeyfile' is not supported for ZYNQ. Please refer 'bootgen -bif_help aeskeyfile' for more info.");
         }
         else if ((options.GetEncryptionKeyFile() != "") && (image->IsBootloader()))
         {
@@ -425,7 +391,7 @@ void ZynqBootImage::ParseBootImage(PartitionBifOptions* it)
                 for (int i = 0; i < acSize; i++)
                 {
                     void *cert = (ph->partition->section->Data + ph->GetCertificateRelativeByteOffset());
-                    AuthenticationContext::SetRsaKeyLength(RSA_KEY_LENGTH_ZYNQ);
+                    AuthenticationContext::SetRsaKeyLength(RSA_2048_KEY_LENGTH);
                     AuthenticationContext* auth = new ZynqAuthenticationContext((AuthCertificate2048Structure*)cert);
                     AuthenticationCertificate* tempac;
                     tempac = new RSA2048AuthenticationCertificate(auth);
@@ -434,10 +400,6 @@ void ZynqBootImage::ParseBootImage(PartitionBifOptions* it)
                     ph->ac.push_back(tempac);
                     newImage->SetAuthContext(auth);
                 }
-            }
-            else
-            {
-                LOG_INFO("Not loading AC context for section %s ", ph->section->Name.c_str());
             }
         }
         offset = image->GetNextImageHeaderOffset();
@@ -523,7 +485,6 @@ void ZynqBootImage::ParsePartitionDataToImage(BifOptions * bifoptions, Partition
     image->SetReserve(partitionBifOptions->reserve);
     image->SetLoad(partitionBifOptions->load);
     image->SetStartup(partitionBifOptions->startup);
-    image->SetUserPartitionNum(partitionBifOptions->pid);
 
     image->SetBootFlag(partitionBifOptions->boot);
     image->SetMultibootFlag(partitionBifOptions->multiboot);
@@ -531,13 +492,6 @@ void ZynqBootImage::ParsePartitionDataToImage(BifOptions * bifoptions, Partition
     image->SetProtectedFlag(partitionBifOptions->Protected);
     image->SetStaticFlag(partitionBifOptions->Static);
     image->SetUserFlag(partitionBifOptions->user);
-
-    image->SetDestDevice(partitionBifOptions->destDeviceType);
-    image->SetDestCpu(partitionBifOptions->destCPUType);
-    image->SetExceptionLevel(partitionBifOptions->exceptionLevel);
-    image->SetTrustZone(partitionBifOptions->trustzone);
-    image->SetEarlyHandoff(partitionBifOptions->early_handoff);
-    image->SetHivec(partitionBifOptions->hivec);
 
     image->SetSpkFile(bifoptions->GetSPKFileName());
     image->SetSskFile(bifoptions->GetSSKFileName());

@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015 - 2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@
 #include "options.h"
 #include "bifoptions.h"
 #include "encryptutils.h"
-
+#include <openssl/rand.h>
 
 /*
 -------------------------------------------------------------------------------
@@ -34,13 +34,53 @@
 */
 
 /******************************************************************************/
+void EncryptionContext::GenerateEncryptionKeyFile(const std::string & baseFileName, Options & options)
+{
+    LOG_TRACE("Generating the AES key file");
+    std::string devicePartName = options.GetDevicePartName();
+    if (devicePartName != "")
+    {
+        SetDeviceName(devicePartName);
+    }
+    else
+    {
+        LOG_ERROR("Partname must be specified with -p <partname> option in command line for generating a key file");
+    }
+
+    if (GetAesSeed() == NULL)
+    {
+        aesSeed = new uint32_t[WORDS_PER_AES_KEY];
+    }
+    GenerateAesSeed();
+
+    if (GetAesLabel() == NULL)
+    {
+        aesLabel = new uint8_t[aesLabelBytes];
+    }
+    RAND_bytes(aesLabel, aesLabelBytes);
+
+    if (GetAesContext() == NULL)
+    {
+        aesContext = new uint8_t[aesContextBytes];
+    }
+    RAND_bytes(aesContext, aesContextBytes);
+
+    bool useOptionalKey = options.bifOptions->GetAesOptKeyFlag();
+
+    /* The extra 1 Key pair is for Secure Header */
+    CounterModeKDF(options.bifOptions->GetEncryptionBlocksList().size() + useOptionalKey + 1, baseFileName, options.GetZynqMpEncrDump());
+
+    WriteEncryptionKeyFile(baseFileName, useOptionalKey, options.bifOptions->GetEncryptionBlocksList().size() + 1);
+}
+
+/******************************************************************************/
 void EncryptionContext::SetDeviceName(const std::string& deviceName0)
 {
     deviceName = deviceName0;
 }
 
 /******************************************************************************/
-void EncryptionContext::PackHex(const std::string&	hexString, uint8_t* hexData)
+void EncryptionContext::PackHex(const std::string& hexString, uint8_t* hexData)
 {
     uint32_t hexStringLength = (uint32_t)hexString.size();
 
@@ -50,7 +90,7 @@ void EncryptionContext::PackHex(const std::string&	hexString, uint8_t* hexData)
         LOG_ERROR("Error parsing encryption key");
     }
 
-    for (uint32_t i = 0;i<hexStringLength;i += 2)
+    for (uint32_t i = 0; i < hexStringLength; i += 2)
     {
         std::string byte = hexString.substr(i, 2);
         if (!isxdigit(byte[0]) || !isxdigit(byte[1]))
@@ -78,6 +118,17 @@ void EncryptionContext::SetAesKeyString(const std::string& key)
 }
 
 /******************************************************************************/
+std::string EncryptionContext::ConvertKeyIvToString(uint8_t * keyIv, uint8_t size)
+{
+    std::stringstream keyIvString;
+    for (uint32_t i = 0; i < size; i++)
+    {
+        keyIvString << std::setfill('0') << std::setw(2) << std::hex << uint32_t(keyIv[i]);
+    }
+    return keyIvString.str();
+}
+
+/******************************************************************************/
 void EncryptionContext::SetAesFileName(std::string file)
 {
     aesFilename = file;
@@ -90,9 +141,9 @@ void EncryptionContext::SetMetalKeyFile(std::string file)
 }
 
 /******************************************************************************/
-void EncryptionContext::SetBhIvFile(std::string file)
+void EncryptionContext::SetBHKekIVFile(std::string file)
 {
-    bhIvFile = file;
+    bhKekIVFile = file;
 }
 
 /******************************************************************************/
@@ -108,9 +159,18 @@ std::string EncryptionContext::GetMetalKeyFile(void)
 }
 
 /******************************************************************************/
-std::string EncryptionContext::GetBhIvFile(void)
+std::string EncryptionContext::GetBHKekIVFile(void)
 {
-    return bhIvFile;
+    return bhKekIVFile;
+}
+
+/******************************************************************************/
+void EncryptionContext::GenerateAesSeed(void)
+{
+    uint8_t seed[BYTES_PER_AES_KEY];
+    RAND_bytes(seed, WORDS_PER_AES_KEY * sizeof(uint32_t));
+    SetAesSeed(seed);
+    LOG_INFO("AES Seed generated successfully");
 }
 
 /******************************************************************************/
@@ -200,6 +260,168 @@ void EncryptionContext::GetRandomData(uint8_t* randomData, uint32_t randomDataBy
 
         // Prepare for the next byte loop interation.
         byteCount -= 1;
+    }
+}
+
+/******************************************************************************/
+uint32_t EncryptionContext::GetTotalEncryptionBlocks(Binary::Length_t partitionSize, std::vector<uint32_t> encrBlocks,
+                                                     uint32_t defEncrBlockSize, Binary::Length_t* lastBlock)
+{
+    uint32_t defEncrBlocksCount = 0;
+
+    /* Calculate the Size of partition covered with given blocks */
+    Binary::Length_t encrBlocksSize = 0;
+    for (uint32_t itr = 0; itr < encrBlocks.size(); itr++)
+    {
+        encrBlocksSize += encrBlocks[itr];
+    }
+
+    /* Calculate the number encryption blocks with the def block size given using (*), else would be a single block */
+    if (partitionSize > encrBlocksSize)
+    {
+        if (defEncrBlockSize != 0)
+        {
+            defEncrBlocksCount = ((partitionSize - encrBlocksSize) / defEncrBlockSize);
+            bool lastBlockExists = (((partitionSize - encrBlocksSize) % defEncrBlockSize) == 0 ? 0 : 1);
+            if (lastBlockExists)
+            {
+                defEncrBlocksCount++;
+                *lastBlock = (partitionSize - encrBlocksSize - ((defEncrBlocksCount - 1)*defEncrBlockSize));
+            }
+        }
+        else
+        {
+            defEncrBlocksCount = 1;
+            *lastBlock = partitionSize - encrBlocksSize;
+        }
+    }
+
+    uint32_t totalencrBlocks = defEncrBlocksCount + encrBlocks.size();
+    LOG_TRACE("Total no. of blocks to encrypt - %d", totalencrBlocks);
+
+    return totalencrBlocks;
+}
+
+/******************************************************************************/
+void EncryptionContext::CheckForSameAesKeyFiles(std::vector<std::string> aesKeyFileVec)
+{
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < aesKeyFileVec.size(); i++)
+    {
+        if (aesFilename.compare(aesKeyFileVec[i]) == 0)
+        {
+            count++;
+        }
+    }
+    if (count > 1)
+    {
+        LOG_ERROR("Same .nky file is used to provide keys across multiple partitions.\n           Reuse of keys or key/IV pairs, both of which can create security vulnerability.");
+    }
+}
+
+/******************************************************************************/
+void EncryptionContext::CheckForExtraKeyIVPairs(uint32_t totalencrBlocks, std::string name)
+{
+    static bool extraKeys = false;
+    static bool extraIvs = false;
+
+    if (totalencrBlocks + 1 < aesKeyVec.size())
+    {
+        extraKeys = true;
+        aesKeyVec.resize(totalencrBlocks + 1);
+    }
+    if (totalencrBlocks + 1 < aesIvVec.size())
+    {
+        extraIvs = true;
+        aesIvVec.resize(totalencrBlocks + 1);
+    }
+    if (extraKeys && extraIvs)
+    {
+        LOG_WARNING("AES Key file has more Keys/IVs than the number of blocks to be encrypted in %s. \n           Extra keys/Ivs will be ignored.", name.c_str());
+    }
+    else if (extraKeys)
+    {
+        LOG_WARNING("AES Key file has more Keys than the number of blocks to be encrypted in %s. \n           Extra Keys will be ignored.", name.c_str());
+    }
+    else if (extraIvs)
+    {
+        LOG_WARNING("AES Key file has more IVs than the number of blocks to be encrypted in %s. \n           Extra Ivs will be ignored.", name.c_str());
+    }
+}
+
+/******************************************************************************/
+void EncryptionContext::CheckForRepeatedKeyIVPairs(std::vector<std::string> aesKeyFileVec, bool maskKey0IV0)
+{
+    static std::vector<std::vector<std::string> > aesKeyMasterVec;
+    static std::vector<std::vector<std::string> > aesIvMasterVec;
+
+    aesKeyMasterVec.push_back(aesKeyVec);
+    aesIvMasterVec.push_back(aesIvVec);
+
+    bool repeatedKey = false;
+    bool repeatedIV = false;
+
+    for (uint32_t i = 0; i < aesKeyVec.size(); i++)
+    {
+        for (uint32_t j = i + 1; j < aesKeyVec.size(); j++)
+        {
+            if (aesKeyVec[i] == aesKeyVec[j])
+            {
+                repeatedKey = true;
+            }
+            if (aesIvVec[i] == aesIvVec[j])
+            {
+                repeatedIV = true;
+            }
+            if (repeatedKey && repeatedIV)
+            {
+                LOG_MSG("           Key : %s", aesKeyVec[i].c_str());
+                LOG_MSG("           IV : %s", aesIvVec[i].c_str());
+                LOG_ERROR("Repeated usage of Key/IV pair is observed in %s.\n           Reuse of Key/IV pair creates security vulnerability.", aesFilename.c_str());
+            }
+            else
+            {
+                repeatedKey = repeatedIV = false;
+            }
+        }
+    }
+
+    if (maskKey0IV0)
+    {
+        aesKeyMasterVec[aesKeyMasterVec.size() - 1].erase(aesKeyMasterVec[aesKeyMasterVec.size() - 1].begin());
+        aesIvMasterVec[aesIvMasterVec.size() - 1].erase(aesIvMasterVec[aesIvMasterVec.size() - 1].begin());
+    }
+
+    for (uint32_t i = 0; i < aesKeyMasterVec.size(); i++)
+    {
+        uint32_t j = aesKeyMasterVec.size() - 1;
+        if (i != j)
+        {
+            for (uint32_t x = 0; x < aesKeyMasterVec[i].size(); x++)
+            {
+                for (uint32_t y = 0; y < aesKeyMasterVec[j].size(); y++)
+                {
+                    if (aesKeyMasterVec[i][x] == aesKeyMasterVec[j][y])
+                    {
+                        repeatedKey = true;
+                    }
+                    if (aesIvMasterVec[i][x] == aesIvMasterVec[j][y])
+                    {
+                        repeatedIV = true;
+                    }
+                    if (repeatedKey && repeatedIV)
+                    {
+                        LOG_MSG("           Key : %s", aesKeyMasterVec[i][x].c_str());
+                        LOG_MSG("           IV : %s", aesIvMasterVec[j][y].c_str());
+                        LOG_ERROR("Repeated usage of Key/IV pair is observed in %s, %s.\n           Reuse of Key/IV pair creates security vulnerability.", aesKeyFileVec[i].c_str(), aesKeyFileVec[j].c_str());
+                    }
+                    else
+                    {
+                        repeatedKey = repeatedIV = false;
+                    }
+                }
+            }
+        }
     }
 }
 

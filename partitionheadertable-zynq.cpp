@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -67,7 +67,7 @@ void ZynqPartitionHeader::ReadHeader(std::ifstream& ifs)
     if (checksum != GetChecksum())
     {
         LOG_DEBUG(DEBUG_STAMP, "Calculated Checksum = 0x%8X, Imported Checksum = 0x%8X", checksum, GetChecksum());
-        LOG_ERROR("Partion Header Checksum failed for %s", section->Name.c_str());
+        LOG_ERROR("Partition Header Checksum failed for %s", section->Name.c_str());
     }
 
     execAddress = GetExecAddress();
@@ -178,7 +178,7 @@ void ZynqPartitionHeader::SetPartitionAttributes(void)
     {
         if (imageHeader->GetChecksumContext()->Type() != Checksum::None)
         {
-            LOG_ERROR("Can't rechecksum a partition");
+            LOG_ERROR("Cannot rechecksum a partition");
         }
     }
     else
@@ -243,7 +243,7 @@ void ZynqPartitionHeader::SetAuthCertificateOffset(void)
     else if (imageHeader->GetAuthenticationType() == Authentication::RSA)
     {
         /* If the image is not yet signed, partition addr + partition length - cert size */
-        AuthenticationContext::SetRsaKeyLength(RSA_KEY_LENGTH_ZYNQ);
+        AuthenticationContext::SetRsaKeyLength(RSA_2048_KEY_LENGTH);
         AuthenticationContext* auth = (AuthenticationContext*)new ZynqAuthenticationContext();
         pHTable->authCertificateOffset = (uint32_t)((partition->section->Address + partition->section->Length - auth->GetCertificateSize()) / sizeof(uint32_t));
     }

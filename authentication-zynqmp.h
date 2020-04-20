@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -73,8 +73,10 @@ public:
     void GenerateBHHash(BootImage& bi, uint8_t* sha_hash_padded);
     void CreatePadding(uint8_t* signature, const uint8_t* hash);
     void CopyPartitionSignature(BootImage& bi, std::list<Section*> sections, uint8_t* signatureBlock, Section* acSection);
-    void RearrangeEndianess(char *array, uint32_t size);
+    void RearrangeEndianess(uint8_t *array, uint32_t size);
     void AddAuthCertSizeToTotalFSBLSize(PartitionHeader* header);
+
+    void SetKeyLength(Authentication::Type type);
 
 private:
     uint32_t certSize;

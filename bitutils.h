@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -211,6 +211,29 @@ public:
         }
     }
 
+    /* Read one line of CFI - 16-bytes */
+    void ReadCfiLine(uint8_t* cfiBytes)
+    {
+        std::string line = ReadLine();
+        if (line != "")
+        {
+            PackHex(line, cfiBytes);
+        }
+    }
+
+    /* Read one line of NPI - 4-bytes */
+    void ReadNpiLine(uint8_t* npiBytes)
+    {
+        std::string line = ReadLine();
+        if (line != "")
+        {
+            if (line.compare(0, 2, "0x") == 0) {
+                line.erase(0, 2);
+            }
+            PackHex(line, npiBytes);
+        }
+    }
+
     /* Read line from bitstream data */
     std::string ReadLine()
     {
@@ -260,9 +283,11 @@ public:
         ptr = 0;
         pHdr.data = NULL;
         pHdr.size = 0;
+        swap_cfi_bytes = false;
+        changeEndianness = false;
     }
 
-    OutputStream(size_t maxsize0) : maxsize(maxsize0)
+    OutputStream(size_t maxsize0) : maxsize(maxsize0) 
     {
         buffer = new uint8_t[maxsize];
         ptr= buffer;
@@ -285,7 +310,35 @@ public:
         buffer = new uint8_t[maxsize];
         ptr = buffer;
     }
-    
+
+    void WriteCfiLine(uint8_t* cfiBytes)
+    {
+        uint32_t lastIndex = 16 - 1;
+        char tempInt = 0;
+
+        // If array is NULL, return
+        if (!cfiBytes)
+        {
+            return;
+        }
+
+        if (swap_cfi_bytes == true)
+        {
+            for (uint32_t loop = 0; loop <= (lastIndex / 2); loop++)
+            {
+                tempInt = cfiBytes[loop];
+                cfiBytes[loop] = cfiBytes[lastIndex - loop];
+                cfiBytes[lastIndex - loop] = tempInt;
+            }
+        }
+        for (int i = 0; i <= 3; i++)
+        {
+            uint32_t word;
+            memcpy(&word, &(cfiBytes[4 * i]), sizeof(word));
+            WriteLong(word);
+        }
+    }
+
     const uint8_t* Start() 
     {
         return buffer;
@@ -304,11 +357,13 @@ public:
     virtual void WriteLong(uint32_t word) = 0;
 
     PreservedHeader pHdr;
+    bool swap_cfi_bytes;
 
 protected:
     size_t maxsize;
     uint8_t* buffer;
     uint8_t* ptr;
+    bool changeEndianness;
 };
 
 /******************************************************************************/
@@ -399,6 +454,7 @@ public:
     BitFile(std::istream& stream0);
     ~BitFile();
 
+    void ParseBitFpga();
     virtual void ParseBit(BootImage& bi);
     virtual void SetEncryptionType(Encryption::Type);
 
@@ -413,6 +469,7 @@ public:
     virtual bool GetBitPadFlag(bool) = 0;
     virtual void DummyRead(void) = 0;
     virtual void ComparePartsDataBase(const std::string&) = 0;
+    virtual void CopyNpi(OutputStream* os) {};
 
     std::string inputPackageName;
     BitFileHeaderType header;

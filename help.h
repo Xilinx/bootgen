@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -42,79 +42,239 @@
 -------------+----------------------------------------------------------------+\n\
  ARGUMENTS   | *zynq   : Image is targeted for ZYNQ architecture              |\n\
              |  zynqmp : Image is targeted for ZYNQ MP SoC architecture       |\n\
+             |  versal : Image is targeted for VERSAL ACAP architecture       |\n\
              |  fpga   : Image is targeted for other FPGA architectures       |\n\
 -------------+----------------------------------------------------------------+\n\
- USAGE       | [bootgen -arch zynq -image test.bif -o boot.bin]               |\n\
+ USAGE       | bootgen -arch zynq -image test.bif -o boot.bin                 |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | boot.bin generated is a Zynq boot image                        |\n\
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
- image
+bif_help
 ******************************************************************************/
-#define IMAGEHELP "\
+#define BIFHELP "\
 -------------+----------------------------------------------------------------+\n\
- OPTION      | image                                                          |\n\
+ OPTION      | bif_help                                                       |\n\
 -------------+----------------------------------------------------------------+\n\
- DESCRIPTION | Input BIF file name                                            |\n\
-             | BIF file specifies each component of the boot image in order of|\n\
-             | boot and allows optional attributes to be specified to each    |\n\
-             | image component. Each image component is usually mapped to a   |\n\
-             | partition, but in some cases an image component can be mapped  |\n\
-             | to more than one partition if the image component is not       |\n\
-             | contiguous in memory                                           |\n\
+ DESCRIPTION | This option is used to list all the supported BIF file         |\n\
+             | attributes.                                                    |\n\
 -------------+----------------------------------------------------------------+\n\
- SYNOPSIS    | -image <bif filename>                                          |\n\
+ SYNOPSIS    | -bif_help [arguments]                                          |\n\
 -------------+----------------------------------------------------------------+\n\
- USAGE       | [bootgen -arch zynq -image test.bif -o boot.bin]               |\n\
+ ARGUMENTS   | Any of the bif attributes                                      |\n\
 -------------+----------------------------------------------------------------+\n\
- EXPLANATION | test.bif is the input BIF file                                 |\n\
-             | Sample BIF file is shown below                                 |\n\
-             | the_ROM_image:                                                 |\n\
-             | {                                                              |\n\
-             |     [init] init_data.int                                       |\n\
-             |     [bootloader] Fsbl.elf                                      |\n\
-             |     Partition1.bit                                             |\n\
-             |     Partition2.elf                                             |\n\
-             | }                                                              |\n\
+ USAGE       | 1. bootgen -bif_help                                           |\n\
+             | 2. bootgen -bif_help aeskeyfile                                |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Usage 1: All the bif file attributes are listed                |\n\
+             | Usage 2: Detailed explanation of the attribute aeskeyfile with |\n\
+             |          example                                               |\n\
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
- split
+dual_ospi_mode
 ******************************************************************************/
-#define SPLITHELP "\
+#define DOSPIHELP "\
 -------------+----------------------------------------------------------------+\n\
- OPTION      | split                                                          |\n\
+ OPTION      | dual_ospi_mode                                                 |\n\
 -------------+----------------------------------------------------------------+\n\
- DESCRIPTION | This option outputs each data partition with headers as a new  |\n\
-             | file in MCS or BIN format.                                     |\n\
+ SUPPORTED   | versal                                                         |\n\
 -------------+----------------------------------------------------------------+\n\
- SYNOPSIS    | -split [arguments]                                             |\n\
+ DESCRIPTION | This option generates output files as per the configuration    |\n\
+             | specified by the Dual OSPI mode                                |\n\
 -------------+----------------------------------------------------------------+\n\
- ARGUMENTS   | bin : Output files generated in bin format                     |\n\
-             | mcs : Output files generated in mcs format                     |\n\
+ SYNOPSIS    | -dual_ospi_mode [arguments]                                    |\n\
 -------------+----------------------------------------------------------------+\n\
- USAGE       | [bootgen -arch zynq -image test.bif -split bin]                |\n\
+ ARGUMENTS   | stacked <size> :                                               |\n\
+             |     The OSPI configuration is Dual Stacked.                    |\n\
+             |     Generates 2 output files, in sequential fashion.           |\n\
+             |     <size> - Size of flash in MB (16/32/64/128)                |\n\
+             | Both the flashes can then be programmed independently.         |\n\
 -------------+----------------------------------------------------------------+\n\
- EXPLANATION | Consider the sample bif                                        |\n\
-             | the_ROM_image:                                                 |\n\
-             | {                                                              |\n\
-             |     [bootloader] Fsbl.elf                                      |\n\
-             |     Partition1.bit                                             |\n\
-             |     Partition2.elf                                             |\n\
-             | }                                                              |\n\
-             | Output files generated are:                                    |\n\
-             | 1. Bootheader + Image Headers + Partition Headers + Fsbl.elf   |\n\
-             | 2. Partition1.bit                                              |\n\
-             | 3. Partition2.elf                                              |\n\
+ USAGE       | bootgen -image test.bif -o -boot.bin                           |\n\
+             |                      -dual_ospi_mode stacked 64                |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Suppose the output bootimage content is around 120MB           |\n\
+             | Two files are generated boot_1.bin & boot_2.bin of             |\n\
+             |          64MB & 56MB                                           |\n\
+             |----------------------------------------------------------------|\n\
+             | Suppose the output bootimage content is around 50MB            |\n\
+             | Only one file is generated boot_1.bin of 50MB                  |\n\
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
- fill
+dual_qspi_mode
+******************************************************************************/
+#define DQSPIHELP "\
+-------------+----------------------------------------------------------------+\n\
+ OPTION      | dual_qspi_mode                                                 |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, zynqmp, versal                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This option generates output files as per the configuration    |\n\
+             | specified by the Dual QSPI mode                                |\n\
+-------------+----------------------------------------------------------------+\n\
+ SYNOPSIS    | -dual_qspi_mode [arguments]                                    |\n\
+-------------+----------------------------------------------------------------+\n\
+ ARGUMENTS   | parallel :                                                     |\n\
+             |     The QSPI configuration is Dual Parallel                    |\n\
+             |     Generates 2 output files, the actual output is written to  |\n\
+             |     two different files in bit-by-bit fashion.                 |\n\
+             | stacked <size> :                                               |\n\
+             |     The QSPI configuration is Dual Stacked.                    |\n\
+             |     Generates 2 output files, in sequential fashion.           |\n\
+             |     <size> - Size of flash in MB (16/32/64/128)                |\n\
+             | Both the flashes can then be programmed independently.         |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | 1. bootgen -image test.bif -o -boot.bin                        |\n\
+             |                      -dual_qspi_mode parallel                  |\n\
+             |----------------------------------------------------------------|\n\
+             | 2. bootgen -image test.bif -o -boot.bin                        |\n\
+             |                      -dual_qspi_mode stacked 64                |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Suppose the output bootimage content is around 120MB           |\n\
+             | Usage 1: Two files are generated boot_1.bin & boot_2.bin of    |\n\
+             |          60MB each                                             |\n\
+             | Usage 2: Two files are generated boot_1.bin & boot_2.bin of    |\n\
+             |          64MB & 56MB                                           |\n\
+             |----------------------------------------------------------------|\n\
+             | Suppose the output bootimage content is around 50MB            |\n\
+             | Usage 1: Two files are generated boot_1.bin & boot_2.bin of    |\n\
+             |          25MB each                                             |\n\
+             | Usage 2: Only one file is generated boot_1.bin of 50MB         |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+ dump
+******************************************************************************/
+#define DUMPHELP "\
+-------------+----------------------------------------------------------------+\n\
+ OPTION      | dump                                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | versal                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This option is used to dump partitions as binary files         |\n\
+-------------+----------------------------------------------------------------+\n\
+ SYNOPSIS    | -dump <filename> [arguments]                                   |\n\
+-------------+----------------------------------------------------------------+\n\
+ ARGUMENTS   | boot_files :                                                   |\n\
+             |     Dumps all boot files - boot header, PLM and PMC CDO        |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | 1. bootgen -arch versal -dump test.pdi                         |\n\
+             | 2. bootgen -arch versal -dump test.pdi boot_files              |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | 1. The partitions in the PDI are dumped as binary files.       |\n\
+             | 2. Boot header, PLM and PMC CDO are dumped as binary files.    |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+dump_dir
+******************************************************************************/
+#define DUMPDIRHELP "\
+-------------+----------------------------------------------------------------+\n\
+ OPTION      | dump_dir                                                       |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | versal                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This option is used with dump option to dump partitions in the |\n\
+             | directory specified here.                                      |\n\
+-------------+----------------------------------------------------------------+\n\
+ SYNOPSIS    | -dump_dir <path>                                               |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | bootgen -arch versal -dump <pdi> -dump_dir <path>              |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | The partitions in the PDI are dumped as binary files in the    |\n\
+             | dump directory.                                                |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+efuseppkbits
+******************************************************************************/
+#define EFUSEPPKBITSHELP "\
+-------------+----------------------------------------------------------------+\n\
+ OPTION      | efuseppkbits                                                   |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, zynqmp                                                   |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This option specifies the name of the efuse file to be written |\n\
+             | to contain the PPK hash. This option generates a direct hash   |\n\
+             | without any padding.                                           |\n\
+             | Zynq - Hashing done by SHA2                                    |\n\
+             | ZynqMP & Versal - Hashing done by SHA3                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ SYNOPSIS    | -efuseppkbits <filename>                                       |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       |  bootgen -image test.bif -o boot.bin                           |\n\
+             |          -efuseppkbits efusefile.txt                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | efusefile.txt file gets generated, which contains the hash of  |\n\
+             | the PPK key.                                                   |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+encrypt
+******************************************************************************/
+#define ENCRYPTHELP "\
+-------------+----------------------------------------------------------------+\n\
+ OPTION      | encrypt                                                        |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, fpga                                                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This option specifies how to do encryption, where the keys are |\n\
+             | stored.                                                        |\n\
+-------------+----------------------------------------------------------------+\n\
+ SYNOPSIS    | -encrypt [key source args] <filename>                          |\n\
+-------------+----------------------------------------------------------------+\n\
+ ARGUMENTS   | Key source arguments:                                          |\n\
+             |   efuse : The AES key is stored in EFUSE                       |\n\
+             |   bbram : The AES key is stored in BBRAM                       |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       |  bootgen -image test.bif -o boot.bin -encrypt efuse            |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | The .nky key file is passed through BIF file attribute         |\n\
+             | [aeskeyfile]. Only source is specified through command line.   |\n\
+-------------+----------------------------------------------------------------+\n\
+ NOTE        | For other devices, key source is specified using BIF attribute |\n\
+             | keysrc_encryption or keysrc                                    |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+encryption_dump
+******************************************************************************/
+#define ENCRDUMPHELP "\
+-------------+----------------------------------------------------------------+\n\
+ OPTION      | encryption_dump                                                |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynqmp                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Generates encryption log file, aes_log.txt                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ SYNOPSIS    | -encryption_dump                                               |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | [bootgen -arch zynqmp -image test.bif -encryption_dump]        |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    [keysrc_encryption] bbram_red_key                           |\n\
+             |    [bootloader, encryption=aes, aeskeyfile=test.nky] fsbl.elf  |\n\
+             |    [encryption=aes,aeskeyfile=test2.nky] hello.elf             |\n\
+             | }                                                              |\n\
+             |----------------------------------------------------------------|\n\
+             | aes_log.txt generated has the details of AES Key/IV pairs used |\n\
+             | for encrypting each block of data. It also logs the partition  |\n\
+             | and the aes key file used to encrypt it.                       |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+fill
 ******************************************************************************/
 #define FILLHELP "\
 -------------+----------------------------------------------------------------+\n\
  OPTION      | fill                                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, zynqmp, versal                                           |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | This option specifies the byte to use for filling extra memory |\n\
 -------------+----------------------------------------------------------------+\n\
@@ -127,143 +287,20 @@
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
- o
-******************************************************************************/
-#define OHELP "\
--------------+----------------------------------------------------------------+\n\
- OPTION      | o                                                              |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | This option specifies the name of the output image file with   |\n\
-             | bin or mcs extension.                                          |\n\
--------------+----------------------------------------------------------------+\n\
- SYNOPSIS    | -o <filename>                                                  |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [bootgen -arch zynq -image test.bif -o boot.mcs]               |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | The output image is generated with name boot.mcs               |\n\
-             | The format of the output image is decided based on the file    |\n\
-             | extension of the file given with '-o' option                   |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- p
-******************************************************************************/
-#define PHELP "\
--------------+----------------------------------------------------------------+\n\
- OPTION      | p                                                              |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | This option specifies the partname of the Xilinx chip.         |\n\
-             | This is needed for generating a encryption key. It is copied   |\n\
-             | verbatim to the *.nky file in the 'Device' line.               |\n\
-             | This is applicable only with encryption is enabled.            |\n\
--------------+----------------------------------------------------------------+\n\
- SYNOPSIS    | -p <part name>                                                 |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [bootgen -image test.bif -o boot.bin -p xc7z020clg484          |\n\
-             |   -encrypt efuse]                                              |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | If the key file is not present in the path specified in BIF    |\n\
-             | file, then a new encryption key is generated in the same path  |\n\
-             | and xc7z020clg484 is copied along side the 'Device' field in   |\n\
-             | the nky file. The generated image is an encrypted image.       |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- w
-******************************************************************************/
-#define WHELP "\
--------------+----------------------------------------------------------------+\n\
- OPTION      | w                                                              |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | This option specifies whether to overwrite an existing file or |\n\
-             | not.                                                           |\n\
--------------+----------------------------------------------------------------+\n\
- SYNOPSIS    | -w [arguments]                                                 |\n\
--------------+----------------------------------------------------------------+\n\
- ARGUMENTS   |  on  : Overwrite the existing file                             |\n\
-             | *off : Don't overwrite the existing file                       |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [bootgen -image test.bif -w on -o boot.bin]  or                |\n\
-             | [bootgen -image test.bif -w    -o boot.bin]                    |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | If the file boot.bin already exists in the path, then it is    |\n\
-             | overwritten.                                                   |\n\
-             | Options '-w on' & '-w' are treated as same                     |\n\
-             | If the '-w' option is not specified, the file will not be      |\n\
-             | overwritten by default                                         |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- efuseppkbits
-******************************************************************************/
-#define EFUSEPPKBITSHELP "\
--------------+----------------------------------------------------------------+\n\
- OPTION      | efuseppkbits                                                   |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | This option specifies the name of the efuse file to be written |\n\
-             | to contain the PPK hash. This option generates a direct hash   |\n\
-             | without any padding.                                           |\n\
-             | Zynq   : Hashing done by SHA2                                  |\n\
-             | ZynqMP : Hashing done by SHA3                                  |\n\
--------------+----------------------------------------------------------------+\n\
- SYNOPSIS    | -efuseppkbits <filename>                                       |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [bootgen -image test.bif -o boot.bin                           |\n\
-             |          -efuseppkbits efusefile.txt]                          |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | efusefile.txt file gets generated, which contains the hash of  |\n\
-             | the PPK key.                                                   |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- zynqmpes1
-******************************************************************************/
-#define ZYNQMPES1HELP "\
--------------+----------------------------------------------------------------+\n\
- OPTION      | zynqmpes1                                                      |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | This option specifies that the image generated will be used    |\n\
-             | on ES1(1.0).                                                   |\n\
-             | This option makes a difference only when generating            |\n\
-             | authenticated image, else ignored.                             |\n\
--------------+----------------------------------------------------------------+\n\
- SYNOPSIS    | -zynqmpes1                                                     |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [bootgen -image test.bif -o boot.bin -zynqmpes1 ]              |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | The authentication padding scheme will be as per ES1(1.0).     |\n\
-             | The default padding scheme is for (2.0)ES2 and above.          |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- generate_hashes
+generate_hashes
 ******************************************************************************/
 #define GENERATEHASHESHELP "\
 -------------+----------------------------------------------------------------+\n\
  OPTION      | generate_hashes                                                |\n\
 -------------+----------------------------------------------------------------+\n\
- DESCRIPTION | This option generates file containing PKCS#1v1.5 padded hash   |\n\
-             |----------------------------------------------------------------|\n\
-             | Zynq Format:                                                   |\n\
-             |    SHA-2 (256 bytes)                                           |\n\
-             |       +-----------+-----------+------+------+------+------+    |\n\
-             |       | SHA2 Hash | T-Padding | 0x00 | 0xFF | 0x01 | 0x00 |    |\n\
-             |       +-----------+-----------+------+------+------+------+    |\n\
-             | Bytes:|    32*    |     19    |   1  |  202 |  1   |   1  |    |\n\
-             |       +-----------+-----------+------+------+------+------+    |\n\
-             |            * 32 byte hash is reversed.                         |\n\
-             |----------------------------------------------------------------|\n\
-             | ZynqMP Format:                                                 |\n\
-             |    SHA-3 (384 bytes)                                           |\n\
-             |       +------+------+------+------+-----------+-----------+    |\n\
-             |       | 0x00 | 0x01 | 0xFF | 0x00 | T-Padding | SHA3 Hash |    |\n\
-             |       +------+------+------+------+-----------+-----------+    |\n\
-             | Bytes:|   1  |   1  |  314 |   1  |    19     |    48     |    |\n\
-             |       +------+------+------+------+-----------+-----------+    |\n\
+ DESCRIPTION | This option generates file containing padded hash              |\n\
+             | Zynq   - SHA-2 with PKCS#1v1.5 padding scheme                  |\n\
+             | ZynqMP - SHA-3 with PKCS#1v1.5 padding scheme                  |\n\
+             | Versal - SHA-3 with PSS padding scheme                         |\n\
 -------------+----------------------------------------------------------------+\n\
  SYNOPSIS    | -generate_hashes                                               |\n\
 -------------+----------------------------------------------------------------+\n\
- USAGE       | [bootgen -image test.bif -generate_hashes]                     |\n\
+ USAGE       | bootgen -image test.bif -generate_hashes                       |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | To generate a SPK hash                                         |\n\
              | Sample BIF - test.bif                                          |\n\
@@ -272,95 +309,14 @@
              |    [spkfile]secondary.pub                                      |\n\
              | }                                                              |\n\
 -------------+----------------------------------------------------------------+\n"
-
 /******************************************************************************
- padimageheader
-******************************************************************************/
-#define PADHDRHELP "\
--------------+----------------------------------------------------------------+\n\
- OPTION      | padimageheader                                                 |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | This option pads the Image Header Table and Partition Header   |\n\
-             | Table to maximum partitions allowed, to force alignment of     |\n\
-             | following partitions. This feature is enabled by default.      |\n\
-             | Specifying a 0, disables this feature                          |\n\
-             | Zynq   : Maximum Partitions - 14                               |\n\
-             | ZynqMP : Maximum Partitions - 32 partitions                    |\n\
--------------+----------------------------------------------------------------+\n\
- SYNOPSIS    | -padimageheader=[arguments]                                    |\n\
--------------+----------------------------------------------------------------+\n\
- ARGUMENTS   | *1 : Pad the header tables to max partitions                   |\n\
-             |  0 : Do not pad the header tables                              |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [bootgen -image test.bif -w on -o boot.bin -padimageheader=0]  |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | boot.bin has the image header tables and partition header      |\n\
-             | tables in actual and no extra tables are padded. If nothing is |\n\
-             | specified or -padimageheader=1, then total image header tables |\n\
-             | and partition header tables are padded to max partitions.      |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- spksignature
-******************************************************************************/
-#define SPKSIGNHELP "\
--------------+----------------------------------------------------------------+\n\
- OPTION      | spksignature                                                   |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | This option is used to generate the SPK signature file. This   |\n\
-             | option must be used only when [spkfile] & [pskfile] are        |\n\
-             | specified in BIF                                               |\n\
--------------+----------------------------------------------------------------+\n\
- SYNOPSIS    | -spksignature <filename>                                       |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [bootgen -image test.bif -w on -o boot.bin                     |\n\
-             |                          -spksignature spksignfile.txt]        |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | The SPK signature file (spksignfile.txt) is generated.         |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- debug
-******************************************************************************/
-#define DEBUGHELP "\
--------------+----------------------------------------------------------------+\n\
- OPTION      | debug                                                          |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | This option is deprecated.                                     |\n\
-             | Please refer -log option                                       |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- encrypt
-******************************************************************************/
-#define ENCRYPTHELP "\
--------------+----------------------------------------------------------------+\n\
- OPTION      | encrypt                                                        |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | This option specifies how to do encryption, where the keys are |\n\
-             | stored.                                                        |\n\
--------------+----------------------------------------------------------------+\n\
- SYNOPSIS    | -encrypt [key source args] <filename>                          |\n\
--------------+----------------------------------------------------------------+\n\
- ARGUMENTS   | Key source arguments:                                          |\n\
-             |   efuse : The AES key is stored in EFUSE                       |\n\
-             |   bbram : The AES key is stored in BBRAM                       |\n\
-             |----------------------------------------------------------------|\n\
-             | filename : Key file name in .nky format. IV, AES and HMAC keys |\n\
-             |            are specified in the file itself.                   |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [bootgen -image test.bif -o boot.bin -encrypt efuse]           |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | The .nky key file is passed through BIF file attribute         |\n\
-             | [aeskeyfile]. Only source is specified through command line.   |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- generate_keys
+generate_keys
 ******************************************************************************/
 #define GENKEYSHELP "\
 -------------+----------------------------------------------------------------+\n\
  OPTION      | generate_keys                                                  |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, zynqmp                                                   |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | This option generates keys.                                    |\n\
              | . Generates authentication keys in rsa/pem format.             |\n\
@@ -377,9 +333,9 @@
              |   pem : PEM format keys                                        |\n\
 -------------+----------------------------------------------------------------+\n\
  USAGE       | For authentication :                                           |\n\
-             |         [bootgen -image test.bif -generate_keys rsa]           |\n\
+             |         bootgen -image test.bif -generate_keys rsa             |\n\
              | For encryption :                                               |\n\
-             |         [bootgen -image test.bif -generate_keys obfuscatedkey] |\n\
+             |          bootgen -image test.bif -generate_keys obfuscatedkey  |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | For authentication :                                           |\n\
              | Contents of BIF file: test.bif                                 |\n\
@@ -413,47 +369,37 @@
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
- dual_qspi_mode
+ image
 ******************************************************************************/
-#define DQSPIHELP "\
+#define IMAGEHELP "\
 -------------+----------------------------------------------------------------+\n\
- OPTION      | dual_qspi_mode                                                 |\n\
+ OPTION      | image                                                          |\n\
 -------------+----------------------------------------------------------------+\n\
- DESCRIPTION | This option generates output files as per the configuration    |\n\
-             | specified by the Dual QSPI mode                                |\n\
+ DESCRIPTION | Input BIF file name                                            |\n\
+             | BIF file specifies each component of the boot image in order of|\n\
+             | boot and allows optional attributes to be specified to each    |\n\
+             | image component. Each image component is usually mapped to a   |\n\
+             | partition, but in some cases an image component can be mapped  |\n\
+             | to more than one partition if the image component is not       |\n\
+             | contiguous in memory                                           |\n\
 -------------+----------------------------------------------------------------+\n\
- SYNOPSIS    | -dual_qspi_mode [arguments]                                    |\n\
+ SYNOPSIS    | -image <bif filename>                                          |\n\
 -------------+----------------------------------------------------------------+\n\
- ARGUMENTS   | parallel :                                                     |\n\
-             |     The QSPI configuration is Dual Parallel                    |\n\
-             |     Generates 2 output files, the actual output is written to  |\n\
-             |     two different files in bit-by-bit fashion.                 |\n\
-             | stacked <size> :                                               |\n\
-             |     The QSPI configuration is Dual Stacked.                    |\n\
-             |     Generates 2 output files, in sequential fashion.           |\n\
-             |     <size> - Size of flash in MB (16/32/64/128)                |\n\
-             | Both the flashes can then be programmed independently.         |\n\
+ USAGE       | [bootgen -arch zynq -image test.bif -o boot.bin]               |\n\
 -------------+----------------------------------------------------------------+\n\
- USAGE       | 1. [bootgen -image test.bif -o -boot.bin                       |\n\
-             |                      -dual_qspi_mode parallel]                 |\n\
-             |----------------------------------------------------------------|\n\
-             | 2. [bootgen -image test.bif -o -boot.bin                       |\n\
-             |                      -dual_qspi_mode stacked 64]               |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Suppose the output bootimage content is around 120MB           |\n\
-             | Usage 1: Two files are generated boot_1.bin & boot_2.bin of    |\n\
-             |          60MB each                                             |\n\
-             | Usage 2: Two files are generated boot_1.bin & boot_2.bin of    |\n\
-             |          64MB & 56MB                                           |\n\
-             |----------------------------------------------------------------|\n\
-             | Suppose the output bootimage content is around 50MB            |\n\
-             | Usage 1: Two files are generated boot_1.bin & boot_2.bin of    |\n\
-             |          25MB each                                             |\n\
-             | Usage 2: Only one file is generated boot_1.bin of 50MB         |\n\
+ EXPLANATION | test.bif is the input BIF file                                 |\n\
+             | Sample BIF file is shown below                                 |\n\
+             | test:                                                          |\n\
+             | {                                                              |\n\
+             |     [init] init_data.int                                       |\n\
+             |     [bootloader] Fsbl.elf                                      |\n\
+             |     Partition1.bit                                             |\n\
+             |     Partition2.elf                                             |\n\
+             | }                                                              |\n\
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
- log
+log
 ******************************************************************************/
 #define LOGHELP "\
 -------------+----------------------------------------------------------------+\n\
@@ -467,48 +413,150 @@
  SYNOPSIS    | -log [arguments]                                               |\n\
 -------------+----------------------------------------------------------------+\n\
  ARGUMENTS   | error   : Only the error information is captured.              |\n\
-             | warning : The warnings & error information is captured.        |\n\
-             |*info    : The general info and all the above info is captured. |\n\
+             |*warning : The warnings & error information is captured.        |\n\
+             | info    : The general info and all the above info is captured. |\n\
              | debug   : The debugging info in case of errors is captured in  |\n\
              |           in detail and all the above info is captured.        |\n\
              | trace   : More detailed information is captured along with the |\n\
              |           above                                                |\n\
 -------------+----------------------------------------------------------------+\n\
- USAGE       | [bootgen -image test.bif -o -boot.bin -log trace]              |\n\
+ USAGE       |  bootgen -image test.bif -o -boot.bin -log trace               |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | The detailed info is described while creating the bootimage.   |\n\
              | The file 'bootgen_log.txt' is generated.                       |\n\
 -------------+----------------------------------------------------------------+\n"
 
-
 /******************************************************************************
- bif_help
+nonbooting
 ******************************************************************************/
-#define BIFHELP "\
+#define NONBOOTINGHELP "\
 -------------+----------------------------------------------------------------+\n\
- OPTION      | bif_help                                                       |\n\
+ OPTION      | nonbooting                                                     |\n\
 -------------+----------------------------------------------------------------+\n\
- DESCRIPTION | This option is used to list all the supported BIF file         |\n\
-             | attributes.                                                    |\n\
+ SUPPORTED   | zynq, zynqmp                                                   |\n\
 -------------+----------------------------------------------------------------+\n\
- SYNOPSIS    | -bif_help [arguments]                                          |\n\
+ DESCRIPTION | Used for generating an intermediate boot image.                |\n\
 -------------+----------------------------------------------------------------+\n\
- ARGUMENTS   | Any of the bif keywords                                        |\n\
+ SYNOPSIS    | -nonbooting                                                    |\n\
 -------------+----------------------------------------------------------------+\n\
- USAGE       | 1. [bootgen -bif_help]                                         |\n\
-             | 2. [bootgen -bif_help aeskeyfile]                              |\n\
+ USAGE       | bootgen -arch zynq -image test.bif -o test.bin -nonbooting     |\n\
 -------------+----------------------------------------------------------------+\n\
- EXPLANATION | Usage 1: All the bif file attributes are listed                |\n\
-             | Usage 2: Detailed explanation of the attribute aeskeyfile with |\n\
-             |          example                                               |\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |  [ppkfile]primary.pub                                          |\n\
+             |  [spkfile]secondary.pub                                        |\n\
+             |  [spksignature]secondary.pub.sha256.sig                        |\n\
+             |  [bootimage,authentication=rsa,                                |\n\
+             |             presign=fsbl_0.elf.0.sha256.sig]fsbl_e.bin         |\n\
+             | }                                                              |\n\
+             |----------------------------------------------------------------|\n\
+             | An intermediate image test.bin is generated as output even in  |\n\
+             | the absence of secret key, which is actually needed to generate|\n\
+             | an authenticated image.                                        |\n\
+             | This intermediate image cannot be booted.                      |\n\
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
- process_bitstream
+o
+******************************************************************************/
+#define OHELP "\
+-------------+----------------------------------------------------------------+\n\
+ OPTION      | o                                                              |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This option specifies the name of the output image file with   |\n\
+             | bin or mcs extension.                                          |\n\
+-------------+----------------------------------------------------------------+\n\
+ SYNOPSIS    | -o <filename>                                                  |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | bootgen -arch zynq -image test.bif -o boot.mcs                 |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | The output image is generated with name boot.mcs               |\n\
+             | The format of the output image is decided based on the file    |\n\
+             | extension of the file given with '-o' option                   |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+p
+******************************************************************************/
+#define PHELP "\
+-------------+----------------------------------------------------------------+\n\
+ OPTION      | p                                                              |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This option specifies the partname of the Xilinx chip.         |\n\
+             | This is needed for generating a encryption key. It is copied   |\n\
+             | verbatim to the *.nky file in the 'Device' line.               |\n\
+             | This is applicable only with encryption is enabled.            |\n\
+-------------+----------------------------------------------------------------+\n\
+ SYNOPSIS    | -p <part name>                                                 |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | bootgen -image test.bif -o boot.bin -p xc7z020clg484           |\n\
+             |   -encrypt efuse                                               |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | If the key file is not present in the path specified in BIF    |\n\
+             | file, then a new encryption key is generated in the same path  |\n\
+             | and xc7z020clg484 is copied along side the 'Device' field in   |\n\
+             | the nky file. The generated image is an encrypted image.       |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+padimageheader
+******************************************************************************/
+#define PADHDRHELP "\
+-------------+----------------------------------------------------------------+\n\
+ OPTION      | padimageheader                                                 |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, zynqmp                                                   |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This option pads the Image Header Table and Partition Header   |\n\
+             | Table to maximum partitions allowed, to force alignment of     |\n\
+             | following partitions. This feature is enabled by default.      |\n\
+             | Specifying a 0, disables this feature                          |\n\
+             | Zynq   : Maximum Partitions - 14                               |\n\
+             | ZynqMP : Maximum Partitions - 32                               |\n\
+-------------+----------------------------------------------------------------+\n\
+ SYNOPSIS    | -padimageheader [arguments]                                    |\n\
+-------------+----------------------------------------------------------------+\n\
+ ARGUMENTS   | *1 : Pad the header tables to max partitions                   |\n\
+             |  0 : Do not pad the header tables                              |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | bootgen -image test.bif -w on -o boot.bin -padimageheader 0    |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | boot.bin has the image header tables and partition header      |\n\
+             | tables in actual and no extra tables are padded. If nothing is |\n\
+             | specified or if '-padimageheader 1' is used, then total image  |\n\
+             | header tables and partition header tables are padded           |\n\
+             | to max partitions.                                             |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+post_process
+******************************************************************************/
+#define POSTPROCESSHELP "\
+-------------+----------------------------------------------------------------+\n\
+ OPTION      | post_process                                                   |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | versal                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This option is used for post processing of CDO files.          |\n\
+-------------+----------------------------------------------------------------+\n\
+ SYNOPSIS    | -post_process <mode>                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | [bootgen -arch versal -image test.bif -o test.bin              |\n\
+             |     -post_process 3]                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ ARGUMENTS   |  1, 2, 3, 4, cfi-write, cfi-dma-write, cfi-dma-write-keyhole,  |\n\
+             |  iso-all                                                       |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+process_bitstream
 ******************************************************************************/
 #define PROCESSBITHELP "\
 -------------+----------------------------------------------------------------+\n\
  OPTION      | process_bitstream                                              |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, zynqmp                                                   |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | Processes only bitstream from the BIF, and output as an MCS or |\n\
              | a BIN file.                                                    |\n\
@@ -520,7 +568,7 @@
  ARGUMENTS   | bin : Output in bin format                                     |\n\
              | mcs : Output in mcs format                                     |\n\
 -------------+----------------------------------------------------------------+\n\
- USAGE       | [bootgen -arch zynq -image test.bif -process_bitstream bin]    |\n\
+ USAGE       | bootgen -arch zynq -image test.bif -process_bitstream bin      |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | Sample BIF - test.bif                                          |\n\
              | all:                                                           |\n\
@@ -528,76 +576,100 @@
              |    system.bit                                                  |\n\
              | }                                                              |\n\
              | Output generated is bitstream in BIN format.                   |\n\
--------------+----------------------------------------------------------------+\n"	
-
-/******************************************************************************
- encryption_dump
-******************************************************************************/
-#define ENCRDUMPHELP "\
--------------+----------------------------------------------------------------+\n\
- OPTION      | *** Only for ZynqMP Architecture ***                           |\n\
-             | encryption_dump                                                |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | Generates Encryption log file, aes_log.txt                     |\n\
--------------+----------------------------------------------------------------+\n\
- SYNOPSIS    | -encryption_dump                                               |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [bootgen -arch zynqmp -image test.bif -encryption_dump]        |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |    [keysrc_encryption] bbram_red_key                           |\n\
-             |    [bootloader, encryption=aes, aeskeyfile=test.nky] fsbl.elf  |\n\
-             |    [encryption=aes,aeskeyfile=test2.nky] hello.elf             |\n\
-             | }                                                              |\n\
-             |----------------------------------------------------------------|\n\
-             | aes_log.txt generarted has the details of AES Key/IV pairs used|\n\
-             | for encrypting each block of data. It also logs the partition  |\n\
-             | and the aes key file used to encrypt it.                       |\n\
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
- nonbooting
+read
 ******************************************************************************/
-#define NONBOOTINGHELP "\
+#define READHELP "\
 -------------+----------------------------------------------------------------+\n\
- OPTION      | nonbooting                                                     |\n\
+ OPTION      | read                                                           |\n\
 -------------+----------------------------------------------------------------+\n\
- DESCRIPTION | Used for generating an intermediate boot image.                |\n\
+ DESCRIPTION | This options reads the bootimage and dumps the header tables in|\n\
+             |  readable form.                                                |\n\
 -------------+----------------------------------------------------------------+\n\
- SYNOPSIS    | -nonbooting                                                    |\n\
+ SYNOPSIS    | -read [arguments] <bootimage>                                  |\n\
 -------------+----------------------------------------------------------------+\n\
- USAGE       | [bootgen -arch zynq -image test.bif -o test.bin -nonbooting]   |\n\
+ ARGUMENTS   | bh  : Reads boot header                                        |\n\
+             | iht : Reads image header table                                 |\n\
+             | ih  : Reads image headers                                      |\n\
+             | pht : Reads partition header tables                            |\n\
+             | ac  : Reads authentication certificates                        |\n\
 -------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |  [ppkfile]primary.pub                                          |\n\
-             |  [spkfile]secondary.pub                                        |\n\
-             |  [spksignature]secondary.pub.sha256.sig                        |\n\
-             |  [bootimage,authentication=rsa,                                |\n\
-             |                    presign=fsbl_0.elf.0.sha256.sig]fsbl_e.bin  |\n\
-             | }                                                              |\n\
-             |----------------------------------------------------------------|\n\
-             | An intermediate image test.bin is generated as output even in  |\n\
-             | the absence of secret key, which is actually needed to generate|\n\
-             | an authenticated image.                                        |\n\
-             | This intermediate image cannot be booted.                      |\n\
+ USAGE       | 1. bootgen -image test.bif -o -boot.bin -read                  |\n\
+             | 2. bootgen -image test.bif -o -boot.bin -read pht              |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | 1. Reads all the headers and dump on console                   |\n\
+             | 2. Reads partition header tables and dump on console           |\n\
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
- verify
+ split
+******************************************************************************/
+#define SPLITHELP "\
+-------------+----------------------------------------------------------------+\n\
+ OPTION      | split                                                          |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, zynqmp, versal                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This option outputs each data partition with headers as a new  |\n\
+             | file in MCS or BIN format.                                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ SYNOPSIS    | -split [arguments]                                             |\n\
+-------------+----------------------------------------------------------------+\n\
+ ARGUMENTS   | bin : Output files generated in bin format                     |\n\
+             | mcs : Output files generated in mcs format                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | [bootgen -arch zynq -image test.bif -split bin]                |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Consider the sample bif                                        |\n\
+             | test:                                                          |\n\
+             | {                                                              |\n\
+             |     [bootloader] Fsbl.elf                                      |\n\
+             |     Partition1                                                 |\n\
+             |     Partition2                                                 |\n\
+             | }                                                              |\n\
+             | Output files generated are:                                    |\n\
+             | 1. Bootheader + Image Headers + Partition Headers + Fsbl.elf   |\n\
+             | 2. Partition1.bit                                              |\n\
+             | 3. Partition2.elf                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+spksignature
+******************************************************************************/
+#define SPKSIGNHELP "\
+-------------+----------------------------------------------------------------+\n\
+ OPTION      | spksignature                                                   |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, zynqmp                                                   |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This option is used to generate the SPK signature file. This   |\n\
+             | option must be used only when [spkfile] & [pskfile] are        |\n\
+             | specified in BIF                                               |\n\
+-------------+----------------------------------------------------------------+\n\
+ SYNOPSIS    | -spksignature <filename>                                       |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | [bootgen -image test.bif -w on -o boot.bin                     |\n\
+             |                          -spksignature spksignfile.txt]        |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | The SPK signature file (spksignfile.txt) is generated.         |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+verify
 ******************************************************************************/
 #define VERIFYHELP "\
 -------------+----------------------------------------------------------------+\n\
  OPTION      | verify                                                         |\n\
 -------------+----------------------------------------------------------------+\n\
- DESCRIPTION | Used for verifying authentication of a boot image.             |\n\
+ SUPPORTED   | zynq, zynqmp                                                   |\n\
 -------------+----------------------------------------------------------------+\n\
- SYNOPSIS    | -verify                                                        |\n\
+ DESCRIPTION | This option is used for verifying authentication of a bootimage|\n\
 -------------+----------------------------------------------------------------+\n\
- USAGE       | [bootgen -arch zynqmp -verify boot.bin]                        |\n\
+ SYNOPSIS    | -verify <bootimage>                                            |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | bootgen -arch zynqmp -verify boot.bin                          |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | All the authentication certificates in a boot image will be    |\n\
              | verified againist the available partitions.                    |\n\
@@ -616,686 +688,838 @@
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
- init
+verify_kdf
 ******************************************************************************/
-#define H_BIF_INIT_H "\
+#define VERIFYKDFHELP "\
 -------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | init                                                           |\n\
+ OPTION      | verify_kdf                                                     |\n\
 -------------+----------------------------------------------------------------+\n\
- DESCRIPTION | Register initialization block at the end of the bootloader,    |\n\
-             | built by parsing the .int file specification. Maximum of 256   |\n\
-             | address-value init pairs are allowed. The int files have       |\n\
-             | a specific format.                                             |\n\
+ SUPPORTED   | zynqmp                                                         |\n\
 -------------+----------------------------------------------------------------+\n\
- USAGE       | [init] <filename>                                              |\n\
+ DESCRIPTION | This option is used to validate the Counter Mode KDF used in   |\n\
+             | bootgen for generation of AES keys..                           |\n\
 -------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |    [init] test.int                                             |\n\
-             | }                                                              |\n\
-             |----------------------------------------------------------------|\n\
-             | Sample .int file - test.int                                    |\n\
-             |      .set. 0xF8000120 = 0x1F000200;                            |\n\
-             |      .set. 0xF8000720 = 0x00000202;                            |\n\
-             |      .set. 0xF800014C = 0x00000521;                            |\n\
+ SYNOPSIS    | -verify <bootimage>                                            |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | bootgen -arch zynqmp -verify_kdf testvector.txt                |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | The format of the testvector.txt file is as below.             |\n\
+             | L = 256                                                        |\n\
+             | KI = d54b6fd94f7cf98fd955517f937e9927f9536caebe148......       |\n\
+             | FixedInputDataByteLen = 60                                     |\n\
+             | FixedInputData = 94c4a0c69526196c1377cebf0a2ae0fb4b57797....   |\n\
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
- aeskeyfile
+ w
 ******************************************************************************/
-#define H_BIF_AES_H "\
+#define WHELP "\
 -------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | aeskeyfile                                                     |\n\
+ OPTION      | w                                                              |\n\
 -------------+----------------------------------------------------------------+\n\
- DESCRIPTION | The path to the AES keyfile. The keyfile contains AES key used |\n\
-             | to encrypt the partitions. The contents of the key file needs  |\n\
-             | to be written to efuse or bbram.                               |\n\
-             | If the key file is not present in the path specified, a new key|\n\
-             | is generated by bootgen, which is used for encryption.         |\n\
+ DESCRIPTION | This option specifies whether to overwrite an existing file or |\n\
+             | not.                                                           |\n\
 -------------+----------------------------------------------------------------+\n\
- USAGE       |  [aeskeyfile] <key filename>                                   |\n\
-             |  [aeskeyfile = <keyfile name>] <partition>                     |\n\
+ SYNOPSIS    | -w [arguments]                                                 |\n\
 -------------+----------------------------------------------------------------+\n\
- EXPLANATION | For Zynq only:                                                 |\n\
-             | Sample BIF - test.bif                                          |\n\
+ ARGUMENTS   |  on  : Overwrite the existing file                             |\n\
+             | *off : Don't overwrite the existing file                       |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | bootgen -image test.bif -w on -o boot.bin or                   |\n\
+             | bootgen -image test.bif -w    -o boot.bin                      |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | If the file boot.bin already exists in the path, then it is    |\n\
+             | overwritten.                                                   |\n\
+             | Options '-w on' & '-w' are treated as same                     |\n\
+             | If the '-w' option is not specified, the file will not be      |\n\
+             | overwritten by default                                         |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+ zynqmpes1
+******************************************************************************/
+#define ZYNQMPES1HELP "\
+-------------+----------------------------------------------------------------+\n\
+ OPTION      | zynqmpes1                                                      |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynqmp                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This option specifies that the image generated will be used    |\n\
+             | on ES1(1.0).                                                   |\n\
+             | This option makes a difference only when generating            |\n\
+             | authenticated image, else ignored.                             |\n\
+-------------+----------------------------------------------------------------+\n\
+ SYNOPSIS    | -zynqmpes1                                                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | bootgen -image test.bif -o boot.bin -zynqmpes1                 |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | The authentication padding scheme will be as per ES1(1.0).     |\n\
+             | The default padding scheme is for (2.0)ES2 and above.          |\n\
+-------------+----------------------------------------------------------------+\n"
+
+
+
+
+/******************************************************************************
+ aarch32_mode
+******************************************************************************/
+#define H_BIF_AARCH32_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | aarch32_mode                                                   |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynqmp, versal                                                 |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | To specify the partition is to be executed in 32-bit mode.     |\n\
+             | Only valid for binary partitions.                              |\n\
+             | For elf files, bootgen automatically detects the execution     |\n\
+             | mode from elf header.                                          |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | ZYNQMP:                                                        |\n\
+             | [aarch32_mode] <partition>                                     |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             | { aarch32_mode, file=<partition> }                             |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------+\n\
+             | ZYNQMP:                                                        |\n\
+             +----------------------------------------------------------------+\n\
              | all:                                                           |\n\
              | {                                                              |\n\
-             |      [keysrc_encryption] bbram_red_key                         |\n\
-             |      [aeskeyfile] test.nky                                     |\n\
-             |      [bootloader, encryption=aes] fsbl.elf                     |\n\
-             |      [encryption=aes] hello.elf                                |\n\
+             |    [bootloader, destination_cpu=a53-0] zynqmp_fsbl.elf         |\n\
+             |    [destination_cpu=a53-0, aarch32_mode] hello.bin             |\n\
+             |    [destination_cpu=r5-0] hello_world.elf                      |\n\
              | }                                                              |\n\
-             | The partitions fsbl.elf & hello.elf are encrypted using        |\n\
-             | test.nky key file.                                             |\n\
-             |----------------------------------------------------------------|\n\
-             | Sample key (.nky) file - test.nky                              |\n\
-             |  Device       xc7z020clg484;                                   |\n\
-             |  Key 0        8177B12032A7DEEE35D0F71A7FC399027BF....D608C58;  |\n\
-             |  Key StartCBC 952FD2DF1DA543C46CDDE4F811506228;                |\n\
-             |  Key HMAC     123177B12032A7DEEE35D0F71A7FC3990BF....127BD89;  |\n\
--------------+----------------------------------------------------------------+\n\
-             | For ZynqMP only:                                               |\n\
-             | * Each partition being encrypted needs its own aeskeyfile.     |\n\
-             | * Key0, IV0 and Key Opt should be the same accross all nky     |\n\
-             | files that will be used.                                       |\n\
-             | * For cases where multiple partitions are generated for an elf |\n\
-             | file, each partition can be encrypted using keys from a unique |\n\
-             | key file. [Refer Example 2]                                    |\n\
-             |----------------------------------------------------------------|\n\
-             | Example 1:                                                     |\n\
-             | The partition fsbl.elf is encrypted with keys in test.nky,     |\n\
-             | hello.elf using keys in test1.nky & app.elf using keys in      |\n\
-             | test2.nky.                                                     |\n\
-             | Sample BIF - test_multiple.bif                                 |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             +----------------------------------------------------------------+\n\
              | all:                                                           |\n\
              | {                                                              |\n\
-             |      [keysrc_encryption] bbram_red_key                         |\n\
-             |      [bootloader,encryption=aes,aeskeyfile=test.nky] fsbl.elf  |\n\
-             |      [encryption=aes,aeskeyfile=test1.nky] hello.elf           |\n\
-             |      [encryption=aes,aeskeyfile=test2.nky] app.elf             |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = image1, id = 0x1c000001                            |\n\
+             |      { type=bootloader, file=plm.elf }                         |\n\
+             |      { type=pmcdata, file=pmc_cdo.bin }                        |\n\
+             |      { type=cdo, file=fpd_data.cdo }                           |\n\
+             |      { core=psm, file=psm.elf }                                |\n\
+             |      { core=a72-0, aarch32_mode, file=apu.bin }                |\n\
+             |    }                                                           |\n\
              | }                                                              |\n\
-             |----------------------------------------------------------------|\n\
-             | Example 2:                                                     |\n\
-             | Consider bootgen creates 3 partitions for hello.elf            |\n\
-             |           - hello.elf.0, hello.elf.1 & hello.elf.2             |\n\
-             |                                                                |\n\
-             | Sample BIF - test_multiple.bif                                 |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |      [keysrc_encryption] bbram_red_key                         |\n\
-             |      [bootloader,encryption=aes,aeskeyfile=test.nky] fsbl.elf  |\n\
-             |      [encryption=aes,aeskeyfile=test1.nky] hello.elf           |\n\
-             | }                                                              |\n\
-             |                                                                |\n\
-             | The partition fsbl.elf is encrypted with keys in test.nky.     |\n\
-             | All hello.elf partitions are encrypted using keys in test1.nky.|\n\
-             |                                                                |\n\
-             | User can have unique key files for each hello partition by     |\n\
-             | having key files named test1.1.nky & test1.2.nky in the same   |\n\
-             | path as test1.nky.                                             |\n\
-             | hello.elf.0 uses test1.nky                                     |\n\
-             | hello.elf.1 uses test1.1.nky                                   |\n\
-             | hello.elf.2 uses test1.2.nky                                   |\n\
-             | If any of the key files (test1.1.nky or test1.2.nky) is not    |\n\
-             | present, bootgen generated the key file.                       |\n\
 -------------+----------------------------------------------------------------+"
 
 /******************************************************************************
- ppkfile, pskfile, spkfile, sskfile
-******************************************************************************/
-#define H_BIF_PPK_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | ppkfile, pskfile, spkfile, sskfile                             |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | These keys are used to authenticate partitions in the bootimage|\n\
-             | Xilinx SoCs use primary & secondary keys for authentication.   |\n\
-             | The primary keys authenticate the secondary keys and the       |\n\
-             | secondary keys authenticate the partitions.                    |\n\
-             |    PPK - Primary Public Key                                    |\n\
-             |    PSK - Primary Secret Key                                    |\n\
-             |    SPK - Secondary Public Key                                  |\n\
-             |    SSK - Secondary Secret Key                                  |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [ppkfile] <key filename>                                       |\n\
-             | [pskfile] <key filename>                                       |\n\
-             | [spkfile] <key filename>                                       |\n\
-             | [sskfile] <key filename>                                       |\n\
-             |----------------------------------------------------------------|\n\
-             | For ZynqMP only :                                              |\n\
-             |  - PPK/PSK cannot be specific to partition.                    |\n\
-             |  - Each partition can have its own SPK/SSK.(Refer sample BIF 2)|\n\
-             |    The SPKs can be differentiated using the spk_id.            |\n\
-             |  - SPK/SSK outside the partition scope is mandatory for        |\n\
-             |    authentication. These keys will be used to authenticate     |\n\
-             |    headers and any other partition that does not have a        |\n\
-             |    specific SPK/SSK.                                           |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF 1 - test.bif                                        |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |  [pskfile] primarykey.pem                                      |\n\
-             |  [sskfile] secondarykey.pem                                    |\n\
-             |  [bootloader, authentication=rsa] fsbl.elf                     |\n\
-             |  [authentication=rsa] hello.elf                                |\n\
-             | }                                                              |\n\
-             |----------------------------------------------------------------|\n\
-             | Sample BIF 2 - test.bif                                        |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |   [pskfile] primary.pem                                        |\n\
-             |   [sskfile] secondary0.pem                                     |\n\
-             |                                                                |\n\
-             |  /* FSBL (Partition-0) */                                      |\n\
-             |   [                                                            |\n\
-             |     bootloader,                                                |\n\
-             |     destination_cpu = a53-0,                                   |\n\
-             |     authentication = rsa,                                      |\n\
-             |     sskfile = secondary1.pem                                   |\n\
-             |   ]fsbla53.elf                                                 |\n\
-             |                                                                |\n\
-             |  /* Partition-1 */                                             |\n\
-             |   [                                                            |\n\
-             |     destination_cpu = a53-0,                                   |\n\
-             |     authentication = rsa                                       |\n\
-             |   ] hello.elf                                                  |\n\
-             |  }                                                             |\n\
-             |----------------------------------------------------------------|\n\
-             | Sample key files:                                              |\n\
-             | 1. OpenSSL Key Format: (.pem/.pub)                             |\n\
-             |	  -----BEGIN RSA PRIVATE KEY-----                             |\n\
-             |      MIIEpAIBAAKCAQEAxrmlJyPcZVXltASHrtm/YnOMxskf0k2RZrIajqy   |\n\
-             |      kyBMalXaqmGb1kqGCgGZVvQt3FSRO3yXa....                     |\n\
-             |    -----END RSA PRIVATE KEY-----                               |\n\
-             |                                                                |\n\
-             |    -----BEGIN PUBLIC KEY-----                                  |\n\
-             |      MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxrmlJyPcZVm   |\n\
-             |      YnOMxskf0k2RZrIajq....                                    |\n\
-             |    -----END RSA PRIVATE KEY-----                               |\n\
-             |                                                                |\n\
-             | 2. Xilinx RSA Format:                                          |\n\
-             |      N = c6b9a522354238902352302acfb3.......a21678123412       |\n\
-             |      E = 10001                                                 |\n\
-             |      D = 37c80c8c6b9a522354238f4a6cdf.......c6b9a5223542       |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- udf_bh
-******************************************************************************/
-#define H_BIF_UDFBH_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | udf_bh                                                         |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | Imports a file of data to be copied to the User Defined Field  |\n\
-             | of the Boot Header. The input user defined data is provided    |\n\
-             | through a text file in the form of a hex string.               |\n\
-             | Total no. of bytes in UDF in Xilinx SoCs:                      |\n\
-             |    Zynq   : 76 bytes                                           |\n\
-             |    ZynqMP : 40 bytes                                           |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [udf_bh] <filename>                                            |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |    [udf_bh] test.txt                                           |\n\
-             |    [bootloader] fsbl.elf                                       |\n\
-             |    hello.elf                                                   |\n\
-             | }                                                              |\n\
-             |----------------------------------------------------------------|\n\
-             | Sample input file for udf_bh - test.txt                        |\n\
-             | 123456789abcdef85072696e636530300301440408706d616c6c6164000508 |\n\
-             | 266431530102030405060708090a0b0c0d0e0f101112131415161718191a1b |\n\
-             | 1c1d1                                                          |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- spksignature
-******************************************************************************/
-#define H_BIF_SPKSIGN_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | spksignature                                                   |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | Imports SPK signature into authentication certificate. This can|\n\
-             | be used incase the user does't want to share the secret key PSK|\n\
-             | The user can create a signature and provide it to Bootgen.     |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [spksignature] <signature-file>                                |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |     [ppkfile] ppk.txt                                          |\n\
-             |     [spkfile] spk.txt                                          |\n\
-             |     [spksignature] spk.txt.sha256.sig                          |\n\
-             |     [bootloader, authentication=rsa] fsbl.elf                  |\n\
-             | }                                                              |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- headersignature
-******************************************************************************/
-#define H_BIF_HDRSIGN_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | headersignature                                                |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | Imports Header signature into authentication certificate. This |\n\
-             | can be used incase the user does't want to share the secret key|\n\
-             | The user can create a signature and provide it to Bootgen.     |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [headersignature] <signature-file>                             |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |     [ppkfile] ppk.txt                                          |\n\
-             |     [spkfile] spk.txt                                          |\n\
-             |     [headersignature] headers.sha256.sig                       |\n\
-             |     [spksignature] spk.txt.sha256.sig                          |\n\
-             |     [bootloader, authentication=rsa] fsbl.elf                  |\n\
-             | }                                                              |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- bootimage
-******************************************************************************/
-#define H_BIF_BI_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | bootimage                                                      |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | This specifies that the following file specification is a      |\n\
-             | bootimage that was created by Bootgen, being reused as input.  |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [bootimage] <image created by bootgen>                         |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |     [bootimage] fsbl.bin                                       |\n\
-             |     [bootimage] system.bin                                     |\n\
-             | }                                                              |\n\
-             |----------------------------------------------------------------|\n\
-             | In the above example, the fsbl.bin & system.bin are images     |\n\
-             | generated using bootgen.                                       |\n\
-             |                                                                |\n\
-             | Example fsbl.bin generation                                    |\n\
-             |  image:                                                        |\n\
-             |  {                                                             |\n\
-             |    [keysrc_encryption] bbram_red_key                           |\n\
-             |    [pskfile] primary.pem                                       |\n\
-             |    [sskfile] secondary.pem                                     |\n\
-             |    [bootloader, authentication=rsa, encryption=aes,            |\n\
-             |                   aeskeyfile=aes.nky] fsbl.elf                 |\n\
-             |  }                                                             |\n\
-             |  Command: bootgen -image fsbl.bif -o fsbl.bin -encrypt efuse   |\n\
-             |                                                                |\n\
-             | Example system.bin generation                                  |\n\
-             |  image:                                                        |\n\
-             |  {                                                             |\n\
-             |     [pskfile] primary.pem                                      |\n\
-             |     [sskfile] secondary.pem                                    |\n\
-             |     [bootloader, authentication=rsa] system.bit                |\n\
-             |  }                                                             |\n\
-             |  Command: bootgen -image system.bif -o system.bin              |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- bootloader
-******************************************************************************/
-#define H_BIF_BL_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | bootloader                                                     |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | This specifies the partition is a bootloader (FSBL). This      |\n\
-             | attribute is specified with along with other partition bif     |\n\
-             | attributes.                                                    |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [bootloader] <partition>                                       |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |    [bootloader] fsbl.elf                                       |\n\
-             |    hello.elf                                                   |\n\
-             | }                                                              |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- encryption
-******************************************************************************/
-#define H_BIF_ENCR_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | encryption                                                     |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | This specifies the partition needs to be encrypted.            |\n\
-             | Encryption Algorithms                                          |\n\
-             |     Zynq   : AES-CBC                                           |\n\
-             |     ZynqMP : AES-GCM                                           |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [encryption = <options>] <partition>                           |\n\
--------------+----------------------------------------------------------------+\n\
- OPTIONS     | *none : Partition not encrypted                                |\n\
-             |  aes  : Partition encrypted using AES algorithm                |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |      [aeskeyfile] test.nky                                     |\n\
-             |      [bootloader, encryption=aes] fsbl.elf                     |\n\
-             |      [encryption=aes] hello.elf                                |\n\
-             | }                                                              |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- pid
-******************************************************************************/
-#define H_BIF_PID_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | *** Only for ZynqMP Architecture ***                           |\n\
-             | pid                                                            |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | This is used to specify an id to which the partition is        |\n\
-             | associated with.                                               |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [pid = <id>] <partition>                                       |\n\
-             | <id> is an integer value, representing the partition number.   |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |      [keysrc_encryption] bbram_red_key                         |\n\
-             |      [encryption=aes,aeskeyfile=test.nky,pid=1] hello.elf      |\n\
-             | }                                                              |\n\
-             |----------------------------------------------------------------|\n\
-             | While creating an image bootgen by default assigns an id to    |\n\
-             | every partition, which is in line with the order of partitions |\n\
-             | given in the bif.                                              |\n\
-             | To assign a different id to any partition, pid can be used.    |\n\
-             | During encryption, the IV is incremented by this value to avoid|\n\
-             | security vulneribilities.                                      |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- authentication
-******************************************************************************/
-#define H_BIF_AUTH_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | authentication                                                 |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | This specifies the partition needs to be authenticated.        |\n\
-             | Authentication Algorithms:                                     |\n\
-             |     Zynq   : RSA-2048                                          |\n\
-             |     ZynqMP : RSA-4096                                          |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [authenication = <options>] <partition>                        |\n\
--------------+----------------------------------------------------------------+\n\
- OPTIONS     | *none : Partition not authenticated                            |\n\
-             |  rsa  : Partition authenticated using RSA algorithm            |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |     [ppkfile] ppk.txt                                          |\n\
-             |     [spkfile] spk.txt                                          |\n\
-             |     [bootloader, authentication=rsa] fsbl.elf                  |\n\
-             |     [authentication=rsa] hello.elf                             |\n\
-             | }                                                              |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- checksum
-******************************************************************************/
-#define H_BIF_CHKSM_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | checksum                                                       |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | This specifies the partition needs to be checksummed.          |\n\
-             | Checksum Algorithms:                                           |\n\
-             |     Zynq   : MD5                                               |\n\
-             |     ZynqMP : SHA3                                              |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [checksum = <options>] <partition>                             |\n\
--------------+----------------------------------------------------------------+\n\
- OPTIONS     | *none : no checksum operation                                  |\n\
-             |  md5  : MD5 checksum operation (Zynq)                          |\n\
-             |  sha3 : SHA3 checksum operation (ZynqMP)                       |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |     [bootloader] fsbl.elf                                      |\n\
-             |     [checksum=md5] hello.elf                                   |\n\
-             | }                                                              |\n\
-             |----------------------------------------------------------------|\n\
-             | Note:                                                          |\n\
-             | 1. In Zynq, checksum opertations is not supported for          |\n\
-             |    bootloaders.                                                |\n\
-             | 2. In ZynqMP, checksum operation is not supported along with   |\n\
-             |    more secure features like authentication and encryption.    |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- partition_owner
-******************************************************************************/
-#define H_BIF_POWNER_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | partition_owner                                                |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | Owner of the partition which is responsible to load the        |\n\
-             | partition.                                                     |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [partition_owner = <options>] <partition>                      |\n\
--------------+----------------------------------------------------------------+\n\
- OPTIONS     | *fsbl  : FSBL loads this partition                             |\n\
-             |  uboot : u-boot loads this partition                           |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |     [bootloader] fsbl.elf                                      |\n\
-             |     uboot.elf                                                  |\n\
-             |     [partition_owner=uboot] hello.elf                          |\n\
-             | }                                                              |\n\
-             |                                                                |\n\
-             | uboot.elf will be loaded by FSBL & hello.elf will be loaded by |\n\
-             | u-boot                                                         |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- presign
-******************************************************************************/
-#define H_BIF_PRESIGN_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | presign                                                        |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | Imports partition signature into partition authenticate        |\n\
-             | certificate.                                                   |\n\
-             | This can be used incase the user does't want to share the      |\n\
-             | secret key(SSK). The user can create a signature and provide   |\n\
-             | it to Bootgen.                                                 |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [presign = <signature-file>] <partition>                       |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |    [ppkfile] ppk.txt                                           |\n\
-             |    [spkfile] spk.txt                                           |\n\
-             |    [headersignature] headers.sha256.sig                        |\n\
-             |    [spksignature] spk.txt.sha256.sig                           |\n\
-             |    [bootloader, authentication=rsa, presign=fsbl.sig] fsbl.elf |\n\
-             | }                                                              |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- udf_data
-******************************************************************************/
-#define H_BIF_UDF_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | udf_data                                                       |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | Imports a file containing up to 56 bytes of data into User     |\n\
-             | Defined Field of Authentication Certificate.                   |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | udf_data = <filename>                                          |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |     [pskfile]primary0.pem                                      |\n\
-             |     [sskfile]secondary0.pem                                    |\n\
-             |     [bootloader,destination_cpu=a53-0,authentication=rsa,      |\n\
-             |                                    udf_data=udf.txt]fsbl.elf   |\n\
-             |     [destination_cpu=a53-0, authentication=rsa] hello.elf      |\n\
-             | }                                                              |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- xip_mode
-******************************************************************************/
-#define H_BIF_XIP_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | xip_mode                                                       |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | Indicates 'eXecute In Place' for FSBL to be executed directly  |\n\
-             | from QSPI flash.                                               |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [xip_mode] <partition>                                         |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |     [bootloader, xip_mode] fsbl.elf                            |\n\
-             |     application.elf                                            |\n\
-             | }                                                              |\n\
-             |----------------------------------------------------------------|\n\
-             | Note: This attribute is only applicable for FSBL partition.    |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- alignment
+alignment
 ******************************************************************************/
 #define H_BIF_ALIGN_H "\
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | alignment                                                      |\n\
 -------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, zynqmp, versal                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+-------------+----------------------------------------------------------------+\n\
  DESCRIPTION | Sets the byte alignment. The partition will be padded to be    |\n\
              | aligned to a multiple of this value.                           |\n\
 -------------+----------------------------------------------------------------+\n\
- USAGE       | [alignment=<value>] <partition>                                |\n\
+ USAGE       | ZYNQ/ZYNQMP:                                                   |\n\
+             | [alignment=<value>] <partition>                                |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             | { alignment=<value>, file=<partition> }                        |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------+\n\
+             | ZYNQMP:                                                        |\n\
+             +----------------------------------------------------------------+\n\
+             | all:                                                           |\n\
+             |  {                                                             |\n\
+             |    [bootloader] fsbl.elf                                       |\n\
+             |    [alignment=64] u-boot.elf                                   |\n\
+             |  }                                                             |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             +----------------------------------------------------------------+\n\
              | all:                                                           |\n\
              | {                                                              |\n\
-             |                                                                |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = image1, id = 0x1c000001                            |\n\
+             |      { type=bootloader, file=plm.elf }                         |\n\
+             |      { type=pmcdata, file=pmc_cdo.bin }                        |\n\
+             |      { type=cdo, file=fpd_data.cdo }                           |\n\
+             |      { core=psm, file=psm.elf }                                |\n\
+             |      { core=a72-0, alignment=64, file=uboot.elf }              |\n\
+             |    }                                                           |\n\
              | }                                                              |\n\
              |----------------------------------------------------------------|\n\
              | Note: Cannot be used with offset.                              |\n\
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
- offset
+big_endian
 ******************************************************************************/
-#define H_BIF_OFFSET_H "\
+#define H_BIF_BIGENDIAN_H "\
 -------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | offset                                                         |\n\
+ ATTRIBUTE   | big_endian                                                     |\n\
 -------------+----------------------------------------------------------------+\n\
- DESCRIPTION | Sets the absolute offset of the partition in the boot image.   |\n\
+ SUPPORTED   | zynqmp, versal                                                 |\n\
 -------------+----------------------------------------------------------------+\n\
- USAGE       | [offset=<value>] <partition>                                   |\n\
+ DESCRIPTION | To specify the partition in big endian                         |\n\
+             | Only valid for binary partitions.                              |\n\
+             | For elf files, bootgen automatically detects the endianness    |\n\
+             | from elf header.                                               |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | ZYNQMP:                                                        |\n\
+             | [big_endian] <partition>                                       |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             | { big_endian, file=<partition> }                               |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------+\n\
+             | ZYNQMP:                                                        |\n\
+             +----------------------------------------------------------------+\n\
              | all:                                                           |\n\
              | {                                                              |\n\
-             |      [bootloader] fsbl.elf                                     |\n\
-             |      u-boot.elf                                                |\n\
-             |      [load=0x3000000, offset=0x500000] uImage.bin              |\n\
-             |      [load=0x2A00000, offset=0xa00000] devicetree.dtb          |\n\
-             |      [load=0x2000000, offset=0xc00000] uramdisk.image.gz       |\n\
+             |    [bootloader, destination_cpu=a53-0] zynqmp_fsbl.elf         |\n\
+             |    [destination_cpu=a53-0, big_endian] hello.bin               |\n\
+             |    [destination_cpu=r5-0] hello_world.elf                      |\n\
              | }                                                              |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- reserve
-******************************************************************************/
-#define H_BIF_RES_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | reserve                                                        |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | Reserves the memory and padded after the partition.            |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [reserve=<value>] <partition>                                  |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             +----------------------------------------------------------------+\n\
              | all:                                                           |\n\
              | {                                                              |\n\
-             |      [bootloader] fsbl.elf                                     |\n\
-             |      [reserve=0x1000] test.bin                                 |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = image1, id = 0x1c000001                            |\n\
+             |      { type=bootloader, file=plm.elf }                         |\n\
+             |      { type=pmcdata, file=pmc_cdo.bin }                        |\n\
+             |      { type=cdo, file=fpd_data.cdo }                           |\n\
+             |      { core=psm, file=psm.elf }                                |\n\
+             |      { core=a72-0, big_endian, file=apu.bin }                  |\n\
+             |    }                                                           |\n\
              | }                                                              |\n\
--------------+----------------------------------------------------------------+\n"
+-------------+----------------------------------------------------------------+"
 
 /******************************************************************************
- load
+blocks
 ******************************************************************************/
-#define H_BIF_LOAD_H "\
+#define H_BIF_BLOCKS_H "\
 -------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | load                                                           |\n\
+ ATTRIBUTE   | blocks                                                         |\n\
 -------------+----------------------------------------------------------------+\n\
- DESCRIPTION | Sets the load address for the partition in memory.             |\n\
+ SUPPORTED   | zynqmp                                                         |\n\
 -------------+----------------------------------------------------------------+\n\
- USAGE       | [load=<value>] <partition>                                     |\n\
+ DESCRIPTION | Specify block sizes for key-rolling feature in encrytion.      |\n\
+             | Each module is encrypted using its own unique key. The initial |\n\
+             | key is stored at the key source on the device, while keys for  |\n\
+             | each successive module are encrypted (wrapped) in the previous |\n\
+             | module.                                                        |\n\
+             | <size> mentioned will be taken in Bytes. If X(*) is specified, |\n\
+             | then all the remaining blocks would of the size 'X'.           |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | ZYNQMP:                                                        |\n\
+             | [blocks = <size><num>;<size><num>;...;<size><*>] <partition>   |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |      [bootloader] fsbl.elf                                     |\n\
-             |      u-boot.elf                                                |\n\
-             |      [load=0x3000000, offset=0x500000] uImage.bin              |\n\
-             |      [load=0x2A00000, offset=0xa00000] devicetree.dtb          |\n\
-             |      [load=0x2000000, offset=0xc00000] uramdisk.image.gz       |\n\
-             | }                                                              |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- startup
-******************************************************************************/
-#define H_BIF_STARTUP_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | startup                                                        |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | Sets the entry address for the partition, after it is loaded.  |\n\
-             | This is ignored for partitions that do not execute.            |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [startup=<value>] <partition>                                  |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |      [bootloader] fsbl.elf                                     |\n\
-             |      [startup=0x1000000] app.elf                               |\n\
-             | }                                                              |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- keysrc_encryption
-******************************************************************************/
-#define H_BIF_KEYSRC_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | keysrc_encryption                                              |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | Key source for encryption                                      |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [keysrc_encrption] <options>                                   |\n\
--------------+----------------------------------------------------------------+\n\
- OPTIONS     | efuse_red_key  : Red Key stored in efuse                       |\n\
-             | bbram_red_key  : Red Key stored in bbram                       |\n\
-             | efuse_gry_key  : Grey (Obfuscated) Key stored in efuse         |\n\
-             | bh_gry_key     : Grey (Obfuscated) Key stored in boot header   |\n\
-             | bh_blk_key     : Black Key stored in boot header               |\n\
-             | efuse_blk_key  : Black Key stored in efuse                     |\n\
-             | kup_key        : User Key                                      |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------+\n\
+             | ZYNQMP:                                                        |\n\
+             +----------------------------------------------------------------+\n\
              | all:                                                           |\n\
              | {                                                              |\n\
              |    [keysrc_encryption] bbram_red_key                           |\n\
-             |    [bootloader, encryption=aes, aeskeyfile=encr.nky            |\n\
-             |                         destination_cpu=a53-0]fsbl.elf         |\n\
+             |    [bootloader, encryption=aes, destination_cpu=a53-0,         |\n\
+             |                 blocks=4096(2);1024;2048(2);4096(*),           |\n\
+             |                        aeskeyfile=encr.nky] fsbl.elf           |\n\
              | }                                                              |\n\
-             |----------------------------------------------------------------|\n\
-             | FSBL is encrypted using the key encr.nky, which is stored in   |\n\
-             | bbram in the device for decryption purpose.                    |\n\
+             +----------------------------------------------------------------+\n\
+             | In the above example, the first two blocks are of 4096 bytes,  |\n\
+             | second block is of 1024 bytes, the next two blocks are of      |\n\
+             | 2048 bytes, the rest of the blocks are of 4096 bytes.          |\n\
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
- fsbl_config
+bootimage
+******************************************************************************/
+#define H_BIF_BOOTIMAGE_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | bootimage                                                      |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, zynqmp, versal                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This specifies that the following file specification is a      |\n\
+             | bootimage that was created by Bootgen, being reused as input.  |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | ZYNQ/ZYNQMP:                                                   |\n\
+             | [bootimage] <partition>                                        |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             | { type=bootimage, file=<partition> }                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------+\n\
+             | ZYNQ/ZYNQMP:                                                   |\n\
+             +----------------------------------------------------------------+\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    [bootimage] fsbl.bin                                        |\n\
+             |    [bootimage] system.bin                                      |\n\
+             | }                                                              |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             +----------------------------------------------------------------+\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = image1, id = 0x1c000001                            |\n\
+             |      { type=bootimage, file=boot.pdi }                         |\n\
+             |      { core=a72-0, file=apu.elf }                              |\n\
+             |    }                                                           |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+bootloader
+******************************************************************************/
+#define H_BIF_BL_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | bootloader                                                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, zynqmp, versal                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This specifies the partition is a bootloader (FSBL). This      |\n\
+             | attribute is specified with along with other partition bif     |\n\
+             | attributes.                                                    |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | ZYNQ/ZYNQMP:                                                   |\n\
+             | [bootloader] <partition>                                       |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             | { type=bootloader, file=<partition> }                          |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------+\n\
+             | ZYNQ/ZYNQMP:                                                   |\n\
+             +----------------------------------------------------------------+\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    [bootloader] fsbl.elf                                       |\n\
+             |    hello.elf                                                   |\n\
+             | }                                                              |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             +----------------------------------------------------------------+\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = image1, id = 0x1c000001                            |\n\
+             |      { type=bootloader, file=plm.elf }                         |\n\
+             |      { type=pmcdata, file=pmc_cdo.bin }                        |\n\
+             |      { type=cdo, file=fpd_data.cdo }                           |\n\
+             |      { core=psm, file=psm.elf }                                |\n\
+             |      { core=a72-0, file=hello.elf }                            |\n\
+             |    }                                                           |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+bootvectors
+******************************************************************************/
+#define H_BIF_BOOTVEC_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | bootvectors                                                    |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynqmp                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Specifies the vector table for XIP                             |\n\
+             | By default, bootgen populates XIP elf vector table below -     |\n\
+             |     - 0xEAFFFFFE: for Cortex R5 and Cortex A53 (32-bit)        |\n\
+             |     - 0x14000000: for Cortex A53 (64-bit)                      |\n\
+             | To specify a different vector table, bootvectors can be used.  |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | [bootvectors] <values>                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |     [bootvectors] 0x14000000,0x14000000,0x14000000,0x14000000, |\n\
+             |             0x14000000,0x14000000,0x14000000,0x14000000        |\n\
+             |     [bootloader,destination_cpu=a53-0] fsbl.elf                |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+boot_device
+******************************************************************************/
+#define H_BIF_BOOTDEV_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | boot_device                                                    |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynqmp, versal                                                 |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Specifies the secondary boot device. Indicates the device on   |\n\
+             | which the partition is present.                                |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | ZYNQMP:                                                        |\n\
+             | [boot_device] <options>                                        |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             | boot_device { <options>, address=<address> }                   |\n\
+-------------+----------------------------------------------------------------+\n\
+ OPTIONS     | ZYNQMP:                                                        |\n\
+             | qspi32, qspi24, nand, sd0, sd1, sd-ls, mmc, usb, ethernet      |\n\
+             | pcie, sata                                                     |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             | qspi32, qspi24, nand, sd0, sd1, sd-ls, mmc, usb, ethernet,     |\n\
+             | pcie, sata, ospi, smap, sbi, sd0-raw, sd1-raw, sd-ls-raw,      |\n\
+             | mmc-raw, mmc0, mmc0-raw                                        |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------+\n\
+             | ZYNQMP:                                                        |\n\
+             +----------------------------------------------------------------+\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |     [boot_device] sd0                                          |\n\
+             |     [bootloader,destination_cpu=a53-0] fsbl.elf                |\n\
+             | }                                                              |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             +----------------------------------------------------------------+\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    boot_device { qspi32, address=0x10000 }                     |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = image1, id = 0x1c000001                            |\n\
+             |      { type=bootloader, file=plm.elf }                         |\n\
+             |      { type=pmcdata, file=pmc_cdo.bin }                        |\n\
+             |      { type=cdo, file=fpd_data.cdo }                           |\n\
+             |      { core=psm, file=psm.elf }                                |\n\
+             |      { core=a72-0, file=hello.elf }                            |\n\
+             |    }                                                           |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+#define H_BIF_BOOTCONFIG_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | boot_config                                                    |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | versal                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | These parameters are used to configure the bootimage           |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | boot_config { <options> }                                      |\n\
+-------------+---------------------+------------------------------------------+\n\
+ OPTIONS     |       Options       |             Description                  |\n\
+             +---------------------+------------------------------------------+\n\
+             | smap_width = <value>| 8, 16, 32                                |\n\
+             |                     | Default is 32-bit                        |\n\
+-------------+---------------------+------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------|\n\
+             | bh_auth_enable_smap_width:                                     |\n\
+             | {                                                              |\n\
+             |    boot_config { smap_width=16 }                               |\n\
+             |    pskfile = /path/to/primary0.pem                             |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |       name = pmc_subsys, id = 0x1c000001                       |\n\
+             |       {                                                        |\n\
+             |           id = 0x00010000,                                     |\n\
+             |           type = bootloader,                                   |\n\
+             |           file = /path/to/plm.elf                              |\n\
+             |       }                                                        |\n\
+             |    }                                                           |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+checksum
+******************************************************************************/
+#define H_BIF_CHKSM_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | checksum                                                       |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, zynqmp, versal                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This specifies the partition needs to be checksummed.          |\n\
+             | Checksum Algorithms:                                           |\n\
+             |   Zynq            : MD5                                        |\n\
+             |   ZynqMP & Versal : SHA3                                       |\n\
+             |----------------------------------------------------------------|\n\
+             | Note:                                                          |\n\
+             | 1. In Zynq, checksum opertations is not supported for          |\n\
+             |    bootloaders.                                                |\n\
+             | 2. Checksum operation is not supported with secure features    |\n\
+             |    like authentication and encryption                          |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | ZYNQ/ZYNQMP:                                                   |\n\
+             | [checksum = <options>] <partition>                             |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             | { checksum = <options>, file=<partition> }                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ OPTIONS     | *none : no checksum operation                                  |\n\
+             |  md5  : MD5 checksum operation (Zynq)                          |\n\
+             |  sha3 : SHA3 checksum operation (ZynqMP & Versal)              |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------+\n\
+             | ZYNQ/ZYNQMP:                                                   |\n\
+             +----------------------------------------------------------------+\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |     [bootloader] fsbl.elf                                      |\n\
+             |     [checksum=md5] hello.elf                                   |\n\
+             | }                                                              |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             +----------------------------------------------------------------+\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = image1, id = 0x1c000001                            |\n\
+             |      { type=bootloader, checksum=sha3, file=plm.elf }          |\n\
+             |      { type=pmcdata, file=pmc_cdo.bin }                        |\n\
+             |    }                                                           |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+copy
+******************************************************************************/
+#define H_BIF_COPY_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | copy                                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | versal                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This attribute specifies that the image is to be copied to     |\n\
+             | memory at specified address.                                   |\n\
+             | This is a image specific attribute and needs to be defined at  |\n\
+             | image level and not partition level.                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | copy = <addr>                                                  |\n\
+-------------+---------------------+------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    boot_device { qspi32, address=0x10000 }                     |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = image1, id = 0x1c000001                            |\n\
+             |      { type=bootloader, file=plm.elf }                         |\n\
+             |      { type=pmcdata, file=pmc_cdo.bin }                        |\n\
+             |    }                                                           |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = image2, id = 0x1c000002, copy = 0x30000            |\n\
+             |      { type=cdo, file=fpd_data.cdo }                           |\n\
+             |      { core=psm, file=psm.elf }                                |\n\
+             |      { core=a72-0, file=hello.elf }                            |\n\
+             |    }                                                           |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+core
+******************************************************************************/
+#define H_BIF_CORE_H "\
+-------------+----------------------------------------------------------------+\n\
+ATTRIBUTE    | core                                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | versal                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+DESCRIPTION  | Specifies which core will execute the partition                |\n\
+-------------+----------------------------------------------------------------+\n\
+USAGE        | { core = <options>, file = <partition> }                       |\n\
+-------------+----------------------------------------------------------------+\n\
+OPTIONS      | *a72-0                                                         |\n\
+             |  a72-1                                                         |\n\
+             |  r5-0                                                          |\n\
+             |  r5-1                                                          |\n\
+             |  psm                                                           |\n\
+             |  aie                                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+EXPLANATION  | Sample BIF - test.bif                                          |\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = image1, id = 0x1c000001                            |\n\
+             |      { type=bootloader, file=plm.elf }                         |\n\
+             |      { type=pmcdata, file=pmc_cdo.bin }                        |\n\
+             |      { type=cdo, file=fpd_data.cdo }                           |\n\
+             |      { core=psm, file=psm.elf }                                |\n\
+             |      { core=a72-0, file=hello.elf }                            |\n\
+             |    }                                                           |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+delay_handoff
+******************************************************************************/
+#define H_BIF_DELAY_HANDOFF_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | delay_handoff                                                  |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | versal                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This attribute specifies that the handoff to the subsystem is  |\n\
+             | delayed.                                                       |\n\
+             | This is a image specific attribute and needs to be defined at  |\n\
+             | image level and not partition level.                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | delay_handoff                                                  |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    boot_device { qspi32, address=0x10000 }                     |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = image1, id = 0x1c000001                            |\n\
+             |      { type=bootloader, file=plm.elf }                         |\n\
+             |      { type=pmcdata, file=pmc_cdo.bin }                        |\n\
+             |    }                                                           |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = image2, id = 0x1c000002, delay_handoff             |\n\
+             |      { type=cdo, file=fpd_data.cdo }                           |\n\
+             |      { core=psm, file=psm.elf }                                |\n\
+             |      { core=a72-0, file=hello.elf }                            |\n\
+             |    }                                                           |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+delay_load
+******************************************************************************/
+#define H_BIF_DELAY_LOAD_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | delay_load                                                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | versal                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This attribute specifies that the loading the subsystem is     |\n\
+             | delayed.                                                       |\n\
+             | This is a image specific attribute and needs to be defined at  |\n\
+             | image level and not partition level.                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | delay_load                                                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    boot_device { qspi32, address=0x10000 }                     |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = image1, id = 0x1c000001                            |\n\
+             |      { type=bootloader, file=plm.elf }                         |\n\
+             |      { type=pmcdata, file=pmc_cdo.bin }                        |\n\
+             |    }                                                           |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = image2, id = 0x1c000002, delay_load                |\n\
+             |      { type=cdo, file=fpd_data.cdo }                           |\n\
+             |      { core=psm, file=psm.elf }                                |\n\
+             |      { core=a72-0, file=hello.elf }                            |\n\
+             |    }                                                           |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+destination_cpu
+******************************************************************************/
+#define H_BIF_DESTCPU_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | destination_cpu                                                |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynqmp                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Specifies which core will execute the partition                |\n\
+             |----------------------------------------------------------------|\n\
+             | Note:                                                          |\n\
+             | * FSBL can run either on A53-0 or R5-0 only.                   |\n\
+             | * PMU loaded by FSBL: [destination_cpu=pmu] pmu.elf            |\n\
+             |   In this flow, BootROM loads FSBL first, and then FSBL loads  |\n\
+             |   PMU fw.                                                      |\n\
+             | * PMU loaded by BootROM: [pmufw_image] pmu.elf                 |\n\
+             |   In this flow, BootROM loads PMU first and then the FSBL      |\n\
+             |   So PMU does the power management tasks, before the FSBL comes|\n\
+             |   up.                                                          |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | [destination_cpu=<options>] <partition>                        |\n\
+-------------+----------------------------------------------------------------+\n\
+ OPTIONS     | *a53-0                                                         |\n\
+             |  a53-1                                                         |\n\
+             |  a53-2                                                         |\n\
+             |  a53-3                                                         |\n\
+             |  r5-0                                                          |\n\
+             |  r5-1                                                          |\n\
+             |  r5-lockstep                                                   |\n\
+             |  pmu                                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |     [bootloader, destination_cpu=a53-0] fsbl.elf               |\n\
+             |     [destination_cpu=r5-0] app.elf                             |\n\
+             | }                                                              |\n\
+             |----------------------------------------------------------------|\n\
+             | This specifies that FSBL will be excuted on A53-0 core and     |\n\
+             | application on R5-0 core.                                      |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+destination_device
+******************************************************************************/
+#define H_BIF_DESTDEV_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | destination_device                                             |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynqmp                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Specifies the destination of the partition                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | [destination_device=<options>] <partition>                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ OPTIONS     | *ps   : The partition is targetted for PS (default)            |\n\
+             |  pl   : The partition is targetted for PL, for bitstreams      |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |     [bootloader, destination_cpu=a53-0] fsbl.elf               |\n\
+             |     [destination_device=pl] system.bit                         |\n\
+             |     [destination_cpu=r5-1] app.elf                             |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+early_handoff
+******************************************************************************/
+#define H_BIF_ELYHNDOFF_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | early_handoff                                                  |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynqmp                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This flag will ensure, the handoff to applications which are   |\n\
+             | critical, immediatley after partition is loaded. Otherwise all |\n\
+             | the partitions are loaded sequentially and handoff also happens|\n\
+             | in sequenctial fashion                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | [early_handoff] <partition>                                    |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |     [bootloader, destination_cpu=a53_0] fsbl.elf               |\n\
+             |     [destination_cpu=r5-0] app1.elf                            |\n\
+             |     [destination_cpu=r5-1, early_handoff] app2.elf             |\n\
+             | }                                                              |\n\
+             |----------------------------------------------------------------|\n\
+             | Note: In the above scenario, the FSBL loads app1, then app2    |\n\
+             | and immediately handsoff the control to app2 before app1.      |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+exception_level
+******************************************************************************/
+#define H_BIF_EL_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | exception_level                                                |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynqmp, versal                                                 |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Exception level for which the core should be configured        |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | ZYNQMP:                                                        |\n\
+             | [exception_level=<options>] <partition>                        |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             | { exception_level=<options>, file=<partition> }                |\n\
+-------------+----------------------------------------------------------------+\n\
+ OPTIONS     |  el-0                                                          |\n\
+             |  el-1                                                          |\n\
+             |  el-2                                                          |\n\
+             | *el-3                                                          |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------+\n\
+             | ZYNQMP:                                                        |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |     [bootloader, destination_cpu=a53-0] fsbl.elf               |\n\
+             |     [destination_cpu=a53-0, exception_level=el-3] bl31.elf     |\n\
+             |     [destination_cpu=a53-0, exception_level=el-2] u-boot.elf   |\n\
+             | }                                                              |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = image1, id = 0x1c000001                            |\n\
+             |      { type=bootloader, file=plm.elf }                         |\n\
+             |      { type=pmcdata, file=pmc_cdo.bin }                        |\n\
+             |      { type=cdo, file=fpd_data.cdo }                           |\n\
+             |      { core=psm, file=psm.elf }                                |\n\
+             |      { core=a72-0, file=uboot.elf }                            |\n\
+             |      { core=a72-0, exception_level=el-3, file=bl31.elf }       |\n\
+             |    }                                                           |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+file
+******************************************************************************/
+#define H_BIF_FILE_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | file                                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | versal                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Specifies the file for creating the partition                  |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | { file = <path/to/file> }                                      |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = image1, id = 0x1c000001                            |\n\
+             |      { type=bootloader, file=plm.elf }                         |\n\
+             |      { type=pmcdata, file=pmc_cdo.bin }                        |\n\
+             |      { type=cdo, file=fpd_data.cdo }                           |\n\
+             |      { core=psm, file=psm.elf }                                |\n\
+             |      { core=a72-0, file=hello.elf }                            |\n\
+             |    }                                                           |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+fsbl_config
 ******************************************************************************/
 #define H_BIF_FSBLCFG_H "\
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | fsbl_config                                                    |\n\
 -------------+----------------------------------------------------------------+\n\
- DESCRIPTION | *** Only for ZynqMP Architecture ***                           |\n\
-             | These parameters are used to configure the bootimage           |\n\
+ SUPPORTED   | zynqmp                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | These parameters are used to configure the bootimage           |\n\
 -------------+----------------------------------------------------------------+\n\
  USAGE       | [fsbl_config] <options>                                        |\n\
 -------------+---------------------+------------------------------------------+\n\
@@ -1328,10 +1552,10 @@
  EXPLANATION | Sample BIF - test.bif                                          |\n\
              | all:                                                           |\n\
              | {                                                              |\n\
-             | [fsbl_config] bh_auth_enable                                   |\n\
-             | [pskfile] primary.pem                                          |\n\
-             | [sskfile] secondary.pem                                        |\n\
-             | [bootloader,destination_cpu=a53-0,authentication=rsa] fsbl.elf |\n\
+             |   [fsbl_config] bh_auth_enable                                 |\n\
+             |   [pskfile] primary.pem                                        |\n\
+             |   [sskfile] secondary.pem                                      |\n\
+             |   [bootloader,destination_cpu=a53-0,authentication=rsa]fsbl.elf|\n\
              | }                                                              |\n\
              |----------------------------------------------------------------|\n\
              | FSBL which should run on A53 in 64-bit mode, is authenticated  |\n\
@@ -1339,164 +1563,1124 @@
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
- boot_device
+hivec
 ******************************************************************************/
-#define H_BIF_BOOTDEV_H "\
+#define H_BIF_HIVEC_H "\
 -------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | [boot_device]                                                  |\n\
+ ATTRIBUTE   | hivec                                                          |\n\
 -------------+----------------------------------------------------------------+\n\
- DESCRIPTION | *** Only for ZynqMP Architecture ***                           |\n\
-             | Specifies the secondary boot device. Indicates the device on   |\n\
-             | which the partition is present.                                |\n\
+ SUPPORTED   | zynqmp, versal                                                 |\n\
 -------------+----------------------------------------------------------------+\n\
- USAGE       | [boot_device] <options>                                        |\n\
+ DESCRIPTION | To specify the location of Exception Vector Table as hivec.    |\n\
+             | Default is taken as lovec.                                     |\n\
+             | This is applicable with a53(32 bit) and r5 cores only.         |\n\
+             | hivec: exception vector table at 0xFFFF0000.                   |\n\
+             | lovec: exception vector table at 0x00000000.                   |\n\
 -------------+----------------------------------------------------------------+\n\
- OPTIONS     | qspi32                                                         |\n\
-             | qspi24                                                         |\n\
-             | nand                                                           |\n\
-             | sd0                                                            |\n\
-             | sd1                                                            |\n\
-             | sd-ls                                                          |\n\
-             | mmc                                                            |\n\
-             | usb                                                            |\n\
-             | ethernet                                                       |\n\
-             | pcie                                                           |\n\
-             | sata                                                           |\n\
+ USAGE       | ZYNQMP:                                                        |\n\
+             | [hivec] <partition>                                            |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             | { hivec, file=<partition> }                                    |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------+\n\
+             | ZYNQMP:                                                        |\n\
+             +----------------------------------------------------------------|\n\
              | all:                                                           |\n\
              | {                                                              |\n\
-             |     [boot_device] sd0                                          |\n\
-             |     [bootloader,destination_cpu=a53-0] fsbl.elf                |\n\
+             |     [bootloader, destination_cpu=a53_0] fsbl.elf               |\n\
+             |     [destination_cpu=r5-0,hivec] app1.elf                      |\n\
+             | }                                                              |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = image1, id = 0x1c000001                            |\n\
+             |      { type=bootloader, file=plm.elf }                         |\n\
+             |      { type=pmcdata, file=pmc_cdo.bin }                        |\n\
+             |      { type=cdo, file=fpd_data.cdo }                           |\n\
+             |      { core=psm, file=psm.elf }                                |\n\
+             |      { core=r5-0, hivec, file=hello.elf }                      |\n\
+             |    }                                                           |\n\
              | }                                                              |\n\
 -------------+----------------------------------------------------------------+\n"
 
+/******************************************************************************
+init
+******************************************************************************/
+#define H_BIF_ID_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | id                                                             |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | versal                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Specifies the following IDs based on the place its defined:    |\n\
+             |   * pdi id       - within outermost/pdi paranthesis            |\n\
+             |   * image id     - within image paranthesis                    |\n\
+             |   * partition id - within partition paranthesis                |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | id = <id>                                                      |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             |  test:                                                         |\n\
+             |  {                                                             |\n\
+             |      id = 0x2                            // PDI ID             |\n\
+             |      image                                                     |\n\
+             |      {                                                         |\n\
+             |          name = pmc_ss,                                        |\n\
+             |          id = 0x1c000001                 // Image ID           |\n\
+             |          {                                                     |\n\
+             |              type = bootloader,                                |\n\
+             |              id = 0x1,                   // Partition ID       |\n\
+             |              file = plm.elf                                    |\n\
+             |          }                                                     |\n\
+             |          {                                                     |\n\
+             |              type = pmcdata,                                   |\n\
+             |              load = 0xf2000000,                                |\n\
+             |              file = pmc_cdo.bin                                |\n\
+             |          }                                                     |\n\
+             |      }                                                         |\n\
+             |      image                                                     |\n\
+             |      {                                                         |\n\
+             |          name = psm_ss,                                        |\n\
+             |          id = 0x1c000001                 // Image ID           |\n\
+             |          {                                                     |\n\
+             |              core = psm,                                       |\n\
+             |              id = 0x3,                   // Partition ID       |\n\
+             |              file = psm_fw.elf                                 |\n\
+             |          }                                                     |\n\
+             |      }                                                         |\n\
+             |      image                                                     |\n\
+             |      {                                                         |\n\
+             |          name = apu_ss,                                        |\n\
+             |          id = 0x1c000002                 // Image ID           |\n\
+             |          {                                                     |\n\
+             |              type = cdo,                                       |\n\
+             |              id = 0x4,                   // Partition ID       |\n\
+             |              file = apu_cdo.bin                                |\n\
+             |          }                                                     |\n\
+             |          {                                                     |\n\
+             |              core = a72-0,                                     |\n\
+             |              id = 0x5,                   // Partition ID       |\n\
+             |              file = a72_app.bin                                |\n\
+             |          }                                                     |\n\
+             |      }                                                         |\n\
+             |  }                                                             |\n\
+-------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
- destination_cpu
+image
 ******************************************************************************/
-#define H_BIF_DESTCPU_H "\
+#define H_BIF_IMAGE_H "\
 -------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | destination_cpu                                                |\n\
+ ATTRIBUTE   | image                                                          |\n\
 -------------+----------------------------------------------------------------+\n\
- DESCRIPTION | *** Only for ZynqMP Architecture ***                           |\n\
-             | Specifies which core will execute the partition                |\n\
+ SUPPORTED   | versal                                                         |\n\
 -------------+----------------------------------------------------------------+\n\
- USAGE       | [destination_cpu=<options>] <partition>                        |\n\
+ DESCRIPTION | This attribute is used to define a subsytem/image              |\n\
 -------------+----------------------------------------------------------------+\n\
- OPTIONS     | * a53-0                                                        |\n\
-             |   a53-1                                                        |\n\
-             |   a53-2                                                        |\n\
-             |   a53-3                                                        |\n\
-             |   r5-0                                                         |\n\
-             |   r5-1                                                         |\n\
-             |   r5-lockstep                                                  |\n\
-             |   pmu                                                          |\n\
+ USAGE       | image {  }                                                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             |  test:                                                         |\n\
+             |  {                                                             |\n\
+             |      id = 0x2                                                  |\n\
+             |      image                                                     |\n\
+             |      {                                                         |\n\
+             |          name = PMC_SS, id = 0x1c000000                        |\n\
+             |          { id = 0x1, type = bootloader, file = plm.elf }       |\n\
+             |          { id = 0x9, type = pmcdata, file = pmc_cdo.bin }      |\n\
+             |      }                                                         |\n\
+             |      image                                                     |\n\
+             |      {                                                         |\n\
+             |          name = PL_SS, id = 0x1c000004                         |\n\
+             |          { id = 0x3, type = cdo, file = system.rcdo }          |\n\
+             |          { id = 0x4, file = bitstream.rnpi }                   |\n\
+             |      }                                                         |\n\
+             |  }                                                             |\n\
+-------------+----------------------------------------------------------------|\n"
+
+/******************************************************************************
+ init
+******************************************************************************/
+#define H_BIF_INIT_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | init                                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, zynqmp, versal                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Register initialization block at the end of the bootloader,    |\n\
+             | built by parsing the .int file specification. Maximum of 256   |\n\
+             | address-value init pairs are allowed. The int files have       |\n\
+             | a specific format.                                             |\n\
+             |----------------------------------------------------------------|\n\
+             | Sample .int file - test.int                                    |\n\
+             |      .set. 0xF8000120 = 0x1F000200;                            |\n\
+             |      .set. 0xF8000720 = 0x00000202;                            |\n\
+             |      .set. 0xF800014C = 0x00000521;                            |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | ZYNQ/ZYNQMP:                                                   |\n\
+             | [init] <filename>                                              |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             | init = <filename>                                              |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------|\n\
+             | ZYNQ/ZYNQMP:                                                   |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    [init] test.int                                             |\n\
+             | }                                                              |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    init = reginit.int                                          |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = image1, id = 0x1c000001                            |\n\
+             |      { type=bootloader, file=plm.elf }                         |\n\
+             |      { type=pmcdata, file=pmc_cdo.bin }                        |\n\
+             |    }                                                           |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+load
+******************************************************************************/
+#define H_BIF_LOAD_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | load                                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, zynqmp, versal                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Sets the load address for the partition in memory.             |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | ZYNQ/ZYNQMP:                                                   |\n\
+             | [load = <value>] <partition>                                   |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             | { load = <value>, file = <partition> }                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------+\n\
+             | ZYNQ/ZYNQMP:                                                   |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |      [bootloader] fsbl.elf                                     |\n\
+             |      u-boot.elf                                                |\n\
+             |      [load=0x3000000, offset=0x500000] uImage.bin              |\n\
+             |      [load=0x2A00000, offset=0xa00000] devicetree.dtb          |\n\
+             |      [load=0x2000000, offset=0xc00000] uramdisk.image.gz       |\n\
+             | }                                                              |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = image1, id = 0x1c000001                            |\n\
+             |      { type=bootloader, file=plm.elf }                         |\n\
+             |      { type=pmcdata, load=0xf2000000, file=pmc_cdo.bin }       |\n\
+             |      { type=cdo, file=fpd_data.cdo }                           |\n\
+             |      { core=psm, file=psm.elf }                                |\n\
+             |      { core=a72-0, file=hello.elf }                            |\n\
+             |    }                                                           |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+name
+******************************************************************************/
+#define H_BIF_NAME_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | name                                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | versal                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Specifies the name of the image/subsystem                      |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | name = <name>                                                  |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             |  test:                                                         |\n\
+             |  {                                                             |\n\
+             |      id = 0x2                            // PDI ID             |\n\
+             |      image                                                     |\n\
+             |      {                                                         |\n\
+             |          name = pmc_ss,                  // Image name         |\n\
+             |          id = 0x1c000001                 // Image ID           |\n\
+             |          {                                                     |\n\
+             |              type = bootloader,                                |\n\
+             |              id = 0x1,                   // Partition ID       |\n\
+             |              file = plm.elf                                    |\n\
+             |          }                                                     |\n\
+             |          {                                                     |\n\
+             |              type = pmcdata,                                   |\n\
+             |              load = 0xf2000000,                                |\n\
+             |              file = pmc_cdo.bin                                |\n\
+             |          }                                                     |\n\
+             |      }                                                         |\n\
+             |  }                                                             |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+ owner
+******************************************************************************/
+#define H_BIF_POWNER_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTES  | partition_owner, owner                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, zynqmp, versal                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Owner of the partition which is responsible to load the        |\n\
+             | partition.                                                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | ZYNQ/ZYNQMP:                                                   |\n\
+             | [partition_owner = <options>] <filename>                       |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             | { owner = <options>, file=<filename> }                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ OPTIONS     | ZYNQ/ZYNQMP:                                                   |\n\
+             | *fsbl    : FSBL loads this partition                           |\n\
+             |  uboot   : UBOOT loads this partition                          |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             | *plm     : PLM loads this partition                            |\n\
+             |  non-plm : PLM ignores this partition, someone else loads      |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------|\n\
+             | ZYNQ/ZYNQMP:                                                   |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |     [bootloader] fsbl.elf                                      |\n\
+             |     uboot.elf                                                  |\n\
+             |     [partition_owner=uboot] hello.elf                          |\n\
+             | }                                                              |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |     image                                                      |\n\
+             |     {                                                          |\n\
+             |         name = pmc_subsys, id = 0x1c000001                     |\n\
+             |         {                                                      |\n\
+             |              id = 0x00010000,                                  |\n\
+             |              type = bootloader,                                |\n\
+             |              file = /path/to/plm.elf                           |\n\
+             |         }                                                      |\n\
+             |     }                                                          |\n\
+             |     image                                                      |\n\
+             |     {                                                          |\n\
+             |         name = apu_subsys,  id = 0x1c000003                    |\n\
+             |         {                                                      |\n\
+             |              id = 0x00000000,                                  |\n\
+             |              core = a72-0,                                     |\n\
+             |              owner = non-plm,                                  |\n\
+             |              file = /path/to/image.ub                          |\n\
+             |         }                                                      |\n\
+             |     }                                                          |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+offset
+******************************************************************************/
+#define H_BIF_OFFSET_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | offset                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, zynqmp, versal                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Sets the absolute offset of the partition in the boot image.   |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | ZYNQ/ZYNQMP:                                                   |\n\
+             | [offset = <value>] <filename>                                  |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             | { offset = <value>, file=<filename> }                          |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             | ZYNQ/ZYNQMP:                                                   |\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |      [bootloader] fsbl.elf                                     |\n\
+             |      u-boot.elf                                                |\n\
+             |      [load=0x3000000, offset=0x500000] uImage.bin              |\n\
+             |      [load=0x2A00000, offset=0xa00000] devicetree.dtb          |\n\
+             |      [load=0x2000000, offset=0xc00000] uramdisk.image.gz       |\n\
+             | }                                                              |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = image1, id = 0x1c000001                            |\n\
+             |      { type=bootloader, file=plm.elf }                         |\n\
+             |      { type=pmcdata, file=pmc_cdo.bin }                        |\n\
+             |      { type=cdo, file=fpd_data.cdo }                           |\n\
+             |      { core=psm, file=psm.elf }                                |\n\
+             |      { offset=0x8000, file=data.bin }                          |\n\
+             |    }                                                           |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+parent_id
+******************************************************************************/
+#define H_BIF_PARENTID_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | parent_id                                                      |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | versal                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Specifies the ID for the parent PDI. This is used to identify  |\n\
+             | the relationship between a partial PDI and its corresponding   |\n\
+             | Boot PDI                                                       |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | parent_id = <id>                                               |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             |  test:                                                         |\n\
+             |  {                                                             |\n\
+             |      parent_id = 0x2                                           |\n\
+             |      image                                                     |\n\
+             |      {                                                         |\n\
+             |          name = psm_ss, id = 0x1c000001                        |\n\
+             |          { core = psm, file = psm_fw.elf }                     |\n\
+             |      }                                                         |\n\
+             |      image                                                     |\n\
+             |      {                                                         |\n\
+             |          name = apu_ss, id = 0x1c000002                        |\n\
+             |          { type = cdo, file = ps_cdo.bin }                     |\n\
+             |          { core = a72-0, file = a72_app.elf }                  |\n\
+             |      }                                                         |\n\
+             |  }                                                             |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+partition
+******************************************************************************/
+#define H_BIF_PARTITION_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | partition                                                      |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | versal                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This attribute is used to define a partition                   |\n\
+             | It is an optional attribute to make the BIF more readable      |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | partition {  }                                                 |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             |  test:                                                         |\n\
+             |  {                                                             |\n\
+             |      id = 0x2                                                  |\n\
+             |      image                                                     |\n\
+             |      {                                                         |\n\
+             |          name = WDI_FLAT, id = 0x1c000000                      |\n\
+             |          partition                                             |\n\
+             |          {                                                     |\n\
+             |              id = 0x1                                          |\n\
+             |              type = bootloader                                 |\n\
+             |              file = plm.elf                                    |\n\
+             |          }                                                     |\n\
+             |          partition                                             |\n\
+             |          {                                                     |\n\
+             |              id = 0x9                                          |\n\
+             |              type = pmcdata,                                   |\n\
+             |              file = pmc_cdo.bin                                |\n\
+             |          }                                                     |\n\
+             |          partition                                             |\n\
+             |          {                                                     |\n\
+             |              id = 0x3                                          |\n\
+             |              type = cdo                                        |\n\
+             |              file = system.rcdo                                |\n\
+             |          }                                                     |\n\
+             |          partition                                             |\n\
+             |          {                                                     |\n\
+             |              id = 0x4                                          |\n\
+             |              file = system.rnpi                                |\n\
+             |          }                                                     |\n\
+             |      }                                                         |\n\
+             |  }                                                             |\n\
+             |                                                                |\n\
+             | The same BIF can be written in shorter format as:              |\n\
+             |  test:                                                         |\n\
+             |  {                                                             |\n\
+             |      id = 0x2                                                  |\n\
+             |      image                                                     |\n\
+             |      {                                                         |\n\
+             |          name = WDI_FLAT, id = 0x1c000000                      |\n\
+             |          { id = 0x1, type = bootloader, file = plm.elf }       |\n\
+             |          { id = 0x9, type = pmcdata, file = pmc_cdo.bin }      |\n\
+             |          { id = 0x3, type = cdo, file = system.rcdo }          |\n\
+             |          { id = 0x4, file = system.rnpi }                      |\n\
+             |      }                                                         |\n\
+             |  }                                                             |\n\
+             |                                                                |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+pid
+******************************************************************************/
+#define H_BIF_PID_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | pid                                                            |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynqmp                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This is used to specify an id to which the partition is        |\n\
+             | associated with.                                               |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | [pid = <id>] <partition>                                       |\n\
+             | <id> is an integer value, representing the partition number.   |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | Sample BIF - test.bif                                          |\n\
              | all:                                                           |\n\
              | {                                                              |\n\
-             |     [bootloader, destination_cpu=a53-0] fsbl.elf               |\n\
-             |     [destination_cpu=r5-0] app.elf                             |\n\
+             |      [keysrc_encryption] bbram_red_key                         |\n\
+             |      [encryption=aes,aeskeyfile=test.nky,pid=1] hello.elf      |\n\
              | }                                                              |\n\
              |----------------------------------------------------------------|\n\
-             | This specifies that FSBL will be excuted on A53-0 core and     |\n\
-             | application on R5-0 core.                                      |\n\
-             |----------------------------------------------------------------|\n\
-             | Note: FSBL can run either on A53-0 or R5-0 only.               |\n\
+             | While creating an image bootgen by default assigns an id to    |\n\
+             | every partition, which is in line with the order of partitions |\n\
+             | given in the bif.                                              |\n\
+             | To assign a different id to any partition, pid can be used.    |\n\
+             | During encryption, the IV is incremented by this value to avoid|\n\
+             | security vulneribilities.                                      |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+pmufw_image
+******************************************************************************/
+#define H_BIF_PFW_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | pmufw_image                                                    |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynqmp                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | PMU Firmware image to be loaded by BootROM, before loading the |\n\
+             | FSBL.                                                          |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | [pmufw_image] <PMU elf file>                                   |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |     [pmufw_image] pfw.elf                                      |\n\
+             |     [bootloader, destination_cpu=a53-0] fsbl.elf               |\n\
+             |     [destination_cpu=r5-1] app.elf                             |\n\
+             | }                                                              |\n\
              |----------------------------------------------------------------|\n\
              | Note:                                                          |\n\
-             | * PMU loaded by FSBL: [destination_cpu=pmu] pmu.elf            |\n\
-             | In this flow, BootROM loads FSBL first, and then FSBL loads the|\n\
-             | PMU fw.                                                        |\n\
-             | * PMU loaded by BootROM: [pmufw_image] pmu.elf                 |\n\
+             |----------------------------------------------------------------|\n\
+             | PMU loaded by BootROM: [pmufw_image] pmu.elf                   |\n\
              | In this flow, BootROM loads PMU first and then the FSBL        |\n\
              | So PMU does the power management tasks, before the FSBL comes  |\n\
              | up.                                                            |\n\
--------------+----------------------------------------------------------------+\n"    
+             |----------------------------------------------------------------|\n\
+             | PMU loaded by FSBL: [destination_cpu=pmu] pmu.elf              |\n\
+             | In this flow, BootROM loads FSBL first, and then FSBL loads the|\n\
+             | PMU fw.                                                        |\n\
+-------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
- destination_device
+reserve
 ******************************************************************************/
-#define H_BIF_DESTDEV_H "\
+#define H_BIF_RES_H "\
 -------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | destination_device                                             |\n\
+ ATTRIBUTE   | reserve                                                        |\n\
 -------------+----------------------------------------------------------------+\n\
- DESCRIPTION | *** Only for ZynqMP Architecture ***                           |\n\
-             | Specifies the destination of the partition                     |\n\
+ SUPPORTED   | zynq, zynqmp, versal                                           |\n\
 -------------+----------------------------------------------------------------+\n\
- USAGE       | [destination_device=<options>] <partition>                     |\n\
+ DESCRIPTION | Reserves the memory and padded after the partition.            |\n\
 -------------+----------------------------------------------------------------+\n\
- OPTIONS     | * ps   : The partition is targetted for PS (default)           |\n\
-             |   pl   : The partition is targetted for PL, for bitstreams     |\n\
+ USAGE       | ZYNQ/ZYNQMP:                                                   |\n\
+             | [reserve = <value>] <filename>                                 |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             | { reserve = <value>, file=<filename> }                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             | ZYNQ/ZYNQMP:                                                   |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |      [bootloader] fsbl.elf                                     |\n\
+             |      [reserve=0x1000] test.bin                                 |\n\
+             | }                                                              |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = image1, id = 0x1c000001                            |\n\
+             |      { type=bootloader, file=plm.elf }                         |\n\
+             |      { type=pmcdata, file=pmc_cdo.bin }                        |\n\
+             |      { type=cdo, file=fpd_data.cdo }                           |\n\
+             |      { core=psm, file=psm.elf }                                |\n\
+             |      { reserve=0x1000, file=data.bin }                         |\n\
+             |    }                                                           |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+slr
+******************************************************************************/
+#define H_BIF_SLR_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | slr                                                            |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | versal                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This attribute is used to specify the SLR identity to partition|\n\
+             | It is valid for SSIT devices                                   |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | { slr = <index> }                                              |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             |  master_pdi:                                                   |\n\
+             |  {                                                             |\n\
+             |    id=2                                                        |\n\
+             |    /* PMC Subsystem for Master SLR */                          |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |        name=pmc_subsys, id=0x1c000001                          |\n\
+             |        { id=0x1, type=bootloader, file=plm.elf }               |\n\
+             |        { type=pmcdata, load=0xf2000000, file=pmc_cdo.cdo }     |\n\
+             |    }                                                           |\n\
+             |    /* Slave SLR Boot PDIs */                                   |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |        name=slr_boot_subsys, id=0x1c000000, type=slr-boot      |\n\
+             |        { file=slr_boot.cdo }                                   |\n\
+             |    }                                                           |\n\
+             |    /* Other images/partitions of Master SLR */                 |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |        name=psm_subsys, id=0x1c000002                          |\n\
+             |        { id=0x2, core=psm, file=psm.elf }                      |\n\
+             |    }                                                           |\n\
+             |    /* Slave SLR Config PDIs */                                 |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |        name=slr_config_subsys, id=0x1c000000, type=slr-config  |\n\
+             |        /* Slave SLR config PDIs */                             |\n\
+             |        { slr=1, file=slr1_config.pdi }                         |\n\
+             |        { slr=2, file=slr2_config.pdi }                         |\n\
+             |        { slr=3, file=slr3_config.pdi }                         |\n\
+             |        /* Master SLR PL config partition */                    |\n\
+             |        { slr=0, file=/path/to/system.cdo }                     |\n\
+             |    }                                                           |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+split
+******************************************************************************/
+#define H_BIF_SPLIT_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | split                                                          |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, zynqmp                                                   |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Splits the image into parts based on mode.                     |\n\
+             | Slaveboot mode splits as below.                                |\n\
+             |        1. Boot Header + Bootloader                             |\n\
+             |        2. Image and Partition Headers                          |\n\
+             |        3. Rest of the partitions.                              |\n\
+             | Normal mode splits as below.                                   |\n\
+             |        1. Bootheader + Image Headers +                         |\n\
+             |            Partition Headers + Bootloader                      |\n\
+             |        2. Partiton1                                            |\n\
+             |        3. Partition2 ...                                       |\n\
+             | Slaveboot is supported only for ZynqMP, normal is suppoted     |\n\
+             | for both Zynq and ZynqMP.                                      |\n\
+             | Along with the split mode, output format can also be           |\n\
+             | specified as bin or mcs.                                       |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | [split] mode = <options>                                       |\n\
+-------------+----------------------------------------------------------------+\n\
+ OPTIONS     | slaveboot                                                      |\n\
+             | normal                                                         |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | Sample BIF - test.bif                                          |\n\
              | all:                                                           |\n\
              | {                                                              |\n\
+             |     [split] mode=slaveboot, fmt=bin                            |\n\
              |     [bootloader, destination_cpu=a53-0] fsbl.elf               |\n\
              |     [destination_device=pl] system.bit                         |\n\
              |     [destination_cpu=r5-1] app.elf                             |\n\
              | }                                                              |\n\
+             |----------------------------------------------------------------|\n\
+             | Note: The option split mode normal is same as the command line |\n\
+             | option split. This command line option will be deprecated soon.|\n\
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
- exception_level
+startup
 ******************************************************************************/
-#define H_BIF_EL_H "\
+#define H_BIF_STARTUP_H "\
 -------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | exception_level                                                |\n\
+ ATTRIBUTE   | startup                                                        |\n\
 -------------+----------------------------------------------------------------+\n\
- DESCRIPTION | *** Only for ZynqMP Architecture ***                           |\n\
-             | Exception level for which the core should be configured        |\n\
+ SUPPORTED   | zynq, zynqmp, versal                                           |\n\
 -------------+----------------------------------------------------------------+\n\
- USAGE       | [exception_level=<options>] <partition>                        |\n\
+ DESCRIPTION | Sets the entry address for the partition, after it is loaded.  |\n\
+             | This is ignored for partitions that do not execute.            |\n\
 -------------+----------------------------------------------------------------+\n\
- OPTIONS     | el-0                                                           |\n\
-             | el-1                                                           |\n\
-             | el-2                                                           |\n\
-             | el-3                                                           |\n\
+ USAGE       | ZYNQ/ZYNQMP:                                                   |\n\
+             | [startup = <value>] <filename>                                 |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             | { startup = <value>, file = <filename> }                       |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------+\n\
+             | ZYNQ/ZYNQMP:                                                   |\n\
+             +----------------------------------------------------------------|\n\
              | all:                                                           |\n\
              | {                                                              |\n\
-             |     [bootloader, destination_cpu=a53-0] fsbl.elf               |\n\
-             |     [destination_cpu=a53-0, exception_level=el-3] bl31.elf     |\n\
-             |     [destination_cpu=a53-0, exception_level=el-2] u-boot.elf   |\n\
+             |      [bootloader] fsbl.elf                                     |\n\
+             |      [startup=0x1000000] app.bin                               |\n\
+             | }                                                              |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = image1, id = 0x1c000001                            |\n\
+             |      { type=bootloader, file=plm.elf }                         |\n\
+             |      { type=pmcdata, file=pmc_cdo.bin }                        |\n\
+             |      { type=cdo, file=fpd_data.cdo }                           |\n\
+             |      { core=psm, file=psm.elf }                                |\n\
+             |      { core=a72-0, load=0x1000,startup=0x1000, file=hello.bin }|\n\
+             |    }                                                           |\n\
              | }                                                              |\n\
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
- trustzone
+trustzone
 ******************************************************************************/
 #define H_BIF_TZ_H "\
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | trustzone                                                      |\n\
 -------------+----------------------------------------------------------------+\n\
- DESCRIPTION | *** Only for ZynqMP Architecture ***                           |\n\
-             | Configures the core to be Trustzone secure or nonsecure        |\n\
+ SUPPORTED   | zynqmp, versal                                                 |\n\
 -------------+----------------------------------------------------------------+\n\
- USAGE       | [trustzone = <options> ] <partition>                           |\n\
+ DESCRIPTION | Configures the core to be Trustzone secure or nonsecure        |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | ZYNQ/ZYNQMP:                                                   |\n\
+             | [trustzone = <options> ] <filename>                            |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             | { trustzone = <options>, file = <filename> }                   |\n\
 -------------+----------------------------------------------------------------+\n\
  OPTIONS     |  secure                                                        |\n\
              |  nonsecure                                                     |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------+\n\
+             | ZYNQ/ZYNQMP:                                                   |\n\
+             +----------------------------------------------------------------|\n\
              | all:                                                           |\n\
              | {                                                              |\n\
              |     [bootloader, destination_cpu=a53-0] fsbl.elf               |\n\
              |     [exception_level=el-3, trustzone = secure] bl31.elf        |\n\
              | }                                                              |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = image1, id = 0x1c000001                            |\n\
+             |      { type=bootloader, file=plm.elf }                         |\n\
+             |      { type=pmcdata, file=pmc_cdo.bin }                        |\n\
+             |      { type=cdo, file=fpd_data.cdo }                           |\n\
+             |      { core=psm, file=psm.elf }                                |\n\
+             |      { core=a72-0, file=uboot.elf }                            |\n\
+             |      { core=a72-0, exception_level=el-3, trustzone=secure,     |\n\
+             |        file=bl31.elf }                                         |\n\
+             |    }                                                           |\n\
+             | }                                                              |\n\
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
- auth_params
+type
+******************************************************************************/
+#define H_BIF_TYPE_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | type                                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | versal                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Specifies the type of partition                                |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | { type = <options>, file = <partition> }                       |\n\
+-------------+----------------------------------------------------------------+\n\
+ OPTIONS     | bootloader                                                     |\n\
+             | pmcdata                                                        |\n\
+             | cdo                                                            |\n\
+             | cfi                                                            |\n\
+             | cfi-gsc                                                        |\n\
+             | bootimage                                                      |\n\
+             | slr-boot                                                       |\n\
+             | slr-config                                                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |      image                                                     |\n\
+             |      {                                                         |\n\
+             |          name = pmc_subsys, id = 0x1c000001                    |\n\
+             |          {                                                     |\n\
+             |               type = bootloader,                               |\n\
+             |               file = plm.elf                                   |\n\
+             |          }                                                     |\n\
+             |          {                                                     |\n\
+             |               type = pmcdata,                                  |\n\
+             |               load = 0xf2000000,                               |\n\
+             |               file = pmc_data.cdo                              |\n\
+             |          }                                                     |\n\
+             |      }                                                         |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+udf_bh
+******************************************************************************/
+#define H_BIF_UDFBH_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | udf_bh                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, zynqmp                                                   |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Imports a file of data to be copied to the User Defined Field  |\n\
+             | of the Boot Header. The input user defined data is provided    |\n\
+             | through a text file in the form of a hex string.               |\n\
+             | Total no. of bytes in UDF in Xilinx SoCs:                      |\n\
+             |    Zynq   : 76 bytes                                           |\n\
+             |    ZynqMP : 40 bytes                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | [udf_bh] <filename>                                            |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    [udf_bh] test.txt                                           |\n\
+             |    [bootloader] fsbl.elf                                       |\n\
+             |    hello.elf                                                   |\n\
+             | }                                                              |\n\
+             |----------------------------------------------------------------|\n\
+             | Sample input file for udf_bh - test.txt                        |\n\
+             | 123456789abcdef85072696e636530300301440408706d616c6c6164000508 |\n\
+             | 266431530102030405060708090a0b0c0d0e0f101112131415161718191a1b |\n\
+             | 1c1d1                                                          |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+xip_mode
+******************************************************************************/
+#define H_BIF_XIP_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | xip_mode                                                       |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, zynqmp                                                   |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Indicates 'eXecute In Place' for FSBL to be executed directly  |\n\
+             | from QSPI flash.                                               |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | [xip_mode] <partition>                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |     [bootloader, xip_mode] fsbl.elf                            |\n\
+             |     application.elf                                            |\n\
+             | }                                                              |\n\
+             |----------------------------------------------------------------|\n\
+             | Note: This attribute is only applicable for FSBL partition.    |\n\
+-------------+----------------------------------------------------------------+\n"
+/******************************************************************************
+ aeskeyfile
+******************************************************************************/
+#define H_BIF_AES_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | aeskeyfile                                                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, zynqmp                                                   |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | The path to the AES keyfile. The keyfile contains AES key used |\n\
+             | to encrypt the partitions. The contents of the key file needs  |\n\
+             | to be written to key source                                    |\n\
+             | If the key file is not present in the path specified, a new key|\n\
+             | is generated by bootgen, which is used for encryption.         |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | ZYNQ/FPGA:                                                     |\n\
+             | [aeskeyfile] <key filename>                                    |\n\
+             +----------------------------------------------------------------+\n\
+             | ZYNQMP:                                                        |\n\
+             | [aeskeyfile = <keyfile name>] <partition>                      |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------+\n\
+             | ZYNQ:                                                          |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |      [keysrc_encryption] bbram_red_key                         |\n\
+             |      [aeskeyfile] test.nky                                     |\n\
+             |      [bootloader, encryption=aes] fsbl.elf                     |\n\
+             |      [encryption=aes] hello.elf                                |\n\
+             | }                                                              |\n\
+             | The partitions fsbl.elf & hello.elf are encrypted using        |\n\
+             | test.nky key file.                                             |\n\
+             +----------------------------------------------------------------+\n\
+             | ZYNQMP:                                                        |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |      [keysrc_encryption] bbram_red_key                         |\n\
+             |      [bootloader,encryption=aes,aeskeyfile=test.nky] fsbl.elf  |\n\
+             |      [encryption=aes,aeskeyfile=test1.nky] hello.elf           |\n\
+             |      [encryption=aes,aeskeyfile=test2.nky] app.elf             |\n\
+             | }                                                              |\n\
+             | * Each partition being encrypted needs its own aeskeyfile.     |\n\
+             | * Key0, IV0 and Key Opt should be the same accross all nky     |\n\
+             | files that will be used.                                       |\n\
+             +----------------------------------------------------------------+\n\
+-------------+----------------------------------------------------------------+"
+
+/******************************************************************************
+bh_keyfile
+******************************************************************************/
+#define H_BIF_BHKEY_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | bh_keyfile                                                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynqmp                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | 256-bit obfuscated key to be stored in boot header             |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | ZYNQMP:                                                        |\n\
+             | [bh_keyfile] <key file path>                                   |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------+\n\
+             | ZYNQMP:                                                        |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    [keysrc_encryption] bh_gry_key                              |\n\
+             |    [bh_keyfile] obfuscated_key.txt                             |\n\
+             |    [bh_key_iv] obfuscated_iv.txt                               |\n\
+             |    [bootloader, encryption=aes, aeskeyfile = encr.nky,         |\n\
+             |                          destination_cpu=a53-0]fsbl.elf        |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+bh_key_iv
+******************************************************************************/
+#define H_BIF_BHIV_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | bh_key_iv                                                      |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynqmp                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Initialization vector used when decrypting the obfuscated key  |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | [bh_key_iv] <iv file path>                                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    [keysrc_encryption] bh_gry_key                              |\n\
+             |    [bh_keyfile] obfuscated_key.txt                             |\n\
+             |    [bh_key_iv] obfuscated_iv.txt                               |\n\
+             |    [bootloader, encryption=aes, aeskeyfile=encr.nky,           |\n\
+             |                             destination_cpu=a53-0]fsbl.elf     |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+encryption
+******************************************************************************/
+#define H_BIF_ENCR_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | encryption                                                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This specifies the partition needs to be encrypted.            |\n\
+             | Encryption Algorithms                                          |\n\
+             |  Zynq            : AES-CBC                                     |\n\
+             |  ZynqMP          : AES-GCM                                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | ZYNQ/ZYNQMP/FPGA:                                              |\n\
+             | [encryption = <options>] <partition>                           |\n\
+             +----------------------------------------------------------------+\n\
+-------------+----------------------------------------------------------------+\n\
+ OPTIONS     | *none : Partition not encrypted                                |\n\
+             |  aes  : Partition encrypted using AES algorithm                |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------+\n\
+             | ZYNQ/ZYNQMP:                                                   |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |      [aeskeyfile] test.nky                                     |\n\
+             |      [bootloader, encryption=aes] fsbl.elf                     |\n\
+             |      [encryption=aes] hello.elf                                |\n\
+             | }                                                              |\n\
+             +----------------------------------------------------------------+\n\
+-------------+----------------------------------------------------------------+"
+
+/******************************************************************************
+familykey
+******************************************************************************/
+#define H_BIF_METAL_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | familykey                                                      |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | fpga, zynqmp                                                   |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Specify Family Key                                             |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | [familykey] <key file path>                                    |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    [aeskeyfile] encr.nky                                       |\n\
+             |    [bh_key_iv] bh_iv.txt                                       |\n\
+             |    [familykey] familykey.txt                                   |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+keysrc_encryption
+******************************************************************************/
+#define H_BIF_KEYSRCENCR_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | keysrc_encryption                                              |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, zynqmp                                                   |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Key source for encryption                                      |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | [keysrc_encrption] <options>                                   |\n\
+-------------+----------------------------------------------------------------+\n\
+ OPTIONS     | efuse_red_key  : Red Key stored in efuse                       |\n\
+             | bbram_red_key  : Red Key stored in bbram                       |\n\
+             | efuse_gry_key  : Grey (Obfuscated) Key stored in efuse         |\n\
+             | bh_gry_key     : Grey (Obfuscated) Key stored in boot header   |\n\
+             | bh_blk_key     : Black Key stored in boot header               |\n\
+             | efuse_blk_key  : Black Key stored in efuse                     |\n\
+             | kup_key        : User Key                                      |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    [keysrc_encryption] bbram_red_key                           |\n\
+             |    [bootloader, encryption=aes, aeskeyfile=encr.nky            |\n\
+             |                         destination_cpu=a53-0]fsbl.elf         |\n\
+             | }                                                              |\n\
+             |----------------------------------------------------------------|\n\
+             | FSBL is encrypted using the key encr.nky, which is stored in   |\n\
+             | bbram in the device for decryption purpose.                    |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+puf_file
+******************************************************************************/
+#define H_BIF_PUFDATA_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | puf_file                                                       |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynqmp                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | PUF helper data file.                                          |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | ZYNQMP:                                                        |\n\
+             | [puf_file] <puf data file>                                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------+\n\
+             | ZYNQMP:                                                        |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    [fsbl_config] pufhd_bh                                      |\n\
+             |    [puf_file] pufhelperdata.txt                                |\n\
+             |    [bh_keyfile] black_key.txt                                  |\n\
+             |    [bh_key_iv] bhkeyiv.txt                                     |\n\
+             |    [bootloader,destination_cpu=a53-0,encryption=aes]fsbl.elf   |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+authentication
+******************************************************************************/
+#define H_BIF_AUTH_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | authentication                                                 |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This specifies the partition needs to be authenticated.        |\n\
+             | Authentication Algorithms:                                     |\n\
+             |     Zynq & FPGA  : RSA-2048                                    |\n\
+             |     ZynqMP       : RSA-4096                                    |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | ZYNQ/ZYNQMP/FPGA:                                              |\n\
+             | [authenication = <options>] <partition>                        |\n\
+-------------+----------------------------------------------------------------+\n\
+ OPTIONS     | *none : Partition not authenticated                            |\n\
+             |  rsa  : Partition authenticated using RSA algorithm            |\n\
+             |  ecdsa: Partition authenticated using ECDSA algorithm (Versal) |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------+\n\
+             | ZYNQMP:                                                        |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |     [ppkfile] ppk.txt                                          |\n\
+             |     [spkfile] spk.txt                                          |\n\
+             |     [bootloader, authentication=rsa] fsbl.elf                  |\n\
+             |     [authentication=rsa] hello.elf                             |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+auth_params
 ******************************************************************************/
 #define H_BIF_AUTHPARAM_H "\
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | auth_params                                                    |\n\
 -------------+----------------------------------------------------------------+\n\
- DESCRIPTION | *** Only for ZynqMP Architecture ***                           |\n\
-             | Extra options for authentication                               |\n\
+ SUPPORTED   | zynqmp                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Extra options for authentication                               |\n\
              | ppk_select   - 2 PPKs supported.                               |\n\
              | spk_select   - To differentiate spk and user efuses.           |\n\
              |                Default will be spk-efuse.                      |\n\
@@ -1566,221 +2750,15 @@
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
- bh_keyfile
-******************************************************************************/
-#define H_BIF_BHKEY_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | bh_keyfile                                                     |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | *** Only for ZynqMP Architecture ***                           |\n\
-             | 256-bit obfuscated key to be stored in boot header             |\n\
-             | This is only valid, when [keysrc_encryption] bh_gry_key        |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [bh_keyfile] <key file path>                                   |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |    [keysrc_encryption] bh_gry_key                              |\n\
-             |    [bh_keyfile] obfuscated_key.txt                             |\n\
-             |    [bh_key_iv] obfuscated_iv.txt                               |\n\
-             |    [bootloader, encryption=aes, aeskeyfile = encr.nky,         |\n\
-             |                          destination_cpu=a53-0]fsbl.elf        |\n\
-             | }                                                              |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- bh_key_iv
-******************************************************************************/
-#define H_BIF_BHIV_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | bh_key_iv                                                      |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | *** Only for ZynqMP Architecture ***                           |\n\
-             | Initialization vector used when decrypting the obfuscated key  |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [bh_key_iv] <iv file path>                                     |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |    [keysrc_encryption] bh_gry_key                              |\n\
-             |    [bh_keyfile] obfuscated_key.txt                             |\n\
-             |    [bh_key_iv] obfuscated_iv.txt                               |\n\
-             |    [bootloader, encryption=aes, aeskeyfile=encr.nky,           |\n\
-             |                             destination_cpu=a53-0]fsbl.elf     |\n\
-             | }                                                              |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- familykey
-******************************************************************************/
-#define H_BIF_METAL_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | familykey                                                      |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | *** Only for ZynqMP Architecture ***                           |\n\
-             | Specify Family Key                                             |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [familykey] <key file path>                                    |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |    [aeskeyfile] encr.nky                                       |\n\
-             |    [bh_key_iv] bh_iv.txt                                       |\n\
-             |    [familykey] familykey.txt                                   |\n\
-             | }                                                              |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- pmufw_image
-******************************************************************************/
-#define H_BIF_PFW_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | pmufw_image                                                    |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | *** Only for ZynqMP Architecture ***                           |\n\
-             | PMU Firmware image to be loaded by BootROM, before loading the |\n\
-             | FSBL.                                                          |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [pmufw_image] <PMU elf file>                                   |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |     [pmufw_image] pfw.elf                                      |\n\
-             |     [bootloader, destination_cpu=a53-0] fsbl.elf               |\n\
-             |     [destination_cpu=r5-1] app.elf                             |\n\
-             | }                                                              |\n\
-             |----------------------------------------------------------------|\n\
-             | Note:                                                          |\n\
-             |----------------------------------------------------------------|\n\
-             | PMU loaded by BootROM: [pmufw_image] pmu.elf                   |\n\
-             | In this flow, BootROM loads PMU first and then the FSBL        |\n\
-             | So PMU does the power management tasks, before the FSBL comes  |\n\
-             | up.                                                            |\n\
-             |----------------------------------------------------------------|\n\
-             | PMU loaded by FSBL: [destination_cpu=pmu] pmu.elf              |\n\
-             | In this flow, BootROM loads FSBL first, and then FSBL loads the|\n\
-             | PMU fw.                                                        |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- blocks
-******************************************************************************/
-#define H_BIF_BLOCKS_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | blocks                                                         |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | *** Only for ZynqMP Architecture ***                           |\n\
-             | Specify block sizes for key-rolling feature in encrytion.      |\n\
-             | Each module is encrypted using its own unique key. The initial |\n\
-             | key is stored at the key source on the device, while keys for  |\n\
-             | each successive module are encrypted (wrapped) in the previous |\n\
-             | module.                                                        |\n\
-             | <size> mentioned will be taken in Bytes. If X(*) is specified, |\n\
-             | then all the remaining blocks would of the size 'X'.           |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [blocks = <size><num>;<size><num>;...;<size><*>] <partition>   |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |    [keysrc_encryption] bbram_red_key                           |\n\
-             |    [bootloader, encryption=aes, destination_cpu=a53-0,         |\n\
-             |                 blocks=4096(2);1024;2048(2);4096(*),           |\n\
-             |                        aeskeyfile=encr.nky] fsbl.elf           |\n\
-             | }                                                              |\n\
-             | In the above example, the first two blocks are of 4096 bytes,  |\n\
-             | second block is of 1024 bytes, the next two blocks are of      |\n\
-             | 2048 bytes, the rest of the blocks are of 4096 bytes.          |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- early_handoff
-******************************************************************************/
-#define H_BIF_ELYHNDOFF_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | early_handoff                                                  |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | This flag will ensure, the handoff to applications which are   |\n\
-             | critical, immediatley after partition is loaded. Otherwise all |\n\
-             | the partitions are loaded sequentially and handoff also happens|\n\
-             | in sequenctial fashion                                         |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [early_handoff] <partition>                                    |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |     [bootloader, destination_cpu=a53_0] fsbl.elf               |\n\
-             |     [destination_cpu=r5-0] app1.elf                            |\n\
-             |     [destination_cpu=r5-1, early_handoff] app2.elf             |\n\
-             | }                                                              |\n\
-             |----------------------------------------------------------------|\n\
-             | Note: In the above scenario, the FSBL loads app1, then app2    |\n\
-             | and immediately handsoff the control to app2 before app1.      |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- authblocks
-******************************************************************************/
-#define H_BIF_AUTHBLOCKS_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | authblocks                                                     |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | *** Only for ZynqMP Architecture Bit Stream ***                |\n\
-             | Specify block size for bit stream in authentication.           |\n\
-             | The bitstream is authenticated in chunks of given size,default |\n\
-             | will be 8MB. For any other partion, this is invalid.           |\n\
-             | Supported sizes are 4,8,16,32,64. [All values are taken in MB] |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [authblocks = <size>] <partition>                              |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |     [ppkfile] ppk.txt                                          |\n\
-             |     [spkfile] spk.txt                                          |\n\
-             |     [bootloader, authentication=rsa] fsbl.elf                  |\n\
-             |     [authentication=rsa, authblocks=4] bs.bit                  |\n\
-             | }                                                              |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- hivec
-******************************************************************************/
-#define H_BIF_HIVEC_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | hivec                                                          |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | *** Only for ZynqMP Architecture ***                           |\n\
-             | To specify the location of Exception Vector Table as hivec.    |\n\
-             | Default is taken as lovec.                                     |\n\
-             | This is applicable with a53(32 bit) and r5 cores only.         |\n\
-             | hivec: exception vector table at 0xFFFF0000.                   |\n\
-             | lovec: exception vector table at 0x00000000.                   |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [hivec] <partition>                                            |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |     [bootloader, destination_cpu=a53_0] fsbl.elf               |\n\
-             |     [destination_cpu=r5-0,hivec] app1.elf                      |\n\
-             | }                                                              |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- bhsignature
+bhsignature
 ******************************************************************************/
 #define H_BIF_BHSIGN_H "\
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | bhsignature                                                    |\n\
 -------------+----------------------------------------------------------------+\n\
- DESCRIPTION | *** Only for ZynqMP Architecture ***                           |\n\
-             | Imports Boot Header signature into authentication certificate. |\n\
+ SUPPORTED   | zynqmp                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Imports Boot Header signature into authentication certificate. |\n\
              | This can be used incase the user does't want to share the      |\n\
              | secret key PSK.                                                |\n\
              | The user can create a signature and provide it to Bootgen.     |\n\
@@ -1799,142 +2777,169 @@
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
- bootvectors
+headersignature
 ******************************************************************************/
-#define H_BIF_BOOTVEC_H "\
+#define H_BIF_HDRSIGN_H "\
 -------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | [bootvectors]                                                  |\n\
+ ATTRIBUTE   | headersignature                                                |\n\
 -------------+----------------------------------------------------------------+\n\
- DESCRIPTION | Specifies the vector table for XIP                             |\n\
+ SUPPORTED   | zynqmp                                                         |\n\
 -------------+----------------------------------------------------------------+\n\
- USAGE       | [bootvectors] <values>                                         |\n\
+ DESCRIPTION | Imports Header signature into authentication certificate. This |\n\
+             | can be used incase the user does't want to share the secret key|\n\
+             | The user can create a signature and provide it to Bootgen.     |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | [headersignature] <signature-file>                             |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | Sample BIF - test.bif                                          |\n\
              | all:                                                           |\n\
              | {                                                              |\n\
-             |     [bootvectors] 0x14000000,0x14000000,0x14000000,0x14000000, |\n\
-             |             0x14000000,0x14000000,0x14000000,0x14000000        |\n\
-             |     [bootloader,destination_cpu=a53-0] fsbl.elf                |\n\
+             |     [ppkfile] ppk.txt                                          |\n\
+             |     [spkfile] spk.txt                                          |\n\
+             |     [headersignature] headers.sha256.sig                       |\n\
+             |     [spksignature] spk.txt.sha256.sig                          |\n\
+             |     [bootloader, authentication=rsa] fsbl.elf                  |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+ ppkfile, pskfile, spkfile, sskfile
+******************************************************************************/
+#define H_BIF_PPK_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | ppkfile, pskfile, spkfile, sskfile                             |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | These keys are used to authenticate partitions in the bootimage|\n\
+             | Xilinx SoCs use primary & secondary keys for authentication.   |\n\
+             | The primary keys authenticate the secondary keys and the       |\n\
+             | secondary keys authenticate the partitions.                    |\n\
+             |    PPK - Primary Public Key                                    |\n\
+             |    PSK - Primary Secret Key                                    |\n\
+             |    SPK - Secondary Public Key                                  |\n\
+             |    SSK - Secondary Secret Key                                  |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | ZYNQ/ZYNQMP:                                                   |\n\
+             | [ppkfile] <key filename>                                       |\n\
+             | [pskfile] <key filename>                                       |\n\
+             | [spkfile] <key filename>                                       |\n\
+             | [sskfile] <key filename>                                       |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF 1 - test.bif                                        |\n\
+             +----------------------------------------------------------------+\n\
+             | ZYNQ/ZYNQMP:                                                   |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |  [pskfile] primarykey.pem                                      |\n\
+             |  [sskfile] secondarykey.pem                                    |\n\
+             |  [bootloader, authentication=rsa] fsbl.elf                     |\n\
+             |  [authentication=rsa] hello.elf                                |\n\
              | }                                                              |\n\
              |----------------------------------------------------------------|\n\
-             | By default, bootgen populates XIP elf vector table below -     |\n\
-             |     - 0xEAFFFFFE: for Cortex R5 and Cortex A53 (32-bit)        |\n\
-             |     - 0x14000000: for Cortex A53 (64-bit)                      |\n\
-             | To specify a different vector table, bootvectors can be used.  |\n\
+             | Sample BIF 2 - test.bif                                        |\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |   [pskfile] primary.pem                                        |\n\
+             |   [sskfile] secondary0.pem                                     |\n\
+             |                                                                |\n\
+             |  /* FSBL (Partition-0) */                                      |\n\
+             |   [                                                            |\n\
+             |     bootloader, destination_cpu = a53-0, authentication = rsa, |\n\
+             |     sskfile = secondary1.pem                                   |\n\
+             |   ]fsbla53.elf                                                 |\n\
+             |                                                                |\n\
+             |  /* Partition-1 */                                             |\n\
+             |   [                                                            |\n\
+             |     destination_cpu = a53-0,                                   |\n\
+             |     authentication = rsa                                       |\n\
+             |   ] hello.elf                                                  |\n\
+             |  }                                                             |\n\
+             | For ZynqMP:                                                    |\n\
+             |  - PPK/PSK cannot be specific to partition.                    |\n\
+             |  - Each partition can have its own SPK/SSK.(Refer sample BIF 2)|\n\
+             |    The SPKs can be differentiated using the spk_id.            |\n\
+             |  - SPK/SSK outside the partition scope is mandatory for        |\n\
+             |    authentication. These keys will be used to authenticate     |\n\
+             |    headers and any other partition that does not have a        |\n\
+             |    specific SPK/SSK.                                           |\n\
 -------------+----------------------------------------------------------------+\n"
 
+
 /******************************************************************************
- split
+presign
 ******************************************************************************/
-#define H_BIF_SPLIT_H "\
+#define H_BIF_PRESIGN_H "\
 -------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | split                                                          |\n\
+ ATTRIBUTE   | presign                                                        |\n\
 -------------+----------------------------------------------------------------+\n\
- DESCRIPTION | Splits the image into parts based on mode.                     |\n\
-             | Slaveboot mode splits as below.                                |\n\
-             |        1. Boot Header + Bootloader                             |\n\
-             |        2. Image and Partition Headers                          |\n\
-             |        3. Rest of the partitions.                              |\n\
-             | Normal mode splits as below.                                   |\n\
-             |        1. Bootheader + Image Headers +                         |\n\
-             |            Partition Headers + Bootloader                      |\n\
-             |        2. Partiton1                                            |\n\
-             |        3. Partition2 ...                                       |\n\
-             | Slaveboot is supported only for ZynqMP, normal is suppoted     |\n\
-             | for both Zynq and ZynqMP.                                      |\n\
-             | Along with the split mode, output format can also be           |\n\
-             | specified as bin or mcs.                                       |\n\
+ SUPPORTED   | zynq, zynqmp                                                   |\n\
 -------------+----------------------------------------------------------------+\n\
- USAGE       | [split] mode = <options>                                       |\n\
+ DESCRIPTION | Imports partition signature into partition authenticate        |\n\
+             | certificate.                                                   |\n\
+             | This can be used incase the user does't want to share the      |\n\
+             | secret key(SSK). The user can create a signature and provide   |\n\
+             | it to Bootgen.                                                 |\n\
 -------------+----------------------------------------------------------------+\n\
- OPTIONS     | slaveboot                                                      |\n\
-             | normal                                                         |\n\
+ USAGE       | [presign = <signature-file>] <partition>                       |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | Sample BIF - test.bif                                          |\n\
              | all:                                                           |\n\
              | {                                                              |\n\
-             |     [split] mode=slaveboot, fmt=bin                            |\n\
-             |     [bootloader, destination_cpu=a53-0] fsbl.elf               |\n\
-             |     [destination_device=pl] system.bit                         |\n\
-             |     [destination_cpu=r5-1] app.elf                             |\n\
-             | }                                                              |\n\
-             |----------------------------------------------------------------|\n\
-             | Note: The option split mode normal is same as the command line |\n\
-             | option split. This command line option will be deprecated soon.|\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- puf_file
-******************************************************************************/
-#define H_BIF_PUFDATA_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | puf_file                                                       |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | *** Only for ZynqMP Architecture ***                           |\n\
-             | PUF helper data file.                                          |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [puf_file] <puf data file>                                     |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |    [fsbl_config] pufhd_bh                                      |\n\
-             |    [puf_file] pufhelperdata.txt                                |\n\
-             |    [bh_keyfile] black_key.txt                                  |\n\
-             |    [bh_key_iv] bhkeyiv.txt                                     |\n\
-             |    [bootloader,destination_cpu=a53-0,encryption=aes]fsbl.elf   |\n\
-             | }                                                              |\n\
-             |----------------------------------------------------------------|\n\
-             | PUF is used with black key as encryption key source.           |\n\
-             | PUF helper data is of 1544 bytes.                              |\n\
-             | 1536 bytes of PUF HD + 4 bytes of CHASH                        |\n\
-             |                        + 3 bytes of AUX + 1 byte alignment     |\n\
--------------+----------------------------------------------------------------+\n"
-
-/******************************************************************************
- big_endian
-******************************************************************************/
-#define H_BIF_BIG_ENDIAN_H "\
--------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | big_endian                                                     |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | *** Only for ZynqMP Architecture ***                           |\n\
-             | To specify the binary file is in big endian format.            |\n\
-             | Bootgen automatically detects the endianness of .elf files.    |\n\
-             | This is valid only for binary files.                           |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | [big_endian] <partition>                                       |\n\
--------------+----------------------------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |    [bootloader,destination_cpu=a53-0,encryption=aes]fsbl.elf   |\n\
-             |    [destination_cpu=a53-0, big_endian] hello.bin               |\n\
-             |    [destination_cpu=r5-0] hello_world.elf                      |\n\
+             |    [ppkfile] ppk.txt                                           |\n\
+             |    [spkfile] spk.txt                                           |\n\
+             |    [headersignature] headers.sha256.sig                        |\n\
+             |    [spksignature] spk.txt.sha256.sig                           |\n\
+             |    [bootloader, authentication=rsa, presign=fsbl.sig] fsbl.elf |\n\
              | }                                                              |\n\
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
- aarch32_mode
+ spksignature
 ******************************************************************************/
-#define H_BIF_AARCH32_MODE_H "\
+#define H_BIF_SPKSIGN_H "\
 -------------+----------------------------------------------------------------+\n\
- ATTRIBUTE   | aarch32_mode                                                   |\n\
+ ATTRIBUTE   | spksignature                                                   |\n\
 -------------+----------------------------------------------------------------+\n\
- DESCRIPTION | *** Only for ZynqMP Architecture ***                           |\n\
-             | To specify the binary file is to be executed in 32-bit mode.   |\n\
-             | Bootgen automatically detects the  execution mode of the       |\n\
-             | processors from .elf files.                                    |\n\
-             | This is valid only for binary files.                           |\n\
+ SUPPORTED   | zynq, zynqmp                                                   |\n\
 -------------+----------------------------------------------------------------+\n\
- USAGE       | [aarch32_mode] <partition>                                     |\n\
+ DESCRIPTION | Imports SPK signature into authentication certificate. This can|\n\
+             | be used incase the user does't want to share the secret key PSK|\n\
+             | The user can create a signature and provide it to Bootgen.     |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | [spksignature] <signature-file>                                |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | Sample BIF - test.bif                                          |\n\
              | all:                                                           |\n\
              | {                                                              |\n\
-             |    [bootloader,destination_cpu=a53-0,encryption=aes]fsbl.elf   |\n\
-             |    [destination_cpu=a53-0, aarch32_mode] hello.bin             |\n\
-             |    [destination_cpu=r5-0] hello_world.elf                      |\n\
+             |     [ppkfile] ppk.txt                                          |\n\
+             |     [spkfile] spk.txt                                          |\n\
+             |     [spksignature] spk.txt.sha256.sig                          |\n\
+             |     [bootloader, authentication=rsa] fsbl.elf                  |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+ udf_data
+******************************************************************************/
+#define H_BIF_UDF_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | udf_data                                                       |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, zynqmp                                                   |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Imports a file containing up to 56 bytes of data into User     |\n\
+             | Defined Field of Authentication Certificate.                   |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | udf_data = <filename>                                          |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |     [pskfile]primary0.pem                                      |\n\
+             |     [sskfile]secondary0.pem                                    |\n\
+             |     [bootloader,destination_cpu=a53-0,authentication=rsa,      |\n\
+             |                                    udf_data=udf.txt]fsbl.elf   |\n\
+             |     [destination_cpu=a53-0, authentication=rsa] hello.elf      |\n\
              | }                                                              |\n\
 -------------+----------------------------------------------------------------+\n"
 #endif

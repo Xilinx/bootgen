@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -113,6 +113,8 @@ public:
     virtual uint8_t GetHivec(void) { return 0; };
     virtual uint32_t GetPartitionPadSize64bBoundary(Section*) { return 0; };
     virtual uint32_t GetEncryptedPartitionLength(void) { return 0; };
+    virtual PartitionType::Type GetPartitionType(void) { return PartitionType::RESERVED; }
+    virtual uint32_t GetSectionCount(void) { return 0; }
     
     Binary::Address_t GetLoadAddress(void) { return loadAddress; }
     Binary::Address_t GetExecAddress(void) { return execAddress; }
@@ -162,6 +164,7 @@ public:
     uint8_t early_handoff;
     uint8_t hivec;
     uint8_t authBlock;
+    uint64_t firstChunkSize;
     
 protected:
     bool slaveBootSplitMode;
@@ -169,6 +172,7 @@ protected:
     uint32_t allHdrSize;
     uint32_t bootloaderSize;
     bool isBootloader;
+    bool isPmcdata;
 };
 
 /******************************************************************************/

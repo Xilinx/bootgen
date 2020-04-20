@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -307,7 +307,20 @@ private:
 class Elf32SectionHdr_t
 {
 public:
-
+    Elf32SectionHdr_t() {}
+    Elf32SectionHdr_t(Elf32SectionHdr_t* secHdr)
+    {
+        sh_name = secHdr->sh_name;
+        sh_type = secHdr->sh_type;
+        sh_flags = secHdr->sh_flags;
+        sh_addr = secHdr->sh_addr;
+        sh_offset = secHdr->sh_offset;
+        sh_size = secHdr->sh_size;
+        sh_link = secHdr->sh_link;
+        sh_info = secHdr->sh_info;
+        sh_addralign = secHdr->sh_addralign;
+        sh_entsize = secHdr->sh_entsize;
+    }
     Elf32_Word sh_name;         /* section name */
     Elf32_Word sh_type;         /* SHT_... */
     Elf32_Word sh_flags;        /* SHF_... */
@@ -343,7 +356,20 @@ public:
 class Elf64SectionHdr_t
 {
 public:
-
+    Elf64SectionHdr_t() {}
+    Elf64SectionHdr_t(Elf64SectionHdr_t* secHdr)
+    {
+        sh_name = secHdr->sh_name;
+        sh_type = secHdr->sh_type;
+        sh_flags = secHdr->sh_flags;
+        sh_addr = secHdr->sh_addr;
+        sh_offset = secHdr->sh_offset;
+        sh_size = secHdr->sh_size;
+        sh_link = secHdr->sh_link;
+        sh_info = secHdr->sh_info;
+        sh_addralign = secHdr->sh_addralign;
+        sh_entsize = secHdr->sh_entsize;
+    }
     Elf64_Word sh_name;         /* section name */
     Elf64_Word sh_type;         /* SHT_... */
     Elf64_Xword sh_flags;       /* SHF_... */

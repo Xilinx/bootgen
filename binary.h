@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -82,12 +82,14 @@ public:
     uint32_t Alignment;
     Binary::Length_t Reserve;
     uint8_t* Data;
+    uint64_t firstChunkSize;
     bool continuation;
     bool isPartitionData;
     bool isCertificate;
     bool isFirstElfSection;
     bool isBitStream;
     bool isBootloader;
+    bool isPmcdata;
     int index;
 
     Binary::Address_t WordAddress()

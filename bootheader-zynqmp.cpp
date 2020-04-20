@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -128,7 +128,7 @@ void ZynqMpBootHeader::Build(BootImage& bi, Binary& cache)
     SetShutterValue(bi.bifOptions->GetShutterValue());
     SetUdf(bi.options.bifOptions->GetUdfBhFile());
     SetGreyOrBlackKey(bi.bifOptions->GetBhKeyFile());
-    SetGreyOrBlackIv(bi.bifOptions->GetBHKeyIVFile());
+    SetGreyOrBlackKekIV(bi.bifOptions->GetBHKekIVFile());
     SetSecureHdrIv(bi.options.secHdrIv);
     BuildRegInitTable(bi.options);
     SetPufData(bi);
@@ -159,7 +159,7 @@ void ZynqMpBootHeader::Link(BootImage& bi)
     else
     {
         PartitionHeader& bootloaderHdr(*(fsbl->GetPartitionHeaderList().front()));
-        BootladerAddressAndSizeCheck(bootloaderHdr);
+        BootloaderAddressAndSizeCheck(bootloaderHdr);
         SetSourceOffset((uint32_t)bootloaderHdr.partition->section->Address);
 
         SetFsblLength((uint32_t)bootloaderHdr.GetPartitionSize());
@@ -494,7 +494,7 @@ void ZynqMpBootHeader::SetSecureHdrIv(uint8_t* iv)
 }
 
 /******************************************************************************/
-void ZynqMpBootHeader::SetGreyOrBlackIv(std::string ivFile)
+void ZynqMpBootHeader::SetGreyOrBlackKekIV(std::string ivFile)
 {
     uint8_t* ivData = new uint8_t[IV_LENGTH * 4];
     memset(ivData, 0, IV_LENGTH * 4);

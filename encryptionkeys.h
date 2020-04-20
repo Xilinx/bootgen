@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -25,22 +25,7 @@
 #include <cmath>
 #include <iostream>
 
-
-uint8_t defaultLabel[32] = 
-{
-    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-    0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
-    0x00, 0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70,
-    0x80, 0x90, 0xa0, 0xb0, 0xc0, 0xd0, 0xe0, 0xf0
-};
-
 uint8_t Separator = 0x00;
-
-
-uint8_t defaultContext[6] = 
-{
-    0x00, 0x11, 0x22, 0x33, 0x44, 0x55
-};
 
 static const uint8_t sbox[256] = {
     //0     1    2      3     4    5     6     7      8    9     A      B    C     D     E     F

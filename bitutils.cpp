@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -184,7 +184,8 @@ void BitFile::Strip(OutputStream* os)
 void BitFile::ReadRbtHeader()
 {
     std::string line = is.ReadLine();
-    if (line != "Xilinx ASCII Bitstream")
+    if ((line != "Xilinx ASCII Bitstream") && (line != "Xilinx ASCII CFI Deviceimage") && 
+        (line != "Xilinx ASCII NPI Deviceimage") && (line != "Xilinx ASCII PSAXIMM Deviceimage"))
     {
         LOG_DEBUG(DEBUG_STAMP, "Wrong Line - %s", line.c_str());
         LOG_ERROR("Bitstream parsing error !!!           First line of RBT has incorrect starting line");

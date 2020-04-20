@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -62,10 +62,11 @@ public:
     Section* CreateCertificate(BootImage& bi, Binary& cache, Section* dataSection);
     void Link(BootImage& bi, std::list<Section*> sections, AuthenticationCertificate* cert);
     void GeneratePPKHash(const std::string& filename);
+    void SetKeyLength(Authentication::Type type);
     void GenerateSPKHash(uint8_t* sha256_hash_padded);
     void CreatePadding(uint8_t* signature, const uint8_t* hash);
     void CopyPartitionSignature(BootImage& bi, std::list<Section*> sections, uint8_t* signatureBlock, Section* acSection);
-    void RearrangeEndianess(char *array, uint32_t size) {};
+    void RearrangeEndianess(uint8_t *array, uint32_t size) {};
 
 private:
     uint32_t certSize;

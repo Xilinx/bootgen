@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -41,10 +41,14 @@
 *********************************************   P R E P R O C E S S O R S   ***
 -------------------------------------------------------------------------------
 */
-#define RSA_KEY_LENGTH_ZYNQ         256
-#define RSA_SIGN_LENGTH_ZYNQ        256
-#define RSA_KEY_LENGTH_ZYNQMP       512
-#define RSA_SIGN_LENGTH_ZYNQMP      512
+#define RSA_2048_KEY_LENGTH     256
+#define RSA_4096_KEY_LENGTH     512
+#define EC_P384_KEY_LENGTH      48
+
+#define SIGN_LENGTH_VERSAL      512 /* for ecdsa: r(48b)+ s(48b)+ pad(416b) */
+#define RSA_SIGN_LENGTH_ZYNQ    256
+#define RSA_SIGN_LENGTH_ZYNQMP  512
+
 
 /*
 -------------------------------------------------------------------------------
@@ -53,21 +57,21 @@
 */
 typedef struct
 {
-    uint8_t N[RSA_KEY_LENGTH_ZYNQ];             // Modulus
-    uint8_t N_extension[RSA_KEY_LENGTH_ZYNQ];   // Montgomery Modulus extension
+    uint8_t N[RSA_2048_KEY_LENGTH];             // Modulus
+    uint8_t N_extension[RSA_2048_KEY_LENGTH];   // Montgomery Modulus extension
     uint8_t E[4];                               // Exponent
     uint8_t Padding[60];                        // Padding
 } ACKey2048;
 
 typedef struct
 {
-    uint8_t Signature[RSA_KEY_LENGTH_ZYNQ];
+    uint8_t Signature[RSA_SIGN_LENGTH_ZYNQ];
 } ACSignature2048;
 
 typedef struct
 {
-    uint8_t N[RSA_KEY_LENGTH_ZYNQMP];           // Modulus
-    uint8_t N_extension[RSA_KEY_LENGTH_ZYNQMP]; // Montgomery Modulus extension
+    uint8_t N[RSA_4096_KEY_LENGTH];           // Modulus
+    uint8_t N_extension[RSA_4096_KEY_LENGTH]; // Montgomery Modulus extension
     uint8_t E[4];                               // Exponent
     uint8_t Padding[60];                        // Padding
 } ACKey4096;
@@ -75,7 +79,7 @@ typedef struct
 /* Signature - RSA 4096 bits */
 typedef struct
 {
-    uint8_t Signature[RSA_KEY_LENGTH_ZYNQMP];
+    uint8_t Signature[RSA_SIGN_LENGTH_ZYNQMP];
 } ACSignature4096;
 
 /* Key Generation Structures */
@@ -121,7 +125,7 @@ public:
 protected:
     void Multiply_p_q(uint8_t p[], uint8_t q[], uint8_t n[]);
     void Hex2Byte(FILE* f, uint8_t* data, int count);
-    void Parse(const std::string& filename, bool isSecret0);
+    virtual void Parse(const std::string& filename, bool isSecret0);
     uint8_t ParseXilinxRsaKey(FILE* f);
     uint8_t ParseOpenSSLKey(FILE* f);
     static void WriteRsaFile(std::ofstream& file, const RSA* rsa, bool secret, uint16_t keyLength);

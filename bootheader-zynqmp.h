@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -118,7 +118,7 @@ public:
     void SetFsblAttributes(BootImage& bi);
     void SetFsblAttributes(uint32_t fsblattributes);
     void SetGreyOrBlackKey(std::string keyFile);
-    void SetGreyOrBlackIv(std::string ivFile);
+    void SetGreyOrBlackKekIV(std::string ivFile);
     void SetSecureHdrIv(uint8_t* iv);
     void SetPufData(BootImage &bi);
 

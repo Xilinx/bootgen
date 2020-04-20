@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -57,13 +57,9 @@ class ImageHeader;
 #define BBRAM_RED_KEY                           0x3A5C3C5A
 #define EFUSE_BLK_KEY                           0xA5C3C5A5
 #define BH_BLACK_KEY                            0xA35C7C53
-#define BBRAM_BLK_KEY                           0x3A5C3C59
 #define EFUSE_GRY_KEY                           0xA5C3C5A7
 #define BH_GRY_KEY                              0xA35C7CA5
 #define BH_KUP_KEY                              0xA3A5C3C5
-#define BBRAM_GRY_KEY                           0x3A5C3C57
-
-#define USER_KEY0                               0xC5C3A5A3
 
 /* Bit shifts for FSBL config parameters */
 #define OPT_KEY_BIT_SHIFT                       2
@@ -135,7 +131,7 @@ public:
     virtual void Link(BootImage& bi) { };
     virtual void BuildRegInitTable (Options& options) { };
     virtual void ResizeSection(BootImage &bi) {};
-    void BootladerAddressAndSizeCheck(PartitionHeader& hdr);
+    void BootloaderAddressAndSizeCheck(PartitionHeader& hdr);
     void Copy (BootHeader* otherHeader);
     void LoadUdfData (const std::string& udfBHFilename, uint8_t* udfData, uint32_t size);
     bool GetPrebuiltFlag (void);

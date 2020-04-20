@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -190,11 +190,20 @@ ImageHeader::ImageHeader(std::string& filename)
     , ppkSelect(0)
     , generateAesKeyFile(false)
     , partitionUid(0)
+    , pmcdataSize(0)
     , bufferSize(0)
     , buffer(NULL)
+    , totalpmcdataSize(0)
+    , ihMemCpyAddr(0xFFFFFFFFFFFFFFFF)
+    , ihDelayLoad(false)
+    , ihDelayHandoff(false)
     , authType(Authentication::None)
     , bigEndian(false)
     , a32Mode(false)
+    , keySrc(KeySource::None)
+    , partitionType(PartitionType::RESERVED)
+    , partitionRevokeId(0)
+    , dpacm(DpaCM::DpaCMDisable)
 { }
 
 /******************************************************************************/
@@ -237,11 +246,20 @@ ImageHeader::ImageHeader(std::ifstream& ifs)
     , ppkSelect(0)
     , generateAesKeyFile(false)
     , partitionUid(0)
+    , pmcdataSize(0)
     , bufferSize(0)
     , buffer(NULL)
+    , totalpmcdataSize(0)
+    , ihMemCpyAddr(0xFFFFFFFFFFFFFFFF)
+    , ihDelayLoad(false)
+    , ihDelayHandoff(false)
     , authType(Authentication::None)
     , bigEndian(false)
     , a32Mode(false)
+    , keySrc(KeySource::None)
+    , partitionType(PartitionType::RESERVED)
+    , partitionRevokeId(0)
+    , dpacm(DpaCM::DpaCMDisable)
 { }
 
 /******************************************************************************/
@@ -277,9 +295,14 @@ ImageHeader::ImageHeader(uint8_t* data, uint64_t len)
     , fullBhSize(0)
     , allHdrSize(0)
     , authBlock(0)
+    , pmcdataSize(0)
+    , totalpmcdataSize(0)
     , buffer(data)
     , bufferSize(len)
     , generateAesKeyFile(false)
+    , ihMemCpyAddr(0xFFFFFFFFFFFFFFFF)
+    , ihDelayLoad(false)
+    , ihDelayHandoff(false)
     , authType(Authentication::None)
     , isUserPartitionNum(false)
     , userPartitionNum(0)
@@ -289,6 +312,10 @@ ImageHeader::ImageHeader(uint8_t* data, uint64_t len)
     , defEncrBlockSize(0)
     , bigEndian(false)
     , a32Mode(false)
+    , keySrc(KeySource::None)
+    , partitionType(PartitionType::RESERVED)
+    , partitionRevokeId(0)
+    , dpacm(DpaCM::DpaCMDisable)
 {
 }
 
@@ -306,7 +333,6 @@ void ImageHeader::ImportElf(BootImage& bi)
 {
     uint8_t proc_state = 0;
 
-    xipMode = bi.XipMode;
     ByteFile data(Filename);
 
     /* Get the ELF Class format - 32-bit elf vs 64-bit elf */
@@ -423,12 +449,30 @@ void ImageHeader::SetTotalPmuFwSizeIh(uint32_t size)
 }
 
 /******************************************************************************/
+void ImageHeader::SetTotalPmcDataSizeIh(uint32_t size)
+{
+    totalpmcdataSize = size;
+}
+
+/******************************************************************************/
+void ImageHeader::SetPmcDataSizeIh(uint32_t size)
+{
+    pmcdataSize = size;
+}
+
+/******************************************************************************/
 void ImageHeader::SetTotalFsblFwSizeIh(uint32_t size)
 {
     if(IsBootloader())
     {
         totalFsblFwSize = size;
     }
+}
+
+/******************************************************************************/
+void ImageHeader::SetTotalPmcFwSizeIh(uint32_t size)
+{
+    totalpmcdataSize = size;
 }
 
 /******************************************************************************/
@@ -517,6 +561,7 @@ void ImageHeader::SetDestDevice(DestinationDevice::Type type)
 /******************************************************************************/
 void ImageHeader::SetDestCpu(DestinationCPU::Type type)
 { 
+    static bool destCpuPmuExists = false;
     /* Destination Device will be deprecated in future, so set it to
     dest_cpu = pmu */
     destCpu = type;
@@ -528,6 +573,14 @@ void ImageHeader::SetDestCpu(DestinationCPU::Type type)
     {
         destCpu = DestinationCPU::PMU;
     }
+    if (destCpu == DestinationCPU::PMU && destCpuPmuExists)
+    {
+        LOG_ERROR("Bif attribute Error!!!'core=psm/pmu' cannot be specified on multiple partitions.");
+    }
+    else if (destCpu == DestinationCPU::PMU)
+    {
+        destCpuPmuExists = true;
+    }
 }
 
 /******************************************************************************/
@@ -536,3 +589,18 @@ size_t ImageHeader::GetAuthBlock(void)
     return (authBlock);
 }
 
+/******************************************************************************/
+uint32_t ImageHeader::GetTotalPmcFwSizeIh(void)
+{
+    if (IsBootloader())
+    {
+        return totalpmcdataSize;
+    }
+    return 0;
+}
+
+/******************************************************************************/
+uint32_t ImageHeader::GetPmcFwSizeIh(void)
+{
+    return pmcdataSize;
+}

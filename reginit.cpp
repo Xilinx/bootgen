@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@ void RegisterTable::Build(Options& options, RegisterInitTable* regtab0)
         std::ifstream s(filename.c_str());
         if (!s) 
         {
-            LOG_ERROR("Can't read file - %s", filename.c_str());;
+            LOG_ERROR("Cannot read file - %s", filename.c_str());;
         }
         scanner.switch_streams(&s);
         parser.parse();

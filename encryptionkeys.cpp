@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -13,11 +13,15 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 ******************************************************************************/
+
 #include "encryptionkeys.h"
 #include "encryption.h"
 #include "encryption-zynqmp.h"
+#include "encryption-versal.h"
 #include "encryptutils.h"
 #include "systemutils.h"
+#include <openssl/rand.h>
+
 /************************************************************************
 Example of NIST SP 800-108 in Counter Mode
 i is chosen to be 32 bits. This allows the 128(2^32 -1) bits of keying material can be generated.
@@ -51,171 +55,72 @@ secret seed or root key.
 
 #define VERBOSE_OUT_KDF kdfLogFile
 
-void ZynqMpEncryptionContext::CounterModeKDF(uint32_t blocks, std::string keyFilename, bool encrDump)
+void EncryptionContext::CounterModeKDF(uint32_t blocks, std::string keyFilename, bool encrDump)
 {
-    uint8_t number_of_i_bytes = 4;
-    uint8_t i[4] = { 0x00, 0x00, 0x00, 0x00 };
     uint8_t number_of_L_bytes = 8;
     uint8_t number_of_Separator_bytes = 1;
-    int number_of_Label_bytes = aesLabelBytes;
-    int number_of_Context_bytes = aesContextBytes; //3 to make input 48 - was 6
-    static bool kdfLogInit = false;
-    static std::ofstream kdfLogFile;
 
-    //input key0 or seed
     if (GetAesSeed() == NULL)
     {
-        SetAesSeed((uint8_t*)aesKey);
+        GenerateAesSeed();
     }
     if (GetAesLabel() == NULL)
     {
-        SetAesLabel(defaultLabel, number_of_Label_bytes);
+        aesLabel = new uint8_t[aesLabelBytes];
+        RAND_bytes(aesLabel, aesLabelBytes);
     }
     if (GetAesContext() == NULL)
     {
-        SetAesContext(defaultContext, number_of_Context_bytes);
+        aesContext = new uint8_t[aesContextBytes];
+        RAND_bytes(aesContext, aesContextBytes);
     }
 
-    uint8_t* cmac_key = new uint8_t[BYTES_PER_AES_KEY];
-    memcpy_be(cmac_key,aesSeed, AES_GCM_KEY_SZ);
+    kI = new uint8_t[BYTES_PER_AES_KEY];
+    memcpy_be(kI, aesSeed, AES_GCM_KEY_SZ);
 
-    uint8_t* label = new uint8_t[number_of_Label_bytes];
-    memcpy(label, aesLabel, number_of_Label_bytes);
-    
-    uint8_t* context = new uint8_t[number_of_Context_bytes];
-    memcpy(context, aesContext, number_of_Context_bytes);
+    /* An example generating 4 key/IV pairs will have 4*(32+12) number_of_Ko_bytes.
+    This should be flexible based on number of keys or key/iv pair required
+    or it can just pull off key/IV as needed; it is acceptable to discard
+    32-bits and use 384 bits of Ko per 352-bits of key/iv pair. */
+
+    uint32_t number_of_Ko_bytes = blocks * (AES_GCM_KEY_SZ + AES_GCM_IV_SZ);
+    koLength = (blocks * (AES_GCM_KEY_SZ + AES_GCM_IV_SZ)) * 8;
 
     /* L will be 0x580 to generate 4 AES-256-GCM key/IV pairs which is 1408 bits = 4*(32+12) bytes */
     uint8_t* L = new uint8_t[number_of_L_bytes];
     memset(L, 0, number_of_L_bytes);
-    uint64_t temp = blocks * 8 * (uint64_t)(AES_GCM_KEY_SZ + AES_GCM_IV_SZ);
-    reverse_copy(L, temp, number_of_L_bytes);
-    
-    /* Due to the CMAC implementation the Input must be evenly divisible by 128-bits; This
-    * CMAC implementation should be fixed so that Context, Label can be aribitrary byte
-    * lengths defined by the customer */
+    reverse_copy(L, (uint64_t)koLength, number_of_L_bytes);
 
-    int number_of_Input_bytes = number_of_i_bytes + number_of_Label_bytes + number_of_Separator_bytes +
-                number_of_Context_bytes + number_of_L_bytes;
-    uint8_t* Input = new uint8_t[number_of_Input_bytes];
-    
-    /* An example generating 4 key/IV pairs will have 4*(32+12) number_of_Ko_bytes.
-       This should be flexible based on number of keys or key/iv pair required 
-       or it can just pull off key/IV as needed; it is acceptable to discard 
-       32-bits and use 384 bits of Ko per 352-bits of key/iv pair. */
-    
-    uint32_t number_of_Ko_bytes = blocks * (AES_GCM_KEY_SZ + AES_GCM_IV_SZ);
-    uint8_t* Ko = new uint8_t[number_of_Ko_bytes];
-    if (encrDump)
+    if (!fixedInputDataExits)
     {
-        if (!kdfLogInit)
-        {
-            std::ofstream kdfExists("kdf_log.txt");
-            if (kdfExists)
-            {
-                std::ofstream remove("kdf_log.txt");
-            }
-            kdfLogFile.open("kdf_log.txt", std::fstream::app);
-            kdfLogInit = true;
-            VERBOSE_OUT_KDF << std::endl << "Key Generation log from Counter-mode KDF" << std::endl;
-        }
-        VERBOSE_OUT_KDF << std::endl << "------------------------------------";
-        VERBOSE_OUT_KDF << std::endl << " Generating Key file : " << StringUtils::BaseName(keyFilename);
-        VERBOSE_OUT_KDF << std::endl << "------------------------------------" << std::endl;
+        /* Due to the CMAC implementation the Input must be evenly divisible by 128-bits; This
+        * CMAC implementation should be fixed so that Context, Label can be aribitrary byte
+        * lengths defined by the customer */
+        fixedInputDataByteLength = aesLabelBytes + number_of_Separator_bytes + aesContextBytes + number_of_L_bytes;
+        fixedInputData = new uint8_t[fixedInputDataByteLength];
+
+        copy_array_uint8_t(&fixedInputData[0], aesLabel, aesLabelBytes);
+        copy_array_uint8_t(&fixedInputData[aesLabelBytes], &Separator, number_of_Separator_bytes);
+        copy_array_uint8_t(&fixedInputData[aesLabelBytes + number_of_Separator_bytes],
+            aesContext, aesContextBytes);
+        copy_array_uint8_t(&fixedInputData[aesLabelBytes + number_of_Separator_bytes + aesContextBytes],
+            L, number_of_L_bytes);
     }
 
-    gen_cmac_subkeys(cmac_key);
-    
-    // Build the input
-    copy_array_uint8_t(&Input[0], i, number_of_i_bytes);
-    copy_array_uint8_t(&Input[number_of_i_bytes], defaultLabel, number_of_Label_bytes);
-    copy_array_uint8_t(&Input[number_of_i_bytes + number_of_Label_bytes], &Separator, number_of_Separator_bytes);
-    copy_array_uint8_t(&Input[number_of_i_bytes + number_of_Label_bytes + number_of_Separator_bytes],
-        defaultContext, number_of_Context_bytes);
-    copy_array_uint8_t(&Input[number_of_i_bytes + number_of_Label_bytes + number_of_Separator_bytes + number_of_Context_bytes],
-        L, number_of_L_bytes);
-    
-    uint32_t cmac_iterations = number_of_Ko_bytes / 16;
-    cmac_iterations += ((number_of_Ko_bytes % 16) == 0 ? 0 : 1);
-    /* Run the KDF for the amount of data needed */
-    uint32_t x; 
-    int32_t y;
-    for (x = 0; x<cmac_iterations; x++) 
-    {
-        /* Increment i. The first value used is 1 */
-        y = 3;
-        do {
-            i[y]++;
-            y--;
-        } while (i[y + 1] == 0 && y >= 0);
-        copy_array_uint8_t(&Input[0], i, number_of_i_bytes);
-        
-        /* Run the PRF */
-        if (number_of_Ko_bytes % 16 != 0 && x == cmac_iterations - 1) 
-        {
-            uint8_t* LastKo = new uint8_t[16];
-            cmac(&LastKo[0], Input, number_of_Input_bytes);
-            memcpy(&Ko[16 * x], &LastKo[0], (number_of_Ko_bytes-(16*x)));
-            if (encrDump)
-            {
-                for (y = 0; y < 16; y++)
-                {
-                    VERBOSE_OUT_KDF << std::setfill('0') << std::setw(2) << std::hex << uint32_t(LastKo[y]);
-                }
-                VERBOSE_OUT_KDF << std::endl;
-            }
-            delete[] LastKo;
-        }
-        else 
-        {
-            cmac(&Ko[16 * x], Input, number_of_Input_bytes);
-            if (encrDump)
-            {
-                for (y = 0; y < 16; y++)
-                {
-                    VERBOSE_OUT_KDF << std::setfill('0') << std::setw(2) << std::hex << uint32_t(Ko[16 * x + y]);
-                }
-                VERBOSE_OUT_KDF << std::endl;
-            }
-        }
-    }
-    if (encrDump)
-    {
-        /* Ko can then be used for key/iv pairs */
-        for (uint32_t x = 0; x < blocks; x++)
-        {
-            VERBOSE_OUT_KDF << std::endl << "  Key " << x << "  ";
-            for (uint32_t y = 0; y < 32; y++)
-            {
-                VERBOSE_OUT_KDF << std::setfill('0') << std::setw(2) << std::hex << uint32_t(Ko[44 * x + y]);
-            }
+    KDF(blocks, keyFilename, encrDump);
 
-            VERBOSE_OUT_KDF << std::endl << "  IV  " << x << "  ";
-            for (uint32_t y = 32; y < 44; y++)
-            {
-                VERBOSE_OUT_KDF << std::setfill('0') << std::setw(2) << std::hex << uint32_t(Ko[44 * x + y]);
-            }
-            VERBOSE_OUT_KDF << std::endl;
-        }
-    }
+    outBufKDF = new uint32_t[number_of_Ko_bytes / 4];
 
-    outBufKDF = new uint32_t[number_of_Ko_bytes/4];
-    
     // Copy the key
     for (uint32_t index = 0; index < number_of_Ko_bytes / 4; index++)
     {
         outBufKDF[index] = ReadBigEndian32(Ko + (index * sizeof(uint32_t)));
     }
-    delete[] cmac_key;
     delete[] L;
-    delete[] label;
-    delete[] context;
-    delete[] Input;
-    delete[] Ko;
 }
 
 /******************************************************************************/
-void ZynqMpEncryptionContext::ParseKDFTestVectorFile(std::string filename)
+void EncryptionContext::ParseKDFTestVectorFile(std::string filename)
 {
     LOG_TRACE("Reading the Counter Mode KDF test file");
     std::ifstream testFile(filename.c_str());
@@ -313,55 +218,15 @@ void ZynqMpEncryptionContext::ParseKDFTestVectorFile(std::string filename)
 }
 
 /******************************************************************************/
-void ZynqMpEncryptionContext::CAVPonCounterModeKDF(std::string filename)
+void EncryptionContext::CAVPonCounterModeKDF(std::string filename)
 {
     ParseKDFTestVectorFile(filename);
 
     LOG_MSG("Generating Ko using Counter-Mode KDF...");
-    uint8_t number_of_i_bytes = 4;
-    uint8_t i[4] = { 0x00, 0x00, 0x00, 0x00 };
-
-    uint64_t number_of_Input_bytes = number_of_i_bytes + fixedInputDataByteLength;
-    uint8_t* Input = new uint8_t[number_of_Input_bytes];
-
-    uint32_t number_of_Ko_bytes = koLength / 8;
-    uint8_t* Ko = new uint8_t[number_of_Ko_bytes];
-
-    gen_cmac_subkeys(kI);
-
-    copy_array_uint8_t(&Input[0], i, number_of_i_bytes);
-    copy_array_uint8_t(&Input[number_of_i_bytes], fixedInputData, fixedInputDataByteLength);
-
-    uint32_t cmac_iterations = number_of_Ko_bytes / 16;
-    cmac_iterations += ((number_of_Ko_bytes % 16) == 0 ? 0 : 1);
-
     std::cout << "KO = ";
-    /* Run the KDF for the amount of data needed */
-    uint32_t x;
-    int32_t y;
-    for (x = 0; x<cmac_iterations; x++)
-    {
-        /* Increment i. The first value used is 1 */
-        y = 3;
-        do {
-            i[y]++;
-            y--;
-        } while (i[y + 1] == 0 && y >= 0);
-        copy_array_uint8_t(&Input[0], i, number_of_i_bytes);
+    uint32_t number_of_Ko_bytes = koLength / 8;
 
-        /* Run the PRF */
-        if (number_of_Ko_bytes % 16 != 0 && x == cmac_iterations - 1)
-        {
-            uint8_t* LastKo = new uint8_t[16];
-            cmac(&LastKo[0], Input, number_of_Input_bytes);
-            memcpy(&Ko[16 * x], &LastKo[0], (number_of_Ko_bytes - (16 * x)));
-            delete[] LastKo;
-        }
-        else
-        {
-            cmac(&Ko[16 * x], Input, number_of_Input_bytes);
-        }
-    }
+    KDF(0,"",false);
 
     for (uint32_t y = 0; y<number_of_Ko_bytes; y++)
     {
@@ -381,8 +246,111 @@ void ZynqMpEncryptionContext::CAVPonCounterModeKDF(std::string filename)
         }
     }
     std::cout << std::endl;
-    delete[] Input;
-    delete[] Ko;
 }
 
+/******************************************************************************/
+void EncryptionContext::KDF(uint32_t blocks, std::string keyFilename, bool encrDump)
+{
+    static bool kdfLogInit = false;
+    static std::ofstream kdfLogFile;
 
+    if (encrDump)
+    {
+        if (!kdfLogInit)
+        {
+            std::ofstream kdfExists("kdf_log.txt");
+            if (kdfExists)
+            {
+                std::ofstream remove("kdf_log.txt");
+            }
+            kdfLogFile.open("kdf_log.txt", std::fstream::app);
+            kdfLogInit = true;
+            VERBOSE_OUT_KDF << std::endl << "Key Generation log from Counter-mode KDF" << std::endl;
+        }
+        VERBOSE_OUT_KDF << std::endl << "------------------------------------";
+        VERBOSE_OUT_KDF << std::endl << " Generating Key/IV pairs for " << StringUtils::BaseName(keyFilename);
+        VERBOSE_OUT_KDF << std::endl << "------------------------------------" << std::endl;
+    }
+
+    uint8_t number_of_i_bytes = 4;
+    uint8_t i[4] = { 0x00, 0x00, 0x00, 0x00 };
+
+    uint64_t number_of_Input_bytes = number_of_i_bytes + fixedInputDataByteLength;
+    uint8_t* Input = new uint8_t[number_of_Input_bytes];
+
+    uint32_t number_of_Ko_bytes = koLength / 8;
+    Ko = new uint8_t[number_of_Ko_bytes];
+
+    gen_cmac_subkeys(kI);
+
+    copy_array_uint8_t(&Input[0], i, number_of_i_bytes);
+    copy_array_uint8_t(&Input[number_of_i_bytes], fixedInputData, fixedInputDataByteLength);
+
+    uint32_t cmac_iterations = number_of_Ko_bytes / 16;
+    cmac_iterations += ((number_of_Ko_bytes % 16) == 0 ? 0 : 1);
+
+    /* Run the KDF for the amount of data needed */
+    uint32_t x;
+    int32_t y;
+    for (x = 0; x < cmac_iterations; x++)
+    {
+        /* Increment i. The first value used is 1 */
+        y = 3;
+        do {
+            i[y]++;
+            y--;
+        } while (i[y + 1] == 0 && y >= 0);
+        copy_array_uint8_t(&Input[0], i, number_of_i_bytes);
+
+        /* Run the PRF */
+        if (number_of_Ko_bytes % 16 != 0 && x == cmac_iterations - 1)
+        {
+            uint8_t* LastKo = new uint8_t[16];
+            cmac(&LastKo[0], Input, number_of_Input_bytes);
+            memcpy(&Ko[16 * x], &LastKo[0], (number_of_Ko_bytes - (16 * x)));
+            if (encrDump)
+            {
+                for (y = 0; y < 16; y++)
+                {
+                    VERBOSE_OUT_KDF << std::setfill('0') << std::setw(2) << std::hex << uint32_t(LastKo[y]);
+                }
+                VERBOSE_OUT_KDF << std::endl;
+            }
+            delete[] LastKo;
+        }
+        else
+        {
+            cmac(&Ko[16 * x], Input, number_of_Input_bytes);
+            if(encrDump)
+            {
+                for (y = 0; y < 16; y++)
+                {
+                    VERBOSE_OUT_KDF << std::setfill('0') << std::setw(2) << std::hex << uint32_t(Ko[16 * x + y]);
+                }
+                VERBOSE_OUT_KDF << std::endl;
+            }
+        }
+    }
+
+    if (encrDump)
+    {
+        /* Ko can then be used for key/iv pairs */
+        for (uint32_t x = 0; x < blocks; x++)
+        {
+            VERBOSE_OUT_KDF << std::endl << "  Key " << std::dec << x << "  ";
+            for (uint32_t y = 0; y < 32; y++)
+            {
+                VERBOSE_OUT_KDF << std::setfill('0') << std::setw(2) << std::hex << uint32_t(Ko[44 * x + y]);
+            }
+
+            VERBOSE_OUT_KDF << std::endl << "  IV  " << std::dec << x << "  ";
+            for (uint32_t y = 32; y < 44; y++)
+            {
+                VERBOSE_OUT_KDF << std::setfill('0') << std::setw(2) << std::hex << uint32_t(Ko[44 * x + y]);
+            }
+            VERBOSE_OUT_KDF << std::endl;
+        }
+    }
+
+    delete[] Input;
+}

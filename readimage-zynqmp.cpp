@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 #include "readimage-zynqmp.h"
 
 /*******************************************************************************/
-void ZynqMpReadImage::ReadBinaryFile(void)
+void ZynqMpReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
 {
     size_t result;
     uint64_t offset = 0;
@@ -34,7 +34,7 @@ void ZynqMpReadImage::ReadBinaryFile(void)
 
     if (!binFile)
     {
-        LOG_ERROR("Can't read file %s", binFilename.c_str());
+        LOG_ERROR("Cannot read file %s", binFilename.c_str());
     }
 
     /* Boot Header Extraction */
@@ -309,12 +309,12 @@ void ZynqMpReadImage::DisplayACFields(uint8_t* aC, Authentication::Type auth_typ
         DisplayValue("auth_header (0x00) : ", auth_cert->acHeader);
         DisplayValue("spk_id (0x04) : ", auth_cert->spkId);
         DisplayLongValues("udf (0x08) : ", (uint8_t*)auth_cert->acUdf, UDF_DATA_SIZE);
-        DisplayLongValues("ppk_mod (0x40) : ", (uint8_t*)auth_cert->acPpk.N, RSA_KEY_LENGTH_ZYNQMP);
-        DisplayLongValues("ppk_mod_ext (0x240) : ", (uint8_t*)auth_cert->acPpk.N_extension, RSA_KEY_LENGTH_ZYNQMP);
+        DisplayLongValues("ppk_mod (0x40) : ", (uint8_t*)auth_cert->acPpk.N, RSA_4096_KEY_LENGTH);
+        DisplayLongValues("ppk_mod_ext (0x240) : ", (uint8_t*)auth_cert->acPpk.N_extension, RSA_4096_KEY_LENGTH);
         DisplayLongValues("ppk_exponent (0x440) : ", (uint8_t*)auth_cert->acPpk.E, 4);
         DisplayLongValues("ppk_padding (0x444) : ", (uint8_t*)auth_cert->acPpk.Padding, 60);
-        DisplayLongValues("spk_mod (0x480) : ", (uint8_t*)auth_cert->acSpk.N, RSA_KEY_LENGTH_ZYNQMP);
-        DisplayLongValues("spk_mod_ext (0x680) : ", (uint8_t*)auth_cert->acSpk.N_extension, RSA_KEY_LENGTH_ZYNQMP);
+        DisplayLongValues("spk_mod (0x480) : ", (uint8_t*)auth_cert->acSpk.N, RSA_4096_KEY_LENGTH);
+        DisplayLongValues("spk_mod_ext (0x680) : ", (uint8_t*)auth_cert->acSpk.N_extension, RSA_4096_KEY_LENGTH);
         DisplayLongValues("spk_exponent (0x880) : ", (uint8_t*)auth_cert->acSpk.E, 4);
         DisplayLongValues("spk_padding (0x884) : ", (uint8_t*)auth_cert->acSpk.Padding, 60);
         DisplayLongValues("spk_signature (0x8c0) : ", (uint8_t*)(&auth_cert->acSpkSignature), RSA_SIGN_LENGTH_ZYNQMP);

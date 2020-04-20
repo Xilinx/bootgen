@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -59,6 +59,7 @@ public:
     virtual uint8_t UpdateHash(const void*, size_t) = 0;
     virtual uint8_t FinalHash(uint8_t*) = 0;
     virtual void CalculateHash(bool flag, const uint8_t*, size_t, uint8_t*) = 0;
+    virtual void CalculateVersalHash(bool flag, const uint8_t*, size_t, uint8_t*) {}
     virtual std::string GetHashFileExtension(void) = 0;
 
 protected:
@@ -106,6 +107,7 @@ public:
     uint8_t UpdateHash(const void*, size_t);
     uint8_t FinalHash(uint8_t*);
     void CalculateHash(bool flag, const uint8_t*, size_t, uint8_t*);
+    void CalculateVersalHash(bool flag, const uint8_t*, size_t, uint8_t*);
     std::string GetHashFileExtension(void);
 
 private:

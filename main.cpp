@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -31,14 +31,12 @@
 #include "stringutils.h"
 #include "version.h"
 
-#include "readimage-zynq.h"
-#include "readimage-zynqmp.h"
+
 #include "encryption-zynqmp.h"
 
 #ifdef _WIN32
 #include "openssl/ms/applink.c"
 #endif
-
 static const char* time_stamp = __TIME__;
 static const char* date_stamp = __DATE__;
 
@@ -69,56 +67,8 @@ public:
     {
         Options options;
         options.ParseArgs(argc, argv);
-
-        std::string readFile = options.GetReadImageFile();
-        if (options.archType != Arch::ZYNQMP)
-        {
-            if (options.GetVerifyImageOption())
-            {
-                LOG_ERROR("'-verify' option supported only for ZynqMP architecture, '-arch zynqmp'.");
-            }
-            if (options.GetKDFTestVectorFile() != "")
-            {
-                LOG_ERROR("'-verify_kdf' option supported only for ZynqMp architecture, '-arch zynqmp'.");
-            }
-        }
-
-        if (options.archType == Arch::ZYNQ)
-        {
-            if (readFile != "")
-            {
-                ZynqReadImage* readImage = new ZynqReadImage(readFile);
-                readImage->DisplayImageDetails(options.GetReadImageOption(), options.GetDumpOption());
-                delete readImage;
-                return;
-            }
-        }
-        else if (options.archType == Arch::ZYNQMP)
-        {
-            if (options.GetVerifyImageOption())
-            {
-                ZynqMpReadImage* readImage = new ZynqMpReadImage(readFile);
-                readImage->VerifyAuthentication(options.GetVerifyImageOption());
-                delete readImage;
-                return;
-            }
-            else if (options.GetKDFTestVectorFile() != "")
-            {
-                ZynqMpEncryptionContext* encryptCtx = new ZynqMpEncryptionContext;
-                encryptCtx->CAVPonCounterModeKDF(options.GetKDFTestVectorFile());
-                delete encryptCtx;
-                return;
-            }
-
-            if (readFile != "")
-            {
-                ZynqMpReadImage* readImage = new ZynqMpReadImage(readFile);
-                readImage->DisplayImageDetails(options.GetReadImageOption(), options.GetDumpOption());
-                delete readImage;
-                return;
-            }
-        }
-
+        options.ProcessVerifyKDF();
+        options.ProcessReadImage();
         std::string bifFile = options.GetBifFilename();
         LOG_TRACE("BIF File: %s", bifFile.c_str());
 
@@ -126,6 +76,7 @@ public:
         {
             BIF_File bif(bifFile);
             bif.Process(options);
+            LOG_MSG("\n[INFO]   : Bootimage generated successfully\n");
         }
     }
 };

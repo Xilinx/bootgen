@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -74,16 +74,15 @@ void AuthenticationContext::ParsePSKeyFile(const std::string & filename)
 void AuthenticationContext::SetPPKeyFile(const std::string& filename)
 {
     ppkFile = filename;
-    /*if (ppkFile != "")
-    {
-        ParsePPKeyFile(filename);
-    }*/
 }
 
 /******************************************************************************/
 void AuthenticationContext::ParsePPKeyFile(const std::string& filename)
 {
-    primaryKey->ParsePublic(filename);
+    if (ppkFile != "")
+    {
+        primaryKey->ParsePublic(filename);
+    }
 }
 
 /******************************************************************************/
@@ -174,6 +173,12 @@ bool AuthenticationContext::GetZynpMpVerEs1Flag(void)
 void AuthenticationContext::SetHashType(AuthHash::Type type)
 {
     hashType = type;
+}
+
+/******************************************************************************/
+void AuthenticationContext::SetFirstChunkSize(uint64_t size)
+{
+    firstChunkSize = size;
 }
 
 /******************************************************************************/
@@ -325,9 +330,9 @@ void AuthenticationContext::GenerateSPKSignature(const std::string& filename)
         }
         GenerateSPKHash(shaHashPadded);
 
-        RearrangeEndianess((char*)shaHashPadded, rsaKeyLength);
-        authAlgorithm->CreateSignature(shaHashPadded, primaryKey, spkSignatureTemp);                
-        RearrangeEndianess((char*)spkSignatureTemp, rsaKeyLength);
+        RearrangeEndianess(shaHashPadded, rsaKeyLength);
+        authAlgorithm->CreateSignature(shaHashPadded, (uint8_t*)primaryKey, spkSignatureTemp);
+        RearrangeEndianess(spkSignatureTemp, rsaKeyLength);
         LOG_INFO("SPK Signature generated successfully");
         if (filename != "") 
         {
@@ -372,16 +377,16 @@ void AuthenticationContext::CreateSPKSignature(void)
         /* Calulate the SPK hash with PKCS padding */
         GenerateSPKHash(shaHashPadded);
         
-        RearrangeEndianess((char*)shaHashPadded, rsaKeyLength);
+        RearrangeEndianess(shaHashPadded, rsaKeyLength);
                 
         /* Sign the SPK hash */
-        authAlgorithm->CreateSignature(shaHashPadded, primaryKey, spkSignaturetmp);
+        authAlgorithm->CreateSignature(shaHashPadded, (uint8_t*)primaryKey, spkSignaturetmp);
         
         /* If SPK signature file is directly given in BIF file, 
            Sanity Check by cross verifying the calculated SPK signature */
         if (spkSignLoaded)
         {
-            RearrangeEndianess((char*)spkSignaturetmp, rsaKeyLength);
+            RearrangeEndianess(spkSignaturetmp, rsaKeyLength);
             if (memcmp(spksignature, spkSignaturetmp, rsaKeyLength) != 0)
             {
                 LOG_ERROR("Authentication Error !!!\n           Loaded SPK Signature does not match calculated SPK Signature");
@@ -393,7 +398,7 @@ void AuthenticationContext::CreateSPKSignature(void)
         {           
             memcpy(spksignature, spkSignaturetmp, rsaKeyLength);
             spkSignLoaded = true;
-            RearrangeEndianess((char*)spksignature, rsaKeyLength);
+            RearrangeEndianess(spksignature, rsaKeyLength);
         }
         delete [] shaHashPadded;
         delete [] spkSignaturetmp;
@@ -428,8 +433,10 @@ void AuthenticationContext::GenerateSPKHashFile(const std::string& filename, Has
 void AuthenticationContext::SetSPKSignatureFile(const std::string& filename)
 {
     spkSignFile = filename;
-    if(spkSignFile != "")
-    ParseSPKSignatureFile(filename);
+    if (spkSignFile != "")
+    {
+        ParseSPKSignatureFile(filename);
+    }
 }
 
 /******************************************************************************/
@@ -445,7 +452,9 @@ void AuthenticationContext::SetBHSignatureFile(const std::string& filename)
 {
     bhSignFile = filename;
     if (bhSignFile != "")
-    ParseBHSignatureFile(filename);
+    {
+        ParseBHSignatureFile(filename);
+    }
 }
 
 /******************************************************************************/
@@ -467,17 +476,6 @@ AuthenticationCertificate::AuthenticationCertificate(AuthenticationContext* cont
 /******************************************************************************/
 void AuthenticationCertificate::Build(BootImage& bi, Binary& cache, Section* dataSection, bool fsbl0, bool isTableHeader0)
 {
-    if (isTableHeader0)
-    {
-        if (bi.bifOptions->GetSPKFileName() != "")
-        {
-            this->AuthContext->SetSPKeyFile(bi.bifOptions->GetSPKFileName());
-        }
-        if (bi.bifOptions->GetSSKFileName() != "")
-        {
-            this->AuthContext->SetSSKeyFile(bi.bifOptions->GetSSKFileName());
-        }
-    }
     if (fsbl0 && (this->AuthContext->spkSelect != SpkSelect::SPK_eFUSE)) {
         LOG_ERROR("Bootloader partition can have only 'spk_select=spk-efuse'");
     }
@@ -644,9 +642,9 @@ void AuthenticationAlgorithm::RSA_Exponentiation(const uint8_t *base, const uint
 }
 
 /******************************************************************************/
-void RSAAuthenticationAlgorithm::CreateSignature(const uint8_t * base, Key * primaryKey, uint8_t * result0)
+void RSAAuthenticationAlgorithm::CreateSignature(const uint8_t* base, uint8_t* primaryKey, uint8_t* result0)
 {
-    RSA_Exponentiation(base, primaryKey->N, primaryKey->N_ext, primaryKey->D, result0);
+    RSA_Exponentiation(base, ((Key*)primaryKey)->N, ((Key*)primaryKey)->N_ext, ((Key*)primaryKey)->D, result0);
 }
 
 /******************************************************************************/
