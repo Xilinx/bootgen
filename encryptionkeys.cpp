@@ -114,7 +114,7 @@ void EncryptionContext::CounterModeKDF(uint32_t blocks, std::string keyFilename,
     // Copy the key
     for (uint32_t index = 0; index < number_of_Ko_bytes / 4; index++)
     {
-        outBufKDF[index] = ReadBigEndian32(Ko + (index * sizeof(uint32_t)));
+        outBufKDF[index] = ReadLittleEndian32(Ko + (index * sizeof(uint32_t)));
     }
     delete[] L;
 }

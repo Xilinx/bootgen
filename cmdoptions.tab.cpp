@@ -432,139 +432,139 @@ namespace CO {
       {
           case 5:
 /* Line 670 of lalr1.cc  */
-#line 108 "../../s/cmdoptions.y"
+#line 109 "../../s/cmdoptions.y"
     { options.SetBifFilename((yysemantic_stack_[(2) - (2)].cstring)); }
     break;
 
   case 8:
 /* Line 670 of lalr1.cc  */
-#line 111 "../../s/cmdoptions.y"
+#line 112 "../../s/cmdoptions.y"
     { options.GetOutputFileNames().push_back((yysemantic_stack_[(3) - (3)].cstring)); }
     break;
 
   case 9:
 /* Line 670 of lalr1.cc  */
-#line 112 "../../s/cmdoptions.y"
+#line 113 "../../s/cmdoptions.y"
     { options.GetOutputFileNames().push_back((yysemantic_stack_[(2) - (2)].cstring)); }
     break;
 
   case 10:
 /* Line 670 of lalr1.cc  */
-#line 113 "../../s/cmdoptions.y"
+#line 114 "../../s/cmdoptions.y"
     { options.SetDevicePartName((yysemantic_stack_[(2) - (2)].cstring)); }
     break;
 
   case 16:
 /* Line 670 of lalr1.cc  */
-#line 119 "../../s/cmdoptions.y"
+#line 120 "../../s/cmdoptions.y"
     { options.SetEfuseHashFileName((yysemantic_stack_[(2) - (2)].cstring)); }
     break;
 
   case 17:
 /* Line 670 of lalr1.cc  */
-#line 120 "../../s/cmdoptions.y"
+#line 121 "../../s/cmdoptions.y"
     { options.SetGenerateHashes(true); }
     break;
 
   case 18:
 /* Line 670 of lalr1.cc  */
-#line 121 "../../s/cmdoptions.y"
+#line 122 "../../s/cmdoptions.y"
     { options.SetNonBootingFlag(true); }
     break;
 
   case 19:
 /* Line 670 of lalr1.cc  */
-#line 122 "../../s/cmdoptions.y"
+#line 123 "../../s/cmdoptions.y"
     { options.SetLegacyFlag(true); }
     break;
 
   case 20:
 /* Line 670 of lalr1.cc  */
-#line 123 "../../s/cmdoptions.y"
+#line 124 "../../s/cmdoptions.y"
     { options.SetPadHeaderTable(true); }
     break;
 
   case 21:
 /* Line 670 of lalr1.cc  */
-#line 124 "../../s/cmdoptions.y"
+#line 125 "../../s/cmdoptions.y"
     { options.SetPadHeaderTable((bool)(strcmp((yysemantic_stack_[(3) - (3)].cstring),"0"))); }
     break;
 
   case 22:
 /* Line 670 of lalr1.cc  */
-#line 125 "../../s/cmdoptions.y"
+#line 126 "../../s/cmdoptions.y"
     { options.SetPadHeaderTable((bool)(strcmp((yysemantic_stack_[(2) - (2)].cstring),"0"))); }
     break;
 
   case 26:
 /* Line 670 of lalr1.cc  */
-#line 129 "../../s/cmdoptions.y"
+#line 130 "../../s/cmdoptions.y"
     { options.SetSpkSigFileName((yysemantic_stack_[(2) - (2)].cstring)); }
     break;
 
   case 27:
 /* Line 670 of lalr1.cc  */
-#line 130 "../../s/cmdoptions.y"
+#line 131 "../../s/cmdoptions.y"
     { options.SetDevicePackageName((yysemantic_stack_[(2) - (2)].cstring)); }
     break;
 
   case 29:
 /* Line 670 of lalr1.cc  */
-#line 132 "../../s/cmdoptions.y"
+#line 133 "../../s/cmdoptions.y"
     { options.SetArchType(Arch::ZYNQMP); }
     break;
 
   case 30:
 /* Line 670 of lalr1.cc  */
-#line 133 "../../s/cmdoptions.y"
+#line 134 "../../s/cmdoptions.y"
     { options.SetNoAuthBlocksFlag(true); }
     break;
 
   case 32:
 /* Line 670 of lalr1.cc  */
-#line 135 "../../s/cmdoptions.y"
+#line 136 "../../s/cmdoptions.y"
     { LOG_ERROR("'-debug' option is no more supported. Please use '-log' option"); }
     break;
 
   case 34:
 /* Line 670 of lalr1.cc  */
-#line 137 "../../s/cmdoptions.y"
+#line 138 "../../s/cmdoptions.y"
     { options.SetZynqmpes1Flag(true); }
     break;
 
   case 39:
 /* Line 670 of lalr1.cc  */
-#line 142 "../../s/cmdoptions.y"
+#line 143 "../../s/cmdoptions.y"
     { options.SetDumpDirectory((yysemantic_stack_[(2) - (2)].cstring)); }
     break;
 
   case 40:
 /* Line 670 of lalr1.cc  */
-#line 143 "../../s/cmdoptions.y"
+#line 144 "../../s/cmdoptions.y"
     { options.SetKDFTestVectorFile((yysemantic_stack_[(2) - (2)].cstring)); }
     break;
 
   case 45:
 /* Line 670 of lalr1.cc  */
-#line 150 "../../s/cmdoptions.y"
+#line 151 "../../s/cmdoptions.y"
     { options.SetSplitType(File::MCS); }
     break;
 
   case 46:
 /* Line 670 of lalr1.cc  */
-#line 151 "../../s/cmdoptions.y"
+#line 152 "../../s/cmdoptions.y"
     { options.SetSplitType(File::BIN); }
     break;
 
   case 47:
 /* Line 670 of lalr1.cc  */
-#line 154 "../../s/cmdoptions.y"
+#line 155 "../../s/cmdoptions.y"
     { options.SetDoFill(true); }
     break;
 
   case 48:
 /* Line 670 of lalr1.cc  */
-#line 155 "../../s/cmdoptions.y"
+#line 156 "../../s/cmdoptions.y"
     { options.SetDoFill(true);
                                                       if ((yysemantic_stack_[(2) - (2)].number) >= 0 && (yysemantic_stack_[(2) - (2)].number) <= 255)
                                                         options.SetOutputFillByte((uint8_t)(yysemantic_stack_[(2) - (2)].number)); 
@@ -574,873 +574,873 @@ namespace CO {
 
   case 49:
 /* Line 670 of lalr1.cc  */
-#line 162 "../../s/cmdoptions.y"
+#line 163 "../../s/cmdoptions.y"
     { ShowHelp(); exit(0); }
     break;
 
   case 50:
 /* Line 670 of lalr1.cc  */
-#line 163 "../../s/cmdoptions.y"
+#line 164 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HBIFHELP); exit(0); }
     break;
 
   case 51:
 /* Line 670 of lalr1.cc  */
-#line 164 "../../s/cmdoptions.y"
+#line 165 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HARCH); exit(0); }
     break;
 
   case 52:
 /* Line 670 of lalr1.cc  */
-#line 165 "../../s/cmdoptions.y"
+#line 166 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HIMAGE); exit(0); }
     break;
 
   case 53:
 /* Line 670 of lalr1.cc  */
-#line 166 "../../s/cmdoptions.y"
+#line 167 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HFILL); exit(0); }
     break;
 
   case 54:
 /* Line 670 of lalr1.cc  */
-#line 167 "../../s/cmdoptions.y"
+#line 168 "../../s/cmdoptions.y"
     { ShowCommonHelp(CO::BisonParser::token::H_SPLIT,true); exit(0); }
     break;
 
   case 55:
 /* Line 670 of lalr1.cc  */
-#line 168 "../../s/cmdoptions.y"
+#line 169 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HO); exit(0); }
     break;
 
   case 56:
 /* Line 670 of lalr1.cc  */
-#line 169 "../../s/cmdoptions.y"
+#line 170 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HP); exit(0); }
     break;
 
   case 57:
 /* Line 670 of lalr1.cc  */
-#line 170 "../../s/cmdoptions.y"
+#line 171 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HW); exit(0); }
     break;
 
   case 58:
 /* Line 670 of lalr1.cc  */
-#line 171 "../../s/cmdoptions.y"
+#line 172 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HEFUSEPPKBITS); exit(0); }
     break;
 
   case 59:
 /* Line 670 of lalr1.cc  */
-#line 172 "../../s/cmdoptions.y"
+#line 173 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HGENHASHES); exit(0); }
     break;
 
   case 60:
 /* Line 670 of lalr1.cc  */
-#line 173 "../../s/cmdoptions.y"
+#line 174 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HLEGACY); exit(0); }
     break;
 
   case 61:
 /* Line 670 of lalr1.cc  */
-#line 174 "../../s/cmdoptions.y"
+#line 175 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HPADHDR); exit(0); }
     break;
 
   case 62:
 /* Line 670 of lalr1.cc  */
-#line 175 "../../s/cmdoptions.y"
+#line 176 "../../s/cmdoptions.y"
     { ShowCommonHelp(CO::BisonParser::token::H_SPKSIGN,true); exit(0); }
     break;
 
   case 63:
 /* Line 670 of lalr1.cc  */
-#line 176 "../../s/cmdoptions.y"
+#line 177 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HPACKAGE); exit(0); }
     break;
 
   case 64:
 /* Line 670 of lalr1.cc  */
-#line 177 "../../s/cmdoptions.y"
+#line 178 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HENCRYPT); exit(0); }
     break;
 
   case 65:
 /* Line 670 of lalr1.cc  */
-#line 178 "../../s/cmdoptions.y"
+#line 179 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HGENKEYS); exit(0); }
     break;
 
   case 66:
 /* Line 670 of lalr1.cc  */
-#line 179 "../../s/cmdoptions.y"
+#line 180 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HDQSPI); exit(0); }
     break;
 
   case 67:
 /* Line 670 of lalr1.cc  */
-#line 180 "../../s/cmdoptions.y"
+#line 181 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HLOG); exit(0); }
     break;
 
   case 68:
 /* Line 670 of lalr1.cc  */
-#line 181 "../../s/cmdoptions.y"
+#line 182 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HZYNQMPES1); exit(0); }
     break;
 
   case 69:
 /* Line 670 of lalr1.cc  */
-#line 182 "../../s/cmdoptions.y"
+#line 183 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HPROCESSBIT); exit(0); }
     break;
 
   case 70:
 /* Line 670 of lalr1.cc  */
-#line 183 "../../s/cmdoptions.y"
+#line 184 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HNONBOOTING); exit(0); }
     break;
 
   case 71:
 /* Line 670 of lalr1.cc  */
-#line 184 "../../s/cmdoptions.y"
+#line 185 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HENCRDUMP); exit(0); }
     break;
 
   case 72:
 /* Line 670 of lalr1.cc  */
-#line 185 "../../s/cmdoptions.y"
+#line 186 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HVERIFY); exit(0); }
     break;
 
   case 73:
 /* Line 670 of lalr1.cc  */
-#line 186 "../../s/cmdoptions.y"
+#line 187 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HVERIFYKDF); exit(0); }
     break;
 
   case 74:
 /* Line 670 of lalr1.cc  */
-#line 187 "../../s/cmdoptions.y"
+#line 188 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HREAD); exit(0); }
     break;
 
   case 75:
 /* Line 670 of lalr1.cc  */
-#line 188 "../../s/cmdoptions.y"
+#line 189 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HSECUREDEBUG); exit(0); }
     break;
 
   case 76:
 /* Line 670 of lalr1.cc  */
-#line 189 "../../s/cmdoptions.y"
+#line 190 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HDUMP); exit(0); }
     break;
 
   case 77:
 /* Line 670 of lalr1.cc  */
-#line 190 "../../s/cmdoptions.y"
+#line 191 "../../s/cmdoptions.y"
     { ShowCmdHelp(CO::BisonParser::token::HDUMPDIR); exit(0); }
     break;
 
   case 78:
 /* Line 670 of lalr1.cc  */
-#line 193 "../../s/cmdoptions.y"
+#line 194 "../../s/cmdoptions.y"
     { ShowBifHelp(0); exit(0); }
     break;
 
   case 79:
 /* Line 670 of lalr1.cc  */
-#line 194 "../../s/cmdoptions.y"
+#line 195 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_INIT); exit(0); }
     break;
 
   case 80:
 /* Line 670 of lalr1.cc  */
-#line 195 "../../s/cmdoptions.y"
+#line 196 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_UDFBH); exit(0); }
     break;
 
   case 81:
 /* Line 670 of lalr1.cc  */
-#line 196 "../../s/cmdoptions.y"
+#line 197 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_AES); exit(0); }
     break;
 
   case 82:
 /* Line 670 of lalr1.cc  */
-#line 197 "../../s/cmdoptions.y"
+#line 198 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_PPK); exit(0); }
     break;
 
   case 83:
 /* Line 670 of lalr1.cc  */
-#line 198 "../../s/cmdoptions.y"
+#line 199 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_PSK); exit(0); }
     break;
 
   case 84:
 /* Line 670 of lalr1.cc  */
-#line 199 "../../s/cmdoptions.y"
+#line 200 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_SPK); exit(0); }
     break;
 
   case 85:
 /* Line 670 of lalr1.cc  */
-#line 200 "../../s/cmdoptions.y"
+#line 201 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_SSK); exit(0); }
     break;
 
   case 86:
 /* Line 670 of lalr1.cc  */
-#line 201 "../../s/cmdoptions.y"
+#line 202 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_SPKSIGN); exit(0); }
     break;
 
   case 87:
 /* Line 670 of lalr1.cc  */
-#line 202 "../../s/cmdoptions.y"
+#line 203 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_HDRSIGN); exit(0); }
     break;
 
   case 88:
 /* Line 670 of lalr1.cc  */
-#line 203 "../../s/cmdoptions.y"
+#line 204 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_BOOTIMAGE); exit(0); }
     break;
 
   case 89:
 /* Line 670 of lalr1.cc  */
-#line 204 "../../s/cmdoptions.y"
+#line 205 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_BL); exit(0); }
     break;
 
   case 90:
 /* Line 670 of lalr1.cc  */
-#line 205 "../../s/cmdoptions.y"
+#line 206 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_ENCR); exit(0); }
     break;
 
   case 91:
 /* Line 670 of lalr1.cc  */
-#line 206 "../../s/cmdoptions.y"
+#line 207 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_PID); exit(0); }
     break;
 
   case 92:
 /* Line 670 of lalr1.cc  */
-#line 207 "../../s/cmdoptions.y"
+#line 208 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_AUTH); exit(0); }
     break;
 
   case 93:
 /* Line 670 of lalr1.cc  */
-#line 208 "../../s/cmdoptions.y"
+#line 209 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_CHKSM); exit(0); }
     break;
 
   case 94:
 /* Line 670 of lalr1.cc  */
-#line 209 "../../s/cmdoptions.y"
+#line 210 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_POWNER); exit(0); }
     break;
 
   case 95:
 /* Line 670 of lalr1.cc  */
-#line 210 "../../s/cmdoptions.y"
+#line 211 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_PRESIGN); exit(0); }
     break;
 
   case 96:
 /* Line 670 of lalr1.cc  */
-#line 211 "../../s/cmdoptions.y"
+#line 212 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_UDF); exit(0); }
     break;
 
   case 97:
 /* Line 670 of lalr1.cc  */
-#line 212 "../../s/cmdoptions.y"
+#line 213 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_XIP); exit(0); }
     break;
 
   case 98:
 /* Line 670 of lalr1.cc  */
-#line 213 "../../s/cmdoptions.y"
+#line 214 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_ALIGN); exit(0); }
     break;
 
   case 99:
 /* Line 670 of lalr1.cc  */
-#line 214 "../../s/cmdoptions.y"
+#line 215 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_OFFSET); exit(0); }
     break;
 
   case 100:
 /* Line 670 of lalr1.cc  */
-#line 215 "../../s/cmdoptions.y"
+#line 216 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_RES); exit(0); }
     break;
 
   case 101:
 /* Line 670 of lalr1.cc  */
-#line 216 "../../s/cmdoptions.y"
+#line 217 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_LOAD); exit(0); }
     break;
 
   case 102:
 /* Line 670 of lalr1.cc  */
-#line 217 "../../s/cmdoptions.y"
+#line 218 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_STARTUP); exit(0); }
     break;
 
   case 103:
 /* Line 670 of lalr1.cc  */
-#line 218 "../../s/cmdoptions.y"
+#line 219 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_KEYSRC); exit(0); }
     break;
 
   case 104:
 /* Line 670 of lalr1.cc  */
-#line 219 "../../s/cmdoptions.y"
+#line 220 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_FSBLCFG); exit(0); }
     break;
 
   case 105:
 /* Line 670 of lalr1.cc  */
-#line 220 "../../s/cmdoptions.y"
+#line 221 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_BOOTDEV); exit(0); }
     break;
 
   case 106:
 /* Line 670 of lalr1.cc  */
-#line 221 "../../s/cmdoptions.y"
+#line 222 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_DESTCPU); exit(0); }
     break;
 
   case 107:
 /* Line 670 of lalr1.cc  */
-#line 222 "../../s/cmdoptions.y"
+#line 223 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_DESTDEV); exit(0); }
     break;
 
   case 108:
 /* Line 670 of lalr1.cc  */
-#line 223 "../../s/cmdoptions.y"
+#line 224 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_EL); exit(0); }
     break;
 
   case 109:
 /* Line 670 of lalr1.cc  */
-#line 224 "../../s/cmdoptions.y"
+#line 225 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_TZ); exit(0); }
     break;
 
   case 110:
 /* Line 670 of lalr1.cc  */
-#line 225 "../../s/cmdoptions.y"
+#line 226 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_AUTHPARAM); exit(0); }
     break;
 
   case 111:
 /* Line 670 of lalr1.cc  */
-#line 226 "../../s/cmdoptions.y"
+#line 227 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_BHKEY); exit(0); }
     break;
 
   case 112:
 /* Line 670 of lalr1.cc  */
-#line 227 "../../s/cmdoptions.y"
+#line 228 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_PFW); exit(0); }
     break;
 
   case 113:
 /* Line 670 of lalr1.cc  */
-#line 228 "../../s/cmdoptions.y"
+#line 229 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_BLOCKS); exit(0); }
     break;
 
   case 114:
 /* Line 670 of lalr1.cc  */
-#line 229 "../../s/cmdoptions.y"
+#line 230 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_BHIV); exit(0); }
     break;
 
   case 115:
 /* Line 670 of lalr1.cc  */
-#line 230 "../../s/cmdoptions.y"
+#line 231 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_METAL); exit(0); }
     break;
 
   case 116:
 /* Line 670 of lalr1.cc  */
-#line 231 "../../s/cmdoptions.y"
+#line 232 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_ELYHNDOFF); exit(0); }
     break;
 
   case 117:
 /* Line 670 of lalr1.cc  */
-#line 232 "../../s/cmdoptions.y"
+#line 233 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_HIVEC); exit(0); }
     break;
 
   case 118:
 /* Line 670 of lalr1.cc  */
-#line 233 "../../s/cmdoptions.y"
+#line 234 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_BHSIGN); exit(0); }
     break;
 
   case 119:
 /* Line 670 of lalr1.cc  */
-#line 234 "../../s/cmdoptions.y"
+#line 235 "../../s/cmdoptions.y"
     { ShowCommonHelp(CO::BisonParser::token::H_SPLIT,false); exit(0); }
     break;
 
   case 120:
 /* Line 670 of lalr1.cc  */
-#line 235 "../../s/cmdoptions.y"
+#line 236 "../../s/cmdoptions.y"
     { ShowCommonHelp(CO::BisonParser::token::H_SPKSIGN,false); exit(0); }
     break;
 
   case 121:
 /* Line 670 of lalr1.cc  */
-#line 236 "../../s/cmdoptions.y"
+#line 237 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_BOOTVEC); exit(0); }
     break;
 
   case 122:
 /* Line 670 of lalr1.cc  */
-#line 237 "../../s/cmdoptions.y"
+#line 238 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_PUFDATA); exit(0); }
     break;
 
   case 123:
 /* Line 670 of lalr1.cc  */
-#line 238 "../../s/cmdoptions.y"
+#line 239 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_AARCH32); exit(0); }
     break;
 
   case 124:
 /* Line 670 of lalr1.cc  */
-#line 239 "../../s/cmdoptions.y"
+#line 240 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_BIGENDIAN); exit(0); }
     break;
 
   case 125:
 /* Line 670 of lalr1.cc  */
-#line 240 "../../s/cmdoptions.y"
+#line 241 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_BOOTCONFIG); exit(0); }
     break;
 
   case 126:
 /* Line 670 of lalr1.cc  */
-#line 241 "../../s/cmdoptions.y"
+#line 242 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_COPY); exit(0); }
     break;
 
   case 127:
 /* Line 670 of lalr1.cc  */
-#line 242 "../../s/cmdoptions.y"
+#line 243 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_CORE); exit(0); }
     break;
 
   case 128:
 /* Line 670 of lalr1.cc  */
-#line 243 "../../s/cmdoptions.y"
+#line 244 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_DELAY_HANDOFF); exit(0); }
     break;
 
   case 129:
 /* Line 670 of lalr1.cc  */
-#line 244 "../../s/cmdoptions.y"
+#line 245 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_DELAY_LOAD); exit(0); }
     break;
 
   case 130:
 /* Line 670 of lalr1.cc  */
-#line 245 "../../s/cmdoptions.y"
+#line 246 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_FILE); exit(0); }
     break;
 
   case 131:
 /* Line 670 of lalr1.cc  */
-#line 246 "../../s/cmdoptions.y"
+#line 247 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_ID); exit(0); }
     break;
 
   case 132:
 /* Line 670 of lalr1.cc  */
-#line 247 "../../s/cmdoptions.y"
+#line 248 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_IMAGE); exit(0); }
     break;
 
   case 133:
 /* Line 670 of lalr1.cc  */
-#line 248 "../../s/cmdoptions.y"
+#line 249 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_METAHDR); exit(0); }
     break;
 
   case 134:
 /* Line 670 of lalr1.cc  */
-#line 249 "../../s/cmdoptions.y"
+#line 250 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_NAME); exit(0); }
     break;
 
   case 135:
 /* Line 670 of lalr1.cc  */
-#line 250 "../../s/cmdoptions.y"
+#line 251 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_PARENTID); exit(0); }
     break;
 
   case 136:
 /* Line 670 of lalr1.cc  */
-#line 251 "../../s/cmdoptions.y"
+#line 252 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_PARTITION); exit(0); }
     break;
 
   case 137:
 /* Line 670 of lalr1.cc  */
-#line 252 "../../s/cmdoptions.y"
+#line 253 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_SLR); exit(0); }
     break;
 
   case 138:
 /* Line 670 of lalr1.cc  */
-#line 253 "../../s/cmdoptions.y"
+#line 254 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_TYPE); exit(0); }
     break;
 
   case 139:
 /* Line 670 of lalr1.cc  */
-#line 254 "../../s/cmdoptions.y"
+#line 255 "../../s/cmdoptions.y"
     { ShowBifHelp(CO::BisonParser::token::H_BIF_KEYSRCENCR); exit(0); }
     break;
 
   case 140:
 /* Line 670 of lalr1.cc  */
-#line 257 "../../s/cmdoptions.y"
+#line 258 "../../s/cmdoptions.y"
     { options.SetOverwrite(true); }
     break;
 
   case 141:
 /* Line 670 of lalr1.cc  */
-#line 258 "../../s/cmdoptions.y"
+#line 259 "../../s/cmdoptions.y"
     { options.SetOverwrite(true); }
     break;
 
   case 142:
 /* Line 670 of lalr1.cc  */
-#line 259 "../../s/cmdoptions.y"
+#line 260 "../../s/cmdoptions.y"
     { options.SetOverwrite(false); }
     break;
 
   case 144:
 /* Line 670 of lalr1.cc  */
-#line 263 "../../s/cmdoptions.y"
+#line 264 "../../s/cmdoptions.y"
     { options.SetLogLevel(LogLevel::ERROR); }
     break;
 
   case 145:
 /* Line 670 of lalr1.cc  */
-#line 264 "../../s/cmdoptions.y"
+#line 265 "../../s/cmdoptions.y"
     { options.SetLogLevel(LogLevel::WARNING); }
     break;
 
   case 146:
 /* Line 670 of lalr1.cc  */
-#line 265 "../../s/cmdoptions.y"
+#line 266 "../../s/cmdoptions.y"
     { options.SetLogLevel(LogLevel::INFO); }
     break;
 
   case 147:
 /* Line 670 of lalr1.cc  */
-#line 266 "../../s/cmdoptions.y"
+#line 267 "../../s/cmdoptions.y"
     { options.SetLogLevel(LogLevel::DEBUG); }
     break;
 
   case 148:
 /* Line 670 of lalr1.cc  */
-#line 267 "../../s/cmdoptions.y"
+#line 268 "../../s/cmdoptions.y"
     { options.SetLogLevel(LogLevel::TRACE); }
     break;
 
   case 149:
 /* Line 670 of lalr1.cc  */
-#line 270 "../../s/cmdoptions.y"
+#line 271 "../../s/cmdoptions.y"
     { options.SetEncryptedKeySource(KeySource::BbramRedKey); }
     break;
 
   case 150:
 /* Line 670 of lalr1.cc  */
-#line 271 "../../s/cmdoptions.y"
+#line 272 "../../s/cmdoptions.y"
     { options.SetEncryptedKeySource(KeySource::EfuseRedKey); }
     break;
 
   case 152:
 /* Line 670 of lalr1.cc  */
-#line 274 "../../s/cmdoptions.y"
+#line 275 "../../s/cmdoptions.y"
     { options.SetStartCbc((yysemantic_stack_[(3) - (3)].cstring));}
     break;
 
   case 154:
 /* Line 670 of lalr1.cc  */
-#line 275 "../../s/cmdoptions.y"
+#line 276 "../../s/cmdoptions.y"
     { options.SetKey0((yysemantic_stack_[(3) - (3)].cstring));}
     break;
 
   case 156:
 /* Line 670 of lalr1.cc  */
-#line 276 "../../s/cmdoptions.y"
+#line 277 "../../s/cmdoptions.y"
     { options.SetHmac((yysemantic_stack_[(3) - (3)].cstring));}
     break;
 
   case 158:
 /* Line 670 of lalr1.cc  */
-#line 277 "../../s/cmdoptions.y"
+#line 278 "../../s/cmdoptions.y"
     { options.SetEncryptionKeyFile((yysemantic_stack_[(1) - (1)].cstring));}
     break;
 
   case 160:
 /* Line 670 of lalr1.cc  */
-#line 281 "../../s/cmdoptions.y"
+#line 282 "../../s/cmdoptions.y"
     { options.SetProcessBitstreamType(File::MCS); }
     break;
 
   case 161:
 /* Line 670 of lalr1.cc  */
-#line 282 "../../s/cmdoptions.y"
+#line 283 "../../s/cmdoptions.y"
     { options.SetProcessBitstreamType(File::BIN); }
     break;
 
   case 162:
 /* Line 670 of lalr1.cc  */
-#line 285 "../../s/cmdoptions.y"
+#line 286 "../../s/cmdoptions.y"
     { options.SetDualQspiMode(QspiMode::PARALLEL_LQSPI); }
     break;
 
   case 163:
 /* Line 670 of lalr1.cc  */
-#line 286 "../../s/cmdoptions.y"
+#line 287 "../../s/cmdoptions.y"
     { options.SetDualQspiMode(QspiMode::STACKED); }
     break;
 
   case 164:
 /* Line 670 of lalr1.cc  */
-#line 289 "../../s/cmdoptions.y"
+#line 290 "../../s/cmdoptions.y"
     { LOG_ERROR("'parallel' option is not supported with '-dual_ospi_mode'."); }
     break;
 
   case 165:
 /* Line 670 of lalr1.cc  */
-#line 290 "../../s/cmdoptions.y"
+#line 291 "../../s/cmdoptions.y"
     { options.SetDualQspiMode(QspiMode::STACKED); }
     break;
 
   case 166:
 /* Line 670 of lalr1.cc  */
-#line 293 "../../s/cmdoptions.y"
+#line 294 "../../s/cmdoptions.y"
     { options.SetQspiSize((uint16_t)(yysemantic_stack_[(1) - (1)].number)); }
     break;
 
   case 167:
 /* Line 670 of lalr1.cc  */
-#line 294 "../../s/cmdoptions.y"
+#line 295 "../../s/cmdoptions.y"
     { options.SetQspiSize((uint16_t)atoi((yysemantic_stack_[(1) - (1)].cstring))); }
     break;
 
   case 168:
 /* Line 670 of lalr1.cc  */
-#line 297 "../../s/cmdoptions.y"
+#line 298 "../../s/cmdoptions.y"
     { options.SetOspiSize((uint16_t)(yysemantic_stack_[(1) - (1)].number)); }
     break;
 
   case 169:
 /* Line 670 of lalr1.cc  */
-#line 298 "../../s/cmdoptions.y"
+#line 299 "../../s/cmdoptions.y"
     { options.SetOspiSize((uint16_t)atoi((yysemantic_stack_[(1) - (1)].cstring))); }
     break;
 
   case 170:
 /* Line 670 of lalr1.cc  */
-#line 301 "../../s/cmdoptions.y"
+#line 302 "../../s/cmdoptions.y"
     { options.SetArchType(Arch::ZYNQ); }
     break;
 
   case 171:
 /* Line 670 of lalr1.cc  */
-#line 302 "../../s/cmdoptions.y"
+#line 303 "../../s/cmdoptions.y"
     { options.SetArchType(Arch::ZYNQMP); }
     break;
 
   case 172:
 /* Line 670 of lalr1.cc  */
-#line 303 "../../s/cmdoptions.y"
+#line 304 "../../s/cmdoptions.y"
     { options.SetArchType(Arch::VERSAL); }
     break;
 
   case 173:
 /* Line 670 of lalr1.cc  */
-#line 304 "../../s/cmdoptions.y"
+#line 305 "../../s/cmdoptions.y"
     { options.SetArchType(Arch::FPGA); }
     break;
 
   case 175:
 /* Line 670 of lalr1.cc  */
-#line 308 "../../s/cmdoptions.y"
+#line 309 "../../s/cmdoptions.y"
     { options.SetGreyKeyGeneration(true); }
     break;
 
   case 176:
 /* Line 670 of lalr1.cc  */
-#line 309 "../../s/cmdoptions.y"
+#line 310 "../../s/cmdoptions.y"
     { options.SetMetalKeyGeneration(true); }
     break;
 
   case 177:
 /* Line 670 of lalr1.cc  */
-#line 310 "../../s/cmdoptions.y"
+#line 311 "../../s/cmdoptions.y"
     { options.SetAuthKeyGeneration(GenAuthKeys::PEM); }
     break;
 
   case 178:
 /* Line 670 of lalr1.cc  */
-#line 311 "../../s/cmdoptions.y"
+#line 312 "../../s/cmdoptions.y"
     { options.SetAuthKeyGeneration(GenAuthKeys::RSA); }
     break;
 
   case 179:
 /* Line 670 of lalr1.cc  */
-#line 314 "../../s/cmdoptions.y"
+#line 315 "../../s/cmdoptions.y"
     { options.SetAuthKeyGeneration(GenAuthKeys::PEM); }
     break;
 
   case 180:
 /* Line 670 of lalr1.cc  */
-#line 315 "../../s/cmdoptions.y"
+#line 316 "../../s/cmdoptions.y"
     { options.SetAuthKeyGeneration(GenAuthKeys::RSA); }
     break;
 
   case 181:
 /* Line 670 of lalr1.cc  */
-#line 318 "../../s/cmdoptions.y"
+#line 319 "../../s/cmdoptions.y"
     { options.SetSecureDebugAuthType(Authentication::ECDSA); }
     break;
 
   case 182:
 /* Line 670 of lalr1.cc  */
-#line 319 "../../s/cmdoptions.y"
+#line 320 "../../s/cmdoptions.y"
     { options.SetSecureDebugAuthType(Authentication::RSA); }
     break;
 
   case 183:
 /* Line 670 of lalr1.cc  */
-#line 321 "../../s/cmdoptions.y"
+#line 322 "../../s/cmdoptions.y"
     { options.SetReadImageFile((yysemantic_stack_[(1) - (1)].cstring));
                                                       options.SetVerifyImageOption(true); }
     break;
 
   case 184:
 /* Line 670 of lalr1.cc  */
-#line 324 "../../s/cmdoptions.y"
+#line 325 "../../s/cmdoptions.y"
     { options.SetReadImageFile((yysemantic_stack_[(1) - (1)].cstring));
                                                       options.SetReadImageOption(ReadImageOption::ALL); }
     break;
 
   case 185:
 /* Line 670 of lalr1.cc  */
-#line 326 "../../s/cmdoptions.y"
+#line 327 "../../s/cmdoptions.y"
     { options.SetReadImageFile((yysemantic_stack_[(2) - (1)].cstring)); }
     break;
 
   case 186:
 /* Line 670 of lalr1.cc  */
-#line 329 "../../s/cmdoptions.y"
+#line 330 "../../s/cmdoptions.y"
     { options.SetReadImageOption(ReadImageOption::BH); }
     break;
 
   case 187:
 /* Line 670 of lalr1.cc  */
-#line 330 "../../s/cmdoptions.y"
+#line 331 "../../s/cmdoptions.y"
     { options.SetReadImageOption(ReadImageOption::IHT); }
     break;
 
   case 188:
 /* Line 670 of lalr1.cc  */
-#line 331 "../../s/cmdoptions.y"
+#line 332 "../../s/cmdoptions.y"
     { options.SetReadImageOption(ReadImageOption::IH); }
     break;
 
   case 189:
 /* Line 670 of lalr1.cc  */
-#line 332 "../../s/cmdoptions.y"
+#line 333 "../../s/cmdoptions.y"
     { options.SetReadImageOption(ReadImageOption::PHT); }
     break;
 
   case 190:
 /* Line 670 of lalr1.cc  */
-#line 333 "../../s/cmdoptions.y"
+#line 334 "../../s/cmdoptions.y"
     { options.SetReadImageOption(ReadImageOption::AC); }
     break;
 
   case 191:
 /* Line 670 of lalr1.cc  */
-#line 336 "../../s/cmdoptions.y"
+#line 337 "../../s/cmdoptions.y"
     { options.SetDumpOption(DumpOption::BH); }
     break;
 
   case 192:
 /* Line 670 of lalr1.cc  */
-#line 337 "../../s/cmdoptions.y"
+#line 338 "../../s/cmdoptions.y"
     { options.SetReadImageFile((yysemantic_stack_[(2) - (1)].cstring));
                                                       options.SetDumpOption(DumpOption::BH); }
     break;
 
   case 193:
 /* Line 670 of lalr1.cc  */
-#line 339 "../../s/cmdoptions.y"
+#line 340 "../../s/cmdoptions.y"
     { options.SetReadImageFile((yysemantic_stack_[(2) - (2)].cstring));
                                                       options.SetDumpOption(DumpOption::BH); }
     break;
 
   case 194:
 /* Line 670 of lalr1.cc  */
-#line 341 "../../s/cmdoptions.y"
+#line 342 "../../s/cmdoptions.y"
     { options.SetReadImageFile((yysemantic_stack_[(1) - (1)].cstring));
                                                       options.SetDumpOption(DumpOption::PARTITIONS); }
     break;
 
   case 195:
 /* Line 670 of lalr1.cc  */
-#line 343 "../../s/cmdoptions.y"
+#line 344 "../../s/cmdoptions.y"
     { options.SetReadImageFile((yysemantic_stack_[(2) - (1)].cstring));
                                                       options.SetDumpOption(DumpOption::PLM); }
     break;
 
   case 196:
 /* Line 670 of lalr1.cc  */
-#line 345 "../../s/cmdoptions.y"
+#line 346 "../../s/cmdoptions.y"
     { options.SetReadImageFile((yysemantic_stack_[(2) - (1)].cstring));
                                                       options.SetDumpOption(DumpOption::PMC_CDO); }
     break;
 
   case 197:
 /* Line 670 of lalr1.cc  */
-#line 347 "../../s/cmdoptions.y"
+#line 348 "../../s/cmdoptions.y"
     { options.SetReadImageFile((yysemantic_stack_[(2) - (1)].cstring));
                                                       options.SetDumpOption(DumpOption::BOOT_FILES); }
     break;
 
   case 198:
 /* Line 670 of lalr1.cc  */
-#line 351 "../../s/cmdoptions.y"
+#line 352 "../../s/cmdoptions.y"
     { options.SetZynqMpEncrDump(true,"aes_log.txt"); }
     break;
 
   case 199:
 /* Line 670 of lalr1.cc  */
-#line 352 "../../s/cmdoptions.y"
+#line 353 "../../s/cmdoptions.y"
     { options.SetZynqMpEncrDump(true,(yysemantic_stack_[(1) - (1)].cstring)); }
     break;
 
@@ -1662,11 +1662,11 @@ namespace CO {
   const signed char
   BisonParser::yypact_[] =
   {
-       -73,    20,   106,   -73,    78,   -52,    28,    96,   -73,   -73,
-     -73,   -43,   -72,     1,    10,   109,   -65,    31,   -26,   -73,
-     -28,    99,   103,   -73,   -73,    35,   -73,    83,    51,   -13,
-     -48,   110,    56,    78,    78,    78,    78,   -73,   -73,   -73,
-     -73,   -73,   -73,   -73,   -73,   -73,    78,   -73,   -73,   -73,
+       -73,    15,   106,   -73,    89,   -57,    28,    96,   -73,   -73,
+     -73,   -53,   -72,    21,   -13,     4,   -65,   -44,   -26,   -73,
+      -5,    94,    97,   -73,   -73,    89,   -73,    63,    89,    72,
+     -48,   113,    32,    89,    89,    89,    89,   -73,   -73,   -73,
+     -73,   -73,   -73,   -73,   -73,   -73,    89,   -73,   -73,   -73,
      -73,   -73,   -73,   -73,   -73,   -73,   -73,   -73,   -73,   -73,
      -73,   -73,   -73,   -73,   -73,   -73,   -73,   -73,   -73,   -73,
      -73,   -73,   -73,   -73,   -73,   -73,   -73,   -73,   -73,   -73,
@@ -1677,14 +1677,14 @@ namespace CO {
      -73,   -73,   -73,   -73,   -73,   -73,   -73,   -73,   -73,   -73,
      -73,   -73,   -73,   -73,   -73,   -73,   -73,   -73,   -73,   -73,
      -73,   -73,   -73,   -73,   -73,   -73,   -73,   -73,   -73,   -73,
-     -73,   -73,    78,    60,   -73,   -73,   -73,   -73,   -73,   -73,
-     -73,   -73,   -54,   -73,   -73,   -53,   -73,   -73,   -73,   -73,
-     -73,   -73,    58,   -73,   -73,   -73,   120,   -73,   -73,   -73,
-     -73,   -73,   -73,   -73,   -73,    57,   -73,    53,   -73,   -73,
+     -73,   -73,    89,    60,   -73,   -73,   -73,   -73,   -73,   -73,
+     -73,   -73,   -59,   -73,   -73,   -58,   -73,   -73,   -73,   -73,
+     -73,   -73,    33,   -73,   -73,   -73,   114,   -73,   -73,   -73,
+     -73,   -73,   -73,   -73,   -73,    46,   -73,    87,   -73,   -73,
      -73,   -73,   -73,   -73,   -73,   -73,   -73,   -73,   -73,   -73,
      -73,   -73,   -73,   -73,   -73,   -73,   -73,   -73,   -73,   -73,
-      65,    75,   -73,   -73,   -73,   -73,   -73,   -73,    81,    85,
-      89,   -73,    92,    93,    78,   -73,    95,   -73,   -73,   -73
+      52,    56,   -73,   -73,   -73,   -73,   -73,   -73,    66,    55,
+      79,   -73,    92,    93,    89,   -73,    95,   -73,   -73,   -73
   };
 
   /* YYDEFACT[S] -- default reduction number in state S.  Performed when
@@ -1745,24 +1745,24 @@ namespace CO {
   const unsigned char
   BisonParser::yytable_[] =
   {
-        47,   180,   152,   156,   157,   158,   181,   159,   161,   162,
-     153,    39,    40,    41,    42,   140,   141,   142,   143,   144,
-       3,   200,   203,    44,    78,   201,   204,   187,   189,   191,
-     192,   146,   147,    77,    46,   174,   175,   176,   177,   178,
+        47,   180,   152,   156,   157,   158,   181,   159,   146,   147,
+     153,    39,    40,    41,    42,     3,   200,   203,    44,   170,
+     201,   204,   173,    77,    78,   149,   150,   187,   189,   191,
+     192,   161,   162,   155,    46,   140,   141,   142,   143,   144,
      194,    79,    80,    81,    82,    83,    84,    85,    86,    87,
       88,    89,    90,    91,    92,    93,    94,    95,    96,    97,
       98,    99,   100,   101,   102,   103,   104,   105,   106,   107,
      108,   109,   110,   111,   112,   113,   114,   115,   116,   117,
      118,   119,   120,   121,   196,   197,   198,   122,   123,   124,
      125,   126,   127,   128,   129,   130,   131,   132,   133,   134,
-     135,   136,   137,   138,    39,    40,    41,    42,   155,     4,
-       5,     6,   170,     7,     8,     9,    10,    11,    12,    13,
-     212,   213,   214,   215,   216,    14,    15,   199,   173,    16,
-     149,   150,   186,    17,    18,   164,   165,   206,    19,   210,
-      20,    21,   167,   168,    22,   218,   195,    23,    24,    25,
-      26,    27,    28,    29,    39,    40,    41,    42,   219,    30,
-     221,    31,   171,   172,    32,   222,   183,   184,   207,   208,
-     223,   225,    33,   226,   229,     0,     0,     0,    34,    35,
+     135,   136,   137,   138,    39,    40,    41,    42,   186,     4,
+       5,     6,   206,     7,     8,     9,    10,    11,    12,    13,
+     174,   175,   176,   177,   178,    14,    15,   199,   210,    16,
+     164,   165,   218,    17,    18,   222,   167,   168,    19,   219,
+      20,    21,   171,   172,    22,   221,   195,    23,    24,    25,
+      26,    27,    28,    29,   212,   213,   214,   215,   216,    30,
+     223,    31,   207,   208,    32,    39,    40,    41,    42,   183,
+     184,   225,    33,   226,   229,     0,     0,     0,    34,    35,
       36,    48,    49,    50,    51,    52,    53,    54,    55,    56,
       57,    58,    59,    60,    61,    62,    63,    64,    65,    66,
       67,    68,     0,    69,    70,    71,    72,    73,    74,     0,
@@ -1776,24 +1776,24 @@ namespace CO {
   const short int
   BisonParser::yycheck_[] =
   {
-         6,    49,    67,    29,    30,    31,    54,    33,    36,    37,
-      16,    76,    77,    78,    79,    14,    15,    16,    17,    18,
-       0,    75,    75,    75,    96,    79,    79,    33,    34,    35,
-      36,    21,    22,    76,     6,    48,    49,    50,    51,    52,
+         6,    49,    67,    29,    30,    31,    54,    33,    21,    22,
+      16,    76,    77,    78,    79,     0,    75,    75,    75,    25,
+      79,    79,    28,    76,    96,    21,    22,    33,    34,    35,
+      36,    36,    37,    77,     6,    14,    15,    16,    17,    18,
       46,   113,   114,   115,   116,   117,   118,   119,   120,   121,
      122,   123,   124,   125,   126,   127,   128,   129,   130,   131,
      132,   133,   134,   135,   136,   137,   138,   139,   140,   141,
      142,   143,   144,   145,   146,   147,   148,   149,   150,   151,
      152,   153,   154,   155,    24,    25,    26,   159,   160,   161,
      162,   163,   164,   165,   166,   167,   168,   169,   170,   171,
-     172,   173,   174,   175,    76,    77,    78,    79,    77,     3,
-       4,     5,    77,     7,     8,     9,    10,    11,    12,    13,
-      67,    68,    69,    70,    71,    19,    20,    67,    77,    23,
-      21,    22,    76,    27,    28,    36,    37,    79,    32,    82,
-      34,    35,    39,    40,    38,    80,   152,    41,    42,    43,
-      44,    45,    46,    47,    76,    77,    78,    79,    83,    53,
-      79,    55,    79,    80,    58,    80,    56,    57,    48,    49,
-      81,    79,    66,    80,    79,    -1,    -1,    -1,    72,    73,
+     172,   173,   174,   175,    76,    77,    78,    79,    76,     3,
+       4,     5,    79,     7,     8,     9,    10,    11,    12,    13,
+      48,    49,    50,    51,    52,    19,    20,    67,    82,    23,
+      36,    37,    80,    27,    28,    80,    39,    40,    32,    83,
+      34,    35,    79,    80,    38,    79,   152,    41,    42,    43,
+      44,    45,    46,    47,    67,    68,    69,    70,    71,    53,
+      81,    55,    48,    49,    58,    76,    77,    78,    79,    56,
+      57,    79,    66,    80,    79,    -1,    -1,    -1,    72,    73,
       74,    85,    86,    87,    88,    89,    90,    91,    92,    93,
       94,    95,    96,    97,    98,    99,   100,   101,   102,   103,
      104,   105,    -1,   107,   108,   109,   110,   111,   112,    -1,
@@ -1825,7 +1825,7 @@ namespace CO {
       14,    15,    16,    17,    18,   186,    21,    22,   181,    21,
       22,   193,    67,   180,   205,    77,    29,    30,    31,    33,
      198,    36,    37,   194,    36,    37,   195,    39,    40,   185,
-      77,    79,    80,    77,    48,    49,    50,    51,    52,   199,
+     180,    79,    80,   180,    48,    49,    50,    51,    52,   199,
       49,    54,   201,    56,    57,   187,    76,   180,   203,   180,
      202,   180,   180,   206,   180,   180,    24,    25,    26,    67,
       75,    79,   196,    75,    79,   197,    79,    48,    49,   200,
@@ -1969,10 +1969,10 @@ namespace CO {
      180,    -1,    19,   181,    -1,   182,    -1,     5,     6,   180,
       -1,     5,   180,    -1,    58,    76,    -1,    38,   185,    -1,
       13,   186,    -1,     7,   183,    -1,    12,   184,    -1,    55,
-     187,   188,   189,   190,   191,    -1,    43,    77,    -1,    44,
+     187,   188,   189,   190,   191,    -1,    43,   180,    -1,    44,
       -1,    10,    -1,     9,    -1,    45,    -1,    45,    80,    79,
       -1,    45,    79,    -1,    20,   193,    -1,    34,   194,    -1,
-      35,   195,    -1,    46,    77,    -1,    11,    76,    -1,    28,
+      35,   195,    -1,    46,   180,    -1,    11,    76,    -1,    28,
      198,    -1,    32,    -1,    41,    -1,    47,   199,    -1,     8,
       -1,    74,   206,    -1,    42,    -1,    53,   201,    -1,    66,
      203,    -1,    72,   202,    -1,    23,   205,    -1,    27,    77,
@@ -2042,26 +2042,26 @@ namespace CO {
   const unsigned short int
   BisonParser::yyrline_[] =
   {
-         0,   102,   102,   104,   105,   108,   109,   110,   111,   112,
-     113,   114,   115,   116,   117,   118,   119,   120,   121,   122,
-     123,   124,   125,   126,   127,   128,   129,   130,   131,   132,
-     133,   134,   135,   136,   137,   138,   139,   140,   141,   142,
-     143,   148,   148,   148,   148,   150,   151,   154,   155,   162,
-     163,   164,   165,   166,   167,   168,   169,   170,   171,   172,
-     173,   174,   175,   176,   177,   178,   179,   180,   181,   182,
-     183,   184,   185,   186,   187,   188,   189,   190,   193,   194,
-     195,   196,   197,   198,   199,   200,   201,   202,   203,   204,
-     205,   206,   207,   208,   209,   210,   211,   212,   213,   214,
-     215,   216,   217,   218,   219,   220,   221,   222,   223,   224,
-     225,   226,   227,   228,   229,   230,   231,   232,   233,   234,
-     235,   236,   237,   238,   239,   240,   241,   242,   243,   244,
-     245,   246,   247,   248,   249,   250,   251,   252,   253,   254,
-     257,   258,   259,   262,   263,   264,   265,   266,   267,   270,
-     271,   274,   274,   275,   275,   276,   276,   277,   277,   279,
-     281,   282,   285,   286,   289,   290,   293,   294,   297,   298,
-     301,   302,   303,   304,   307,   308,   309,   310,   311,   314,
-     315,   318,   319,   321,   324,   326,   329,   330,   331,   332,
-     333,   336,   337,   339,   341,   343,   345,   347,   351,   352
+         0,   103,   103,   105,   106,   109,   110,   111,   112,   113,
+     114,   115,   116,   117,   118,   119,   120,   121,   122,   123,
+     124,   125,   126,   127,   128,   129,   130,   131,   132,   133,
+     134,   135,   136,   137,   138,   139,   140,   141,   142,   143,
+     144,   149,   149,   149,   149,   151,   152,   155,   156,   163,
+     164,   165,   166,   167,   168,   169,   170,   171,   172,   173,
+     174,   175,   176,   177,   178,   179,   180,   181,   182,   183,
+     184,   185,   186,   187,   188,   189,   190,   191,   194,   195,
+     196,   197,   198,   199,   200,   201,   202,   203,   204,   205,
+     206,   207,   208,   209,   210,   211,   212,   213,   214,   215,
+     216,   217,   218,   219,   220,   221,   222,   223,   224,   225,
+     226,   227,   228,   229,   230,   231,   232,   233,   234,   235,
+     236,   237,   238,   239,   240,   241,   242,   243,   244,   245,
+     246,   247,   248,   249,   250,   251,   252,   253,   254,   255,
+     258,   259,   260,   263,   264,   265,   266,   267,   268,   271,
+     272,   275,   275,   276,   276,   277,   277,   278,   278,   280,
+     282,   283,   286,   287,   290,   291,   294,   295,   298,   299,
+     302,   303,   304,   305,   308,   309,   310,   311,   312,   315,
+     316,   319,   320,   322,   325,   327,   330,   331,   332,   333,
+     334,   337,   338,   340,   342,   344,   346,   348,   352,   353
   };
 
   // Print the state stack on the debug stream.
@@ -2170,7 +2170,7 @@ namespace CO {
 /* Line 1141 of lalr1.cc  */
 #line 2172 "cmdoptions.tab.cpp"
 /* Line 1142 of lalr1.cc  */
-#line 355 "../../s/cmdoptions.y"
+#line 356 "../../s/cmdoptions.y"
 
 
 

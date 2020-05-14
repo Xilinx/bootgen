@@ -222,7 +222,6 @@ core                                                                return tok::
     r5-lockstep     yylval->number = DestinationCPU::R5_lockstep;   return tok::DEST_CPU_TYPE;
     pmu             yylval->number = DestinationCPU::PMU;           return tok::DEST_CPU_TYPE;
     psm             yylval->number = DestinationCPU::PMU;           return tok::DEST_CPU_TYPE;
-    me              yylval->number = DestinationCPU::AIE;            LOG_WARNING("BIF attribute error !!!\n\t\t'destination_cpu=me/core=me' is unsupported. Please use 'core=aie' instead."); return tok::DEST_CPU_TYPE;
     aie             yylval->number = DestinationCPU::AIE;            return tok::DEST_CPU_TYPE;
 
 destination_device                                                      return tok::DEST_DEVICE;

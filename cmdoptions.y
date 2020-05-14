@@ -95,8 +95,9 @@ void ShowCommonHelp(int,bool);
 %token H_BIF_POWNER H_BIF_PRESIGN H_BIF_UDF H_BIF_XIP H_BIF_ALIGN H_BIF_OFFSET H_BIF_RES H_BIF_LOAD H_BIF_TZ
 %token H_BIF_STARTUP H_BIF_KEYSRC H_BIF_FSBLCFG H_BIF_BOOTDEV H_BIF_DESTCPU H_BIF_DESTDEV H_BIF_EL H_SPLIT
 %token H_BIF_AUTHPARAM H_BIF_BHKEY H_BIF_PFW H_BIF_BLOCKS H_BIF_METAL H_BIF_BHIV H_BIF_BOOTVEC
-%token H_BIF_PUFDATA H_BIF_PTYPE H_BIF_IMAGECFG H_BIF_PMCCONFIG H_BIF_AARCH32, H_BIF_BIGENDIAN, H_BIF_BOOTCONFIG, H_BIF_COPY,
-H_BIF_CORE, H_BIF_DELAY_HANDOFF, H_BIF_DELAY_LOAD, H_BIF_FILE, H_BIF_ID, H_BIF_IMAGE, H_BIF_METAHDR, H_BIF_NAME, H_BIF_PARTITION, H_BIF_SLR, H_BIF_TYPE, H_BIF_KEYSRCENCR, H_BIF_PARENTID
+%token H_BIF_PUFDATA H_BIF_PTYPE H_BIF_IMAGECFG H_BIF_PMCCONFIG H_BIF_AARCH32 H_BIF_BIGENDIAN H_BIF_BOOTCONFIG H_BIF_COPY
+%token H_BIF_CORE H_BIF_DELAY_HANDOFF H_BIF_DELAY_LOAD H_BIF_FILE H_BIF_ID H_BIF_IMAGE H_BIF_METAHDR H_BIF_NAME H_BIF_PARTITION
+%token H_BIF_SLR H_BIF_TYPE H_BIF_KEYSRCENCR H_BIF_PARENTID
 
 %%
 top             : option_list;
@@ -116,7 +117,7 @@ option          : _IMAGE filename                   { options.SetBifFilename($2)
                 | _H         helpoption
                 | _BIF_HELP  bifhelpoption
                 | _ENCRYPT keysource startcbc key0 hmac keyfile
-                | _EFUSEPPKBITS FILENAME            { options.SetEfuseHashFileName($2); }
+                | _EFUSEPPKBITS filename            { options.SetEfuseHashFileName($2); }
                 | _GENERATE_HASHES                  { options.SetGenerateHashes(true); }
                 | _NONBOOTING                       { options.SetNonBootingFlag(true); }
                 | _LEGACY                           { options.SetLegacyFlag(true); }
@@ -126,7 +127,7 @@ option          : _IMAGE filename                   { options.SetBifFilename($2)
                 | _PROCESS_BITSTREAM bitfile_type   
                 | _DUAL_QSPI_MODE qpsi_mode
                 | _DUAL_OSPI_MODE opsi_mode
-                | _SPKSIGNATURE FILENAME            { options.SetSpkSigFileName($2); }
+                | _SPKSIGNATURE filename            { options.SetSpkSigFileName($2); }
                 | _PACKAGENAME IDENTIFIER           { options.SetDevicePackageName($2); }
                 | _ARCH archOptions
                 | _R                                { options.SetArchType(Arch::ZYNQMP); }

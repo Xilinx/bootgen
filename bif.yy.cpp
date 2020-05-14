@@ -406,8 +406,8 @@ int yyFlexLexer::yylex()
 	(yy_c_buf_p) = yy_cp;
 
 /* %% [4.0] data tables for the DFA and the user's section 1 definitions go here */
-#define YY_NUM_RULES 231
-#define YY_END_OF_BUFFER 232
+#define YY_NUM_RULES 230
+#define YY_END_OF_BUFFER 231
 /* This struct is not used in this scanner,
    but its presence is necessary. */
 struct yy_trans_info
@@ -417,117 +417,117 @@ struct yy_trans_info
 	};
 static yyconst flex_int16_t yy_accept[1019] =
     {   0,
-        0,    0,  232,  230,  227,  228,  229,  230,  219,  221,
-      210,  211,  212,  213,  205,  214,  225,  218,  200,  200,
-      202,  203,  230,  204,  230,  224,  206,  207,  223,  224,
-      224,  224,  224,  224,  224,  224,  224,  224,  224,  224,
-      224,  224,  224,  224,  224,  224,  224,  224,  224,  224,
-      208,  222,  209,  220,  227,  228,    0,    0,  225,    1,
-      225,  200,  225,  215,  216,  224,    0,  224,  224,  224,
-      224,  224,  224,  224,  224,  224,  224,  224,  224,  224,
-      224,  224,  224,  224,  224,  224,  224,  224,  224,  224,
-      224,  224,  224,  224,  224,  224,  224,  224,  224,  224,
+        0,    0,  231,  229,  226,  227,  228,  229,  218,  220,
+      209,  210,  211,  212,  204,  213,  224,  217,  199,  199,
+      201,  202,  229,  203,  229,  223,  205,  206,  222,  223,
+      223,  223,  223,  223,  223,  223,  223,  223,  223,  223,
+      223,  223,  223,  223,  223,  223,  223,  223,  223,  223,
+      207,  221,  208,  219,  226,  227,    0,    0,  224,    1,
+      224,  199,  224,  214,  215,  223,    0,  223,  223,  223,
+      223,  223,  223,  223,  223,  223,  223,  223,  223,  223,
+      223,  223,  223,  223,  223,  223,  223,  223,  223,  223,
+      223,  223,  223,  223,  223,  223,  223,  223,  223,  223,
 
-       46,  224,  224,  224,  224,  224,  224,  224,  169,  224,
-      224,  224,  224,  224,  224,  224,  224,  224,  224,  224,
-      224,  173,  224,  224,  224,  172,  224,  224,  224,  224,
-      224,  224,  224,  224,  224,  224,  224,  224,  224,  224,
-      224,  224,  224,  224,  224,  224,  224,  224,  226,    0,
-        0,    2,  225,  201,    0,  224,  224,  224,  224,  224,
-       62,  170,  224,  224,  224,  224,  224,  224,  199,  224,
-      224,  224,   78,   80,  224,  224,  224,  224,  224,  224,
-      224,  224,  224,  225,  224,  224,  224,  224,  224,  224,
-      197,  224,  224,  224,  224,  224,  224,  224,  224,  224,
+       46,  223,  223,  223,  223,  223,  223,  223,  223,  223,
+      223,  223,  223,  223,  223,  223,  223,  223,  223,  223,
+      223,  172,  223,  223,  223,  171,  223,  223,  223,  223,
+      223,  223,  223,  223,  223,  223,  223,  223,  223,  223,
+      223,  223,  223,  223,  223,  223,  223,  223,  225,    0,
+        0,    2,  224,  200,    0,  223,  223,  223,  223,  223,
+       62,  169,  223,  223,  223,  223,  223,  223,  198,  223,
+      223,  223,   78,   80,  223,  223,  223,  223,  223,  223,
+      223,  223,  223,  224,  223,  223,  223,  223,  223,  223,
+      196,  223,  223,  223,  223,  223,  223,  223,  223,  223,
 
-      198,   67,  224,  138,  224,  224,  224,  224,  224,  224,
-      224,  224,  224,  224,  224,  224,  224,   30,   74,  167,
-      224,  224,  224,  224,  168,  224,  224,  225,  224,   79,
-      224,  224,   64,  224,  145,  225,  135,  136,  224,  224,
-      224,  224,  184,  224,  224,  224,  224,  224,  224,  224,
-      224,  224,  139,  224,  175,    0,  225,  224,  225,  224,
-      225,  224,  224,  224,  224,  224,  224,  224,  224,  224,
-      224,  224,  224,  224,    7,  224,  225,  224,   28,  153,
-      224,  224,  224,  224,  224,  224,  177,  178,  179,  180,
-      224,  224,  224,  224,  224,   48,   72,  224,  224,  224,
+      197,   67,  223,  138,  223,  223,  223,  223,  223,  223,
+      223,  223,  223,  223,  223,  223,  223,   30,   74,  167,
+      223,  223,  223,  223,  168,  223,  223,  224,  223,   79,
+      223,  223,   64,  223,  145,  224,  135,  136,  223,  223,
+      223,  223,  183,  223,  223,  223,  223,  223,  223,  223,
+      223,  223,  139,  223,  174,    0,  224,  223,  224,  223,
+      224,  223,  223,  223,  223,  223,  223,  223,  223,  223,
+      223,  223,  223,  223,    7,  223,  224,  223,   28,  153,
+      223,  223,  223,  223,  223,  223,  176,  177,  178,  179,
+      223,  223,  223,  223,  223,   48,   72,  223,  223,  223,
 
-      224,   31,  224,  224,   27,  224,  225,  150,  194,  224,
-       47,  134,  224,  225,   61,  224,  224,  224,  224,  143,
-      224,  224,  224,  141,  224,  224,  224,  224,  224,  224,
-      224,  224,  224,  224,  224,  164,  165,  225,  224,  224,
-      224,  224,  142,  225,  225,  225,  224,   68,   69,  224,
-      224,  225,  144,  225,  224,  224,  224,  224,  224,  224,
-      224,  224,   77,  224,  224,    8,  224,  154,  157,  160,
-      162,  224,  156,  159,  161,  163,  224,  155,  158,  224,
-      224,  224,  224,  224,  224,  224,   87,  224,  224,  224,
-      224,  224,  224,  224,  224,  224,  224,  224,  224,  225,
+      223,   31,  223,  223,   27,  223,  224,  150,  193,  223,
+       47,  134,  223,  224,   61,  223,  223,  223,  223,  143,
+      223,  223,  223,  141,  223,  223,  223,  223,  223,  223,
+      223,  223,  223,  223,  223,  164,  165,  224,  223,  223,
+      223,  223,  142,  224,  224,  224,  223,   68,   69,  223,
+      223,  224,  144,  224,  223,  223,  223,  223,  223,  223,
+      223,  223,   77,  223,  223,    8,  223,  154,  157,  160,
+      162,  223,  156,  159,  161,  163,  223,  155,  158,  223,
+      223,  223,  223,  223,  223,  223,   87,  223,  223,  223,
+      223,  223,  223,  223,  223,  223,  223,  223,  223,  224,
 
-      224,  224,  224,  224,  224,   65,   86,  224,  224,  224,
-      224,  224,  224,  224,   17,  224,   23,  224,  224,  224,
-      225,  225,  224,  224,  225,  224,  224,  224,  224,   71,
-      224,  224,  224,  174,  224,  224,  224,  224,  224,  224,
-      224,  224,  224,  224,  225,  224,  224,  224,  224,  137,
-      225,  225,  224,  224,  224,  225,  225,  224,  225,  224,
-      224,  224,  224,  193,  224,  224,  224,  224,   73,  224,
-      224,  225,  224,  224,  224,  224,  224,  224,  224,  224,
-      224,  224,  224,  224,  224,  224,  224,  224,  224,  224,
-      224,  224,  224,  224,  224,   18,  224,  224,  224,  224,
+      223,  223,  223,  223,  223,   65,   86,  223,  223,  223,
+      223,  223,  223,  223,   17,  223,   23,  223,  223,  223,
+      224,  224,  223,  223,  224,  223,  223,  223,  223,   71,
+      223,  223,  223,  173,  223,  223,  223,  223,  223,  223,
+      223,  223,  223,  223,  224,  223,  223,  223,  223,  137,
+      224,  224,  223,  223,  223,  224,  224,  223,  224,  223,
+      223,  223,  223,  192,  223,  223,  223,  223,   73,  223,
+      223,  224,  223,  223,  223,  223,  223,  223,  223,  223,
+      223,  223,  223,  223,  223,  223,  223,  223,  223,  223,
+      223,  223,  223,  223,  223,   18,  223,  223,  223,  223,
 
-      224,  224,  225,  224,  224,  224,  224,  224,  224,  224,
-      224,  224,  224,  224,  224,  224,  224,  224,   85,  224,
-      224,  225,  225,  224,  224,  225,  224,  196,   25,  224,
-      224,  224,  224,  224,  224,  224,  224,  224,  224,  224,
-      224,  224,  133,  132,  225,  224,  224,  224,  224,  225,
-      225,  225,  182,  224,  224,  225,  225,  224,  225,  190,
-      224,  224,  224,  224,  224,    9,  224,   32,  224,  225,
-      224,  224,  115,  117,  116,  118,  224,  131,  224,  224,
-      224,  224,  224,  224,  224,  224,  224,  224,  224,  224,
-      224,  224,  224,  224,  224,  224,  224,  224,  224,  224,
+      223,  223,  224,  223,  223,  223,  223,  223,  223,  223,
+      223,  223,  223,  223,  223,  223,  223,  223,   85,  223,
+      223,  224,  224,  223,  223,  224,  223,  195,   25,  223,
+      223,  223,  223,  223,  223,  223,  223,  223,  223,  223,
+      223,  223,  133,  132,  224,  223,  223,  223,  223,  224,
+      224,  224,  181,  223,  223,  224,  224,  223,  224,  189,
+      223,  223,  223,  223,  223,    9,  223,   32,  223,  224,
+      223,  223,  115,  117,  116,  118,  223,  131,  223,  223,
+      223,  223,  223,  223,  223,  223,  223,  223,  223,  223,
+      223,  223,  223,  223,  223,  223,  223,  223,  223,  223,
 
-      224,  224,  224,   81,  224,  224,  224,  224,  224,  224,
-      224,  224,  224,  224,  224,  224,  224,  224,  224,  224,
-      224,  224,  224,   44,  224,  224,  110,  224,  149,  225,
-      224,  224,   75,  224,  124,  224,  224,   52,  224,  224,
-       34,    4,  224,   35,  224,  224,  224,  225,  119,  224,
-       26,  224,  225,  146,  147,  126,  224,  225,  225,  224,
-      225,  224,   36,  224,   37,   29,  224,  224,  225,  224,
-      224,  224,  224,  224,  224,  224,  224,  224,  224,  224,
-      224,  224,  224,  224,  224,  224,  224,  224,  224,  224,
-      224,  224,  224,  224,  224,  224,  224,   66,  224,  224,
+      223,  223,  223,   81,  223,  223,  223,  223,  223,  223,
+      223,  223,  223,  223,  223,  223,  223,  223,  223,  223,
+      223,  223,  223,   44,  223,  223,  110,  223,  149,  224,
+      223,  223,   75,  223,  124,  223,  223,   52,  223,  223,
+       34,    4,  223,   35,  223,  223,  223,  224,  119,  223,
+       26,  223,  224,  146,  147,  126,  223,  224,  224,  223,
+      224,  223,   36,  223,   37,   29,  223,  223,  224,  223,
+      223,  223,  223,  223,  223,  223,  223,  223,  223,  223,
+      223,  223,  223,  223,  223,  223,  223,  223,  223,  223,
+      223,  223,  223,  223,  223,  223,  223,   66,  223,  223,
 
-      224,  224,  224,  224,  224,  224,  224,  224,  224,  140,
-      224,  224,  224,  224,  224,  224,  224,  224,  224,  151,
-      224,  224,  224,  224,  224,  224,  224,  224,  224,   50,
-      122,  225,  224,  224,  225,  224,   82,  225,  224,  225,
-      224,  224,  224,    5,  225,  224,    6,  224,  224,   13,
-      123,  224,  224,  224,  224,  224,  224,  224,  224,  224,
-      224,  224,   55,   53,  224,  224,  224,  224,  224,   42,
-      224,  224,  224,  224,  224,  224,  224,  224,  224,  224,
-      224,  224,  224,  224,  224,  224,   59,  224,  224,  224,
-      224,  224,  224,   11,  224,  183,   43,   22,  224,  224,
+      223,  223,  223,  223,  223,  223,  223,  223,  223,  140,
+      223,  223,  223,  223,  223,  223,  223,  223,  223,  151,
+      223,  223,  223,  223,  223,  223,  223,  223,  223,   50,
+      122,  224,  223,  223,  224,  223,   82,  224,  223,  224,
+      223,  223,  223,    5,  224,  223,    6,  223,  223,   13,
+      123,  223,  223,  223,  223,  223,  223,  223,  223,  223,
+      223,  223,   55,   53,  223,  223,  223,  223,  223,   42,
+      223,  223,  223,  223,  223,  223,  223,  223,  223,  223,
+      223,  223,  223,  223,  223,  223,   59,  223,  223,  223,
+      223,  223,  223,   11,  223,  182,   43,   22,  223,  223,
 
-       12,  125,  225,  114,  192,  148,  195,  225,  224,  188,
-      224,  224,  181,  225,   96,   97,   98,   99,  100,  101,
-      102,  103,  224,   33,  224,  224,   19,  224,  224,  224,
-      224,  224,  224,   95,   94,   49,  224,   20,  224,  224,
-        3,  224,  224,  224,   16,  224,  224,  224,  224,  224,
-      224,  224,  224,   60,  224,  224,  224,  224,  224,  224,
-      224,   24,  224,  224,  224,  186,  225,   83,  128,  187,
-      224,  189,  224,  185,  224,  224,  224,  224,  224,  224,
-      224,   39,  112,  130,   41,  224,  224,  224,  224,  224,
-      224,  224,  224,  224,  224,  224,  224,  111,  191,  224,
+       12,  125,  224,  114,  191,  148,  194,  224,  223,  187,
+      223,  223,  180,  224,   96,   97,   98,   99,  100,  101,
+      102,  103,  223,   33,  223,  223,   19,  223,  223,  223,
+      223,  223,  223,   95,   94,   49,  223,   20,  223,  223,
+        3,  223,  223,  223,   16,  223,  223,  223,  223,  223,
+      223,  223,  223,   60,  223,  223,  223,  223,  223,  223,
+      223,   24,  223,  223,  223,  185,  224,   83,  128,  186,
+      223,  188,  223,  184,  223,  223,  223,  223,  223,  223,
+      223,   39,  112,  130,   41,  223,  223,  223,  223,  223,
+      223,  223,  223,  223,  223,  223,  223,  111,  190,  223,
 
-      224,  224,   10,  224,  224,   51,  166,  224,   21,  224,
-      224,  224,  224,   54,  224,  224,  224,  224,  224,  127,
-      224,  224,  224,   56,  224,  224,  224,  224,  224,  224,
-      224,  113,  224,  224,  224,   38,  224,  224,   92,   93,
-       91,  224,  224,   15,  224,  224,   14,   89,   90,   88,
-      224,  224,  224,  224,  224,  224,  224,  224,  224,  224,
-       63,  120,  224,  224,  224,  224,  224,  224,  224,  224,
-      224,  224,  224,  224,   76,  224,  224,  152,  224,  224,
-      224,  224,  224,  104,  107,  176,  224,   40,  224,   70,
-      121,  224,  224,  224,  224,  224,  224,   45,  224,  224,
+      223,  223,   10,  223,  223,   51,  166,  223,   21,  223,
+      223,  223,  223,   54,  223,  223,  223,  223,  223,  127,
+      223,  223,  223,   56,  223,  223,  223,  223,  223,  223,
+      223,  113,  223,  223,  223,   38,  223,  223,   92,   93,
+       91,  223,  223,   15,  223,  223,   14,   89,   90,   88,
+      223,  223,  223,  223,  223,  223,  223,  223,  223,  223,
+       63,  120,  223,  223,  223,  223,  223,  223,  223,  223,
+      223,  223,  223,  223,   76,  223,  223,  152,  223,  223,
+      223,  223,  223,  104,  107,  175,  223,   40,  223,   70,
+      121,  223,  223,  223,  223,  223,  223,   45,  223,  223,
 
-      224,  224,  224,  224,  224,   84,  224,  171,  224,  224,
+      223,  223,  223,  223,  223,   84,  223,  170,  223,  223,
        57,   58,  129,  105,  108,  106,  109,    0
     } ;
 
@@ -2330,7 +2330,7 @@ static yyconst flex_int16_t yy_chk[6885] =
      1018, 1018, 1018, 1018
     } ;
 
-static yyconst flex_int16_t yy_rule_linenum[231] =
+static yyconst flex_int16_t yy_rule_linenum[230] =
     {   0,
        44,   45,   47,   48,   49,   50,   51,   52,   53,   54,
        55,   56,   57,   58,   59,   60,   61,   62,   63,   64,
@@ -2349,14 +2349,14 @@ static yyconst flex_int16_t yy_rule_linenum[231] =
       186,  187,  188,  189,  190,  191,  192,  193,  194,  195,
       196,  197,  198,  199,  200,  201,  202,  203,  204,  205,
       206,  208,  209,  210,  211,  212,  213,  214,  215,  216,
-      217,  218,  219,  220,  221,  222,  223,  224,  225,  226,
-      228,  229,  230,  231,  232,  234,  235,  236,  237,  238,
-      240,  241,  242,  244,  246,  247,  248,  249,  250,  251,
-      252,  254,  256,  257,  258,  259,  260,  261,  262,  265,
+      217,  218,  219,  220,  221,  222,  223,  224,  225,  227,
+      228,  229,  230,  231,  233,  234,  235,  236,  237,  239,
+      240,  241,  243,  245,  246,  247,  248,  249,  250,  251,
+      253,  255,  256,  257,  258,  259,  260,  261,  264,  265,
 
       266,  267,  268,  269,  270,  271,  272,  273,  274,  275,
-      276,  277,  279,  280,  281,  282,  283,  284,  285,  286,
-      287,  288,  289,  292,  293,  294,  296,  297,  298,  299
+      276,  278,  279,  280,  281,  282,  283,  284,  285,  286,
+      287,  288,  291,  292,  293,  295,  296,  297,  298
     } ;
 
 /* The intent behind this definition is that it'll catch
@@ -2647,12 +2647,12 @@ do_action:	/* This label is used only to access EOF actions. */
 			{
 			if ( yy_act == 0 )
 				std::cerr << "--scanner backing up\n";
-			else if ( yy_act < 231 )
+			else if ( yy_act < 230 )
 				std::cerr << "--accepting rule at line " << yy_rule_linenum[yy_act] <<
 				         "(\"" << yytext << "\")\n";
-			else if ( yy_act == 231 )
+			else if ( yy_act == 230 )
 				std::cerr << "--accepting default rule (\"" << yytext << "\")\n";
-			else if ( yy_act == 232 )
+			else if ( yy_act == 231 )
 				std::cerr << "--(end of buffer or a NUL)\n";
 			else
 				std::cerr << "--EOF (start condition " << YY_START << ")\n";
@@ -3512,320 +3512,315 @@ yylval->number = DestinationCPU::PMU;           return tok::DEST_CPU_TYPE;
 case 169:
 YY_RULE_SETUP
 #line 225 "../s/bif.l"
-yylval->number = DestinationCPU::AIE;            LOG_WARNING("BIF attribute error !!!\n\t\t'destination_cpu=me/core=me' is unsupported. Please use 'core=aie' instead."); return tok::DEST_CPU_TYPE;
+yylval->number = DestinationCPU::AIE;            return tok::DEST_CPU_TYPE;
 	YY_BREAK
 case 170:
 YY_RULE_SETUP
-#line 226 "../s/bif.l"
-yylval->number = DestinationCPU::AIE;            return tok::DEST_CPU_TYPE;
+#line 227 "../s/bif.l"
+return tok::DEST_DEVICE;
 	YY_BREAK
 case 171:
 YY_RULE_SETUP
 #line 228 "../s/bif.l"
-return tok::DEST_DEVICE;
+yylval->number = DestinationDevice::DEST_DEV_PS;    return tok::DEST_DEVICE_TYPE;
 	YY_BREAK
 case 172:
 YY_RULE_SETUP
 #line 229 "../s/bif.l"
-yylval->number = DestinationDevice::DEST_DEV_PS;    return tok::DEST_DEVICE_TYPE;
+yylval->number = DestinationDevice::DEST_DEV_PL;    return tok::DEST_DEVICE_TYPE;
 	YY_BREAK
 case 173:
 YY_RULE_SETUP
 #line 230 "../s/bif.l"
-yylval->number = DestinationDevice::DEST_DEV_PL;    return tok::DEST_DEVICE_TYPE;
+yylval->number = DestinationDevice::DEST_DEV_PMU;   return tok::DEST_DEVICE_TYPE;
 	YY_BREAK
 case 174:
 YY_RULE_SETUP
 #line 231 "../s/bif.l"
-yylval->number = DestinationDevice::DEST_DEV_PMU;   return tok::DEST_DEVICE_TYPE;
+yylval->number = DestinationDevice::DEST_DEV_XIP;   return tok::DEST_DEVICE_TYPE;
 	YY_BREAK
 case 175:
 YY_RULE_SETUP
-#line 232 "../s/bif.l"
-yylval->number = DestinationDevice::DEST_DEV_XIP;   return tok::DEST_DEVICE_TYPE;
+#line 233 "../s/bif.l"
+return tok::EXCEPTION_LEVEL;
 	YY_BREAK
 case 176:
 YY_RULE_SETUP
 #line 234 "../s/bif.l"
-return tok::EXCEPTION_LEVEL;
+yylval->number = ExceptionLevel::EL0;           return tok::EXCEPTION_LEVEL_TYPE;
 	YY_BREAK
 case 177:
 YY_RULE_SETUP
 #line 235 "../s/bif.l"
-yylval->number = ExceptionLevel::EL0;           return tok::EXCEPTION_LEVEL_TYPE;
+yylval->number = ExceptionLevel::EL1;           return tok::EXCEPTION_LEVEL_TYPE;
 	YY_BREAK
 case 178:
 YY_RULE_SETUP
 #line 236 "../s/bif.l"
-yylval->number = ExceptionLevel::EL1;           return tok::EXCEPTION_LEVEL_TYPE;
+yylval->number = ExceptionLevel::EL2;           return tok::EXCEPTION_LEVEL_TYPE;
 	YY_BREAK
 case 179:
 YY_RULE_SETUP
 #line 237 "../s/bif.l"
-yylval->number = ExceptionLevel::EL2;           return tok::EXCEPTION_LEVEL_TYPE;
+yylval->number = ExceptionLevel::EL3;           return tok::EXCEPTION_LEVEL_TYPE;
 	YY_BREAK
 case 180:
 YY_RULE_SETUP
-#line 238 "../s/bif.l"
-yylval->number = ExceptionLevel::EL3;           return tok::EXCEPTION_LEVEL_TYPE;
+#line 239 "../s/bif.l"
+return tok::TRUSTZONE;
 	YY_BREAK
 case 181:
 YY_RULE_SETUP
 #line 240 "../s/bif.l"
-return tok::TRUSTZONE;
+yylval->number = TrustZone::Secure;             return tok::TRUSTZONE_TYPE;
 	YY_BREAK
 case 182:
 YY_RULE_SETUP
 #line 241 "../s/bif.l"
-yylval->number = TrustZone::Secure;             return tok::TRUSTZONE_TYPE;
+yylval->number = TrustZone::NonSecure;          return tok::TRUSTZONE_TYPE;
 	YY_BREAK
 case 183:
 YY_RULE_SETUP
-#line 242 "../s/bif.l"
-yylval->number = TrustZone::NonSecure;          return tok::TRUSTZONE_TYPE;
+#line 243 "../s/bif.l"
+yylval->number = tok::SLR_NUM;                  return tok::SLR_NUM;
 	YY_BREAK
 case 184:
 YY_RULE_SETUP
-#line 244 "../s/bif.l"
-yylval->number = tok::SLR_NUM;                  return tok::SLR_NUM;
+#line 245 "../s/bif.l"
+yylval->number = tok::AUTH_PARAMS;              return tok::AUTH_PARAMS;
 	YY_BREAK
 case 185:
 YY_RULE_SETUP
 #line 246 "../s/bif.l"
-yylval->number = tok::AUTH_PARAMS;              return tok::AUTH_PARAMS;
+yylval->number = tok::PPK_SELECT;               return tok::PPK_SELECT;
 	YY_BREAK
 case 186:
 YY_RULE_SETUP
 #line 247 "../s/bif.l"
-yylval->number = tok::PPK_SELECT;               return tok::PPK_SELECT;
+yylval->number = tok::SPK_SELECT;               return tok::SPK_SELECT;
 	YY_BREAK
 case 187:
 YY_RULE_SETUP
 #line 248 "../s/bif.l"
-yylval->number = tok::SPK_SELECT;               return tok::SPK_SELECT;
+yylval->number = SpkSelect::SPK_eFUSE;          return tok::SPKSELECT;
 	YY_BREAK
 case 188:
 YY_RULE_SETUP
 #line 249 "../s/bif.l"
-yylval->number = SpkSelect::SPK_eFUSE;          return tok::SPKSELECT;
+yylval->number = SpkSelect::USER_eFUSE;         return tok::SPKSELECT;
 	YY_BREAK
 case 189:
 YY_RULE_SETUP
 #line 250 "../s/bif.l"
-yylval->number = SpkSelect::USER_eFUSE;         return tok::SPKSELECT;
+yylval->number = tok::SPK_ID;                   return tok::SPK_ID; 
 	YY_BREAK
 case 190:
 YY_RULE_SETUP
 #line 251 "../s/bif.l"
-yylval->number = tok::SPK_ID;                   return tok::SPK_ID; 
+return tok::HEADER_AUTH;
 	YY_BREAK
 case 191:
 YY_RULE_SETUP
-#line 252 "../s/bif.l"
-return tok::HEADER_AUTH;
+#line 253 "../s/bif.l"
+yylval->number = tok::REVOKE_ID;                return tok::REVOKE_ID;
 	YY_BREAK
 case 192:
 YY_RULE_SETUP
-#line 254 "../s/bif.l"
-yylval->number = tok::REVOKE_ID;                return tok::REVOKE_ID;
+#line 255 "../s/bif.l"
+yylval->number = tok::SPLIT;                    return tok::SPLIT;
 	YY_BREAK
 case 193:
 YY_RULE_SETUP
 #line 256 "../s/bif.l"
-yylval->number = tok::SPLIT;                    return tok::SPLIT;
+yylval->number = tok::SPLIT_MODE;               return tok::SPLIT_MODE;
 	YY_BREAK
 case 194:
 YY_RULE_SETUP
 #line 257 "../s/bif.l"
-yylval->number = tok::SPLIT_MODE;               return tok::SPLIT_MODE;
+yylval->number = SplitMode::SlaveMode;          return tok::SPLITMODE;
 	YY_BREAK
 case 195:
 YY_RULE_SETUP
 #line 258 "../s/bif.l"
-yylval->number = SplitMode::SlaveMode;          return tok::SPLITMODE;
+yylval->number = SplitMode::Normal;             return tok::SPLITMODE;
 	YY_BREAK
 case 196:
 YY_RULE_SETUP
 #line 259 "../s/bif.l"
-yylval->number = SplitMode::Normal;             return tok::SPLITMODE;
+yylval->number = tok::SPLIT_FMT;                return tok::SPLIT_FMT; 
 	YY_BREAK
 case 197:
 YY_RULE_SETUP
 #line 260 "../s/bif.l"
-yylval->number = tok::SPLIT_FMT;                return tok::SPLIT_FMT; 
+return tok::MCS;
 	YY_BREAK
 case 198:
 YY_RULE_SETUP
 #line 261 "../s/bif.l"
-return tok::MCS;
+return tok::BIN;
 	YY_BREAK
 case 199:
 YY_RULE_SETUP
-#line 262 "../s/bif.l"
-return tok::BIN;
+#line 264 "../s/bif.l"
+yylval->number=atoi(yytext);                    return tok::DECVALUE;
 	YY_BREAK
 case 200:
 YY_RULE_SETUP
 #line 265 "../s/bif.l"
-yylval->number=atoi(yytext);                    return tok::DECVALUE;
+yylval->number=strtoul(yytext+2,NULL,16);       return tok::HEXVALUE;
 	YY_BREAK
 case 201:
 YY_RULE_SETUP
 #line 266 "../s/bif.l"
-yylval->number=strtoul(yytext+2,NULL,16);       return tok::HEXVALUE;
+return tok::COLON;
 	YY_BREAK
 case 202:
 YY_RULE_SETUP
 #line 267 "../s/bif.l"
-return tok::COLON;
+return tok::SEMICOLON;
 	YY_BREAK
 case 203:
 YY_RULE_SETUP
 #line 268 "../s/bif.l"
-return tok::SEMICOLON;
+return tok::EQUAL;
 	YY_BREAK
 case 204:
 YY_RULE_SETUP
 #line 269 "../s/bif.l"
-return tok::EQUAL;
+return tok::COMMA;
 	YY_BREAK
 case 205:
 YY_RULE_SETUP
 #line 270 "../s/bif.l"
-return tok::COMMA;
+return tok::OBRACKET;
 	YY_BREAK
 case 206:
 YY_RULE_SETUP
 #line 271 "../s/bif.l"
-return tok::OBRACKET;
+return tok::EBRACKET;
 	YY_BREAK
 case 207:
 YY_RULE_SETUP
 #line 272 "../s/bif.l"
-return tok::EBRACKET;
+return tok::OBRACE;
 	YY_BREAK
 case 208:
 YY_RULE_SETUP
 #line 273 "../s/bif.l"
-return tok::OBRACE;
+return tok::EBRACE;
 	YY_BREAK
 case 209:
 YY_RULE_SETUP
 #line 274 "../s/bif.l"
-return tok::EBRACE;
+return tok::LPAREN;
 	YY_BREAK
 case 210:
 YY_RULE_SETUP
 #line 275 "../s/bif.l"
-return tok::LPAREN;
+return tok::RPAREN;
 	YY_BREAK
 case 211:
 YY_RULE_SETUP
 #line 276 "../s/bif.l"
-return tok::RPAREN;
+return tok::ASTERISK;
 	YY_BREAK
 case 212:
 YY_RULE_SETUP
-#line 277 "../s/bif.l"
-return tok::ASTERISK;
+#line 278 "../s/bif.l"
+return tok::PLUS;
 	YY_BREAK
 case 213:
 YY_RULE_SETUP
 #line 279 "../s/bif.l"
-return tok::PLUS;
+return tok::MINUS;
 	YY_BREAK
 case 214:
 YY_RULE_SETUP
 #line 280 "../s/bif.l"
-return tok::MINUS;
+return tok::LSHIFT;
 	YY_BREAK
 case 215:
 YY_RULE_SETUP
 #line 281 "../s/bif.l"
-return tok::LSHIFT;
+return tok::RSHIFT;
 	YY_BREAK
 case 216:
 YY_RULE_SETUP
 #line 282 "../s/bif.l"
-return tok::RSHIFT;
+return tok::MULT;
 	YY_BREAK
 case 217:
 YY_RULE_SETUP
 #line 283 "../s/bif.l"
-return tok::MULT;
+return tok::DIVIDE;
 	YY_BREAK
 case 218:
 YY_RULE_SETUP
 #line 284 "../s/bif.l"
-return tok::DIVIDE;
+return tok::MODULO;
 	YY_BREAK
 case 219:
 YY_RULE_SETUP
 #line 285 "../s/bif.l"
-return tok::MODULO;
+return tok::NEGATION;
 	YY_BREAK
 case 220:
 YY_RULE_SETUP
 #line 286 "../s/bif.l"
-return tok::NEGATION;
+return tok::AND;
 	YY_BREAK
 case 221:
 YY_RULE_SETUP
 #line 287 "../s/bif.l"
-return tok::AND;
+return tok::OR;
 	YY_BREAK
 case 222:
 YY_RULE_SETUP
 #line 288 "../s/bif.l"
-return tok::OR;
+return tok::XOR;
 	YY_BREAK
 case 223:
 YY_RULE_SETUP
-#line 289 "../s/bif.l"
-return tok::XOR;
+#line 291 "../s/bif.l"
+yylval->string=strdup(yytext);      return tok::WORD;
 	YY_BREAK
 case 224:
 YY_RULE_SETUP
 #line 292 "../s/bif.l"
-yylval->string=strdup(yytext);      return tok::WORD;
+yylval->string=strdup(yytext);      return tok::FILENAME;
 	YY_BREAK
 case 225:
 YY_RULE_SETUP
 #line 293 "../s/bif.l"
-yylval->string=strdup(yytext);      return tok::FILENAME;
+yylval->string=strdup(yytext+1); yylval->string[strlen(yytext)-2]=0; return tok::QFILENAME;
 	YY_BREAK
 case 226:
 YY_RULE_SETUP
-#line 294 "../s/bif.l"
-yylval->string=strdup(yytext+1); yylval->string[strlen(yytext)-2]=0; return tok::QFILENAME;
-	YY_BREAK
-case 227:
-YY_RULE_SETUP
-#line 296 "../s/bif.l"
+#line 295 "../s/bif.l"
 yylloc->step ();
 	YY_BREAK
+case 227:
+/* rule 227 can match eol */
+YY_RULE_SETUP
+#line 296 "../s/bif.l"
+yylloc->lines (yyleng); yylloc->step ();
+	YY_BREAK
 case 228:
-/* rule 228 can match eol */
 YY_RULE_SETUP
 #line 297 "../s/bif.l"
-yylloc->lines (yyleng); yylloc->step ();
+/* ignore (Linux only) */
 	YY_BREAK
 case 229:
 YY_RULE_SETUP
 #line 298 "../s/bif.l"
-/* ignore (Linux only) */
+printf("WARNING: bad character! '%s' (0x%02X)\n",yytext,yytext[0]);
 	YY_BREAK
 case 230:
 YY_RULE_SETUP
 #line 299 "../s/bif.l"
-printf("WARNING: bad character! '%s' (0x%02X)\n",yytext,yytext[0]);
-	YY_BREAK
-case 231:
-YY_RULE_SETUP
-#line 300 "../s/bif.l"
 YY_FATAL_ERROR( "flex scanner jammed" );
 	YY_BREAK
-#line 3829 "../bisonflex/bif.yy.cpp"
+#line 3824 "../bisonflex/bif.yy.cpp"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -4874,7 +4869,7 @@ void biffree (void * ptr )
 
 /* %ok-for-header */
 
-#line 300 "../s/bif.l"
+#line 299 "../s/bif.l"
 
 
 

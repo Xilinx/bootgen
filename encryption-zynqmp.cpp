@@ -813,14 +813,14 @@ void ZynqMpEncryptionContext::GenerateRemainingKeys(Options& options, std::strin
     uint8_t aesIvNext[AES_GCM_IV_SZ];
     for (x = 0; x<blocks; x++)
     {
-        memcpy(aesKeyNext, &Ko[(x * 11)], AES_GCM_KEY_SZ);
+        memcpy(aesKeyNext, &outBufKDF[(x * 11)], AES_GCM_KEY_SZ);
         aesKeyVec.push_back(ConvertKeyIvToString(aesKeyNext, AES_GCM_KEY_SZ).c_str());
         if (GetAesKey() == NULL)
         {
             SetAesKey(aesKeyNext);
         }
 
-        memcpy(aesIvNext, &Ko[(x * 11) + WORDS_PER_AES_KEY], AES_GCM_IV_SZ);
+        memcpy(aesIvNext, &outBufKDF[(x * 11) + WORDS_PER_AES_KEY], AES_GCM_IV_SZ);
         aesIvVec.push_back(ConvertKeyIvToString(aesIvNext, AES_GCM_IV_SZ).c_str());
         if (GetIv() == NULL)
         {
