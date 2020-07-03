@@ -13,7 +13,7 @@ including BIN file construction and boot-time authentication and encryption base
 For more details about Bootgen usage, please refer to Xilinx UG1283.
 
 # Build instructions
-##Platform Support
+## Platform Support
 Bootgen can be built for both Linux and Windows operating systems. It can be compiled natively for
 x86-based computers as well as cross-compiled for ARM-based platforms.
 
