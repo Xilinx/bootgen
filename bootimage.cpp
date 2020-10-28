@@ -61,6 +61,10 @@ void BIF_File::Process(Options& options)
     {
         LOG_ERROR("Cannot read BIF file - %s ", basefile.c_str());
     }
+    if(s.peek() == EOF)
+    {
+        LOG_ERROR("BIF file is empty - %s ", basefile.c_str());
+    }
     scanner.switch_streams(&s);
     int res = parser.parse();
     if (res)
@@ -70,22 +74,24 @@ void BIF_File::Process(Options& options)
 
     LOG_INFO("BIF file parsing completed successfully");
 
-    bifOptionList.push_back(options.bifOptions);
+    //bifOptionList.push_back(options.bifOptions);
 
+    bifOptionList = options.bifOptionsList;
     BootImage* currentbi = NULL;
-    for (std::list<BifOptions*>::iterator bifoptions = bifOptionList.begin(); bifoptions != bifOptionList.end();bifoptions++)
+    uint8_t index = 0;
+    for (std::vector<BifOptions*>::iterator bifoptions = bifOptionList.begin(); bifoptions != bifOptionList.end();bifoptions++)
     {
         if (options.archType == Arch::ZYNQMP)
         {
-            currentbi = new ZynqMpBootImage(options);
+            currentbi = new ZynqMpBootImage(options, index);
         }
         else if (options.archType == Arch::VERSAL)
         {
-            currentbi = new VersalBootImage(options);
+            currentbi = new VersalBootImage(options, index);
         }
         else
         {
-            currentbi = new ZynqBootImage(options);
+            currentbi = new ZynqBootImage(options, index);
         }
 
         if (currentbi != NULL)
@@ -93,44 +99,43 @@ void BIF_File::Process(Options& options)
             currentbi->Add(*bifoptions);
             bootImages.push_back(currentbi);
         }
+        Output(options, index);
+        index++;
     }
-    Output(options);
 }
 
 /******************************************************************************/
-void BIF_File::Output(Options& options)
+void BIF_File::Output(Options& options, uint8_t index)
 {
     File::Type splitFileType = options.GetSplitType();
     std::list<std::string> outFilename = options.GetOutputFileNames();
-    
-    for(std::list<BootImage*>::iterator bi = bootImages.begin(); bi != bootImages.end();bi++) 
+    BootImage* bi = bootImages.at(index);
     {
         if (options.GetAuthKeyGeneration() != GenAuthKeys::None)
         {
-            (*bi)->GenerateAuthenticationKeys();
+            bi->GenerateAuthenticationKeys();
             return;
         }
 
         if (options.GetGreyKeyGeneration())
         {
-            (*bi)->GenerateGreyKey();
+            bi->GenerateGreyKey();
             return;
         }
         
         if (options.GetMetalKeyGeneration())
         {
-            (*bi)->GenerateMetalKey();
-            return;
+            LOG_ERROR("The support to generate Family Key is deprecated.");
         }
 
-        LOG_INFO("Building image - %s", (*bi)->Name.c_str());
-        (*bi)->BuildAndLink((*bi)->cache);
+        LOG_INFO("Building image - %s", bi->Name.c_str());
+        bi->BuildAndLink(bi->cache);
 
-        (*bi)->SetOutputSplitModeFormat(options.bifOptions->GetSplitMode(), options.bifOptions->GetSplitFormat());
-        (*bi)->SetOutputBitstreamModeFormat(options.GetProcessBitstreamType());
+        bi->SetOutputSplitModeFormat(options.bifOptions->GetSplitMode(), options.bifOptions->GetSplitFormat());
+        bi->SetOutputBitstreamModeFormat(options.GetProcessBitstreamType());
 
         OutputMode::Type outputMode = options.GetOutputMode();
-        (*bi)->ValidateOutputModes(splitFileType, outputMode);
+        bi->ValidateOutputModes(splitFileType, outputMode);
 
         if (outputMode == OutputMode::OUT_SPLIT_NORMAL || outputMode == OutputMode::OUT_SPLIT_SLAVEBOOT || splitFileType != File::Unknown)
         {
@@ -150,8 +155,8 @@ void BIF_File::Output(Options& options)
         if (outputMode == OutputMode::OUT_BITSTREAM) 
         {
             outFilename.clear();
-            std::string fName = (*bi)->bitFilename;
-            if((*bi)->bitFilename.empty())
+            std::string fName = bi->bitFilename;
+            if(bi->bitFilename.empty())
             {
                 LOG_ERROR("No bitstream in the BIF file - %s ",options.GetBifFilename().c_str());
             }
@@ -159,27 +164,36 @@ void BIF_File::Output(Options& options)
             outFilename.push_back(fName);
         }
 
-        (*bi)->OutputPartitionFiles(options, *(*bi)->cache);
+        bi->OutputPartitionFiles(options, *bi->cache);
 
         /* Create a BIN/MCS file format from the factory 
            Write to the file outputs based on the format */
         for(std::list<std::string>::iterator filename = outFilename.begin();filename != outFilename.end(); filename++) 
         {
-            OutputFile* file = OutputFile::Factory(*filename);
-            file->Output(options, *((*bi)->cache));
+            std::string out_filename;
+            if (index == (options.bifOptionsList.size() - 1))
+            {
+                out_filename = *filename;
+            }
+            else
+            {
+                out_filename = StringUtils::RemoveExtension(*filename) + "_" + bi->Name + StringUtils::GetExtension(*filename);
+            }
+            OutputFile* file = OutputFile::Factory(out_filename);
+            file->Output(options, *bi->cache);
             delete file;
         }
 
         /* Efuse PPK hash for burning the efuse */
-        (*bi)->OutputOptionalEfuseHash();
+        bi->OutputOptionalEfuseHash();
 
         /* Secure Debug Image to enable the JTAG during a secure boot scenario */
-        (*bi)->OutputOptionalSecureDebugImage();
+        bi->OutputOptionalSecureDebugImage();
     }
 }
 
 /******************************************************************************/
-BootImage::BootImage(Options& options)
+BootImage::BootImage(Options& options, uint8_t index)
     : options(options)
     , headerSignature_Loaded(false)
     , headerAC(0)
@@ -216,7 +230,7 @@ BootImage::BootImage(Options& options)
     , firstIv(NULL)
     , firstOptKey(NULL)
 {
-    bifOptions = options.bifOptions;
+    bifOptions = options.bifOptionsList.at(index);
     Name = bifOptions->GetGroupName();
     cache = new Binary();
     checksumTable = new ChecksumTable();
@@ -509,15 +523,6 @@ void BootImage::GenerateGreyKey(void)
     if (options.GetGreyKeyGeneration()) 
     {
         currentEncryptCtx->GenerateGreyKey();
-    }
-}
-
-/******************************************************************************/
-void BootImage::GenerateMetalKey(void)
-{
-    if (options.GetMetalKeyGeneration())
-    {
-        currentEncryptCtx->GenerateMetalKey();
     }
 }
 

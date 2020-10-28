@@ -61,17 +61,17 @@ void ZynqAuthenticationContext::CopyPartitionSignature(BootImage& bi,
         hashSecLen = ((*section)->Length) - (authblocksize * acIndex);
     }
 
-    uint8_t *partitionAc = new uint8_t[hashSecLen + (acSection->Length - rsaKeyLength)];
+    uint8_t *partitionAc = new uint8_t[hashSecLen + (acSection->Length - signatureLength)];
 
     /* Update with Partition */
     memcpy(partitionAc, (*section)->Data + (authblocksize * acIndex), hashSecLen);
 
     /* Update with authentication certificate except the last 256 bytes, which is the partition signature, 
        that we are calculating now. Once calculated, the partition signature will sit there */
-    memcpy(partitionAc + hashSecLen, acSection->Data, acSection->Length - rsaKeyLength);
+    memcpy(partitionAc + hashSecLen, acSection->Data, acSection->Length - signatureLength);
 
     uint32_t start = (*section)->Address;
-    uint32_t end = (acSection->Address + acSection->Length) - rsaKeyLength;
+    uint32_t end = (acSection->Address + acSection->Length) - signatureLength;
     LOG_TRACE("Hashing %s from 0x%x to 0x%x", acSection->Name.c_str(), start, end);
     LOG_DUMP_BYTES((*section)->Data + (authblocksize * acIndex), 32);
     LOG_OUT(" ... ");
@@ -82,13 +82,13 @@ void ZynqAuthenticationContext::CopyPartitionSignature(BootImage& bi,
     /*  Partition signatures are used by only FSBL / XilSecure / XilFPGA except BL Sign - so partition
         hashes - always NIST except for bootloader
         Bootloader Sign is used by ROM - so Bootloader hash - always Keccak */
-    hash->CalculateHash(!(*section)->isBootloader, partitionAc, hashSecLen + (acSection->Length - rsaKeyLength), shaHash);
+    hash->CalculateHash(!(*section)->isBootloader, partitionAc, hashSecLen + (acSection->Length - signatureLength), shaHash);
 
     LOG_TRACE("Hash of %s (LE):", acSection->Name.c_str());
     LOG_DUMP_BYTES(shaHash, hashLength);
 
     /* Create the PKCS padding for the hash */
-    uint8_t* shaHashPadded = new uint8_t[rsaKeyLength];
+    uint8_t* shaHashPadded = new uint8_t[signatureLength];
     CreatePadding(shaHashPadded, shaHash);
 
     if (bi.options.DoGenerateHashes())
@@ -99,7 +99,7 @@ void ZynqAuthenticationContext::CopyPartitionSignature(BootImage& bi,
 
     /* Sign the hash */
     authAlgorithm->CreateSignature(shaHashPadded, (uint8_t*)secondaryKey, signatureBlock);
-    RearrangeEndianess(signatureBlock, rsaKeyLength);
+    RearrangeEndianess(signatureBlock, signatureLength);
     LOG_TRACE("The partition signature is copied into Authentication Certificate");
 
     /* Delete the temporarily created arrays */
@@ -111,13 +111,14 @@ void ZynqAuthenticationContext::CopyPartitionSignature(BootImage& bi,
 /******************************************************************************/
 ZynqAuthenticationContext::ZynqAuthenticationContext()
 {
-    SetRsaKeyLength(RSA_2048_KEY_LENGTH);
+    signatureLength = RSA_SIGN_LENGTH_ZYNQ;
+    SetAuthenticationKeyLength(RSA_2048_KEY_LENGTH);
     hashType = AuthHash::Sha2;
-    spksignature = new uint8_t[GetRsaKeyLength()];
+    spksignature = new uint8_t[signatureLength];
     spkSignLoaded = false;
     primaryKey = new Key2048("Primary Key");
     secondaryKey = new Key2048("Secondary Key");
-    memset(spksignature, 0, GetRsaKeyLength());
+    memset(spksignature, 0, signatureLength);
     memset(udf_data, 0, UDF_DATA_SIZE);
 
     authAlgorithm = new RSAAuthenticationAlgorithm();
@@ -128,15 +129,16 @@ ZynqAuthenticationContext::ZynqAuthenticationContext()
 /******************************************************************************/
 ZynqAuthenticationContext::ZynqAuthenticationContext(const AuthenticationContext* refAuthContext)
 {
-    SetRsaKeyLength(RSA_2048_KEY_LENGTH);
+    signatureLength = RSA_SIGN_LENGTH_ZYNQ;
+    SetAuthenticationKeyLength(RSA_2048_KEY_LENGTH);
     hashType = AuthHash::Sha2;
     primaryKey = new Key2048("Primary Key");
     secondaryKey = new Key2048("Secondary Key");
-    spksignature = new uint8_t[RSA_2048_KEY_LENGTH];
+    spksignature = new uint8_t[signatureLength];
     spkSignLoaded = refAuthContext->spkSignLoaded;
-    memcpy(primaryKey, refAuthContext->primaryKey, sizeof(Key2048));
-    memcpy(secondaryKey, refAuthContext->secondaryKey, sizeof(Key2048));
-    memcpy(spksignature, refAuthContext->spksignature, GetRsaKeyLength());
+    primaryKey = refAuthContext->primaryKey;
+    secondaryKey = refAuthContext->secondaryKey;
+    memcpy(spksignature, refAuthContext->spksignature, signatureLength);
     memcpy(udf_data, refAuthContext->udf_data, sizeof(udf_data));
     authAlgorithm = refAuthContext->authAlgorithm;
     authCertificate = refAuthContext->authCertificate;
@@ -149,15 +151,16 @@ ZynqAuthenticationContext::ZynqAuthenticationContext(const AuthenticationContext
 /******************************************************************************/
 ZynqAuthenticationContext::ZynqAuthenticationContext(const AuthCertificate2048Structure* existingCert)
 {
-    SetRsaKeyLength(RSA_2048_KEY_LENGTH);
+    signatureLength = RSA_SIGN_LENGTH_ZYNQ;
+    SetAuthenticationKeyLength(RSA_2048_KEY_LENGTH);
     hashType = AuthHash::Sha2;
-    spksignature = new uint8_t[RSA_2048_KEY_LENGTH];
+    spksignature = new uint8_t[signatureLength];
     spkSignLoaded = true;
     primaryKey = new Key2048("Primary Key");
     secondaryKey = new Key2048("Secondary Key");
     primaryKey->Import(&existingCert->acPpk, "Primary Key");
     secondaryKey->Import(&existingCert->acSpk, "Secondary Key");
-    memcpy(spksignature, existingCert->acSpkSignature.Signature, RSA_2048_KEY_LENGTH);
+    memcpy(spksignature, existingCert->acSpkSignature.Signature, signatureLength);
     memcpy(udf_data, existingCert->acUdf, UDF_DATA_SIZE);
     certSize = sizeof(AuthCertificate2048Structure);
     authAlgorithm = new RSAAuthenticationAlgorithm();
@@ -196,7 +199,7 @@ void ZynqAuthenticationContext::CreatePadding(uint8_t * signature, const uint8_t
     uint32_t index;
 
     /* Signature array is padded in reverse way - Go to end of the array */
-    sigPtr = signature + rsaKeyLength;
+    sigPtr = signature + signatureLength;
 
     *--sigPtr = 0x00;
     *--sigPtr = 0x01;
@@ -205,7 +208,7 @@ void ZynqAuthenticationContext::CreatePadding(uint8_t * signature, const uint8_t
        202bytes = 256bytes (Total) - 19bytes (tPad) - 32bytes (Hash) - 1byte (0x0 MSB) - 
                           1byte (0x1 next to MSB) - 1byte (0x0 before tPad)
        total FFs = 256 - 19 - 32 - 1 - 1 - 1 = 202 */
-    uint8_t totalFfs = rsaKeyLength - sizeof(tPad) - hashLength - 1 - 1 - 1;
+    uint8_t totalFfs = signatureLength - sizeof(tPad) - hashLength - 1 - 1 - 1;
     for (index = 0; index < totalFfs; ++index)
     {
         *--sigPtr = 0xFF;
@@ -334,7 +337,7 @@ void ZynqAuthenticationContext::CopySPKSignature(ACSignature2048* ptr)
 {
     CreateSPKSignature();
     LOG_TRACE("Copying the SPK signature into the Authentication Certificate");
-    memcpy(ptr, spksignature, rsaKeyLength);
+    memcpy(ptr, spksignature, signatureLength);
 }
 
 /******************************************************************************/
@@ -367,6 +370,6 @@ void ZynqAuthenticationContext::SetKeyLength(Authentication::Type type)
 {
     if (type == Authentication::RSA)
     {
-        AuthenticationContext::rsaKeyLength = RSA_2048_KEY_LENGTH;
+        AuthenticationContext::authKeyLength = RSA_2048_KEY_LENGTH;
     }
 }

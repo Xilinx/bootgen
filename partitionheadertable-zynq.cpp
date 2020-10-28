@@ -243,9 +243,8 @@ void ZynqPartitionHeader::SetAuthCertificateOffset(void)
     else if (imageHeader->GetAuthenticationType() == Authentication::RSA)
     {
         /* If the image is not yet signed, partition addr + partition length - cert size */
-        AuthenticationContext::SetRsaKeyLength(RSA_2048_KEY_LENGTH);
-        AuthenticationContext* auth = (AuthenticationContext*)new ZynqAuthenticationContext();
-        pHTable->authCertificateOffset = (uint32_t)((partition->section->Address + partition->section->Length - auth->GetCertificateSize()) / sizeof(uint32_t));
+        AuthenticationContext::SetAuthenticationKeyLength(RSA_2048_KEY_LENGTH);
+        pHTable->authCertificateOffset = (uint32_t)((partition->section->Address + partition->section->Length - sizeof(AuthCertificate2048Structure)) / sizeof(uint32_t));
     }
     else
     {

@@ -26,7 +26,7 @@
 
 #include "imageheadertable.h"
 #include "bootheader.h"
-
+#include "cdo-command.h"
 class ImageBifOptions;
 class SubSysImageHeader;
 class BifOptions;
@@ -43,7 +43,7 @@ class BifOptions;
 #define LQSPI_RANGE_MASK_VERSAL     (0x7FFFFFF)
 
 #define MAX_IHT_RESERVED_VERSAL     9
-#define MAX_IH_RESERVED_VERSAL      4
+
 #define MAX_SLAVE_SLRS              3
 #define CDO_COMMAND_SIZE            16
 #define FPDI                        0x46504449
@@ -92,6 +92,12 @@ typedef enum
     vihtPufHDLocationMask = 0x3,
 } VersalIHTAttributes;
 
+
+#define VERSION_v1_00_VERSAL    0x01030000
+#define VERSION_v2_00_VERSAL    0x00020000
+#define VERSION_v3_00_VERSAL    0x00030000
+
+
 /*
 -------------------------------------------------------------------------------
 ***************************************************   S T R U C T U R E S   ***
@@ -130,10 +136,13 @@ typedef struct
     uint32_t imageAttributes;                   // 0x0C
     char     imageName[16];                     // 0x10 
     uint32_t imageId;                           // 0x20
-    uint32_t memcpyAddressLo;                   // 0x24
-    uint32_t memcpyAddressHi;                   // 0x28
-    uint32_t reserved[MAX_IH_RESERVED_VERSAL];  // 0x2C
-    uint32_t ihChecksum;                        // 0x1C
+    uint32_t uniqueId;                          // 0x24
+    uint32_t parentUniqueId;                    // 0x28
+    uint32_t functionId;                        // 0x2C
+    uint32_t memcpyAddressLo;                   // 0x30
+    uint32_t memcpyAddressHi;                   // 0x34
+    uint32_t reserved;                          // 0x38
+    uint32_t ihChecksum;                        // 0x3C
 } VersalImageHeaderStructure;
 
 typedef struct
@@ -173,7 +182,8 @@ struct CdoCmds
         WRITE_KEYHOLE,
         SSIT_SYNC_MASTER,
         SSIT_SYNC_SLAVES,
-        SSIT_WAIT_SLAVES
+        SSIT_WAIT_SLAVES,
+        NOP
     } Type;
 };
 
@@ -190,6 +200,12 @@ typedef struct
 } CdoCommandWriteKeyhole;
 
 #define CDO_CMD_WRITE_KEYHOLE_SIZE 20
+
+typedef struct
+{
+    CdoCommandHeader header;
+} CdoCommandNop;
+#define CDO_CMD_NOP_SIZE 4
 
 typedef struct
 {
@@ -310,6 +326,7 @@ public:
     void ImportBin(BootImage& bi);
     void ImportBit(BootImage& bi);
     void ImportCdoSource(BootImage& bi);
+    void ImportCdo(BootImage& bi);
     uint8_t* DecodeCdo(std::string file, size_t* size);
     void ImportAieEngineElf(BootImage& bi);
     void CreateAieEnginePartition(BootImage& bi);
@@ -323,7 +340,7 @@ public:
     uint32_t CheckAieEngineDataMemoryBoundary(Binary::Address_t globalAddr, Binary::Length_t pSize);
     void CreateSlrBootPartition(BootImage& bi);
     void CreateSlrConfigPartition(BootImage& bi);
-
+    void ParseCdos(BootImage& bi, std::vector<std::string> filelist, uint8_t**, size_t*);
     //post-processing
     bool PostProcessCdo(const uint8_t* cdo_data, Binary::Length_t cdo_size);
     bool PostProcessCfi(const uint8_t* cdo_data, Binary::Length_t cdo_size);
@@ -360,6 +377,7 @@ private:
     void CheckSyncPointInChunk(uint64_t size, uint8_t slr_num, uint32_t* slr_sync);
     void CheckSyncPointInChunk(uint8_t* buffer, uint64_t size, uint8_t slr_num, uint32_t* slr_sync);
     uint32_t FindCommonSyncPoint(uint32_t* slr_sync_points, uint32_t* eof_slr, uint8_t num_slrs);
+    void CheckIdsInCdo(CdoSequence * cdo_seq);
     std::vector<uint32_t> slr_sync_addresses[4];
     uint8_t* slr_data[4];
     uint64_t slr_file_size[4];
@@ -406,13 +424,12 @@ public:
     void SetDelayLoadMode(bool);
     void SetMemCopyAddress(void);
     void SetSubSysMemCopyAddress(uint64_t);
-
     void SetPartitionHeaderOffset(uint32_t addr);
     void SetDataSectionCount(void);
     void SetMetaHdrRevokeId(uint32_t id);
     void SetImageHeaderAttributes();
     void SetImageName(void);
-    void SetImageHeaderPuid();
+    void SetImageHeaderIds();
     void SetReservedFields(void);
     void SetChecksum(void);
 
@@ -425,6 +442,8 @@ public:
     uint64_t GetMemCopyAddress(void);
     PartitionType::Type GetSubSystemType(void);
     std::string GetSubSystemName(void);
+    uint32_t GetSubSystemId(void);
+
     uint32_t num_of_images;
     std::list<ImageHeader*> imgList;
     std::list<std::string> partitionNameList;
@@ -436,6 +455,9 @@ protected:
     bool delayLoad;
     uint64_t memCopyAddr;
     PartitionType::Type imageType;
+    uint32_t uniqueId;
+    uint32_t parentUniqueId;
+    uint32_t functionId;
 };
 
 #endif

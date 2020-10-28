@@ -21,6 +21,7 @@
 -------------------------------------------------------------------------------
 */
 #include "bootheader-versal.h"
+#include "authentication-versal.h"
 
 /*
 -------------------------------------------------------------------------------
@@ -210,15 +211,48 @@ void VersalBootHeader::Link(BootImage& bi)
 /******************************************************************************/
 void VersalBootHeader::LinkPrebuiltBH(BootImage& bi)
 {
-    if (bi.imageList.front()->GetAuthenticationType() != Authentication::None)
+    Authentication::Type authTypeLocal = Authentication::None;
+    bool presignedLocal = false;
+
+    if (bi.createSubSystemPdis == true)
     {
-        if (!(bi.imageList.front()->GetAuthContext()->preSigned))
+        authTypeLocal = bi.subSysImageList.front()->imgList.front()->GetAuthenticationType();
+        presignedLocal = bi.subSysImageList.front()->imgList.front()->GetAuthContext()->preSigned;
+    }
+    else
+    {
+        authTypeLocal = bi.imageList.front()->GetAuthenticationType();
+        presignedLocal = bi.imageList.front()->GetAuthContext()->preSigned;
+    }
+
+    if (authTypeLocal != Authentication::None)
+    {
+        if (!(presignedLocal))
         {
-            uint32_t acSize = bi.headerAC->section->Length;
-            AddAcSizeToTotalFSBLSize(acSize);
+            uint32_t acSize = sizeof(AuthCertificate4096Sha3PaddingStructure);
+            bHTable->totalPlmLength += acSize;
+            bHTable->sourceOffset += acSize;
+
+            /* The AC should be appended to a 64-byte aligned FSBL + PMU partition
+               So find the pad length required for alignment and then add AC size */
+            //uint32_t padLength = (64 - (((bHTable->totalFsblLength + bHTable->totalPmuFwLength) & 63) & 63));
+            Binary::Length_t shaPadOnLength = bHTable->totalPlmLength + bHTable->totalPmcCdoLength - SIGN_LENGTH_VERSAL;
+            uint8_t shaPadLength = SHA3_PAD_LENGTH - (shaPadOnLength % SHA3_PAD_LENGTH);
+            if (bHTable->totalPmcCdoLength == 0)
+            {
+                bHTable->totalPlmLength += shaPadLength;
+            }
+            else
+            {
+                bHTable->totalPmcCdoLength += shaPadLength;
+            }
+
             SetHeaderChecksum();
         }
+        bi.SetTotalFsblFwSize(bHTable->totalPlmLength);
+        bi.bifOptions->SetTotalpmcdataSize(bHTable->totalPmcCdoLength);
     }
+
     SetPlmLength(bi.GetFsblFwSize());
     SetTotalPlmLength(bi.GetTotalFsblFwSize());
     SetPmcCdoLength(bi.bifOptions->GetPmcFwSize());
@@ -321,7 +355,81 @@ void VersalBootHeader::SetIdentificationWord(void)
 void VersalBootHeader::SetEncryptionKeySource(KeySource::Type keyType, BifOptions* bifOptions)
 {
     kekIvMust = false;
-    bHTable->encryptionKeySource = 0;
+    switch (keyType)
+    {
+    case KeySource::EfuseRedKey:
+        bHTable->encryptionKeySource = EFUSE_RED_KEY;
+        break;
+
+    case KeySource::BbramRedKey:
+        bHTable->encryptionKeySource = BBRAM_RED_KEY;
+        break;
+
+    case KeySource::EfuseBlkKey:
+        bHTable->encryptionKeySource = EFUSE_BLK_KEY;
+        kekIvFile = bifOptions->GetEfuseKekIVFile();
+        if (kekIvFile == "")
+        {
+            LOG_ERROR("'efuse_kek_iv' is mandatory with 'keysrc=efuse_blk_key'");
+        }
+        kekIvMust = true;
+        break;
+
+    case KeySource::BbramBlkKey:
+        bHTable->encryptionKeySource = BBRAM_BLK_KEY;
+        kekIvFile = bifOptions->GetBbramKekIVFile();
+        if (kekIvFile == "")
+        {
+            LOG_ERROR("'bbram_kek_iv' is mandatory with 'keysrc=bbram_blk_key'");
+        }
+        kekIvMust = true;
+        break;
+
+    case KeySource::BhBlkKey:
+        bHTable->encryptionKeySource = BH_BLACK_KEY;
+        kekIvFile = bifOptions->GetBHKekIVFile();
+        if (kekIvFile == "")
+        {
+            LOG_ERROR("'bh_kek_iv' is mandatory with 'keysrc=bh_blk_key'");
+        }
+        kekIvMust = true;
+        break;
+
+    case KeySource::EfuseGryKey:
+        bHTable->encryptionKeySource = EFUSE_GRY_KEY;
+        kekIvFile = bifOptions->GetEfuseKekIVFile();
+        if (kekIvFile == "")
+        {
+            LOG_ERROR("'efuse_kek_iv' is mandatory with 'keysrc=efuse_gry_key'");
+        }
+        kekIvMust = true;
+        break;
+
+    case KeySource::BbramGryKey:
+        bHTable->encryptionKeySource = BBRAM_GRY_KEY;
+        kekIvFile = bifOptions->GetBbramKekIVFile();
+        if (kekIvFile == "")
+        {
+            LOG_ERROR("'bbram_kek_iv' is mandatory with 'keysrc=bbram_gry_key'");
+        }
+        kekIvMust = true;
+        break;
+
+    case KeySource::BhGryKey:
+        bHTable->encryptionKeySource = BH_GRY_KEY;
+        kekIvFile = bifOptions->GetBHKekIVFile();
+        if (kekIvFile == "")
+        {
+            LOG_ERROR("'bh_kek_iv' is mandatory with 'keysrc=bh_gry_key'");
+        }
+        kekIvMust = true;
+        break;
+
+    case KeySource::None:
+    default:
+        bHTable->encryptionKeySource = 0;
+        break;
+    }
 }
 
 /******************************************************************************/

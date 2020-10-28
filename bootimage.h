@@ -68,16 +68,16 @@ public:
     void Process(Options& options);
 private:
     std::string biffilename;
-    void Output(Options& options);
-    std::list<BifOptions*> bifOptionList;
-    std::list<BootImage*> bootImages;
+    void Output(Options& options, uint8_t index);
+    std::vector<BifOptions*> bifOptionList;
+    std::vector<BootImage*> bootImages;
 };
 
 /******************************************************************************/
 class BootImage 
 {
 public:
-    BootImage(Options& options);
+    BootImage(Options& options, uint8_t index);
     ~BootImage();
 
     virtual void Add(BifOptions* bifoptions) { };
@@ -91,7 +91,6 @@ public:
     void SetLegacyEncryptionFlag(bool flag);
     void GenerateAuthenticationKeys(void);
     void GenerateGreyKey(void);
-    void GenerateMetalKey(void);
     void SetOutputSplitModeFormat(SplitMode::Type splitMode, File::Type fmt);
     void ValidateOutputModes(File::Type split, OutputMode::Type outMode);
     bool IsBootloaderFound();
@@ -111,6 +110,7 @@ public:
     std::vector<std::string> encryptionKeyFileVec;
     std::vector<std::string>& GetEncryptionKeyFileVec();
     void InsertEncryptionKeyFile(std::string filename);
+    std::vector<std::pair<KeySource::Type, uint32_t*>> aesKeyandKeySrc;
 
     Core::Type GetCore(void);
     uint32_t GetPmuFwSize (void);
@@ -133,6 +133,7 @@ public:
     ChecksumTable* checksumTable;
     AuthenticationCertificate* headerAC;
     AuthenticationContext* currentAuthCtx;
+    AuthenticationContext* metaHdrAuthCtx;
     EncryptionContext* currentEncryptCtx;
     MD5ChecksumContext* currentChecksumCtx;
     Hash* hash;

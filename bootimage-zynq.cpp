@@ -34,7 +34,7 @@ class ZynqEncryptionContext;
 -------------------------------------------------------------------------------
 */
 /******************************************************************************/
-ZynqBootImage::ZynqBootImage(Options& options) : BootImage(options)
+ZynqBootImage::ZynqBootImage(Options& options, uint8_t index) : BootImage(options, index)
 {
     options.SetPadHeaderTable(true);
     bootHeader = new ZynqBootHeader();
@@ -311,7 +311,7 @@ void ZynqBootImage::ParseBootImage(PartitionBifOptions* it)
 
     src.seekg(importedBh->GetImageHeaderByteOffset());
     ImageHeaderTable* imageHeaderTable = new ZynqImageHeaderTable(src);
-    long offset = imageHeaderTable->GetFirstImageHeaderOffset() * sizeof(uint32_t);
+    uint32_t offset = imageHeaderTable->GetFirstImageHeaderOffset() * sizeof(uint32_t);
 
     do
     {
@@ -391,7 +391,7 @@ void ZynqBootImage::ParseBootImage(PartitionBifOptions* it)
                 for (int i = 0; i < acSize; i++)
                 {
                     void *cert = (ph->partition->section->Data + ph->GetCertificateRelativeByteOffset());
-                    AuthenticationContext::SetRsaKeyLength(RSA_2048_KEY_LENGTH);
+                    AuthenticationContext::SetAuthenticationKeyLength(RSA_2048_KEY_LENGTH);
                     AuthenticationContext* auth = new ZynqAuthenticationContext((AuthCertificate2048Structure*)cert);
                     AuthenticationCertificate* tempac;
                     tempac = new RSA2048AuthenticationCertificate(auth);

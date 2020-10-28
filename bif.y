@@ -111,11 +111,11 @@ ImageBifOptions* currentImageBifOptions;
 %token                  SPLIT_MODE SPLIT_FMT
 %token                  BOOT USER STATIC NOAUTOSTART MULTIBOOT PROTECTED  
 %token                  BLOCKS AUTHBLOCKS BOOTVECTORS
-%token                  PRESIGN
+%token                  PRESIGN BIF_SECTION
 %token                  UDF_DATA
 %token                  MCS BIN
 %token                  SLR_NUM
-%token                  PARENT_ID ID_CODE EXT_ID_CODE BYPASS_IDCODE_CHECK
+%token                  PARENT_ID ID_CODE EXT_ID_CODE BYPASS_IDCODE_CHECK A_HWROT S_HWROT UNIQUE_ID PARENT_UNIQUE_ID FUNCTION_ID
 %token                  IMAGE ID NAME DELAY_HANDOFF DELAY_LOAD COPY
 %token                  PARTITION PFILE
 %token                  METAHEADER
@@ -123,11 +123,11 @@ ImageBifOptions* currentImageBifOptions;
 %token <string>         FILENAME QFILENAME
 %token <number>         NONE
 %token <number>         DECVALUE HEXVALUE
-%token <number>	        KEYSRC_ENCRYPTION FSBL_CONFIG AUTH_PARAMS
-%token <number>	        PUF4KMODE SHUTTER SPLIT SMAP_WIDTH
-%token <number>	        PUF_HELPER_FILE BH_KEY_FILE BH_KEY_IV
+%token <number>         KEYSRC_ENCRYPTION FSBL_CONFIG AUTH_PARAMS
+%token <number>         PUF4KMODE SHUTTER SPLIT SMAP_WIDTH
+%token <number>         PUF_HELPER_FILE BH_KEY_FILE BH_KEY_IV
 %token <number>         BH_KEK_IV BBRAM_KEK_IV EFUSE_KEK_IV EFUSE_USER_KEK0_IV EFUSE_USER_KEK1_IV
-%token <number>	        PMCDATA BOOTIMAGE UDF_BH INIT PMUFW_IMAGE
+%token <number>         PMCDATA BOOTIMAGE UDF_BH INIT PMUFW_IMAGE
 %token <number>         AES_KEY_FILE FAMILY_KEY 
 %token <number>         PPK_FILE PSK_FILE SPK_FILE SSK_FILE 
 %token <number>         SPK_SIGNATURE_FILE BH_SIGNATURE_FILE HEADER_SIGNATURE_FILE
@@ -200,7 +200,8 @@ group_list              :   /* empty */
                
 bifoptions              :   WORD                                                { currentBifOptions = new BifOptions(options.GetArchType(),$1); }
                             COLON 
-                            OBRACE file_list EBRACE                             { options.bifOptions=currentBifOptions; }
+                            OBRACE file_list EBRACE                             { options.bifOptions = currentBifOptions;
+                                                                                  options.bifOptionsList.push_back(currentBifOptions); }
                         ;
                         
 file_list               :   /* empty */
@@ -224,10 +225,10 @@ metahdr_attr_list       :  metahdr_attr
                         ;
 
 metahdr_attr            :   /* empty */
-                        |   ENCRYPTION EQUAL encrvalue                          { currentBifOptions->metaHdrAttributes.encrypt = $3; }
+                        |   ENCRYPTION EQUAL encrvalue                          { currentBifOptions->SetMetaHeaderEncryptType($3); }
                         |   KEYSRC_ENCRYPTION EQUAL key_src                     { currentBifOptions->SetMetaHeaderEncryptionKeySource($3); }
                         |   AES_KEY_FILE EQUAL filename                         { currentBifOptions->metaHdrAttributes.encrKeyFile = $3; }
-                        |   AUTHENTICATION EQUAL authvalue                      { currentBifOptions->metaHdrAttributes.authenticate = $3; }
+                        |   AUTHENTICATION EQUAL authvalue                      { currentBifOptions->SetMetaHeaderAuthType($3); }
                         |   PPK_FILE EQUAL filename                             { currentBifOptions->metaHdrAttributes.ppk = $3; }
                         |   PSK_FILE EQUAL filename                             { currentBifOptions->metaHdrAttributes.psk = $3; }
                         |   SPK_FILE EQUAL filename                             { currentBifOptions->metaHdrAttributes.spk = $3; }
@@ -287,6 +288,9 @@ image_attributes        :   ID EQUAL expression                                 
                         |   DELAY_LOAD                                          { currentImageBifOptions->SetDelayLoad(true); }
                         |   COPY EQUAL expression                               { currentImageBifOptions->SetMemCopyAddress($3); }
                         |   PARTITION_TYPE EQUAL ptypevalue                     { currentImageBifOptions->SetImageType($3); }
+                        |   UNIQUE_ID EQUAL expression                          { currentImageBifOptions->SetUniqueId($3); }
+                        |   PARENT_UNIQUE_ID EQUAL expression                   { currentImageBifOptions->SetParentUniqueId($3); }
+                        |   FUNCTION_ID EQUAL expression                        { currentImageBifOptions->SetFunctionId($3); }
 
                         ;
 
@@ -300,7 +304,7 @@ partition_content       :   /* empty */
                         ;
 
 other_spec              :   OBRACKET KEYSRC_ENCRYPTION EBRACKET key_src         { if(options.GetArchType() == Arch::VERSAL) 
-                                                                                    LOG_WARNING("BIF attribute error !!!\n\t\t[keysrc_encryption] not supported in VERSAL architecture.\n\t   Please see 'bootgen -arch versal -bif_help keysrc'");
+                                                                                    LOG_WARNING("BIF attribute error !!! [keysrc_encryption] not supported in VERSAL architecture.\n\t   Please see 'bootgen -arch versal -bif_help keysrc'");
                                                                                   currentBifOptions->SetEncryptionKeySource($4); options.SetEncryptedKeySource($4); }
                         |   OBRACKET FSBL_CONFIG                                { if(options.GetArchType() == Arch::ZYNQ) 
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t\t[fsbl_config] not supported in ZYNQ architecture"); }
@@ -360,17 +364,21 @@ fsbl_attr               :   core                                                
                                                                                   currentBifOptions->smapWidth = $3;
                                                                                 }
                         |   BYPASS_IDCODE_CHECK                                 { currentBifOptions->SetBypassIdcodeFlag(true); }
+                        |   A_HWROT                                             { currentBifOptions->SetAHwRoTFlag(true); }
+                        |   S_HWROT                                             { currentBifOptions->SetSHwRoTFlag(true); }
                         ;
 
 file_spec               :   OBRACKET                                            { currentPartitionBifOptions = new PartitionBifOptions();
                                                                                   currentPartitionBifOptions->SetArchType(options.GetArchType()); }
                             attribute_list EBRACKET 
-                            filename                                            { currentPartitionBifOptions->filename = $5; 
+                            filename                                            { currentPartitionBifOptions->filename = $5;
+                                                                                  currentPartitionBifOptions->filelist.push_back($5);
                                                                                   currentBifOptions->Add(currentPartitionBifOptions, currentImageBifOptions);
                                                                                 }
                         |   filename                                            { currentPartitionBifOptions = new PartitionBifOptions();
                                                                                   currentPartitionBifOptions->SetArchType(options.GetArchType());
                                                                                   currentPartitionBifOptions->filename = $1; 
+                                                                                  currentPartitionBifOptions->filelist.push_back($1);
                                                                                   currentBifOptions->Add(currentPartitionBifOptions, currentImageBifOptions);
                                                                                 };
 new_file_spec           :   OBRACE                                              { currentPartitionBifOptions = new PartitionBifOptions();
@@ -387,11 +395,15 @@ new_attribute_list      :   attribute
                         |   attribute new_attribute_list
                         ;
 
-new_attribute           :   PFILE EQUAL filename                                { currentPartitionBifOptions->filename = $3; 
+new_attribute           :   PFILE EQUAL filename                                { currentPartitionBifOptions->filename = $3;
+                                                                                  currentPartitionBifOptions->filelist.push_back($3);
                                                                                   currentBifOptions->Add(currentPartitionBifOptions, currentImageBifOptions); }
                         |   ID EQUAL expression                                 { currentPartitionBifOptions->partitionId = $3; }
                         |   PARTITION_TYPE EQUAL boolattr
                         |   PARTITION_TYPE EQUAL PMCDATA                        { currentPartitionBifOptions->fileType = $3; }
+                        |   BIF_SECTION EQUAL WORD                                { currentPartitionBifOptions->bifSection = $3;
+                                                                                  currentPartitionBifOptions->filename = currentPartitionBifOptions->GetOutputFileFromBifSection(options.GetOutputFileNames().front(), $3);
+                                                                                  currentBifOptions->Add(currentPartitionBifOptions, currentImageBifOptions); }
                         ;
 
 attribute_list          :   attribute 

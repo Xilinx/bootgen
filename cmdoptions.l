@@ -98,7 +98,7 @@
 \-generate_hashes           return tok::_GENERATE_HASHES;
 
 \-securedebugimage          return tok::_SECUREDEBUG;
-    ecdsa                   return tok::ECDSA;
+\-authenticatedjtag         return tok::_AUTHJTAG;
 
 \-generate_keys             return tok::_GENERATE_KEYS;
     auth                    return tok::AUTH;
@@ -106,6 +106,8 @@
     rsa                     return tok::RSA;
     obfuscatedkey           return tok::GREY;
     familykey               return tok::METAL;
+    ecdsa                   return tok::ECDSA;
+    ecdsa-p384              return tok::ECDSA;
 
 \-nonbooting                return tok::_NONBOOTING;
 \-spksignature              return tok::_SPKSIGNATURE;
@@ -158,6 +160,7 @@ encryption_dump             return tok::HENCRDUMP;
 verify                      return tok::HVERIFY;
 verify_kdf                  return tok::HVERIFYKDF;
 securedebugimage            return tok::HSECUREDEBUG;
+authenticatedjtag           return tok::HSECUREDEBUG;
 read                        return tok::HREAD;
 dump                        return tok::HDUMP;
 dump_dir                    return tok::HDUMPDIR;
@@ -223,6 +226,7 @@ bhsignature                 return tok::H_BIF_BHSIGN;
 split                       return tok::H_SPLIT;
 bootvectors                 return tok::H_BIF_BOOTVEC;
 puf_file                    return tok::H_BIF_PUFDATA;
+dpacm_enable                return tok::H_DPACM_ENABLE;
 
 
 

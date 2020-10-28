@@ -48,13 +48,41 @@ void VersalReadImage::Separator(void)
 }
 
 /******************************************************************************/
+VersalReadImage::~VersalReadImage()
+{
+    if (bH != NULL)
+    {
+        delete[] bH;
+    }
+    if (iH != NULL)
+    {
+        delete[] iH;
+    }
+    if (iHT != NULL)
+    {
+        delete[] iHT;
+    }
+    if (pHT != NULL)
+    {
+        delete[] pHT;
+    }
+}
+
+/******************************************************************************/
 void VersalReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
 {
     size_t result;
     uint64_t offset = 0;
     uint32_t index = 0;
+    bool smap_header_found = false;
     dumpType = dump;
     dumpPath = path;
+
+    if (StringUtils::GetExtension(binFilename) == ".mcs")
+    {
+        LOG_ERROR("The option '-read' is not supported on mcs format file : %s", binFilename.c_str());
+    }
+
     FILE *binFile;
     binFile = fopen(binFilename.c_str(), "rb");
 
@@ -66,7 +94,10 @@ void VersalReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
     // Boot Header Table Extraction
     bH = new VersalBootHeaderStructure;
     result = fread(bH, 1, sizeof(VersalBootHeaderStructure), binFile);
-
+    if ((bH->smapWords[0] == 0xDD000000) || (bH->smapWords[0] == 0x00DD0000) || (bH->smapWords[0] == 0x000000DD))
+    {
+        smap_header_found = true;
+    }
     if (bH->widthDetectionWord != 0xAA995566)
     {
         delete bH;
@@ -107,7 +138,14 @@ void VersalReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
     }
     else
     {
-        offset = sizeof(VersalSmapWidthTable);
+        if(smap_header_found)
+        {
+            offset = sizeof(VersalSmapWidthTable);
+        }
+        else
+        {
+            offset = 0;
+        }
     }
     if (!(fseek(binFile, offset, SEEK_SET)))
     {
@@ -142,7 +180,7 @@ void VersalReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
         offset = iHT->firstImageHeaderWordOffset * 4;
         for (index = 0; index < iHT->imageTotalCount; index++)
         {
-            VersalImageHeaderStructure *iH = new VersalImageHeaderStructure;
+            iH = new VersalImageHeaderStructure;
             if (!(fseek(binFile, offset, SEEK_SET)))
             {
                 result = fread(iH, 1, sizeof(VersalImageHeaderStructure), binFile);
@@ -162,7 +200,7 @@ void VersalReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
         offset = iHT->firstPartitionHeaderWordOffset * 4;
         for (index = 0; index < iHT->partitionTotalCount; index++)
         {
-            VersalPartitionHeaderTableStructure* pHT = new VersalPartitionHeaderTableStructure;
+            pHT = new VersalPartitionHeaderTableStructure;
 
             if (!(fseek(binFile, offset, SEEK_SET)))
             {
@@ -284,6 +322,11 @@ void VersalReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
             prev_id = id;
             delete[] buffer;
         }
+    }
+
+    if (header_ac != NULL)
+    {
+        delete[] header_ac;
     }
     fclose(binFile);
 }
@@ -420,6 +463,7 @@ void VersalReadImage::DisplayBootHeader(void)
     DisplayValue("puf_shutter (0x70) : ", bH->shutterValue);
     DisplayIV("pmccdo_sec_hdr_iv (0x74) : ", bH->pmcCdoSecureHdrIv);
     DisplayValue("metahdr_offset (0xc4) : ", bH->imageHeaderByteOffset);
+    DisplayKey("puf_data (0x928) : ", bH->puf);
     DisplayValue("checksum (0xf30) : ", bH->headerChecksum);
     std::cout << " attribute list - " << std::endl;
     DisplayBhAttributes(bH->bhAttributes);
@@ -497,9 +541,11 @@ void VersalReadImage::DisplayImageHeaders(void)
         Separator();
         DisplayValue("pht_offset (0x00) : ", (*iH)->partitionHeaderWordOffset, "section_count (0x04) : ", (*iH)->dataSectionCount);
         DisplayValue("mHdr_revoke_id (0x08) : ", (*iH)->metaHdrRevokeId, "attributes (0x0c) : ", ((*iH)->imageAttributes));
-        DisplayValue("id (0x18) : ", (*iH)->imageId, "checksum (0x3c) : ", (*iH)->ihChecksum);
-        DisplayValue("memcpy_address_lo (0x24) : ", (*iH)->memcpyAddressLo, "memcpy_address_hi (0x28) : ", (*iH)->memcpyAddressHi);
         DisplayAscii("name (0x10) : ", (*iH)->imageName);
+        DisplayValue("id (0x18) : ", (*iH)->imageId, "unique_id (0x24) : ", (*iH)->uniqueId);
+        DisplayValue("parent_unique_id (0x28) : ", (*iH)->parentUniqueId, "function_id (0x2c) : ", (*iH)->functionId);
+        DisplayValue("memcpy_address_lo (0x30) : ", (*iH)->memcpyAddressLo, "memcpy_address_hi (0x34) : ", (*iH)->memcpyAddressHi);
+        DisplayValue("checksum (0x3c) : ", (*iH)->ihChecksum);
         std::cout << " attribute list -" << std::endl;
         DisplayIhAttributes((*iH)->imageAttributes);
     }
@@ -539,7 +585,7 @@ void VersalReadImage::DisplayPartitionHeaderTable(void)
 void VersalReadImage::DisplayAuthenicationCertificates(void)
 {
     uint32_t cnt_index = 0;
-    Authentication::Type auth_type;
+    Authentication::Type auth_type = Authentication::None;
     std::list<uint8_t*>::iterator aC = aCs.begin();
 
     /* Header AC */
@@ -548,7 +594,18 @@ void VersalReadImage::DisplayAuthenicationCertificates(void)
         Separator();
         std::cout << "   AUTHENTICATION CERTIFICATE " << "(Meta Header)" << std::endl;
         Separator();
-        auth_type = (Authentication::Type) (*(*aC) & 3);
+        if ((*(*aC) & 0xF3) == 0x02)
+        {
+            auth_type = Authentication::ECDSA;
+        }
+        else if ((*(*aC) & 0xF3) == 0x11)
+        {
+            auth_type = Authentication::RSA;
+        }
+        else if ((*(*aC) & 0xF3) == 0x22)
+        {
+            auth_type = Authentication::ECDSAp521;
+        }
         DisplayACFields(*aC, auth_type);
     }
     aC++;
@@ -563,7 +620,18 @@ void VersalReadImage::DisplayAuthenicationCertificates(void)
                 Separator();
                 std::cout << "   AUTHENTICATION CERTIFICATE " << "(" << (*iH)->imageName << "." << std::dec << cnt_index << ")" << std::endl;
                 Separator();
-                auth_type = (Authentication::Type) (*(*aC) & 3);
+                if ((*(*aC) & 0xF3) == 0x02)
+                {
+                    auth_type = Authentication::ECDSA;
+                }
+                else if ((*(*aC) & 0xF3) == 0x11)
+                {
+                    auth_type = Authentication::RSA;
+                }
+                else if ((*(*aC) & 0xF3) == 0x22)
+                {
+                    auth_type = Authentication::ECDSAp521;
+                }
                 DisplayACFields(*aC, auth_type);
             }
             aC++;
@@ -574,7 +642,62 @@ void VersalReadImage::DisplayAuthenicationCertificates(void)
 /******************************************************************************/
 void VersalReadImage::DisplayACFields(uint8_t* aC, Authentication::Type auth_type)
 {
-
+    if (auth_type == Authentication::RSA)
+    {
+        AuthCertificate4096Sha3PaddingStructure* auth_cert = (AuthCertificate4096Sha3PaddingStructure*)(aC);
+        DisplayValue("auth_header (0x00) : ", auth_cert->acHeader);
+        DisplayValue("revoke_id (0x04) : ", auth_cert->spkId);
+        DisplayLongValues("udf (0x08) : ", (uint8_t*)auth_cert->acUdf, 56);
+        DisplayLongValues("ppk_mod (0x40) : ", (uint8_t*)auth_cert->acPpk.N, 512);
+        DisplayLongValues("ppk_mod_ext (0x240) : ", (uint8_t*)auth_cert->acPpk.N_extension, 512);
+        DisplayLongValues("ppk_exponent (0x440) : ", (uint8_t*)auth_cert->acPpk.E, 4);
+        DisplayLongValues("ppk_padding (0x444) : ", (uint8_t*)auth_cert->ppkSHA3Padding, 12);
+        DisplayLongValues("spk_mod (0x450) : ", (uint8_t*)auth_cert->acSpk.N, 512);
+        DisplayLongValues("spk_mod_ext (0x650) : ", (uint8_t*)auth_cert->acSpk.N_extension, 512);
+        DisplayLongValues("spk_exponent (0x850) : ", (uint8_t*)auth_cert->acSpk.E, 4);
+        DisplayLongValues("spk_padding (0x854) : ", (uint8_t*)auth_cert->spkSHA3Padding, 4);
+        DisplayLongValues("spk_signature (0x860) : ", (uint8_t*)(&auth_cert->acSpkSignature), 512);
+        DisplayLongValues("bh_signature (0xa60) : ", (uint8_t*)(&auth_cert->acHeaderSignature), 512);
+        DisplayLongValues("part_signature (0xc60) : ", (uint8_t*)(&auth_cert->acPartitionSignature), 512);
+    }
+    else if(auth_type == Authentication::ECDSA)
+    {
+        AuthCertificateECDSAStructure* auth_cert = (AuthCertificateECDSAStructure*)(aC);
+        DisplayValue("auth_header (0x00) : ", auth_cert->acHeader);
+        DisplayValue("revoke_id (0x04) : ", auth_cert->spkId);
+        DisplayLongValues("udf (0x08) : ", (uint8_t*)auth_cert->acUdf, 56);
+        DisplayLongValues("ppk_x (0x40) : ", (uint8_t*)auth_cert->acPpk.x, 48);
+        DisplayLongValues("ppk_y (0x70) : ", (uint8_t*)auth_cert->acPpk.y, 48);
+        DisplayLongValues("ppk_padding (0x444) : ", (uint8_t*)auth_cert->ppkSHA3Padding, 12);
+        DisplayLongValues("spk_x (0x450) : ", (uint8_t*)auth_cert->acSpk.x, 48);
+        DisplayLongValues("spk_y (0x480) : ", (uint8_t*)auth_cert->acSpk.y, 48);
+        DisplayLongValues("spk_padding (0x854) : ", (uint8_t*)auth_cert->spkSHA3Padding, 4);
+        DisplayLongValues("spk_signature (r) (0x860) : ", (uint8_t*)(&auth_cert->acSpkSignature), 48);
+        DisplayLongValues("(s) (0x890) : ", ((uint8_t*)(&auth_cert->acSpkSignature) + 48), 48);
+        DisplayLongValues("bh_signature (r) (0xa60) : ", (uint8_t*)(&auth_cert->acHeaderSignature), 48);
+        DisplayLongValues("(s) (0xa90) : ", ((uint8_t*)(&auth_cert->acHeaderSignature) + 48), 48);
+        DisplayLongValues("part_signature (r) (0xc60) : ", (uint8_t*)(&auth_cert->acPartitionSignature), 48);
+        DisplayLongValues("(s) (0xc90) : ", ((uint8_t*)(&auth_cert->acPartitionSignature) + 48), 48);
+    }
+    else
+    {
+        AuthCertificateECDSAp521Structure* auth_cert = (AuthCertificateECDSAp521Structure*)(aC);
+        DisplayValue("auth_header (0x00) : ", auth_cert->acHeader);
+        DisplayValue("revoke_id (0x04) : ", auth_cert->spkId);
+        DisplayLongValues("udf (0x08) : ", (uint8_t*)auth_cert->acUdf, 56);
+        DisplayLongValues("ppk_x (0x40) : ", (uint8_t*)auth_cert->acPpk.x, 66);
+        DisplayLongValues("ppk_y (0x70) : ", (uint8_t*)auth_cert->acPpk.y, 66);
+        DisplayLongValues("ppk_padding (0x444) : ", (uint8_t*)auth_cert->ppkSHA3Padding, 12);
+        DisplayLongValues("spk_x (0x450) : ", (uint8_t*)auth_cert->acSpk.x, 66);
+        DisplayLongValues("spk_y (0x480) : ", (uint8_t*)auth_cert->acSpk.y, 66);
+        DisplayLongValues("spk_padding (0x854) : ", (uint8_t*)auth_cert->spkSHA3Padding, 4);
+        DisplayLongValues("spk_signature (r) (0x860) : ", (uint8_t*)(&auth_cert->acSpkSignature), 66);
+        DisplayLongValues("(s) (0x890) : ", ((uint8_t*)(&auth_cert->acSpkSignature) + 66), 66);
+        DisplayLongValues("bh_signature (r) (0xa60) : ", (uint8_t*)(&auth_cert->acHeaderSignature), 66);
+        DisplayLongValues("(s) (0xa90) : ", ((uint8_t*)(&auth_cert->acHeaderSignature) + 66), 66);
+        DisplayLongValues("part_signature (r) (0xc60) : ", (uint8_t*)(&auth_cert->acPartitionSignature), 66);
+        DisplayLongValues("(s) (0xc90) : ", ((uint8_t*)(&auth_cert->acPartitionSignature) + 66), 66);
+    }
 }
 
 /******************************************************************************/

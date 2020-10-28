@@ -73,17 +73,17 @@ void ZynqMpAuthenticationContext::CopyPartitionSignature(BootImage& bi,
     }
 
     /* Update with Partition and then AC */
-    uint8_t *partitionAc = new uint8_t[hashSecLen + (acSection->Length - rsaKeyLength)];
+    uint8_t *partitionAc = new uint8_t[hashSecLen + (acSection->Length - signatureLength)];
 
     /* Update with Partition */
     memcpy(partitionAc, (*section)->Data + (authblocksize * acIndex), hashSecLen);
 
     /* Update with authentication certificate except the last 256 bytes, which is the partition signature, 
        that we are calculating now. Once calculated, the partition signature will sit there */
-    memcpy(partitionAc + hashSecLen, acSection->Data, acSection->Length - rsaKeyLength);
+    memcpy(partitionAc + hashSecLen, acSection->Data, acSection->Length - signatureLength);
 
     uint32_t start = (*section)->Address;
-    uint32_t end = (acSection->Address + acSection->Length) - rsaKeyLength;
+    uint32_t end = (acSection->Address + acSection->Length) - signatureLength;
     LOG_TRACE("Hashing %s from 0x%x to 0x%x", acSection->Name.c_str(), start, end);
     LOG_DUMP_BYTES((*section)->Data + (authblocksize * acIndex), 32);
     LOG_OUT(" ... ");
@@ -93,13 +93,13 @@ void ZynqMpAuthenticationContext::CopyPartitionSignature(BootImage& bi,
     /* Calculate the hash */
     /*  Partition signatures are used by FSBL/XilSecure/XilFPGA except BL Sign-So partition hashes  always NIST except for bootloader
         Bootloader Sign is used by ROM - so Bootloader hash - always Keccak */
-    hash->CalculateHash(!(*section)->isBootloader, partitionAc, hashSecLen + (acSection->Length - rsaKeyLength), shaHash);
+    hash->CalculateHash(!(*section)->isBootloader, partitionAc, hashSecLen + (acSection->Length - signatureLength), shaHash);
 
     LOG_TRACE("Hash of %s (LE):", acSection->Name.c_str());
     LOG_DUMP_BYTES(shaHash, hashLength);
 
     /* Create the PKCS padding for the hash */
-    uint8_t* shaHashPadded = new uint8_t[rsaKeyLength];
+    uint8_t* shaHashPadded = new uint8_t[signatureLength];
     CreatePadding(shaHashPadded, shaHash);
 
     if (bi.options.DoGenerateHashes())
@@ -107,11 +107,11 @@ void ZynqMpAuthenticationContext::CopyPartitionSignature(BootImage& bi,
         std::string hashfilename = acSection->Name;
         WritePaddedSHAFile(shaHashPadded, hashfilename);
     }
-    RearrangeEndianess(shaHashPadded, rsaKeyLength);
+    RearrangeEndianess(shaHashPadded, signatureLength);
 
     /*Sign the hash */
     authAlgorithm->CreateSignature(shaHashPadded, (uint8_t*)secondaryKey, signatureBlock);
-    RearrangeEndianess(signatureBlock, rsaKeyLength);
+    RearrangeEndianess(signatureBlock, signatureLength);
     LOG_TRACE("The partition signature is copied into Authentication Certificate");
 
     /* Delete the temporarily created arrays */
@@ -124,16 +124,17 @@ void ZynqMpAuthenticationContext::CopyPartitionSignature(BootImage& bi,
 /******************************************************************************/
 ZynqMpAuthenticationContext::ZynqMpAuthenticationContext()
 {
-    SetRsaKeyLength(RSA_4096_KEY_LENGTH);
+    signatureLength = RSA_SIGN_LENGTH_ZYNQMP;
+    SetAuthenticationKeyLength(RSA_4096_KEY_LENGTH);
     hashType = AuthHash::Sha3;
-    spksignature = new uint8_t[RSA_4096_KEY_LENGTH];
+    spksignature = new uint8_t[signatureLength];
     spkSignLoaded = false;
     primaryKey = new Key4096("Primary Key");
     secondaryKey = new Key4096("Secondary Key");
-    memset(spksignature, 0, RSA_4096_KEY_LENGTH);
+    memset(spksignature, 0, signatureLength);
     memset(udf_data, 0, UDF_DATA_SIZE);
-    bHsignature = new uint8_t[RSA_4096_KEY_LENGTH];
-    memset(bHsignature, 0, RSA_4096_KEY_LENGTH);
+    bHsignature = new uint8_t[signatureLength];
+    memset(bHsignature, 0, signatureLength);
     bhSignLoaded = false;
     authAlgorithm = new RSAAuthenticationAlgorithm();
     authCertificate = new RSA4096AuthenticationCertificate();
@@ -143,10 +144,11 @@ ZynqMpAuthenticationContext::ZynqMpAuthenticationContext()
 /******************************************************************************/
 ZynqMpAuthenticationContext::ZynqMpAuthenticationContext(const AuthenticationContext* refAuthContext)
 {
-    SetRsaKeyLength(RSA_4096_KEY_LENGTH);
+    signatureLength = RSA_SIGN_LENGTH_ZYNQMP;
+    SetAuthenticationKeyLength(RSA_4096_KEY_LENGTH);
     hashType = AuthHash::Sha3;
-    spksignature = new uint8_t[RSA_4096_KEY_LENGTH];
-    bHsignature = new uint8_t[RSA_4096_KEY_LENGTH];
+    spksignature = new uint8_t[signatureLength];
+    bHsignature = new uint8_t[signatureLength];
     ppkFile = refAuthContext->ppkFile;
     pskFile = refAuthContext->pskFile;
     spkFile = refAuthContext->spkFile;
@@ -158,8 +160,7 @@ ZynqMpAuthenticationContext::ZynqMpAuthenticationContext(const AuthenticationCon
     spkIdentification = refAuthContext->spkIdentification;
     primaryKey = new Key4096("Primary Key");
     secondaryKey = new Key4096("Secondary Key");
-    memcpy(primaryKey, refAuthContext->primaryKey, sizeof(Key4096));
-
+    primaryKey = refAuthContext->primaryKey;
     if (spkFile != "" || sskFile != "")
     {
         if (sskFile != "")
@@ -173,7 +174,7 @@ ZynqMpAuthenticationContext::ZynqMpAuthenticationContext(const AuthenticationCon
     }
     else
     {
-        memcpy(secondaryKey, refAuthContext->secondaryKey, sizeof(Key4096));
+        secondaryKey = refAuthContext->secondaryKey;
     }
 
     if (spkSignFile != "")
@@ -182,7 +183,7 @@ ZynqMpAuthenticationContext::ZynqMpAuthenticationContext(const AuthenticationCon
     }
     else
     {
-        memcpy(spksignature, refAuthContext->spksignature, RSA_4096_KEY_LENGTH);
+        memcpy(spksignature, refAuthContext->spksignature, signatureLength);
     }
 
     if (bhSignFile != "")
@@ -191,7 +192,7 @@ ZynqMpAuthenticationContext::ZynqMpAuthenticationContext(const AuthenticationCon
     }
     else
     {
-        memcpy(bHsignature, refAuthContext->bHsignature, RSA_4096_KEY_LENGTH);
+        memcpy(bHsignature, refAuthContext->bHsignature, signatureLength);
     }
 
     memcpy(udf_data, refAuthContext->udf_data, sizeof(udf_data));
@@ -207,11 +208,12 @@ ZynqMpAuthenticationContext::ZynqMpAuthenticationContext(const AuthenticationCon
 /******************************************************************************/
 ZynqMpAuthenticationContext::ZynqMpAuthenticationContext(const AuthCertificate4096Structure* existingCert)
 {
-    SetRsaKeyLength(RSA_4096_KEY_LENGTH);
+    signatureLength = RSA_SIGN_LENGTH_ZYNQMP;
+    SetAuthenticationKeyLength(RSA_4096_KEY_LENGTH);
     hashType = AuthHash::Sha3;
-    spksignature = new uint8_t[RSA_4096_KEY_LENGTH];
+    spksignature = new uint8_t[signatureLength];
     spkSignLoaded = true;
-    bHsignature = new uint8_t[RSA_4096_KEY_LENGTH];
+    bHsignature = new uint8_t[signatureLength];
     bhSignLoaded = true;
     
     primaryKey = new Key4096("Primary Key");
@@ -226,8 +228,8 @@ ZynqMpAuthenticationContext::ZynqMpAuthenticationContext(const AuthCertificate40
     RearrangeEndianess(secondaryKey->N_ext, sizeof(existingCert->acSpk.N_extension));
     RearrangeEndianess(secondaryKey->E, sizeof(existingCert->acSpk.E));
 
-    memcpy(spksignature, existingCert->acSpkSignature.Signature, RSA_4096_KEY_LENGTH);
-    memcpy(bHsignature, existingCert->acBhSignature.Signature, RSA_4096_KEY_LENGTH);
+    memcpy(spksignature, existingCert->acSpkSignature.Signature, signatureLength);
+    memcpy(bHsignature, existingCert->acBhSignature.Signature, signatureLength);
     memcpy(udf_data, existingCert->acUdf, UDF_DATA_SIZE);
 
     uint32_t acHdr = existingCert->acHeader;
@@ -324,7 +326,7 @@ void ZynqMpAuthenticationContext::CreatePadding(uint8_t * signature, const uint8
     *sigPtr++ = 0x00;
     *sigPtr++ = 0x01;
 
-    uint32_t totalFfs = rsaKeyLength - T_PAD_LENGTH - hashLength - 1 - 1 - 1;
+    uint32_t totalFfs = signatureLength - T_PAD_LENGTH - hashLength - 1 - 1 - 1;
     for (index = 0; index < totalFfs; ++index)
     {
         *sigPtr++ = 0xFF;
@@ -486,8 +488,8 @@ void ZynqMpAuthenticationContext::Link(BootImage& bi, std::list<Section*> sectio
 /******************************************************************************/
 void ZynqMpAuthenticationContext::CopyBHSignature(BootImage& bi, ACSignature4096* ptr)
 {
-    uint8_t* sha_hash_padded = new uint8_t[rsaKeyLength];
-    uint8_t* bHsignaturetmp = new uint8_t[rsaKeyLength];
+    uint8_t* sha_hash_padded = new uint8_t[signatureLength];
+    uint8_t* bHsignaturetmp = new uint8_t[signatureLength];
 
     GenerateBHHash(bi, sha_hash_padded);
     if (bi.options.DoGenerateHashes())
@@ -499,21 +501,21 @@ void ZynqMpAuthenticationContext::CopyBHSignature(BootImage& bi, ACSignature4096
     if (secondaryKey->Loaded && secondaryKey->isSecret)
     {
         LOG_TRACE("Creating Boot Header Signature");
-        RearrangeEndianess(sha_hash_padded, rsaKeyLength);
+        RearrangeEndianess(sha_hash_padded, signatureLength);
         authAlgorithm->CreateSignature(sha_hash_padded, (uint8_t*)secondaryKey, bHsignaturetmp);
-        RearrangeEndianess(bHsignaturetmp, rsaKeyLength);
+        RearrangeEndianess(bHsignaturetmp, signatureLength);
         if (bhSignLoaded)
         {
-            if (memcmp(bHsignature, bHsignaturetmp, rsaKeyLength) != 0)
+            if (memcmp(bHsignature, bHsignaturetmp, signatureLength) != 0)
             {
                 LOG_ERROR("Authentication Error !!!\n           Loaded BH Signature does not match calculated BH Signature");
             }
         }
-        memcpy(ptr, bHsignaturetmp, rsaKeyLength);
+        memcpy(ptr, bHsignaturetmp, signatureLength);
     }
     else if (bhSignLoaded)
     {
-        memcpy(ptr, bHsignature, rsaKeyLength);
+        memcpy(ptr, bHsignature, signatureLength);
     }
     else if (bi.options.DoGenerateHashes() && !bhSignLoaded)
     {
@@ -600,7 +602,7 @@ void ZynqMpAuthenticationContext::CopySPKSignature(ACSignature4096* ptr)
 {
     CreateSPKSignature();
     LOG_TRACE("Copying the SPK signature into the Authentication Certificate");
-    memcpy(ptr, spksignature, rsaKeyLength);
+    memcpy(ptr, spksignature, signatureLength);
 }
 
 /******************************************************************************/
@@ -686,6 +688,6 @@ void ZynqMpAuthenticationContext::SetKeyLength(Authentication::Type type)
 {
     if (type == Authentication::RSA)
     {
-        AuthenticationContext::rsaKeyLength = RSA_4096_KEY_LENGTH;
+        AuthenticationContext::authKeyLength = RSA_4096_KEY_LENGTH;
     }
 }

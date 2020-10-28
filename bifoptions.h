@@ -101,6 +101,7 @@ public:
     DpaCM::Type GetDpaCM(void);
     uint32_t GetRevokeId(void);
     PufHdLoc::Type GetPufHdLocation(void);
+    std::string GetOutputFileFromBifSection(std::string out_file, std::string bif_section);
 
     void Dump(void)
     {
@@ -181,7 +182,9 @@ public:
     uint32_t spkId;
     bool spkIdLocal;
     int  fileType;
+    std::string bifSection;
     std::string filename;
+    std::vector<std::string> filelist;
 
     Arch::Type arch;
 };
@@ -191,12 +194,15 @@ class ImageBifOptions
 {
 public:
     ImageBifOptions()
-        : imageId(0)
-        , imageName("")
+        : imageId(0x1c000000)
+        , imageName("default_subsys")
         , delayHandoff(false)
         , delayLoad(false)
         , memCopyAddr(0xFFFFFFFFFFFFFFFF)
         , imageType(PartitionType::RESERVED)
+        , uniqueId(0xFFFFFFFF)
+        , parentUniqueId(0xFFFFFFFF)
+        , functionId(0xFFFFFFFF)
     {
         partitionBifOptionsList.clear();
     }
@@ -212,7 +218,18 @@ public:
     {
         imageName = name;
     }
-
+    void SetUniqueId(uint32_t id)
+    {
+        uniqueId = id;
+    }
+    void SetParentUniqueId(uint32_t id)
+    {
+        parentUniqueId = id;
+    }
+    void SetFunctionId(uint32_t id)
+    {
+        functionId = id;
+    }
     void SetMemCopyAddress(uint64_t addr)
     {
         memCopyAddr = addr;
@@ -229,6 +246,26 @@ public:
     std::string GetImageName(void)
     {
         return imageName;
+    }
+    uint32_t GetUniqueId(void)
+    {
+        return uniqueId;
+    }
+    uint32_t GetParentUniqueId(void)
+    {
+        return parentUniqueId;
+    }
+    uint32_t GetFunctionId(void)
+    {
+        return functionId;
+    }
+    void GetMemCopyAddress(uint64_t addr)
+    {
+        memCopyAddr = addr;
+    }
+    void GetImageType(PartitionType::Type type)
+    {
+        imageType = type;
     }
     bool GetDelayHandoff(void)
     {
@@ -256,6 +293,9 @@ private:
     bool delayLoad;
     uint64_t memCopyAddr;
     PartitionType::Type imageType;
+    uint32_t uniqueId;
+    uint32_t parentUniqueId;
+    uint32_t functionId;
 };
 
 /******************************************************************************/
@@ -266,6 +306,8 @@ public:
 
     void Add(PartitionBifOptions* currentPartitionBifOptions, ImageBifOptions* currentImageBifOptions = NULL);
     void AddFiles(int type, std::string filename);
+    void CheckForSameKeyandKeySrcPair(std::vector<std::pair<KeySource::Type, uint32_t*>> aesKeyandKeySrc);
+    void CheckForBadKeyandKeySrcPair(std::vector<std::pair<KeySource::Type, uint32_t*>> aesKeyandKeySrc, std::string aesFilename);
 
     void SetRegInitFileName(std::string filename);
     void SetUdfBHFileName(std::string filename);
@@ -301,6 +343,7 @@ public:
     void SetSplitMode(SplitMode::Type type);
     void SetSplitFmt(File::Type type);
     void SetPmcdataFile(const std::string & filename);
+    void SetPmcCdoFileList(const std::string & filename);
     void SetPdiId(uint32_t id);
     void SetGroupName(std::string name);
     void SetParentId(uint32_t id);
@@ -317,6 +360,8 @@ public:
     void InsertEncryptionBlock(uint32_t size);
     void SetCore(Core::Type type);
     void SetMetaHeaderEncryptionKeySource(KeySource::Type type);
+    void SetMetaHeaderEncryptType(Encryption::Type type);
+    void SetMetaHeaderAuthType(Authentication::Type type);
     void SetPufHdinBHFlag();
 
     std::string GetGroupName(void);
@@ -336,6 +381,8 @@ public:
     void SetIdCode(uint32_t id);
     void SetExtendedIdCode(uint32_t id);
     void SetBypassIdcodeFlag(bool flag);
+    void SetAHwRoTFlag(bool flag);
+    void SetSHwRoTFlag(bool flag);
     AuthOnly::Type GetAuthOnly(void);
     uint32_t GetPpkSelection(void);
     uint32_t GetSpkSelection(void);
@@ -370,6 +417,7 @@ public:
     std::string GetBHSignFileName(void);
     uint32_t GetPmcCdoLoadAddress(void);
     std::string GetPmcdataFile(void);
+    std::vector<std::string> GetPmcCdoFileList(void);
     std::string GetPmcDataAesFile(void);
     uint32_t GetTotalPmcFwSize(void);
     uint32_t GetPmcFwSize(void);
@@ -378,6 +426,7 @@ public:
     uint32_t GetPdiId(void);
     uint32_t GetParentId(void);
     KeySource::Type GetEncryptionKeySource(void);
+    std::string GetKeySourceName(KeySource::Type type);
     bool GetPufHdinBHFlag(void);
 
     std::string GetFamilyKeyFileName();
@@ -392,6 +441,8 @@ public:
     uint32_t idCode;
     uint32_t extendedIdCode;
     bool bypassIdCode;
+    bool aHwrot;
+    bool sHwrot;
     uint32_t pmcdataSize;
     uint32_t totalpmcdataSize;
     uint8_t* pmcDataBuffer;
@@ -399,12 +450,13 @@ public:
     MetaHdrInfo metaHdrAttributes;
     uint32_t slrBootCnt;
     uint32_t slrConfigCnt;
-
+    PartitionBifOptions* lastPartitionBifOption;
 private:
     std::string regInitFile;
     std::string udfBhFile;
     std::string pmuFwImageFile;
     std::string pmcdataFile;
+    std::vector<std::string> pmcCdoFileList;
     std::string fsblFilename;
     std::string ppkFile;
     std::string pskFile;
@@ -442,7 +494,6 @@ private:
     uint32_t spkId;
     bool isSpkIdGlobal;
     bool headerAuthParam;
-    Authentication::Type headerAuthType;
     bool createHeaderAC;
     bool doHeaderEncryption;
     SplitMode::Type splitMode;

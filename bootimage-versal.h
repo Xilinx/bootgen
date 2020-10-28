@@ -39,13 +39,14 @@
 class VersalBootImage : public BootImage
 {
 public:
-    VersalBootImage(Options& options);
+    VersalBootImage(Options& options, uint8_t index);
     ~VersalBootImage();
 
     void BuildAndLink(Binary* cache);
     void Add(BifOptions* bifoptions);
     void ReplaceImages(void);
     void ReplaceImagesNoSubSys(void);
+    void AppendImagesInSubsystems(void);
     void OutputOptionalEfuseHash();
     void OutputPartitionFiles(Options& options, Binary& cache) {};
     void GenerateAuthenticationKeys(void) {};
@@ -60,7 +61,7 @@ public:
     void ValidateSecureAttributes(ImageHeader * image, BifOptions* bifoptions, PartitionBifOptions* partitionBifOptions);
     ImageHeader* ParsePartitionDataToImage(BifOptions* bifoptions, PartitionBifOptions* it);
     void OutputOptionalSecureDebugImage();
-    void ConfigureEncryptionBlocks(ImageHeader * image, PartitionBifOptions* partitionBifOptions) { }
+    void ConfigureEncryptionBlocks(ImageHeader * image, PartitionBifOptions* partitionBifOptions);
     void SetPmcdataFile(const std::string & filename);
     void SetPmcDataLoadAddress(Binary::Address_t addr);
 };

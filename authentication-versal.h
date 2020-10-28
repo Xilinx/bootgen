@@ -61,8 +61,8 @@ class Key;
 #define SALT_LENGTH                 48
 #define AUTH_HDR_VERSAL             0x115
 #define AUTH_HDR_VERSAL_ECDSA       0x106
+#define AUTH_HDR_VERSAL_ECDSA_P521  0x126
 #define AC_HDR_PPK_SELECT_BIT_SHIFT 16
-#define EC_SIGN_LENGTH_VERSAL       512
 
 #define AC_HDR_SHA_2_3_BIT_SHIFT    2
 #define SHA3_PAD_LENGTH             104
@@ -89,42 +89,127 @@ class Key;
 ***************************************************   S T R U C T U R E S   ***
 -------------------------------------------------------------------------------
 */
-
 typedef struct
 {
+    uint32_t              acHeader;                // 0x000
+    uint32_t              spkId;                   // 0x004
+    uint8_t               acUdf[UDF_DATA_SIZE];    // 0x008
+    ACKey4096Sha3Padding  acPpk;                   // 0x040
+    uint8_t               ppkSHA3Padding[12];      // 0x444
+    ACKey4096Sha3Padding  acSpk;                   // 0x450
+    uint8_t               spkSHA3Padding[4];       // 0x854
+    uint8_t               allignment[8];           // 0x858
+    ACSignature4096       acSpkSignature;          // 0x860
+    ACSignature4096       acHeaderSignature;       // 0xA60
+    ACSignature4096       acPartitionSignature;    // 0xC60
 } AuthCertificate4096Sha3PaddingStructure;
 
 /* ECDSA Authentication Certificate */
 typedef struct
 {
+    uint32_t            acHeader;                  // 0x000
+    uint32_t            spkId;                     // 0x004
+    uint8_t             acUdf[UDF_DATA_SIZE];      // 0x008
+    ACKeyECDSA          acPpk;                     // 0x040
+    uint8_t             ppkSHA3Padding[12];        // 0x444
+    ACKeyECDSA          acSpk;                     // 0x450
+    uint8_t             spkSHA3Padding[4];         // 0x854
+    uint8_t             allignment[8];             // 0x858
+    ACSignatureECDSA    acSpkSignature;            // 0x860
+    ACSignatureECDSA    acHeaderSignature;         // 0xA60
+    ACSignatureECDSA    acPartitionSignature;      // 0xC60
 } AuthCertificateECDSAStructure;
+
+typedef struct
+{
+    uint32_t            acHeader;                  // 0x000
+    uint32_t            spkId;                     // 0x004
+    uint8_t             acUdf[UDF_DATA_SIZE];      // 0x008
+    ACKeyECDSAP521      acPpk;                     // 0x040
+    uint8_t             ppkSHA3Padding[12];        // 0x444
+    ACKeyECDSAP521      acSpk;                     // 0x450
+    uint8_t             spkSHA3Padding[4];         // 0x854
+    uint8_t             allignment[8];             // 0x858
+    ACSignatureECDSA    acSpkSignature;            // 0x860
+    ACSignatureECDSA    acHeaderSignature;         // 0xA60
+    ACSignatureECDSA    acPartitionSignature;      // 0xC60
+} AuthCertificateECDSAp521Structure;
 
 /* RSA Secure-Debug Image Structure */
 typedef struct
 {
+    uint32_t           acHeader;                   // 0x000
+    uint32_t           spkId;                      // 0x004
+    uint8_t            SHA3Padding[96];            // 0x008
+    ACKey4096          acPpk;                      // 0x020
+    uint8_t            ppkSHA3Padding[12];         // 0x424
+    ACSignature4096    acPartitionSignature;       // 0x430
 } SecureDebugImage4096Sha3PaddingStructure;
 
 /* ECDSA Secure-Debug Image Structure */
 typedef struct
 {
+    uint32_t             acHeader;                  // 0x000
+    uint32_t             spkId;                     // 0x004
+    uint8_t              SHA3Padding[96];           // 0x008
+    ACKeyECDSA           acPpk;                     // 0x020
+    uint8_t              ppkSHA3Padding[12];        // 0x424
+    ACSignatureECDSA     acPartitionSignature;      // 0x430
 } SecureDebugImageECDSAStructure;
 
 /******************************************************************************/
 class ECDSAAuthenticationAlgorithm : public AuthenticationAlgorithm
 {
 public:
-    ECDSAAuthenticationAlgorithm() { }
-    ~ECDSAAuthenticationAlgorithm() { }
+    ECDSAAuthenticationAlgorithm();
+    ~ECDSAAuthenticationAlgorithm();
 
-    Authentication::Type Type() { return Authentication::ECDSA; }
-    void CreateSignature(const uint8_t *base, uint8_t* primaryKey, uint8_t *result0) { }
+    Authentication::Type Type()
+    {
+        return Authentication::ECDSA;
+    }
+
+    int KeySize()
+    {
+        return sizeof(ACKeyECDSA);
+    }
+
+    void CreateSignature(const uint8_t *base, uint8_t* primaryKey, uint8_t *result0);
     uint32_t getCertificateSize() { return certSize; }
-    void ECDSASignature(const uint8_t *base, EC_KEY *eckey, uint8_t *result0) { }
-    void CreatePadding(uint8_t* signature, uint8_t* hash, uint8_t hashLength) {}
-    void RearrangeEndianess(char *array, uint32_t size) {}
-
-    uint32_t GetAuthHeader(void) { return 0; }
+    void CreatePadding(uint8_t* signature, uint8_t* hash, uint8_t hashLength);
+    void ECDSASignature(const uint8_t *base, EC_KEY *eckey, uint8_t *result0);
     Authentication::Type authType;
+    void RearrangeEndianess(uint8_t *array, uint32_t size);
+    uint32_t GetAuthHeader(void);
+
+private:
+    uint32_t certSize;
+};
+
+/******************************************************************************/
+class ECDSAP521AuthenticationAlgorithm : public AuthenticationAlgorithm
+{
+public:
+    ECDSAP521AuthenticationAlgorithm();
+    ~ECDSAP521AuthenticationAlgorithm();
+
+    Authentication::Type Type()
+    {
+        return Authentication::ECDSAp521;
+    }
+
+    int KeySize()
+    {
+        return sizeof(ACKeyECDSAP521);
+    }
+
+    void CreateSignature(const uint8_t *base, uint8_t* primaryKey, uint8_t *result0);
+    uint32_t getCertificateSize() { return certSize; }
+    void CreatePadding(uint8_t* signature, uint8_t* hash, uint8_t hashLength);
+    void ECDSASignature(const uint8_t *base, EC_KEY *eckey, uint8_t *result0);
+    Authentication::Type authType;
+    void RearrangeEndianess(uint8_t *array, uint32_t size);
+    uint32_t GetAuthHeader(void);
 
 private:
     uint32_t certSize;
@@ -134,19 +219,24 @@ private:
 class RSA4096Sha3PaddingAuthenticationAlgorithm : public AuthenticationAlgorithm
 {
 public:
-    RSA4096Sha3PaddingAuthenticationAlgorithm() { }
-    ~RSA4096Sha3PaddingAuthenticationAlgorithm() { }
+    RSA4096Sha3PaddingAuthenticationAlgorithm();
 
-    Authentication::Type Type() { return Authentication::RSA; }
-    void CreateSignature(const uint8_t *base, uint8_t* primaryKey, uint8_t *result0) { }
+    ~RSA4096Sha3PaddingAuthenticationAlgorithm();
+
+    Authentication::Type Type()
+    {
+        return Authentication::RSA;
+    }
+
+    void CreateSignature(const uint8_t *base, uint8_t* primaryKey, uint8_t *result0);
     uint32_t getCertificateSize(void) { return certSize; }
-    void CreatePadding(uint8_t* signature, uint8_t* hash, uint8_t hashLength) { }
-    void RearrangeEndianess(char *array, uint32_t size) { }
-    uint8_t* AttachSHA3Padding(uint8_t * data, const Binary::Length_t datalength) { return NULL; }
-    int mgf(unsigned char *mask, long len, const unsigned char *seed, long seedlen, const EVP_MD *dgst) { return 0; }
-    uint32_t GetAuthHeader(void) { return 0; }
-
+    void CreatePadding(uint8_t* signature, uint8_t* hash, uint8_t hashLength);
     Authentication::Type authType;
+    void RearrangeEndianess(uint8_t* array, uint32_t size);
+    uint8_t* AttachSHA3Padding(uint8_t * data, const Binary::Length_t datalength);
+    int MaskGenerationFunction(unsigned char *mask, long len, const unsigned char *seed, long seedlen, const EVP_MD *dgst);
+    uint32_t GetAuthHeader(void);
+
 private:
     uint32_t certSize;
 };
@@ -155,65 +245,49 @@ private:
 class VersalAuthenticationContext : public AuthenticationContext
 {
 public:
-    VersalAuthenticationContext(Authentication::Type type)
-    {
-        LOG_ERROR("Authentication is not supported for Versal ACAP in this version of Bootgen. \n\
-           Please use Bootgen from Xilinx install");
-    }
-    VersalAuthenticationContext(const AuthenticationContext* refAuthContext, Authentication::Type authtype) 
-    {
-        LOG_ERROR("Authentication is not supported for Versal ACAP in this version of Bootgen. \n\
-           Please use Bootgen from Xilinx install");
-    }
-    VersalAuthenticationContext(const AuthCertificate4096Sha3PaddingStructure* existingCert, Authentication::Type authtype) 
-    {
-        LOG_ERROR("Authentication is not supported for Versal ACAP in this version of Bootgen. \n\
-           Please use Bootgen from Xilinx install");
-    }
-    VersalAuthenticationContext() { }
+    VersalAuthenticationContext(Authentication::Type type);
+    VersalAuthenticationContext(const AuthenticationContext* refAuthContext, Authentication::Type authtype);
+    VersalAuthenticationContext(const AuthCertificate4096Sha3PaddingStructure* existingCert, Authentication::Type authtype);
+    ~VersalAuthenticationContext();
 
-    void Link(BootImage& bi, std::list<Section*> sections, AuthenticationCertificate* cert) { }
+    void Link(BootImage& bi, std::list<Section*> sections, AuthenticationCertificate* cert);
+
     uint32_t getCertificateSize(void) { return certSize; }
-    void AddAuthCertSizeToTotalFSBLSize(PartitionHeader* header) { }
-    Section* CreateCertificate(BootImage& bi, Binary& cache, Section* dataSection) { return NULL; }
-    void GenerateIHTHash(BootImage& bi, uint8_t* sha_hash_padded) { }
-    void GenerateBHHash(BootImage& bi, uint8_t* sha_hash_padded) { }
-    void GenerateSPKHash(uint8_t * sha_hash_padded) { }
-    void GeneratePPKHash(const std::string& filename) { }
-    void CopyPartitionSignature(BootImage& bi, std::list<Section*> sections, uint8_t* signatureBlock, Section* acSection) { }
-    static void GetPresign(const std::string& presignFilename, uint8_t* signature, uint32_t index) { }
-    void SetSPKSignatureFile(const std::string& filename) { }
-    void SetBHSignatureFile(const std::string& filename) { }
-    void GenerateSPKSignature(const std::string& filename) { }
-    void ResizeIfNecessary(Section* section) { }
-    void LoadUdfData(const std::string& filename, uint8_t* signature) { }
-    void CreateSPKSignature(void) { }
-    void CalculateAcHdrHash(uint8_t* sha_hash_padded, uint8_t*  buffer) { }
-    void CreateAcHdrSignature(uint8_t *buffer) { }
-    void SetKeyLength(Authentication::Type type) { }
-    AuthenticationAlgorithm* GetAuthenticationAlgorithm(Authentication::Type type) { return NULL; }
-    void GenerateSPKHashFile(const std::string& filename, Hash* hashObj) { }
-    uint32_t GetCertificateSize() { return 0; }
-
-protected:
-    void WritePaddedSHAFile(const uint8_t* sha256, const std::string& hashfilename) { }
+    void AddAuthCertSizeToTotalFSBLSize(PartitionHeader* header);
+    Section* CreateCertificate(BootImage& bi, Binary& cache, Section* dataSection);
+    void GenerateIHTHash(BootImage& bi, uint8_t* sha_hash_padded);
+    void GenerateBHHash(BootImage& bi, uint8_t* sha_hash_padded);
+    void GenerateSPKHash(uint8_t * sha_hash_padded);
+    void GeneratePPKHash(const std::string& filename);
+    void CopyPartitionSignature(BootImage& bi, std::list<Section*> sections, uint8_t* signatureBlock, Section* acSection);
+    static void GetPresign(const std::string& presignFilename, uint8_t* signature, uint32_t index);
+    void SetSPKSignatureFile(const std::string& filename);
+    void SetBHSignatureFile(const std::string& filename);
+    void GenerateSPKSignature(const std::string& filename);
+    void ResizeIfNecessary(Section* section);
+    void LoadUdfData(const std::string& filename, uint8_t* signature);
+    void CreateSPKSignature(void);
+    void CalculateAcHdrHash(uint8_t* sha_hash_padded, uint8_t*  buffer);
+    void CreateAcHdrSignature(uint8_t *buffer);
+    void SetKeyLength(Authentication::Type type);
+    AuthenticationAlgorithm* GetAuthenticationAlgorithm(Authentication::Type type);
+    uint32_t GetCertificateSize();
 
 private:
+    void CopybHSignature(BootImage& bi, uint8_t* ptr);
+    void CopyIHTSignature(BootImage& bi, uint8_t* ptr);
     uint32_t certSize;
-
-    void CopybHSignature(BootImage& bi, uint8_t* ptr) { }
-    void CopyIHTSignature(BootImage& bi, uint8_t* ptr) { }
-    void CopySPKSignature(uint8_t* ptr) { }
-    std::string GetCertificateName(std::string name) { return ""; }
+    void CopySPKSignature(uint8_t* ptr);
+    std::string GetCertificateName(std::string name);
 };
 
 /******************************************************************************/
 class VersalAuthenticationCertificate : public AuthenticationCertificate
 {
 public:
-    VersalAuthenticationCertificate(AuthenticationContext* context) : AuthenticationCertificate(context) { }
+    VersalAuthenticationCertificate(AuthenticationContext* context) : AuthenticationCertificate(context) {}
     Section* AttachBootHeaderToFsbl(BootImage& bi) { return NULL; }
-    void Link(BootImage& bi, Section* section) { }
+    void Link(BootImage& bi, Section* section);
     //AuthCertificate4096Sha3PaddingStructure *acStructure;
 };
 #endif

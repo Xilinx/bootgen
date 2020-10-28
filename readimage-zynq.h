@@ -48,7 +48,7 @@ public:
         iHs.clear();
         pHTs.clear();
     }
-    ~ZynqReadImage() { }
+    ~ZynqReadImage();
 
     void ReadBinaryFile(DumpOption::Type dump = DumpOption::NONE, std::string path = "");
     void DisplayBootHeader(void);
@@ -64,6 +64,8 @@ public:
 protected:
     ZynqBootHeaderStructure* bH;
     ZynqImageHeaderTableStructure* iHT;
+    ZynqImageHeaderStructure* iH;
+    ZynqPartitionHeaderTableStructure* pHT;
     std::list<ZynqImageHeaderStructure*> iHs;
     std::list<ZynqPartitionHeaderTableStructure*> pHTs;
 };

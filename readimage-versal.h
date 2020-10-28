@@ -63,7 +63,7 @@ public:
         partitionBuffers.clear();
         aCs.clear();
     }
-    ~VersalReadImage() { }
+    ~VersalReadImage();
 
     void ReadBinaryFile(DumpOption::Type dump=DumpOption::NONE, std::string path="");
     void DisplayImageDetails(ReadImageOption::Type type, DumpOption::Type dump, std::string path="");
@@ -91,6 +91,8 @@ protected:
     std::string dumpPath;
     VersalBootHeaderStructure* bH;
     VersalImageHeaderTableStructure* iHT;
+    VersalImageHeaderStructure *iH;
+    VersalPartitionHeaderTableStructure *pHT;
     std::list<VersalImageHeaderStructure*> iHs;
     std::list<VersalPartitionHeaderTableStructure*> pHTs;
     std::list<uint8_t*> aCs;

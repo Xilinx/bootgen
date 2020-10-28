@@ -206,6 +206,12 @@ void Options::SetSecureDebugAuthType(Authentication::Type type)
 }
 
 /******************************************************************************/
+void Options::SetSecureDebugImageFile(std::string file)
+{
+    secureDebugImageFilename = file;
+}
+
+/******************************************************************************/
 void Options::SetSplitType(File::Type type)
 {
     splitType = type;
@@ -455,6 +461,12 @@ Authentication::Type Options::GetSecureDebugAuthType(void)
 }
 
 /******************************************************************************/
+std::string Options::GetSecureDebugImageFile(void)
+{
+    return secureDebugImageFilename;
+}
+
+/******************************************************************************/
 std::string Options::GetFsblFilename(void)
 {
     return fsblFilename;
@@ -629,15 +641,24 @@ GenAuthKeys::Type Options::GetAuthKeyGeneration(void)
 }
 
 /******************************************************************************/
-void Options::SetZynqMpEncrDump(bool type, std::string filename)
+void Options::SetEncryptionDump(bool type, std::string filename)
 {
-    zynqmpEncrDump = type;
+    encryptionDump = type;
     std::ofstream exists(filename);
     if (exists)
     {
         std::ofstream remove(filename);
     }
-    aesLogFile.open(filename, std::fstream::app);
+    aesLogFilename = filename;
+}
+
+/******************************************************************************/
+void Options::CloseEncryptionDumpFile(void)
+{
+    if (GetEncryptionDumpFlag())
+    {
+        aesLogFile.close();
+    }
 }
 
 /******************************************************************************/
@@ -647,9 +668,9 @@ void Options::SetZynqmpes1Flag(bool type)
 }
 
 /******************************************************************************/
-bool Options::GetZynqMpEncrDump(void)
+bool Options::GetEncryptionDumpFlag(void)
 {
-    return zynqmpEncrDump;
+    return encryptionDump;
 }
 
 /******************************************************************************/

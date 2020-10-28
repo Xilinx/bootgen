@@ -39,7 +39,7 @@
 class ZynqMpBootImage : public BootImage
 {
 public:
-    ZynqMpBootImage(Options& options);
+    ZynqMpBootImage(Options& options, uint8_t index);
     ~ZynqMpBootImage()
     {
         if (importedBh != NULL)

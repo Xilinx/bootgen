@@ -31,7 +31,7 @@
 -------------------------------------------------------------------------------
 */
 /******************************************************************************/
-ZynqMpBootImage::ZynqMpBootImage(Options& options) : BootImage(options)
+ZynqMpBootImage::ZynqMpBootImage(Options& options, uint8_t index) : BootImage(options, index)
 {
     partitionHeaderList.clear();
     bootHeader = new ZynqMpBootHeader();
@@ -229,7 +229,7 @@ void ZynqMpBootImage::ParseBootImage(PartitionBifOptions* it)
 
     ImageHeaderTable* imageHeaderTable = new ZynqMpImageHeaderTable(src);
 
-    long offset = imageHeaderTable->GetFirstImageHeaderOffset() * sizeof(uint32_t);
+    uint32_t offset = imageHeaderTable->GetFirstImageHeaderOffset() * sizeof(uint32_t);
     do
     {
         src.seekg(offset);
@@ -334,7 +334,7 @@ void ZynqMpBootImage::ParseBootImage(PartitionBifOptions* it)
                 for (int i = 0; i < acSize; i++)
                 {
                     void *cert = (ph->partition->section->Data + ph->GetCertificateRelativeByteOffset());
-                    AuthenticationContext::SetRsaKeyLength(RSA_4096_KEY_LENGTH);
+                    AuthenticationContext::SetAuthenticationKeyLength(RSA_4096_KEY_LENGTH);
                     AuthenticationContext* auth = new ZynqMpAuthenticationContext((AuthCertificate4096Structure*)cert);
                     AuthenticationCertificate* tempac;
                     tempac = new RSA4096AuthenticationCertificate(auth);

@@ -44,6 +44,8 @@
 #define RSA_2048_KEY_LENGTH     256
 #define RSA_4096_KEY_LENGTH     512
 #define EC_P384_KEY_LENGTH      48
+#define EC_P521_KEY_LENGTH1     65 /* 520/8 = 65 */
+#define EC_P521_KEY_LENGTH2     66 /* 521/8 = 65 + 1bit */
 
 #define SIGN_LENGTH_VERSAL      512 /* for ecdsa: r(48b)+ s(48b)+ pad(416b) */
 #define RSA_SIGN_LENGTH_ZYNQ    256
@@ -134,6 +136,8 @@ protected:
     uint8_t *Q;
     std::string name;
     uint16_t keySize;
+    uint16_t keySizeX;
+    uint16_t keySizeY;
 };
 
 /******************************************************************************/

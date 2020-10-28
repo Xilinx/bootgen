@@ -77,6 +77,10 @@ public:
         : deviceName("")
         , metalFile("")
         , bhKekIVFile("")
+        , bbramKekIVFile("")
+        , efuseKekIVFile("")
+        , efuseUserKek0IVFile("")
+        , efuseUserKek1IVFile("")
         , aesFilename("")
         , aesKey(NULL)
         , aesOptKey(NULL)
@@ -111,11 +115,14 @@ public:
     virtual void SetAesKey(const uint8_t* binarykey) {};
     virtual void ReadBhIv(uint8_t* bhIv) {};
     virtual void GenerateGreyKey() {};
-    virtual void GenerateMetalKey() {};
-    
+
     void SetAesFileName(std::string);
     void SetMetalKeyFile(std::string file);
     void SetBHKekIVFile(std::string file);
+    void SetBbramKekIVFile(std::string file);
+    void SetEfuseKekIVFile(std::string file);
+    void SetEfuseUserKek0IVFile(std::string file);
+    void SetEfuseUserKek1IVFile(std::string file);
     void SetDeviceName(const std::string& deviceName0);
     void PackHex(const std::string & hexString, uint8_t * hexData);
     void SetRandomSeed(void);
@@ -132,6 +139,10 @@ public:
     std::string GetAesFileName(void);
     std::string GetMetalKeyFile(void);
     std::string GetBHKekIVFile(void);
+    std::string GetBbramKekIVFile(void);
+    std::string GetEfuseKekIVFile(void);
+    std::string GetEfuseUserKek0IVFile(void);
+    std::string GetEfuseUserKek1IVFile(void);
 
     void CounterModeKDF(uint32_t blocks, std::string filename, bool dump);
     void ParseKDFTestVectorFile(std::string filename);
@@ -164,6 +175,10 @@ protected:
     std::string deviceName;
     std::string metalFile;
     std::string bhKekIVFile;
+    std::string bbramKekIVFile;
+    std::string efuseKekIVFile;
+    std::string efuseUserKek0IVFile;
+    std::string efuseUserKek1IVFile;
 
     uint32_t koLength;
     uint8_t* Ko;

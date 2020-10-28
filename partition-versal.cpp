@@ -55,7 +55,16 @@ VersalPartition::VersalPartition(PartitionHeader* header0, const uint8_t* data, 
     , header(header0)
     , firstChunkSize(0)
 {
-    std::string partName = header->imageHeader->GetName() + StringUtils::Format(".%d", header->index);
+    std::string partition_name = "";
+    for (size_t i = 0; i < header->imageHeader->GetFileList().size(); i++)
+    {
+        partition_name += StringUtils::BaseName(header->imageHeader->GetFileList().at(i));
+        if (i != (header->imageHeader->GetFileList().size() - 1))
+        {
+            partition_name += "_";
+        }
+    }
+    std::string partName = partition_name + StringUtils::Format(".%d", header->index);
 
     /* Pad binary data with 0s, to get 32-bit word size.
     This is because bootgen stores partition sizes in terms of words, so partition data *MUST* be a multiple of 32-bits */
@@ -77,13 +86,152 @@ VersalPartition::VersalPartition(PartitionHeader* header0, const uint8_t* data, 
 /******************************************************************************/
 size_t VersalPartition::GetTotalDataChunks(Binary::Length_t partitionSize, std::vector<uint32_t>& dataChunks, bool encryptionFlag)
 {
-    return 0;
+    size_t newSectionLength = partitionSize;
+
+    size_t chunkOnlength = partitionSize;
+    if (encryptionFlag)
+    {
+        chunkOnlength -= (SECURE_HDR_SZ + AES_GCM_TAG_SZ);
+    }
+    Binary::Length_t dataChunksCount = (chunkOnlength / GetSecureChunkSize()) + (((chunkOnlength % GetSecureChunkSize()) == 0 ? 0 : 1));
+
+    if (chunkOnlength % GetSecureChunkSize() != 0)
+    {
+        dataChunks.push_back(((chunkOnlength)-((dataChunksCount - 1) * GetSecureChunkSize())));
+    }
+    else
+    {
+        dataChunks.push_back(GetSecureChunkSize());
+    }
+    
+
+    for (uint32_t itr = 0; itr < dataChunksCount - 1; itr++)
+    {
+        if (itr == dataChunksCount - 2)
+        {
+            if (encryptionFlag)
+            {
+                dataChunks.push_back(GetSecureChunkSize() + SECURE_HDR_SZ + AES_GCM_TAG_SZ);
+                firstChunkSize = GetSecureChunkSize() + SECURE_HDR_SZ + AES_GCM_TAG_SZ;
+            }
+            else
+            {
+                dataChunks.push_back(GetSecureChunkSize());
+                firstChunkSize = GetSecureChunkSize();
+            }
+        }
+        else
+        {
+            dataChunks.push_back(GetSecureChunkSize());
+        }
+        dataChunks.push_back(SHA3_LENGTH_BYTES);
+        newSectionLength += SHA3_LENGTH_BYTES;
+    }
+
+    return newSectionLength;
 }
 
 /******************************************************************************/
 void VersalPartition::ChunkifyAndHash( Section* section, bool encryptionFlag)
 {
+    std::vector<uint32_t> dataChunks;
+    std::vector<uint8_t*> data;
+    uint8_t* tempBuffer;
+    int tempBufferSize = 0;
+    /* Get the number/size data chunks and claculate the new section length*/
+    size_t length = section->Length;
+    size_t newLength = GetTotalDataChunks(length, dataChunks, encryptionFlag);
 
+    int itr = (dataChunks.size() - 3);
+
+    /* Form a new section - Divide into data chunks of 64K and add sha pad - calculate hash to each chunk - prepend hash to chunk+shapad to form a complete partition. */
+    if (newLength <length)
+    {
+        LOG_DEBUG(DEBUG_STAMP, "Resize length is less than original length");
+        LOG_ERROR("Section resize issue for authentication..");
+    }
+
+    uint8_t* dataPtr = new uint8_t[length];
+    memset(dataPtr, 0, length);
+    memcpy(dataPtr, section->Data, length);
+    dataPtr += length;
+
+    uint8_t* newDataPtr = new uint8_t[newLength];
+    memset(newDataPtr, 0, newLength);
+    newDataPtr += newLength;
+
+    /*-------------------------------CHUNK N------------------------------------*/
+    /* Insert Data */
+    tempBufferSize = dataChunks[0];
+    tempBuffer = new uint8_t[tempBufferSize];
+    memset(tempBuffer, 0, tempBufferSize);
+
+    dataPtr -= tempBufferSize;
+    memcpy(tempBuffer, dataPtr, tempBufferSize);
+    newDataPtr -= tempBufferSize;
+
+    memcpy(newDataPtr, tempBuffer, tempBufferSize);
+    delete[] tempBuffer;
+
+    /* Calculate hash */
+    uint8_t* shaHash;
+    shaHash = new uint8_t[SHA3_LENGTH_BYTES];
+    Versalcrypto_hash(shaHash, newDataPtr, dataChunks[0], !section->isBootloader);
+    /*-------------------------------CHUNK N------------------------------------*/
+
+    for (int i = 1; i < itr; i += 2)
+    {
+        /* Insert Data */
+        tempBufferSize = dataChunks[i];
+        tempBuffer = new uint8_t[tempBufferSize];
+        memset(tempBuffer, 0, tempBufferSize);
+
+        dataPtr -= tempBufferSize;
+        memcpy(tempBuffer, dataPtr, tempBufferSize);
+        newDataPtr -= tempBufferSize;
+
+        memcpy(newDataPtr, tempBuffer, tempBufferSize);
+        delete[] tempBuffer;
+
+        /* Insert previous hash */
+        newDataPtr -= SHA3_LENGTH_BYTES;
+
+        memcpy(newDataPtr, shaHash, SHA3_LENGTH_BYTES);
+        delete[] shaHash;
+
+        /* Calculate hash */
+        shaHash = new uint8_t[SHA3_LENGTH_BYTES];
+        Versalcrypto_hash(shaHash, newDataPtr, dataChunks[i] + dataChunks[i + 1], !section->isBootloader);
+    }
+
+    /*-------------------------------CHUNK 1------------------------------------*/
+    itr += 1;
+    /* Insert Data */
+    tempBufferSize = dataChunks[itr];
+    tempBuffer = new uint8_t[tempBufferSize];
+    memset(tempBuffer, 0, tempBufferSize);
+
+    dataPtr -= tempBufferSize;
+    memcpy(tempBuffer, dataPtr, tempBufferSize);
+    newDataPtr -= tempBufferSize;
+
+    memcpy(newDataPtr, tempBuffer, tempBufferSize);
+    delete[] tempBuffer;
+
+    /* Insert previous hash */
+    newDataPtr -= SHA3_LENGTH_BYTES;
+
+    memcpy(newDataPtr, shaHash, SHA3_LENGTH_BYTES);
+    delete[] shaHash;
+    /*-------------------------------CHUNK 1------------------------------------*/
+
+    delete[] dataPtr;
+
+    delete[] section->Data;
+    section->Data = newDataPtr;
+    section->Length = newLength;
+
+    LOG_TRACE("First Authentication Data Chunk Size %d", firstChunkSize);
 }
 
 /******************************************************************************/
@@ -157,7 +305,7 @@ void VersalPartition::Build(BootImage& bi, Binary& cache)
         LOG_ERROR("Cannot reencrypt a partition that is already encrypted for %s", section->Name.c_str());
     }
     encryptCtx->Process(bi, header);
-    header->transferSize = section->Length;
+    
     uint32_t padLength = 0;
 
     /* Authentication process on the partition */
@@ -171,6 +319,7 @@ void VersalPartition::Build(BootImage& bi, Binary& cache)
     }
     else
     {
+        header->transferSize = section->Length;
         if ((imageHeader.GetChecksumContext()->Type() == Checksum::SHA3) || (currentAuthCtx->authAlgorithm->Type() != Authentication::None))
         {
             /* No chunking on bootloader - Data should be alligned to 104 bytes before calculating the hash */
@@ -210,14 +359,14 @@ void VersalPartition::Build(BootImage& bi, Binary& cache)
             else
             {
                 Binary::Length_t chunkOnLength = header->partition->section->Length;
-                if (encryptCtx->Type() != Encryption::None)
+                if (encryptCtx->Type() != Encryption::None || header->preencrypted)
                 {
                     chunkOnLength -= (SECURE_HDR_SZ + AES_GCM_TAG_SZ);
                 }
                 Binary::Length_t dataChunksCount = (chunkOnLength / GetSecureChunkSize()) + ((((chunkOnLength) % GetSecureChunkSize()) == 0 ? 0 : 1));
                 if (dataChunksCount != 1)
                 {
-                    ChunkifyAndHash( section, (encryptCtx->Type() != Encryption::None));
+                    ChunkifyAndHash(section, (encryptCtx->Type() != Encryption::None || header->preencrypted));
                     currentAuthCtx->SetFirstChunkSize(firstChunkSize);
                     header->firstChunkSize = currentAuthCtx->GetFirstChunkSize();
                     header->partition->section->firstChunkSize = header->firstChunkSize;
@@ -313,5 +462,5 @@ void VersalPartition::Link(BootImage &bi)
 /******************************************************************************/
 uint64_t VersalPartition::GetSecureChunkSize()
 {
-    return 0;
+    return SECURE_32K_CHUNK;
 }

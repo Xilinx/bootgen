@@ -91,7 +91,7 @@ public:
         , devicePackageName("")
         , archType(Arch::ZYNQ)
         , genKey(GenAuthKeys::None)
-        , zynqmpEncrDump(false)
+        , encryptionDump(false)
         , zynqmpes1(false)
         , generateGreyKey(false)
         , generateMetalKey(false)
@@ -110,6 +110,7 @@ public:
         , secHdrIv(NULL)
         , secHdrIvPmcData(NULL)
         , secureDebugAuthType(Authentication::None)
+        , secureDebugImageFilename("")
         , dumpOption(DumpOption::NONE)
         , dumpPath("")
         , deviceKeyStored(false)
@@ -171,7 +172,8 @@ public:
     void SetAuthKeyGeneration (GenAuthKeys::Type);
     void SetGreyKeyGeneration (bool flag);
     void SetMetalKeyGeneration (bool flag);
-    void SetZynqMpEncrDump (bool, std::string filename);
+    void SetEncryptionDump(bool, std::string filename);
+    void CloseEncryptionDumpFile(void);
     void SetZynqmpes1Flag (bool);
     void SetOutputMode (OutputMode::Type, File::Type);
     void SetDumpOption(DumpOption::Type);
@@ -180,6 +182,7 @@ public:
     void SetReadImageOption(ReadImageOption::Type);
     void SetReadImageFile(std::string);
     void SetSecureDebugAuthType(Authentication::Type type);
+    void SetSecureDebugImageFile(std::string);
     
     std::string GetBifFilename (void);
     KeySource::Type GetEncryptedKeySource (void);
@@ -215,7 +218,7 @@ public:
     GenAuthKeys::Type GetAuthKeyGeneration (void);
     bool GetGreyKeyGeneration (void);
     bool GetMetalKeyGeneration (void);
-    bool GetZynqMpEncrDump (void);
+    bool GetEncryptionDumpFlag (void);
     bool GetZynqmpes1Flag (void);
     OutputMode::Type GetOutputMode (void);
     File::Type GetOutputFormat (void);
@@ -225,6 +228,7 @@ public:
     DumpOption::Type GetDumpOption(void);
     std::string GetDumpDirectory(void);
     Authentication::Type GetSecureDebugAuthType(void);
+    std::string GetSecureDebugImageFile(void);
 
     uint32_t totalHeadersSize;
     uint32_t bootheaderSize;
@@ -260,21 +264,24 @@ public:
     bool padImageHeaderTable;
     bool generateHashes;
     bool nonBooting;
-    bool zynqmpEncrDump;
+    bool encryptionDump;
     bool zynqmpes1;
     bool noauthblocks;
     bool generateGreyKey;
     bool generateMetalKey;
     bool deviceKeyStored;
     std::ofstream aesLogFile;
+    std::string aesLogFilename;
     uint8_t outputFillByte;
     uint16_t qspiSize;
     uint32_t defaultAlignment;
     Binary::Address_t baseAddress;
     CommndLineEncryptOptions *cmdEncryptOptions;
     BifOptions* bifOptions;
+    std::vector<BifOptions*> bifOptionsList;
     std::string fsblFilename;
     Authentication::Type secureDebugAuthType;
+    std::string secureDebugImageFilename;
 };
 
 #endif

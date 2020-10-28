@@ -52,7 +52,7 @@ public:
         pHTs.clear();
         authenticationVerified = true;
     }
-    ~ZynqMpReadImage() { }
+    ~ZynqMpReadImage();
 
     void ReadBinaryFile(DumpOption::Type dump = DumpOption::NONE, std::string path = "");
     void DisplayBootHeader(void);
@@ -74,6 +74,8 @@ public:
 protected:
     ZynqMpBootHeaderStructure* bH;
     ZynqMpImageHeaderTableStructure* iHT;
+    ZynqMpImageHeaderStructure* iH;
+    ZynqMpPartitionHeaderTableStructure* pHT;
     std::list<ZynqMpImageHeaderStructure*> iHs;
     std::list<ZynqMpPartitionHeaderTableStructure*> pHTs;
     bool authenticationVerified;

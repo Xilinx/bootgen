@@ -74,7 +74,7 @@ typedef struct
     uint32_t totalPmcCdoLength;                  //  (0x28)
     uint32_t plmLength;                          //  (0x2C)
     uint32_t totalPlmLength;                     //  (0x30)
-    uint32_t bhAttributes;                       //  (0x34) 
+    uint32_t bhAttributes;                       //  (0x34)
     uint32_t greyOrBlackKey[BLK_GRY_KEY_LENGTH]; //  (0x38)
     uint32_t greyOrBlackIV[IV_LENGTH];           //  (0x58)
     uint32_t plmSecureHdrIv[IV_LENGTH];          //  (0x64)
@@ -102,7 +102,7 @@ public:
     VersalBootHeader();
     VersalBootHeader(std::ifstream& src);
     ~VersalBootHeader();
-    
+
     void Build(BootImage & bi, Binary & cache);
     void Link(BootImage& bi);
     void SetBHForPartialBootImage();

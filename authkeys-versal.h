@@ -44,13 +44,12 @@
 #define RSA_4096_N          0x0
 #define RSA_4096_N_EXT      0x200
 #define RSA_4096_E          0x400
-#define ECDSA_X             0x0
-#define ECDSA_Y             0x30
-#define ECDSA_PAD           0x60
 
-#define RSA_4096_N_SIZE     512
-#define RSA_4096_N_EXT_SIZE 512
-#define RSA_4096_E_SIZE     4
+#define VERSAL_ACKEY_STRUCT_SIZE    1028
+
+#define RSA_4096_N_SIZE             512
+#define RSA_4096_N_EXT_SIZE         512
+#define RSA_4096_E_SIZE             4
 /*
 -------------------------------------------------------------------------------
 ************************************************************** STRUCTURES *****
@@ -73,6 +72,13 @@ typedef struct
 
 typedef struct
 {
+    uint8_t     x[EC_P521_KEY_LENGTH2];          // x co-ordinate
+    uint8_t     y[EC_P521_KEY_LENGTH2];          // y co-ordinate
+    uint8_t     pad[896];                       // Padding
+} ACKeyECDSAP521;
+
+typedef struct
+{
     uint8_t Signature[SIGN_LENGTH_VERSAL];
 } ACSignatureECDSA;
 
@@ -84,13 +90,12 @@ typedef struct
 class VersalKey : public Key
 {
 public:
-    VersalKey(const std::string& name0) : Key(name0) { }
-    VersalKey(const Key& otherKey) : Key(otherKey) { }
-    ~VersalKey() { }
+    VersalKey(const std::string& name0);
+    VersalKey(const Key& otherKey);
+    ~VersalKey();
 
-    void Parse(const std::string& filename, bool isSecret0) { }
-    uint8_t ParseECDSAOpenSSLKey(FILE* f) { return 0; }
-
+    void Parse(const std::string& filename, bool isSecret0);
+    uint8_t ParseECDSAOpenSSLKey(FILE* f);
     EC_KEY *eckey;
     uint8_t *x;    // x co-ordinate (384 bits)
     uint8_t *y;    // y co-ordinate (384 bits)
@@ -103,8 +108,8 @@ public:
     Key4096Sha3Padding(const std::string& name0) : VersalKey(name0) { }
     Key4096Sha3Padding(const Key4096Sha3Padding& otherKey) : VersalKey(otherKey) { }
 
-    void Export(void* dst) { }
-    void Import(const void* acKey, const std::string& name0) { }
+    void Export(void* dst);
+    void Import(const void* acKey, const std::string& name0);
 };
 
 
@@ -115,7 +120,18 @@ public:
     KeyECDSA(const std::string& name0) : VersalKey(name0) { }
     KeyECDSA(const KeyECDSA& otherKey) : VersalKey(otherKey) { }
 
-    void Export(void* dst)  { }
-    void Import(const void* acKey, const std::string& name0) { }
+    void Export(void* dst);
+    void Import(const void* acKey, const std::string& name0);
+};
+
+/******************************************************************************/
+class KeyECDSAp521 : public VersalKey
+{
+public:
+    KeyECDSAp521(const std::string& name0) : VersalKey(name0) { }
+    KeyECDSAp521(const KeyECDSAp521& otherKey) : VersalKey(otherKey) { }
+
+    void Export(void* dst);
+    void Import(const void* acKey, const std::string& name0);
 };
 #endif

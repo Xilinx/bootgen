@@ -197,6 +197,7 @@ public:
     virtual void RearrangeEndianess(uint8_t *array, uint32_t size) {};
     virtual void CreatePadding(uint8_t* signature, uint8_t* hash, uint8_t hashLength) {};
     virtual uint32_t GetAuthHeader(void) { return AUTH_HEADER; }
+    virtual int KeySize() { return 0; }
 };
 
 /******************************************************************************/
@@ -254,6 +255,7 @@ public:
         , spkFile("")
         , sskFile("")
         , firstChunkSize(0)
+        , signatureLength(0)
     { };
 
     virtual ~AuthenticationContext() { };
@@ -302,8 +304,10 @@ public:
     AuthHash::Type GetHashType(void);
     uint64_t GetFirstChunkSize(void) { return firstChunkSize; }
 
-    static void SetRsaKeyLength(uint16_t);
+    static void SetAuthenticationKeyLength(uint16_t);
     static uint16_t GetRsaKeyLength(void);
+    void SetSignatureLength(uint16_t signLength);
+    uint16_t GetSignatureLength(void);
     static size_t GetauthBlocks(size_t authblocks);
     static bool GetZynpMpVerEs1Flag(void);
     static void SetZynpMpVerEs1Flag(bool isEs1);
@@ -334,11 +338,11 @@ public:
     Key *secondaryKey;
     AuthenticationAlgorithm *authAlgorithm;
     AuthenticationCertificate *authCertificate;
-    
+    uint16_t signatureLength;
     std::string presignFile;
     std::string udfFile;
 protected:
-    static uint16_t rsaKeyLength;
+    static uint16_t authKeyLength;
     static uint8_t hashLength;
     static bool zynpmpVerEs1;
     uint64_t firstChunkSize;

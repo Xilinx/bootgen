@@ -204,6 +204,13 @@ ImageHeader::ImageHeader(std::string& filename)
     , partitionType(PartitionType::RESERVED)
     , partitionRevokeId(0)
     , dpacm(DpaCM::DpaCMDisable)
+    , isSlrPartition(false)
+    , pufHdLoc(PufHdLoc::PUFinEFuse)
+    , imageId(0)
+    , uniqueId(0)
+    , parentUniqueId(0)
+    , functionId(0)
+    , uidInfoFoundInCdo(false)
 { }
 
 /******************************************************************************/
@@ -260,6 +267,13 @@ ImageHeader::ImageHeader(std::ifstream& ifs)
     , partitionType(PartitionType::RESERVED)
     , partitionRevokeId(0)
     , dpacm(DpaCM::DpaCMDisable)
+    , isSlrPartition(false)
+    , pufHdLoc(PufHdLoc::PUFinEFuse)
+    , imageId(0)
+    , uniqueId(0)
+    , parentUniqueId(0)
+    , functionId(0)
+    , uidInfoFoundInCdo(false)
 { }
 
 /******************************************************************************/
@@ -316,6 +330,13 @@ ImageHeader::ImageHeader(uint8_t* data, uint64_t len)
     , partitionType(PartitionType::RESERVED)
     , partitionRevokeId(0)
     , dpacm(DpaCM::DpaCMDisable)
+    , isSlrPartition(false)
+    , pufHdLoc(PufHdLoc::PUFinEFuse)
+    , imageId(0)
+    , uniqueId(0)
+    , parentUniqueId(0)
+    , functionId(0)
+    , uidInfoFoundInCdo(false)
 {
 }
 
@@ -332,7 +353,6 @@ void ImageHeader::Relink()
 void ImageHeader::ImportElf(BootImage& bi)
 {
     uint8_t proc_state = 0;
-
     ByteFile data(Filename);
 
     /* Get the ELF Class format - 32-bit elf vs 64-bit elf */
@@ -603,4 +623,34 @@ uint32_t ImageHeader::GetTotalPmcFwSizeIh(void)
 uint32_t ImageHeader::GetPmcFwSizeIh(void)
 {
     return pmcdataSize;
+}
+
+/******************************************************************************/
+uint32_t ImageHeader::GetImageId(void)
+{
+    return imageId;
+}
+
+/******************************************************************************/
+uint32_t ImageHeader::GetParentUniqueId(void)
+{
+    return parentUniqueId;
+}
+
+/******************************************************************************/
+uint32_t ImageHeader::GetUniqueId(void)
+{
+    return uniqueId;
+}
+
+/******************************************************************************/
+uint32_t ImageHeader::GetFunctionId(void)
+{
+    return functionId;
+}
+
+/******************************************************************************/
+bool ImageHeader::IsUidInfoFoundInCdo(void)
+{
+    return uidInfoFoundInCdo;
 }

@@ -195,7 +195,7 @@ efuseppkbits
 -------------+----------------------------------------------------------------+\n\
  OPTION      | efuseppkbits                                                   |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynq, zynqmp                                                   |\n\
+ SUPPORTED   | zynq, zynqmp, versal                                           |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | This option specifies the name of the efuse file to be written |\n\
              | to contain the PPK hash. This option generates a direct hash   |\n\
@@ -246,7 +246,7 @@ encryption_dump
 -------------+----------------------------------------------------------------+\n\
  OPTION      | encryption_dump                                                |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynqmp                                                         |\n\
+ SUPPORTED   | zynqmp, versal                                                 |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | Generates encryption log file, aes_log.txt                     |\n\
 -------------+----------------------------------------------------------------+\n\
@@ -596,11 +596,30 @@ read
              | pht : Reads partition header tables                            |\n\
              | ac  : Reads authentication certificates                        |\n\
 -------------+----------------------------------------------------------------+\n\
- USAGE       | 1. bootgen -image test.bif -o -boot.bin -read                  |\n\
-             | 2. bootgen -image test.bif -o -boot.bin -read pht              |\n\
+ USAGE       | 1. bootgen -image test.bif -o boot.bin -read                   |\n\
+             | 2. bootgen -image test.bif -o boot.bin -read pht               |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | 1. Reads all the headers and dump on console                   |\n\
              | 2. Reads partition header tables and dump on console           |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+securedebugimage
+******************************************************************************/
+#define SECUREDEBUGHELP "\
+-------------+----------------------------------------------------------------+\n\
+ OPTION      | authenticatedjtag                                              |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | versal                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This option is used to enable JTAG during secure boot          |\n\
+-------------+----------------------------------------------------------------+\n\
+ SYNOPSIS    | -authenticatedjtag [arguments]                                 |\n\
+-------------+----------------------------------------------------------------+\n\
+ ARGUMENTS   | rsa   : Image created using RSA                                |\n\
+             | ecdsa : Image created using ECDSA                              |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | bootgen -arch versal -image test.bif -authenticatedjtag rsa    |\n\
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
@@ -908,7 +927,7 @@ blocks
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | blocks                                                         |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynqmp                                                         |\n\
+ SUPPORTED   | zynqmp, versal                                                 |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | Specify block sizes for key-rolling feature in encrytion.      |\n\
              | Each module is encrypted using its own unique key. The initial |\n\
@@ -920,6 +939,9 @@ blocks
 -------------+----------------------------------------------------------------+\n\
  USAGE       | ZYNQMP:                                                        |\n\
              | [blocks = <size><num>;<size><num>;...;<size><*>] <partition>   |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             | { blocks = <size><num>;...;<size><*>, file=<partition> }       |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | Sample BIF - test.bif                                          |\n\
              +----------------------------------------------------------------+\n\
@@ -931,6 +953,20 @@ blocks
              |    [bootloader, encryption=aes, destination_cpu=a53-0,         |\n\
              |                 blocks=4096(2);1024;2048(2);4096(*),           |\n\
              |                        aeskeyfile=encr.nky] fsbl.elf           |\n\
+             | }                                                              |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             +----------------------------------------------------------------+\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = image1, id = 0x1c000001                            |\n\
+             |      { type=bootloader, encryption=aes,                        |\n\
+             |        blocks==4096(2);1024;2048(2);4096(*),                   |\n\
+             |        aeskeyfile=encr1.nky,file=plm.elf }                     |\n\
+             |      { type=pmcdata, aeskeyfile=encr2.nky, file=pmc_cdo.bin }  |\n\
+             |    }                                                           |\n\
              | }                                                              |\n\
              +----------------------------------------------------------------+\n\
              | In the above example, the first two blocks are of 4096 bytes,  |\n\
@@ -1116,6 +1152,36 @@ boot_device
 -------------+---------------------+------------------------------------------+\n\
  OPTIONS     |       Options       |             Description                  |\n\
              +---------------------+------------------------------------------+\n\
+             | bh_auth_enable      | Boot Header Authentication Enable:       |\n\
+             |                     | Authentication of the bootimage will     |\n\
+             |                     | be done excluding the verification of    |\n\
+             |                     | PPK hash and SPK ID.                     |\n\
+             +---------------------+------------------------------------------+\n\
+             | a_hwrot             | Asymmetric Hardware Root of Trust        |\n\
+             |                     | (A-HWRoT) Boot Mode :                    |\n\
+             |                     | Bootgen checks aganist the design rules  |\n\
+             |                     | for A-HWRoT Boot Mode.                   |\n\
+             |                     | Valid only for Production PDIs           |\n\
+             +---------------------+------------------------------------------+\n\
+             | s_hwrot             | Symmetric Hardware Root of Trust         |\n\
+             |                     | (S-HWRoT) Boot Mode :                    |\n\
+             |                     | Bootgen checks aganist the design rules  |\n\
+             |                     | for S-HWRoT Boot Mode.                   |\n\
+             |                     | Valid only for Production PDIs           |\n\
+             +---------------------+------------------------------------------+\n\
+             | pufhd_bh            | PUF helper data is stored in BH.         |\n\
+             |                     | (Default is efuse)                       |\n\
+             |                     | PUF helper data file is passed to bootgen|\n\
+             |                     | using the option [puf_file].             |\n\
+             +---------------------+------------------------------------------+\n\
+             | puf4kmode           | PUF is tuned to use in 4k bit syndrome   |\n\
+             |                     | configuration.                           |\n\
+             |                     | (Default is 12k bit)                     |\n\
+             +---------------------+------------------------------------------+\n\
+             | shutter = <value>   | 32 bit PUF_SHUT register value to        |\n\
+             |                     | configure PUF for shutter offset time    |\n\
+             |                     | and shutter open time.                   |\n\
+             +---------------------+------------------------------------------+\n\
              | smap_width = <value>| 8, 16, 32                                |\n\
              |                     | Default is 32-bit                        |\n\
 -------------+---------------------+------------------------------------------+\n\
@@ -1123,7 +1189,7 @@ boot_device
              +----------------------------------------------------------------|\n\
              | bh_auth_enable_smap_width:                                     |\n\
              | {                                                              |\n\
-             |    boot_config { smap_width=16 }                               |\n\
+             |    boot_config { bh_auth_enable, smap_width=16 }               |\n\
              |    pskfile = /path/to/primary0.pem                             |\n\
              |    image                                                       |\n\
              |    {                                                           |\n\
@@ -1131,7 +1197,34 @@ boot_device
              |       {                                                        |\n\
              |           id = 0x00010000,                                     |\n\
              |           type = bootloader,                                   |\n\
+             |           authentication = rsa,                                |\n\
+             |           sskfile = /path/to/secondary-key.pem,                |\n\
              |           file = /path/to/plm.elf                              |\n\
+             |       }                                                        |\n\
+             |    }                                                           |\n\
+             | }                                                              |\n\
+             +----------------------------------------------------------------|\n\
+             | dpacm_enable:                                                  |\n\
+             | {                                                              |\n\
+             |    boot_config { dpacm_enable }                                |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |       {                                                        |\n\
+             |          type = bootloader,                                    |\n\
+             |          encryption = aes,  blocks = 4096(*),                  |\n\
+             |          keysrc = bbram_red_key,  aeskeyfile = key1.nky,       |\n\
+             |          file = plm.elf                                        |\n\
+             |       }                                                        |\n\
+             |       {                                                        |\n\
+             |          type = pmcdata, load = 0xf2000000,                    |\n\
+             |          aeskeyfile = key2.nky,                                |\n\
+             |          file = pmc_cdo.bin                                    |\n\
+             |       }                                                        |\n\
+             |       {                                                        |\n\
+             |          core = psm,                                           |\n\
+             |          encryption = aes, blocks = 4096(*),                   |\n\
+             |          keysrc = bbram_red_key, aeskeyfile = key3.nky,        |\n\
+             |          file = psm.elf                                        |\n\
              |       }                                                        |\n\
              |    }                                                           |\n\
              | }                                                              |\n\
@@ -1502,12 +1595,16 @@ file
              |    {                                                           |\n\
              |      name = image1, id = 0x1c000001                            |\n\
              |      { type=bootloader, file=plm.elf }                         |\n\
-             |      { type=pmcdata, file=pmc_cdo.bin }                        |\n\
+             |      { type=pmcdata, file=pmc_cdo.cdo, file=topology.cdo }     |\n\
              |      { type=cdo, file=fpd_data.cdo }                           |\n\
              |      { core=psm, file=psm.elf }                                |\n\
              |      { core=a72-0, file=hello.elf }                            |\n\
              |    }                                                           |\n\
              | }                                                              |\n\
+             |----------------------------------------------------------------|\n\
+             | Multiple CDO files can be merged together into one partition   |\n\
+             | by specifying multiple 'file' attributes as shown above for    |\n\
+             | pmc_cdo.cdo and topology.cdo                                   |\n\
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
@@ -1797,6 +1894,51 @@ load
              |    }                                                           |\n\
              | }                                                              |\n\
 -------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+metahdr
+******************************************************************************/
+#define H_BIF_METAHDR_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | metaheader                                                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | versal                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This attribute is used to define encryption, authentication    |\n\
+             | attributes for meta headers like keys, key sources etc.        |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | metaheader {  }                                                |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             | test:                                                          |\n\
+             |  {                                                             |\n\
+             |      metaheader                                                |\n\
+             |      {                                                         |\n\
+             |          encryption = aes,                                     |\n\
+             |          keysrc = bbram_red_key,                               |\n\
+             |          aeskeyfile = headerkey.nky,                           |\n\
+             |          authentication = rsa                                  |\n\
+             |      }                                                         |\n\
+             |      image                                                     |\n\
+             |      {                                                         |\n\
+             |          name = pmc_subsys, id = 0x1c000001                    |\n\
+             |          {                                                     |\n\
+             |              type = bootloader,                                |\n\
+             |              encryption = aes,                                 |\n\
+             |              keysrc = bbram_red_key,                           |\n\
+             |              aeskeyfile = key1.nky,                            |\n\
+             |              blocks = 8192(*),                                 |\n\
+             |              file = plm.elf                                    |\n\
+             |          }                                                     |\n\
+             |          {                                                     |\n\
+             |              type = pmcdata,                                   |\n\
+             |              load = 0xf2000000,                                |\n\
+             |              aeskeyfile = key2.nky,                            |\n\
+             |              file = pmc_cdo.bin                                |\n\
+             |          }                                                     |\n\
+             |      }                                                         |\n\
+             |  }                                                             |\n\
+-------------+----------------------------------------------------------------|\n"
 
 /******************************************************************************
 name
@@ -2429,7 +2571,7 @@ xip_mode
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | aeskeyfile                                                     |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynq, zynqmp                                                   |\n\
+ SUPPORTED   | zynq, zynqmp, versal                                           |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | The path to the AES keyfile. The keyfile contains AES key used |\n\
              | to encrypt the partitions. The contents of the key file needs  |\n\
@@ -2442,6 +2584,9 @@ xip_mode
              +----------------------------------------------------------------+\n\
              | ZYNQMP:                                                        |\n\
              | [aeskeyfile = <keyfile name>] <partition>                      |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             | { aeskeyfile = <keyfile name>, file = <filename> }             |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | Sample BIF - test.bif                                          |\n\
              +----------------------------------------------------------------+\n\
@@ -2470,6 +2615,29 @@ xip_mode
              | * Key0, IV0 and Key Opt should be the same accross all nky     |\n\
              | files that will be used.                                       |\n\
              +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |       name = pmc_subsys, id = 0x1c000001                       |\n\
+             |       {                                                        |\n\
+             |          type = bootloader, encryption = aes,                  |\n\
+             |          keysrc = bbram_red_key, aeskeyfile = key1.nky,        |\n\
+             |          file = plm.elf                                        |\n\
+             |       }                                                        |\n\
+             |       {                                                        |\n\
+             |          type = pmcdata, load = 0xf2000000,                    |\n\
+             |          aeskeyfile = key2.nky, file = pmc_cdo.bin             |\n\
+             |       }                                                        |\n\
+             |       {                                                        |\n\
+             |          type=cdo, encryption = aes,                           |\n\
+             |          keysrc = efuse_red_key, aeskeyfile = key3.nky,        |\n\
+             |          file=fpd_data.cdo                                     |\n\
+             |       }                                                        |\n\
+             |    }                                                           |\n\
+             | }                                                              |\n\
 -------------+----------------------------------------------------------------+"
 
 /******************************************************************************
@@ -2479,12 +2647,15 @@ bh_keyfile
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | bh_keyfile                                                     |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynqmp                                                         |\n\
+ SUPPORTED   | zynqmp, versal                                                 |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | 256-bit obfuscated key to be stored in boot header             |\n\
 -------------+----------------------------------------------------------------+\n\
  USAGE       | ZYNQMP:                                                        |\n\
              | [bh_keyfile] <key file path>                                   |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             | bh_keyfile = <key file path>                                   |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | Sample BIF - test.bif                                          |\n\
              +----------------------------------------------------------------+\n\
@@ -2497,6 +2668,32 @@ bh_keyfile
              |    [bh_key_iv] obfuscated_iv.txt                               |\n\
              |    [bootloader, encryption=aes, aeskeyfile = encr.nky,         |\n\
              |                          destination_cpu=a53-0]fsbl.elf        |\n\
+             | }                                                              |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    bh_keyfile = bh_key1.txt                                    |\n\
+             |    bh_kek_iv = blk_iv.txt                                      |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |       name = pmc_subsys, id = 0x1c000001                       |\n\
+             |       {                                                        |\n\
+             |          type = bootloader, encryption = aes,                  |\n\
+             |          keysrc = bbram_red_key, aeskeyfile = key1.nky,        |\n\
+             |          file = plm.elf                                        |\n\
+             |       }                                                        |\n\
+             |       {                                                        |\n\
+             |          type = pmcdata, load = 0xf2000000,                    |\n\
+             |          aeskeyfile = key2.nky, file = pmc_cdo.bin             |\n\
+             |       }                                                        |\n\
+             |       {                                                        |\n\
+             |          type=cdo, encryption = aes,                           |\n\
+             |          keysrc = bh_blk_key, aeskeyfile = key3.nky,           |\n\
+             |          file=fpd_data.cdo                                     |\n\
+             |       }                                                        |\n\
+             |    }                                                           |\n\
              | }                                                              |\n\
 -------------+----------------------------------------------------------------+\n"
 
@@ -2534,11 +2731,13 @@ encryption
  DESCRIPTION | This specifies the partition needs to be encrypted.            |\n\
              | Encryption Algorithms                                          |\n\
              |  Zynq            : AES-CBC                                     |\n\
-             |  ZynqMP          : AES-GCM                                     |\n\
+             |  ZynqMP & Versal : AES-GCM                                     |\n\
 -------------+----------------------------------------------------------------+\n\
  USAGE       | ZYNQ/ZYNQMP/FPGA:                                              |\n\
              | [encryption = <options>] <partition>                           |\n\
              +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             | { encryption = <options>, file = <filename> }                  |\n\
 -------------+----------------------------------------------------------------+\n\
  OPTIONS     | *none : Partition not encrypted                                |\n\
              |  aes  : Partition encrypted using AES algorithm                |\n\
@@ -2554,6 +2753,29 @@ encryption
              |      [encryption=aes] hello.elf                                |\n\
              | }                                                              |\n\
              +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |       name = pmc_subsys, id = 0x1c000001                       |\n\
+             |       {                                                        |\n\
+             |          type = bootloader, encryption = aes,                  |\n\
+             |          keysrc = bbram_red_key, aeskeyfile = key1.nky,        |\n\
+             |          file = plm.elf                                        |\n\
+             |       }                                                        |\n\
+             |       {                                                        |\n\
+             |          type = pmcdata, load = 0xf2000000,                    |\n\
+             |          aeskeyfile = key2.nky, file = pmc_cdo.bin             |\n\
+             |       }                                                        |\n\
+             |       {                                                        |\n\
+             |          type=cdo, encryption = aes,                           |\n\
+             |          keysrc = efuse_red_key, aeskeyfile = key3.nky,        |\n\
+             |          file=fpd_data.cdo                                     |\n\
+             |       }                                                        |\n\
+             |    }                                                           |\n\
+             | }                                                              |\n\
 -------------+----------------------------------------------------------------+"
 
 /******************************************************************************
@@ -2612,18 +2834,118 @@ keysrc_encryption
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
+keysrc
+******************************************************************************/
+#define H_BIF_KEYSRC_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | keysrc                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | versal                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Key source for encryption                                      |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | { keysrc = <options>, file = <filename> }                      |\n\
+-------------+----------------------------------------------------------------+\n\
+ OPTIONS     | Key sources applicable for bootloader, metaheader & partitions:|\n\
+             |      efuse_red_key                                             |\n\
+             |      efuse_blk_key                                             |\n\
+             |      bbram_red_key                                             |\n\
+             |      bbram_blk_key                                             |\n\
+             |      bh_blk_key                                                |\n\
+             | Additional key sources applicable only for partitions:         |\n\
+             |      user_key0                                                 |\n\
+             |      user_key1                                                 |\n\
+             |      user_key2                                                 |\n\
+             |      user_key3                                                 |\n\
+             |      user_key4                                                 |\n\
+             |      user_key5                                                 |\n\
+             |      user_key6                                                 |\n\
+             |      user_key7                                                 |\n\
+             |      efuse_user_key0                                           |\n\
+             |      efuse_user_blk_key0                                       |\n\
+             |      efuse_user_key1                                           |\n\
+             |      efuse_user_blk_key1                                       |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |       name = pmc_subsys, id = 0x1c000001                       |\n\
+             |       {                                                        |\n\
+             |          type = bootloader, encryption = aes,                  |\n\
+             |          keysrc = bbram_red_key, aeskeyfile = key1.nky,        |\n\
+             |          file = plm.elf                                        |\n\
+             |       }                                                        |\n\
+             |       {                                                        |\n\
+             |          type = pmcdata, load = 0xf2000000,                    |\n\
+             |          aeskeyfile = key2.nky, file = pmc_cdo.bin             |\n\
+             |       }                                                        |\n\
+             |       {                                                        |\n\
+             |          type=cdo, encryption = aes,                           |\n\
+             |          keysrc = efuse_red_key, aeskeyfile = key3.nky,        |\n\
+             |          file=fpd_data.cdo                                     |\n\
+             |       }                                                        |\n\
+             |    }                                                           |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+dpacm_enable
+******************************************************************************/
+#define H_DPACM_ENABLE_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | dpacm_enable                                                   |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Sets the DPA Counter Measure bit in the Partition Header Table |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | { dpacm_enable }                                               |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------|\n\
+             | dpacm_enable:                                                  |\n\
+             |  {                                                             |\n\
+             |      image                                                     |\n\
+             |      {                                                         |\n\
+             |          {                                                     |\n\
+             |               type = bootloader,                               |\n\
+             |               encryption = aes,  blocks = 4096(*),             |\n\
+             |               keysrc = bbram_red_key,  aeskeyfile = key1.nky,  |\n\
+             |               dpacm_enable,                                    |\n\
+             |               file = plm.elf                                   |\n\
+             |          }                                                     |\n\
+             |          {                                                     |\n\
+             |               type = pmcdata, load = 0xf2000000,               |\n\
+             |               aeskeyfile = key2.nky,                           |\n\
+             |               file = pmc_cdo.bin                               |\n\
+             |          }                                                     |\n\
+             |          {                                                     |\n\
+             |               core = psm,                                      |\n\
+             |               encryption = aes, blocks = 4096(*),              |\n\
+             |               keysrc = bbram_red_key, aeskeyfile = key3.nky,   |\n\
+             |               dpacm_enable,                                    |\n\
+             |               file = psm.elf                                   |\n\
+             |          }                                                     |\n\
+             |      }                                                         |\n\
+             |  }                                                             |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
 puf_file
 ******************************************************************************/
 #define H_BIF_PUFDATA_H "\
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | puf_file                                                       |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynqmp                                                         |\n\
+ SUPPORTED   | zynqmp, versal                                                 |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | PUF helper data file.                                          |\n\
 -------------+----------------------------------------------------------------+\n\
  USAGE       | ZYNQMP:                                                        |\n\
              | [puf_file] <puf data file>                                     |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             |  puf_file = <puf data file>                                    |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | Sample BIF - test.bif                                          |\n\
              +----------------------------------------------------------------+\n\
@@ -2636,6 +2958,32 @@ puf_file
              |    [bh_keyfile] black_key.txt                                  |\n\
              |    [bh_key_iv] bhkeyiv.txt                                     |\n\
              |    [bootloader,destination_cpu=a53-0,encryption=aes]fsbl.elf   |\n\
+             | }                                                              |\n\
+             +----------------------------------------------------------------|\n\
+             | VERSAL:                                                        |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    boot_config {puf4kmode}                                     |\n\
+             |    puf_file = pufhd_file_4K.txt                                |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |       name = pmc_subsys, id = 0x1c000001                       |\n\
+             |       {                                                        |\n\
+             |          type = bootloader, encryption = aes,                  |\n\
+             |          keysrc = bbram_red_key, aeskeyfile = key1.nky,        |\n\
+             |          file = plm.elf                                        |\n\
+             |       }                                                        |\n\
+             |       {                                                        |\n\
+             |          type = pmcdata, load = 0xf2000000,                    |\n\
+             |          aeskeyfile = key2.nky, file = pmc_cdo.bin             |\n\
+             |       }                                                        |\n\
+             |       {                                                        |\n\
+             |          type=cdo, encryption = aes,                           |\n\
+             |          keysrc = efuse_red_key, aeskeyfile = key3.nky,        |\n\
+             |          file=fpd_data.cdo                                     |\n\
+             |       }                                                        |\n\
+             |    }                                                           |\n\
              | }                                                              |\n\
 -------------+----------------------------------------------------------------+\n"
 
@@ -2650,13 +2998,19 @@ authentication
              | Authentication Algorithms:                                     |\n\
              |     Zynq & FPGA  : RSA-2048                                    |\n\
              |     ZynqMP       : RSA-4096                                    |\n\
+             |     Versal       : RSA-4096 & ECDSA                            |\n\
+             | Note : p384 and p521 curves are supported for ECDSA            |\n\
 -------------+----------------------------------------------------------------+\n\
  USAGE       | ZYNQ/ZYNQMP/FPGA:                                              |\n\
              | [authenication = <options>] <partition>                        |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             | {authenication=<options>, file=<partition>}                    |\n\
 -------------+----------------------------------------------------------------+\n\
- OPTIONS     | *none : Partition not authenticated                            |\n\
-             |  rsa  : Partition authenticated using RSA algorithm            |\n\
-             |  ecdsa: Partition authenticated using ECDSA algorithm (Versal) |\n\
+ OPTIONS     | *none       : Partition not authenticated                      |\n\
+             |  rsa        : Partition authenticated using RSA                |\n\
+             |  ecdsa-p384 : Partition authenticated using ECDSA(P384 Curve)  |\n\
+             |  ecdsa-p521 : Partition authenticated using ECDSA(P521 Curve)  |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | Sample BIF - test.bif                                          |\n\
              +----------------------------------------------------------------+\n\
@@ -2668,6 +3022,24 @@ authentication
              |     [spkfile] spk.txt                                          |\n\
              |     [bootloader, authentication=rsa] fsbl.elf                  |\n\
              |     [authentication=rsa] hello.elf                             |\n\
+             | }                                                              |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    boot_config {bh_auth_enable}                                |\n\
+             |    pskfile = primary0.pem                                      |\n\
+             |    sskfile = secondary0.pem                                    |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |       name = pmc_ss, id = 0x1c000001                           |\n\
+             |       {type=bootloader, authentication=rsa, file=plm.elf}      |\n\
+             |       {type=pmcdata, load=0xf2000000, file=pmc_cdo.bin}        |\n\
+             |       {type=cdo, authentication=rsa, file=fpd_cdo.bin}         |\n\
+             |       {core=psm, authentication=rsa, file=psm.elf}             |\n\
+             |       {core=a72-0, authentication=rsa, file = apu.elf}         |\n\
+             |    }                                                           |\n\
              | }                                                              |\n\
 -------------+----------------------------------------------------------------+\n"
 
@@ -2823,6 +3195,12 @@ headersignature
              | [pskfile] <key filename>                                       |\n\
              | [spkfile] <key filename>                                       |\n\
              | [sskfile] <key filename>                                       |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             | ppkfile = <filename>                                           |\n\
+             | pskfile = <filename>                                           |\n\
+             | spkfile = <filename>                                           |\n\
+             | sskfile = <filename>                                           |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | Sample BIF 1 - test.bif                                        |\n\
              +----------------------------------------------------------------+\n\
@@ -2862,6 +3240,24 @@ headersignature
              |    authentication. These keys will be used to authenticate     |\n\
              |    headers and any other partition that does not have a        |\n\
              |    specific SPK/SSK.                                           |\n\
+             +----------------------------------------------------------------+\n\
+             | VERSAL:                                                        |\n\
+             +----------------------------------------------------------------|\n\
+             | all:                                                           |\n\
+             | {                                                              |\n\
+             |    boot_config {bh_auth_enable}                                |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |       name = pmc_ss, id = 0x1c000001                           |\n\
+             |       { type=bootloader, authentication=rsa, file=plm.elf,     |\n\
+             |         pskfile=primary0.pem, sskfile=secondary0.pem }         |\n\
+             |       { type = pmcdata, load = 0xf2000000, file=pmc_cdo.bin }  |\n\
+             |       { type=cdo, authentication=rsa, file=fpd_cdo.bin,        |\n\
+             |         pskfile = primary1.pem, sskfile = secondary1.pem  }    |\n\
+             |    }                                                           |\n\
+             | }                                                              |\n\
+             | For Versal:                                                    |\n\
+             |   PPK/PSK can be specific to partition.                        |\n\
 -------------+----------------------------------------------------------------+\n"
 
 

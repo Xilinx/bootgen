@@ -48,12 +48,7 @@ class Section;
 /******************************************************************************/
 class VersalSHA3ChecksumContext : public ChecksumContext
 {
-public:                      
-    VersalSHA3ChecksumContext()
-    {
-        LOG_ERROR("Checksum is not supported for Versal ACAP in this version of Bootgen. \n\
-           Please use Bootgen from Xilinx install");
-    }
+public:
     Checksum::Type Type()
     {
         return Checksum::SHA3;
@@ -64,16 +59,16 @@ public:
         return SHA3_LENGTH_BYTES;
     }
 
-    Section* Build(Binary& cache, const uint8_t* data, const Binary::Length_t length) { return NULL; }
-    Section* Build(std::string name) { return NULL; }
+    Section* Build(Binary& cache, const uint8_t* data, const Binary::Length_t length);
+    Section* Build(std::string name);
 
-    void Link(bool bootloader, const uint8_t* data, const Binary::Length_t length, Section* section) { }
+    void Link(bool bootloader, const uint8_t* data, const Binary::Length_t length, Section* section);
 };
 
 /******************************************************************************/
 class VersalChecksumTable : public ChecksumTable
 {
 public:
-    void Build(BootImage& bi, Binary& cache) { }
-    void Link(BootImage& bi) { }
+    void Build(BootImage& bi, Binary& cache);
+    void Link(BootImage& bi);
 };

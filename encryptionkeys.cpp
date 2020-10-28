@@ -266,7 +266,9 @@ void EncryptionContext::KDF(uint32_t blocks, std::string keyFilename, bool encrD
             kdfLogFile.open("kdf_log.txt", std::fstream::app);
             kdfLogInit = true;
             VERBOSE_OUT_KDF << std::endl << "Key Generation log from Counter-mode KDF" << std::endl;
+            kdfLogFile.close();
         }
+        kdfLogFile.open("kdf_log.txt", std::fstream::app);
         VERBOSE_OUT_KDF << std::endl << "------------------------------------";
         VERBOSE_OUT_KDF << std::endl << " Generating Key/IV pairs for " << StringUtils::BaseName(keyFilename);
         VERBOSE_OUT_KDF << std::endl << "------------------------------------" << std::endl;
@@ -350,6 +352,7 @@ void EncryptionContext::KDF(uint32_t blocks, std::string keyFilename, bool encrD
             }
             VERBOSE_OUT_KDF << std::endl;
         }
+        kdfLogFile.close();
     }
 
     delete[] Input;

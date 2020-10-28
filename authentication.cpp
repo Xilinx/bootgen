@@ -33,7 +33,7 @@
 
 
 
-uint16_t AuthenticationContext::rsaKeyLength = 0;
+uint16_t AuthenticationContext::authKeyLength = 0;
 uint8_t AuthenticationContext::hashLength = 0;
 bool AuthenticationContext::zynpmpVerEs1 = false;
 
@@ -58,10 +58,6 @@ void AuthenticationContext::SetUdfFile(const std::string& filename)
 void AuthenticationContext::SetPSKeyFile(const std::string& filename)
 {
     pskFile = filename;
-    /*if (pskFile != "")
-    {
-        ParsePSKeyFile(filename);
-    }*/
 }
 
 /******************************************************************************/
@@ -140,15 +136,27 @@ void AuthenticationContext::SetHeaderAuthentication(uint32_t headerauth)
 }
 
 /******************************************************************************/
-void AuthenticationContext::SetRsaKeyLength(uint16_t keylen)
+void AuthenticationContext::SetAuthenticationKeyLength(uint16_t keylen)
 {
-    AuthenticationContext::rsaKeyLength = keylen;
+    AuthenticationContext::authKeyLength = keylen;
 }
 
 /******************************************************************************/
 uint16_t AuthenticationContext::GetRsaKeyLength(void)
 {
-    return AuthenticationContext::rsaKeyLength;
+    return AuthenticationContext::authKeyLength;
+}
+
+/******************************************************************************/
+void AuthenticationContext::SetSignatureLength(uint16_t length)
+{
+    signatureLength = length;
+}
+
+/******************************************************************************/
+uint16_t AuthenticationContext::GetSignatureLength(void)
+{
+    return signatureLength;
 }
 
 /******************************************************************************/
@@ -192,7 +200,7 @@ void AuthenticationContext::WritePaddedSHAFile(const uint8_t* shaBuf, const std:
 {
     std::string filename =  StringUtils::BaseName(hashfilename);
     std::ofstream f(filename.c_str(),std::ios_base::out|std::ios_base::binary);
-    f.write((char*)shaBuf, rsaKeyLength);
+    f.write((char*)shaBuf, signatureLength);
     f.close();
 
     if (f.fail())
@@ -205,7 +213,6 @@ void AuthenticationContext::WritePaddedSHAFile(const uint8_t* shaBuf, const std:
 /******************************************************************************/
 void AuthenticationContext::GetPresign(const std::string& presignFilename, uint8_t* signature, uint32_t index) 
 {
-    uint16_t keyLength = GetRsaKeyLength();
     std::string filename(presignFilename);
     std::string baseFile = StringUtils::BaseName(filename);
 
@@ -234,14 +241,14 @@ void AuthenticationContext::GetPresign(const std::string& presignFilename, uint8
         fseek(filePtr, 0, SEEK_END);
         long size = ftell(filePtr);
         fclose(filePtr);
-        if (size == keyLength) 
+        if (size == signatureLength)
         {
             // read binary
             filePtr = fopen(filename.c_str(),"rb");
-            long read_size = fread(signature, 1, keyLength, filePtr);
-            if(read_size != keyLength)
+            long read_size = fread(signature, 1, signatureLength, filePtr);
+            if(read_size != signatureLength)
             {
-                LOG_ERROR("Authentication Error !!!\n           Presign file %s should be of %d bytes", baseFile.c_str(), keyLength);
+                LOG_ERROR("Authentication Error !!!\n           Presign file %s should be of %d bytes", baseFile.c_str(), signatureLength);
             }
             fclose(filePtr);
         }
@@ -249,7 +256,7 @@ void AuthenticationContext::GetPresign(const std::string& presignFilename, uint8
         {
             // read ascii
             filePtr = fopen(filename.c_str(),"r");
-            for(int i=0; i<keyLength; i++)
+            for(int i=0; i<signatureLength; i++)
             {
                 int x;
                 if (fscanf(filePtr,"%2X",&x) != 1) 
@@ -322,17 +329,17 @@ void AuthenticationContext::GenerateSPKSignature(const std::string& filename)
 {
     if (primaryKey->Loaded && primaryKey->isSecret) 
     {
-        uint8_t* shaHashPadded = new uint8_t [rsaKeyLength];
-        uint8_t* spkSignatureTemp = new uint8_t [rsaKeyLength];
+        uint8_t* shaHashPadded = new uint8_t [signatureLength];
+        uint8_t* spkSignatureTemp = new uint8_t [signatureLength];
         if (!secondaryKey->Loaded)
         {
             ParseSPKeyFile(spkFile);
         }
         GenerateSPKHash(shaHashPadded);
 
-        RearrangeEndianess(shaHashPadded, rsaKeyLength);
+        RearrangeEndianess(shaHashPadded, signatureLength);
         authAlgorithm->CreateSignature(shaHashPadded, (uint8_t*)primaryKey, spkSignatureTemp);
-        RearrangeEndianess(spkSignatureTemp, rsaKeyLength);
+        RearrangeEndianess(spkSignatureTemp, signatureLength);
         LOG_INFO("SPK Signature generated successfully");
         if (filename != "") 
         {
@@ -340,9 +347,9 @@ void AuthenticationContext::GenerateSPKSignature(const std::string& filename)
             filePtr = fopen(filename.c_str(),"w");
             if (filePtr) 
             {
-                for(uint32_t i=0; i<rsaKeyLength; i++) 
+                for(uint32_t i=0; i<signatureLength; i++)
                 {
-                    fprintf(filePtr,"%02X",spkSignatureTemp[i]);       
+                    fprintf(filePtr,"%02X",spkSignatureTemp[i]);
                     if ((i % 32) == 31)
                     {
                         fprintf(filePtr,"\n");
@@ -356,6 +363,8 @@ void AuthenticationContext::GenerateSPKSignature(const std::string& filename)
                 LOG_ERROR("-spksignature error !!!           Failure writing the SPK signature file - %s", StringUtils::BaseName(filename).c_str());
             }
         }
+        delete[] spkSignatureTemp;
+        delete[] shaHashPadded;
     }
     else
     {
@@ -371,13 +380,13 @@ void AuthenticationContext::CreateSPKSignature(void)
     /* SPK is signed with PSK (Primary Secret Key) - Check if PSK is given */
     if(primaryKey->Loaded && primaryKey->isSecret) 
     {
-        uint8_t* shaHashPadded = new uint8_t [rsaKeyLength];
-        uint8_t* spkSignaturetmp = new uint8_t [rsaKeyLength];
+        uint8_t* shaHashPadded = new uint8_t [signatureLength];
+        uint8_t* spkSignaturetmp = new uint8_t [signatureLength];
         
         /* Calulate the SPK hash with PKCS padding */
         GenerateSPKHash(shaHashPadded);
         
-        RearrangeEndianess(shaHashPadded, rsaKeyLength);
+        RearrangeEndianess(shaHashPadded, signatureLength);
                 
         /* Sign the SPK hash */
         authAlgorithm->CreateSignature(shaHashPadded, (uint8_t*)primaryKey, spkSignaturetmp);
@@ -386,8 +395,8 @@ void AuthenticationContext::CreateSPKSignature(void)
            Sanity Check by cross verifying the calculated SPK signature */
         if (spkSignLoaded)
         {
-            RearrangeEndianess(spkSignaturetmp, rsaKeyLength);
-            if (memcmp(spksignature, spkSignaturetmp, rsaKeyLength) != 0)
+            RearrangeEndianess(spkSignaturetmp, signatureLength);
+            if (memcmp(spksignature, spkSignaturetmp, signatureLength) != 0)
             {
                 LOG_ERROR("Authentication Error !!!\n           Loaded SPK Signature does not match calculated SPK Signature");
             }        
@@ -396,9 +405,9 @@ void AuthenticationContext::CreateSPKSignature(void)
            Copy the calculated SPK signature */                
         else
         {           
-            memcpy(spksignature, spkSignaturetmp, rsaKeyLength);
+            memcpy(spksignature, spkSignaturetmp, signatureLength);
             spkSignLoaded = true;
-            RearrangeEndianess(spksignature, rsaKeyLength);
+            RearrangeEndianess(spksignature, signatureLength);
         }
         delete [] shaHashPadded;
         delete [] spkSignaturetmp;
@@ -418,7 +427,8 @@ void AuthenticationContext::GenerateSPKHashFile(const std::string& filename, Has
 {
     hash = hashObj;
     hashLength = hash->GetHashLength();
-    uint8_t* shaHashPadded = new uint8_t [rsaKeyLength];
+    uint8_t* shaHashPadded = new uint8_t [signatureLength];
+    memset(shaHashPadded, 0, signatureLength);
 
     /* Calculate the SPK hash */
     GenerateSPKHash(shaHashPadded);

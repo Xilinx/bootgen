@@ -23,11 +23,37 @@
 #include "readimage-zynq.h"
 
 /*******************************************************************************/
+ZynqReadImage::~ZynqReadImage()
+{
+    if (bH != NULL)
+    {
+        delete[] bH;
+    }
+    if (iH != NULL)
+    {
+        delete[] iH;
+    }
+    if (iHT != NULL)
+    {
+        delete[] iHT;
+    }
+    if (pHT != NULL)
+    {
+        delete[] pHT;
+    }
+}
+
+/*******************************************************************************/
 void ZynqReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
 {
     size_t result;
     uint64_t offset = 0;
     uint32_t index = 0;
+
+    if (StringUtils::GetExtension(binFilename) == ".mcs")
+    {
+        LOG_ERROR("The option '-read' is not supported on mcs format file : %s", binFilename.c_str());
+    }
 
     FILE *binFile;
     binFile = fopen(binFilename.c_str(), "rb");
@@ -72,7 +98,7 @@ void ZynqReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
     offset = 4 * (iHT->firstImageHeaderWordOffset);
     do
     {
-        ZynqImageHeaderStructure *iH = new ZynqImageHeaderStructure;
+        iH = new ZynqImageHeaderStructure;
         if (!(fseek(binFile, offset, SEEK_SET)))
         {
             result = fread(iH, 1, 4 * sizeof(uint32_t), binFile);
@@ -115,7 +141,7 @@ void ZynqReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
     offset = 4 * (iHT->firstPartitionHeaderWordOffset);
     for (index = 0; index < iHT->partitionTotalCount; index++)
     {
-        ZynqPartitionHeaderTableStructure* pHT = new ZynqPartitionHeaderTableStructure;
+        pHT = new ZynqPartitionHeaderTableStructure;
         if (!(fseek(binFile, offset, SEEK_SET)))
         {
             result = fread(pHT, 1, sizeof(ZynqPartitionHeaderTableStructure), binFile);
@@ -166,6 +192,11 @@ void ZynqReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
             }
         }
         aCs.push_back(aC);
+    }
+
+    if (header_ac != NULL)
+    {
+        delete[] header_ac;
     }
     fclose(binFile);
 }

@@ -33,7 +33,7 @@ typedef enum
 {
     BOOT,
     CONFIG,
-    NOC_FREQ,
+    MASTER_CDO,
 } SlrPdiType;
 
 struct SlrId
@@ -119,6 +119,7 @@ public:
     void SetUserFlag(bool flag) { User = flag; }
     void SetEarlyHandoff(bool flag) { early_handoff = flag; }
     void SetHivec(bool flag) { hivec = flag; }
+    void SetSlrPartition(bool flag) { isSlrPartition = flag; }
     void SetAuthenticationType(Authentication::Type type) { authType = type; }
     void SetAuthContext(AuthenticationContext* ctx) { Auth = ctx; }
     void SetEncryptContext(EncryptionContext* ctx) { Encrypt = ctx; }
@@ -135,6 +136,7 @@ public:
     void SetLoad(Override<Binary::Address_t> data) { Load = data; }
     void SetStartup(Override<Binary::Address_t> data) { Startup = data; }
     void InsertPartitionHeaderList(PartitionHeader* ph) { partitionHeaderList.push_back(ph); }
+    void SetFileList(std::vector<std::string> files) { filelist = files; }
     virtual void SetAuthBlock(size_t blockSize, bool flag) { };
     virtual void SetPartitionUid(uint32_t id) { };
     virtual void SetBigEndian(bool) { };
@@ -171,6 +173,7 @@ public:
     bool IsUserFlagSet(void) { return User; }
     bool GetEarlyHandoff(void) { return early_handoff; }
     bool GetHivec(void) { return hivec; }
+    bool IsSlrPartition(void) { return isSlrPartition; }
     Authentication::Type GetAuthenticationType(void) { return authType; }
     AuthenticationContext* GetAuthContext(void) { return Auth; }
     EncryptionContext* GetEncryptContext(void) { return Encrypt; }
@@ -195,6 +198,7 @@ public:
     virtual DpaCM::Type GetDpacm(void) { return DpaCM::DpaCMDisable; }
     virtual std::string GetKekIV() { return ""; }
     virtual PufHdLoc::Type GetPufHdLocation(void) { return PufHdLoc::PUFinEFuse; }
+    std::vector<std::string> GetFileList(void) { return filelist; }
 
     // For multiple key files and auth parameters
     void SetAesKeyFile(std::string filename) { aesKeyFile = filename; }
@@ -241,6 +245,11 @@ public:
     uint32_t GetPmcFwSizeIh(void);
     void InsertEncrBlocksList(uint32_t blk);
     void SetDefaultEncrBlockSize(uint32_t blk);
+    uint32_t GetImageId(void);
+    uint32_t GetParentUniqueId(void);
+    uint32_t GetUniqueId(void);
+    uint32_t GetFunctionId(void);
+    bool IsUidInfoFoundInCdo(void);
 
 protected:
     Domain::Type domain;
@@ -248,6 +257,7 @@ protected:
     uint64_t bufferSize;
     std::string Name;
     std::string Filename;
+    std::vector<std::string> filelist;
     bool Bootloader;
     bool Boot;
     bool Multiboot;
@@ -268,6 +278,7 @@ protected:
     uint64_t ihMemCpyAddr;
     bool ihDelayLoad;
     bool ihDelayHandoff;
+    bool isSlrPartition;
 
     // For multiple key files & auth parameters
     std::string aesKeyFile;
@@ -329,6 +340,11 @@ protected:
     uint32_t allHdrSize;
     std::list<SlrPdiInfo*> slrBootPdiInfo;
     std::list<SlrPdiInfo*> slrConfigPdiInfo;
+    uint32_t imageId;
+    uint32_t uniqueId;
+    uint32_t parentUniqueId;
+    uint32_t functionId;
+    bool uidInfoFoundInCdo;
 };
 
 /******************************************************************************/

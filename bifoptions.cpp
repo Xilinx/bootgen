@@ -24,6 +24,8 @@
 #include <string>
 #include "bifoptions.h"
 #include "bifscanner.h"
+#include "encryptutils.h"
+#include <map>
 
 /* Forward Class Declaration */
 class BootImage;
@@ -65,7 +67,6 @@ BifOptions::BifOptions(Arch::Type architecture, const char* name)
     , spkSelect(1)
     , spkId(0x00000000)
     , headerAuthParam(false)
-    , headerAuthType(Authentication::None)
     , createHeaderAC(false)
     , doHeaderEncryption(false)
     , splitMode(SplitMode::None)
@@ -87,6 +88,8 @@ BifOptions::BifOptions(Arch::Type architecture, const char* name)
     , isSpkIdGlobal(false)
     , slrBootCnt(0)
     , slrConfigCnt(0)
+    , aHwrot(false)
+    , sHwrot(false)
 {
     arch = architecture;
     SetGroupName(name);
@@ -237,6 +240,8 @@ void BifOptions::Add(PartitionBifOptions* currentPartitionBifOptions, ImageBifOp
 
     case BIF::BisonParser::token::PMCDATA:
         SetPmcdataFile(currentPartitionBifOptions->filename);
+        SetPmcCdoFileList(currentPartitionBifOptions->filename);
+        currentPartitionBifOptions->filename = currentPartitionBifOptions->filelist.at(0);
         if ((currentPartitionBifOptions)->load.Value() != 0)
         {
             pmcCdoLoadAddress = (currentPartitionBifOptions)->load.Value();
@@ -271,11 +276,20 @@ void BifOptions::Add(PartitionBifOptions* currentPartitionBifOptions, ImageBifOp
                 currentPartitionBifOptions->partitionType = currentImageBifOptions->GetImageType();
             }
             currentImageBifOptions->partitionBifOptionsList.push_back(currentPartitionBifOptions);
+            if (lastPartitionBifOption == currentPartitionBifOptions)
+            {
+                currentImageBifOptions->partitionBifOptionsList.pop_back();
+            }
+        }
+        if (lastPartitionBifOption == currentPartitionBifOptions)
+        {
+            partitionBifOptionList.pop_back();
+            currentPartitionBifOptions->filename = currentPartitionBifOptions->filelist.front();
         }
         partitionBifOptionList.push_back(currentPartitionBifOptions);
+        lastPartitionBifOption = currentPartitionBifOptions;
     }
 }
-
 
 /******************************************************************************/
 void BifOptions::AddFiles(int type, std::string filename)
@@ -442,6 +456,12 @@ void BifOptions::SetPmcdataFile(const std::string& filename)
         LOG_ERROR("BIF attribute error !!!\n\t\t[pmcdata] supported only in VERSAL architecture");
     }
     pmcdataFile = filename;
+}
+
+/******************************************************************************/
+void BifOptions::SetPmcCdoFileList(const std::string& filename)
+{
+    pmcCdoFileList.push_back(filename);
 }
 
 /******************************************************************************/
@@ -763,9 +783,215 @@ OptKey::Type BifOptions::GetAesOptKeyFlag(void)
 }
 
 /******************************************************************************/
+std::string BifOptions::GetKeySourceName(KeySource::Type type)
+{
+    switch (type)
+    {
+    case KeySource::None: return "None"; break;
+    case KeySource::BbramRedKey: return "bbram_red_key"; break;
+    case KeySource::EfuseRedKey: return "efuse_red_key"; break;
+    case KeySource::EfuseBlkKey: return "efuse_blk_key"; break;
+    case KeySource::BhBlkKey: return "bh_blk_key"; break;
+    case KeySource::EfuseGryKey: return "efuse_gry_key"; break;
+    case KeySource::BhGryKey: return "bh_gry_key"; break;
+    case KeySource::BhKupKey: return "kup_key"; break;
+    case KeySource::BbramBlkKey: return "bbram_blk_key"; break;
+    case KeySource::BbramGryKey: return "bbram_gry_key"; break;
+    case KeySource::UserKey0: return "user_key0"; break;
+    case KeySource::UserKey1: return "user_key1"; break;
+    case KeySource::UserKey2: return "user_key2"; break;
+    case KeySource::UserKey3: return "user_key3"; break;
+    case KeySource::UserKey4: return "user_key4"; break;
+    case KeySource::UserKey5: return "user_key5"; break;
+    case KeySource::UserKey6: return "user_key6"; break;
+    case KeySource::UserKey7: return "user_key7"; break;
+    case KeySource::EfuseUserKey0: return "efuse_user_key0"; break;
+    case KeySource::EfuseUserBlkKey0: return "efuse_user_blk_key0"; break;
+    case KeySource::EfuseUserGryKey0: return "efuse_user_gry_key0"; break;
+    case KeySource::EfuseUserKey1: return "efuse_user_key1"; break;
+    case KeySource::EfuseUserBlkKey1: return "efuse_user_blk_key1"; break;
+    case KeySource::EfuseUserGryKey1: return "efuse_user_gry_key1"; break;
+    default: return "None"; break;
+    }
+}
+
+/******************************************************************************/
+void BifOptions::CheckForSameKeyandKeySrcPair(std::vector<std::pair<KeySource::Type, uint32_t*>> aesKeyandKeySrc)
+{
+    static bool warningGiven = false;
+    std::multimap<std::string, std::string> key0_keysrc;
+    for (uint32_t i = 0; i < aesKeyandKeySrc.size(); i++)
+    {
+        std::stringstream key0String;
+        for (uint32_t j = 0; j < WORDS_PER_AES_KEY; j++)
+        {
+            key0String << std::setfill('0') << std::setw(2) << std::hex << aesKeyandKeySrc[i].second[j];
+        }
+        key0_keysrc.insert(std::pair<std::string, std::string>(key0String.str(), GetKeySourceName(aesKeyandKeySrc[i].first)));
+    }
+
+    for (auto unique_key0s = key0_keysrc.begin(), end = key0_keysrc.end(); unique_key0s != end; unique_key0s = key0_keysrc.upper_bound((unique_key0s->first)))
+    {
+        std::string warnKeySrc = "";
+        int count = 0;
+        std::multimap<std::string, std::string>::iterator keysrc_itr = key0_keysrc.find(unique_key0s->first);
+        for (uint32_t i = 0; i < key0_keysrc.count(unique_key0s->first); i++)
+        {
+            if (warnKeySrc.find(keysrc_itr->second.c_str()) == std::string::npos)
+            {
+                warnKeySrc += keysrc_itr->second.c_str();
+                warnKeySrc += ", ";
+                count++;
+            }
+            ++keysrc_itr;
+        }
+        if (warnKeySrc != "" && count > 1)
+        {
+            warnKeySrc.erase(warnKeySrc.size() - 2);
+            if (!warningGiven)
+            {
+                LOG_MSG("[WARNING]: Same Key0 is used for different KeySources.\n");
+                warningGiven = true;
+            }
+            LOG_MSG("\t   Key Sources : %s", warnKeySrc.c_str());
+            LOG_MSG("\t   Key0 Used   : %s\n", unique_key0s->first.c_str());
+        }
+    }
+}
+
+/******************************************************************************/
+void BifOptions::CheckForBadKeyandKeySrcPair(std::vector<std::pair<KeySource::Type, uint32_t*>> aesKeyandKeySrc, std::string aesFilename)
+{
+    std::string errorKeySrc = "";
+    for (uint32_t i = 0; i < aesKeyandKeySrc.size(); i++)
+    {
+        uint32_t j = aesKeyandKeySrc.size() - 1;
+        if (i != j)
+        {
+            if (aesKeyandKeySrc[i].first == aesKeyandKeySrc[j].first)
+            {
+                if (memcmp(aesKeyandKeySrc[i].second, aesKeyandKeySrc[j].second, AES_GCM_KEY_SZ) != 0)
+                {
+                    if (errorKeySrc.find(GetKeySourceName(aesKeyandKeySrc[i].first)) == std::string::npos)
+                    {
+                        errorKeySrc += GetKeySourceName(aesKeyandKeySrc[i].first);
+                        errorKeySrc += ", ";
+                    }
+                }
+            }
+        }
+    }
+    if (errorKeySrc != "")
+    {
+        errorKeySrc.erase(errorKeySrc.size() - 2);
+        LOG_ERROR("Check %s\n\t   Key0 must be same across the BIF for a given KeySource : %s", aesFilename.c_str(), errorKeySrc.c_str());
+    }
+}
+
+/******************************************************************************/
+static void ValidateEncryptionKeySource(KeySource::Type type)
+{
+    if ((type == KeySource::EfuseGryKey) || (type == KeySource::BhGryKey) || (type == KeySource::BbramGryKey)
+        || (type == KeySource::EfuseUserGryKey0) || (type == KeySource::EfuseUserGryKey1))
+    {
+        LOG_WARNING("The usage of obfuscated keys is deprecated in Versal.\n\t   Refer 'bootgen -arch versal -bif_help keysrc' for valid key sources.");
+    }
+    static bool bhBlkKek = false;
+    static bool bhGryKek = false;
+    if ((type == KeySource::BhBlkKey && bhGryKek) || (type == KeySource::BhGryKey && bhBlkKek))
+    {
+        LOG_ERROR("'bh_blk_key and bh_gry_key' cannot be used in a single boot image.");
+    }
+    else if (type == KeySource::BhBlkKey)
+    {
+        bhBlkKek = true;
+    }
+    else if (type == KeySource::BhGryKey)
+    {
+        bhGryKek = true;
+    }
+    static bool bbramBlkKek = false;
+    static bool bbramGryKek = false;
+    if ((type == KeySource::BbramBlkKey && bbramGryKek) || (type == KeySource::BbramGryKey && bbramBlkKek))
+    {
+        LOG_ERROR("'bbram_blk_key and bbram_gry_key' cannot be used in a single boot image.");
+    }
+    else if (type == KeySource::BbramBlkKey)
+    {
+        bbramBlkKek = true;
+    }
+    else if (type == KeySource::BbramGryKey)
+    {
+        bbramGryKek = true;
+    }
+
+    static bool efuseBlkKek = false;
+    static bool efuseGryKek = false;
+    if ((type == KeySource::EfuseBlkKey && efuseGryKek) || (type == KeySource::EfuseGryKey && efuseBlkKek))
+    {
+        LOG_ERROR("'efuse_blk_key and efuse_gry_key' cannot be used in a single boot image.");
+    }
+    else if (type == KeySource::EfuseBlkKey)
+    {
+        efuseBlkKek = true;
+    }
+    else if (type == KeySource::EfuseGryKey)
+    {
+        efuseGryKek = true;
+    }
+
+    static bool efuseUserBlkKek0 = false;
+    static bool efuseUserGryKek0 = false;
+    if ((type == KeySource::EfuseUserBlkKey0 && efuseUserGryKek0) || (type == KeySource::EfuseUserGryKey0 && efuseUserBlkKek0))
+    {
+        LOG_ERROR("'efuse_user_blk_key0 and efuse_user_gry_key0' cannot be used in a single boot image.");
+    }
+    else if (type == KeySource::EfuseUserBlkKey0)
+    {
+        efuseUserBlkKek0 = true;
+    }
+    else if (type == KeySource::EfuseUserGryKey0)
+    {
+        efuseUserGryKek0 = true;
+    }
+
+    static bool efuseUserBlkKek1 = false;
+    static bool efuseUserGryKek1 = false;
+    if ((type == KeySource::EfuseUserBlkKey1 && efuseUserGryKek1) || (type == KeySource::EfuseUserGryKey1 && efuseUserBlkKek1))
+    {
+        LOG_ERROR("'efuse_user_blk_key1 and efuse_user_gry_key1' cannot be used in a single boot image.");
+    }
+    else if (type == KeySource::EfuseUserBlkKey1)
+    {
+        efuseUserBlkKek1 = true;
+    }
+    else if (type == KeySource::EfuseUserGryKey1)
+    {
+        efuseUserGryKek1 = true;
+    }
+}
+
+/******************************************************************************/
 void BifOptions::SetMetaHeaderEncryptionKeySource(KeySource::Type type)
 {
+    ValidateEncryptionKeySource(type);
     metaHdrAttributes.encrKeySource = type;
+}
+
+/******************************************************************************/
+void BifOptions::SetMetaHeaderEncryptType(Encryption::Type type)
+{
+    metaHdrAttributes.encrypt = type;
+}
+
+/******************************************************************************/
+void BifOptions::SetMetaHeaderAuthType(Authentication::Type type)
+{
+    if (type == Authentication::ECDSAp521)
+    {
+        LOG_ERROR("BIF attribute error !!!\n\t\t  'ecdsa-p521' not supported for Meta Header");
+    }
+    metaHdrAttributes.authenticate = type;
 }
 
 /******************************************************************************/
@@ -777,6 +1003,7 @@ void BifOptions::SetPufHdinBHFlag()
 /******************************************************************************/
 void PartitionBifOptions::SetEncryptionKeySource(KeySource::Type type)
 {
+    ValidateEncryptionKeySource(type);
     keySrc = type;
 }
 
@@ -793,6 +1020,14 @@ void PartitionBifOptions::SetEncryptionBlocks(uint32_t size, uint32_t num)
     {
         LOG_ERROR("BIF attribute error !!!\n\t\t'blocks' not supported in ZYNQ architecture");
     }
+
+    /* The size of each block is considered in bytes */
+    if ((size & 0x3) != 0)
+    {
+        LOG_DEBUG(DEBUG_STAMP, "Encryption Block Size Error - Block Size - %d", size);
+        LOG_ERROR("BIF attribute 'blocks' must specify sizes which are multiples of 4, for word alignment.");
+    }
+
     if (arch == Arch::VERSAL)
     {
         if (size < 64)
@@ -800,6 +1035,7 @@ void PartitionBifOptions::SetEncryptionBlocks(uint32_t size, uint32_t num)
             LOG_ERROR("BIF attribute error !!!\n\t\tThe minimum block size allowed is 4 AES encryption blocks (i.e., 64 bytes)");
         }
     }
+
     if (num == 0)
     {
         SetDefaultEncryptionBlockSize(size);
@@ -808,12 +1044,6 @@ void PartitionBifOptions::SetEncryptionBlocks(uint32_t size, uint32_t num)
     {
         for (uint32_t i = 0; i < num; i++)
         {
-            /* The size of each block is considered in bytes */
-            if ((size & 0x3) != 0)
-            {
-                LOG_DEBUG(DEBUG_STAMP, "Encryption Block Size Error - Block Size - %d", size);
-                LOG_ERROR("BIF attribute 'blocks' must specify sizes which are multiples of 4, for word alignment.");
-            }
             blocks.push_back(size);
         }
     }
@@ -1058,6 +1288,13 @@ PufHdLoc::Type PartitionBifOptions::GetPufHdLocation(void)
 }
 
 /******************************************************************************/
+std::string PartitionBifOptions::GetOutputFileFromBifSection(std::string out_file, std::string bif_section)
+{
+    std::string filename = StringUtils::RemoveExtension(out_file) + "_" + bif_section + StringUtils::GetExtension(out_file);
+    return filename;
+}
+
+/******************************************************************************/
 void BifOptions::SetTotalPmcFwSize(uint32_t size)
 {
     totalpmcdataSize = size;
@@ -1199,6 +1436,13 @@ std::string BifOptions::GetPmcdataFile(void)
     return pmcdataFile;
 }
 
+/******************************************************************************/
+std::vector<std::string> BifOptions::GetPmcCdoFileList(void)
+{
+    return pmcCdoFileList;
+}
+
+/******************************************************************************/
 std::string BifOptions::GetPmcDataAesFile(void)
 {
     return pmcDataAesFile;
@@ -1290,12 +1534,24 @@ bool BifOptions::GetSpkIdGlobal()
 /******************************************************************************/
 bool BifOptions::GetHeaderAC()
 {
+    if (arch == Arch::VERSAL)
+    {
+        createHeaderAC = false;
+        if (metaHdrAttributes.authenticate != Authentication::None)
+            createHeaderAC = true;
+    }
     return createHeaderAC;
 }
 
 /******************************************************************************/
 bool BifOptions::GetHeaderEncyption()
 {
+    if (arch == Arch::VERSAL)
+    {
+        doHeaderEncryption = false;
+        if (metaHdrAttributes.encrypt != Encryption::None)
+            doHeaderEncryption = true;
+    }
     return doHeaderEncryption;
 }
 
@@ -1433,6 +1689,18 @@ void BifOptions::SetExtendedIdCode(uint32_t id)
 void BifOptions::SetBypassIdcodeFlag(bool flag)
 {
     bypassIdCode = flag;
+}
+
+/******************************************************************************/
+void BifOptions::SetAHwRoTFlag(bool flag)
+{
+    aHwrot = flag;
+}
+
+/******************************************************************************/
+void BifOptions::SetSHwRoTFlag(bool flag)
+{
+    sHwrot = flag;
 }
 
 /******************************************************************************/

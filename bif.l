@@ -66,6 +66,7 @@ aarch32_mode                                                        return tok::
 partition                                                           return tok::PARTITION;
 image                                                               return tok::IMAGE;
 metaheader                                                          return tok::METAHEADER;
+section                                                             return tok::BIF_SECTION;
 
 offset              yylval->number = tok::OFFSET;                   return tok::OFFSET;
 reserve             yylval->number = tok::RESERVE;                  return tok::RESERVE;
@@ -96,6 +97,9 @@ puf_file            yylval->number = tok::PUF_HELPER_FILE;          return tok::
 pmufw_image         yylval->number = tok::PMUFW_IMAGE;              return tok::PMUFW_IMAGE;
 pmcdata             yylval->number = tok::PMCDATA;                  return tok::PMCDATA;
 bh_key_iv           yylval->number = tok::BH_KEY_IV;                return tok::BH_KEY_IV;
+uid                 yylval->number = tok::UNIQUE_ID;                return tok::UNIQUE_ID;
+parent_uid          yylval->number = tok::PARENT_UNIQUE_ID;         return tok::PARENT_UNIQUE_ID;
+function_id         yylval->number = tok::FUNCTION_ID;              return tok::FUNCTION_ID;
 
 bbram_kek_iv        yylval->number = tok::BBRAM_KEK_IV;             return tok::BBRAM_KEK_IV;
 bh_kek_iv           yylval->number = tok::BH_KEK_IV;                return tok::BH_KEK_IV;
@@ -112,6 +116,8 @@ encryption                                                          return tok::
 authentication                                                      return tok::AUTHENTICATION;
     rsa             yylval->number = Authentication::RSA;           return tok::AUTHVALUE;
     ecdsa           yylval->number = Authentication::ECDSA;         return tok::AUTHVALUE;
+    ecdsa-p384      yylval->number = Authentication::ECDSA;         return tok::AUTHVALUE;
+    ecdsa-p521      yylval->number = Authentication::ECDSAp521;     return tok::AUTHVALUE;
 
 checksum                                                            return tok::CHECKSUM;
     md5             yylval->number = Checksum::MD5;                 return tok::CHECKSUMVALUE;
@@ -181,6 +187,8 @@ image_config            yylval->number = tok::FSBL_CONFIG;              return t
     dpacm_enable        yylval->number = DpaCM::DpaCMEnable;            return tok::DPA_CM;
     smap_width          yylval->number = tok::SMAP_WIDTH;               return tok::SMAP_WIDTH;
     bypass_idcode_check yylval->number = tok::BYPASS_IDCODE_CHECK;      return tok::BYPASS_IDCODE_CHECK;
+    a_hwrot             yylval->number = tok::A_HWROT;                  return tok::A_HWROT;
+    s_hwrot             yylval->number = tok::S_HWROT;                  return tok::S_HWROT;
 
 boot_device                                                         return tok::BOOT_DEVICE;
     address         yylval->number = tok::ADDRESS;                  return tok::ADDRESS;

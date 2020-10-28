@@ -27,7 +27,6 @@
 #include "fileutils.h"
 #include <openssl/rand.h>
 
-#define FAMILY_KEY_SIZE 80
 /*
 ------------------------------------------------------------------------------------------------
 **********************************************************************   F U N C T I O N S   ***
@@ -807,7 +806,7 @@ void ZynqMpEncryptionContext::GenerateRemainingKeys(Options& options, std::strin
         }
     }
 
-    CounterModeKDF(blocks, aesFilename, options.GetZynqMpEncrDump());
+    CounterModeKDF(blocks, aesFilename, options.GetEncryptionDumpFlag());
 
     uint8_t aesKeyNext[AES_GCM_KEY_SZ];
     uint8_t aesIvNext[AES_GCM_IV_SZ];
@@ -915,7 +914,7 @@ void ZynqMpEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint8_t
     uint8_t secureHdr_out[1024];
     int pt_len;
     uint32_t length = 0;
-    if (options.GetZynqMpEncrDump())
+    if (options.GetEncryptionDumpFlag())
     {
         uint32_t i = 0;
         VERBOSE_OUT << std::endl << "    Secure Header";
@@ -1021,7 +1020,7 @@ void ZynqMpEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint8_t
         memcpy(outBuf + outPtr + ct_len, gcm_tag, AES_GCM_TAG_SZ);
 
         uint8_t* inBuf_out = new uint8_t[ct_len + AES_GCM_TAG_SZ];
-        if (options.GetZynqMpEncrDump())
+        if (options.GetEncryptionDumpFlag())
         {
             uint32_t i = 0;
             /*VERBOSE_OUT << std::endl << std::dec << "Unencrypted Bootimage Data - block-" << currBlk << " Length-" << (currBlkSize+SECURE_HDR_SZ) << std::endl;
@@ -1251,8 +1250,9 @@ void ZynqMpEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr)
 
     isBootloader = partHdr->imageHeader->IsBootloader();
     partNum = partHdr->GetpartitionNum();
-    if (options.GetZynqMpEncrDump())
+    if (options.GetEncryptionDumpFlag())
     {
+        bi.options.aesLogFile.open(bi.options.aesLogFilename, std::fstream::app);
         VERBOSE_OUT << std::endl << "------------------------------------";
         VERBOSE_OUT << std::endl << " Partition No.  : " << partNum;
         VERBOSE_OUT << std::endl << " Partition Name : " << partHdr->partition->section->Name;
@@ -1304,6 +1304,7 @@ void ZynqMpEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr)
         partHdr->partition->section->Length = encrFsblByteLength + encrPmuByteLength;
 
         LOG_INFO("Encrypted the partition - %s", partHdr->partition->section->Name.c_str());
+        bi.options.CloseEncryptionDumpFile();
         delete[] encrFsblDataBuffer;
         delete[] encrPmuDataBuffer;
         return;
@@ -1326,43 +1327,16 @@ void ZynqMpEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr)
         partHdr->imageHeader->SetTotalFsblFwSizeIh(encryptedLength);
 
         LOG_INFO("Encrypted the partition - %s", partHdr->partition->section->Name.c_str());
+        bi.options.CloseEncryptionDumpFile();
         delete[] encryptedDataBuffer;
         return;
     }
 }
 
 /******************************************************************************/
-static void SetMetalKey(const uint8_t* key, uint8_t *metalKey)
-{
-    memcpy(metalKey, key, AES_GCM_KEY_SZ);
-}
-
-/******************************************************************************/
-void ZynqMpEncryptionContext::SetMetalKeyString(const std::string& key, uint8_t *metalKey)
-{
-    uint8_t  hexData[256];
-
-    if (key.size() != (WORDS_PER_AES_KEY * 8))
-    {
-        LOG_DEBUG(DEBUG_STAMP, "Family key size - %d", key.size());
-        LOG_ERROR("A Family key must be 256 bits long");
-    }
-
-    PackHex(key, hexData);
-    SetMetalKey(hexData, metalKey);
-}
-
-/******************************************************************************/
 void ZynqMpEncryptionContext::GenerateGreyKey()
 {
     LOG_ERROR("Grey Key generation is not supported in this version of Bootgen. \n\
-           Please use Bootgen from Xilinx install");
-}
-
-/******************************************************************************/
-void ZynqMpEncryptionContext::GenerateMetalKey()
-{
-    LOG_ERROR("Family Key generation is not supported in this version of Bootgen. \n\
            Please use Bootgen from Xilinx install");
 }
 

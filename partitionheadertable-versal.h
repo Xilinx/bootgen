@@ -99,6 +99,9 @@ typedef enum
 #define EFUSE_USER_BLK_KEY1             0xC3A5C5A5
 #define EFUSE_USER_GRY_KEY1             0xC3A5C5A7
 
+#define SECURE_32K_CHUNK             0x8000   /* 32 KB = 32*1024 B */
+#define SECURE_64K_CHUNK             0x10000  /* 64 KB = 64*1024 B */
+
 /*
 -------------------------------------------------------------------------------
 ***************************************************   S T R U C T U R E S   ***
@@ -170,6 +173,11 @@ public:
     void SetNextPartitionHeaderOffset(uint32_t addr);
     void SetPartitionRevokeId(uint32_t id);
 
+	KeySource::Type GetPartitionKeySource(void);
+
+	uint8_t GetEncryptFlag(void);
+	uint8_t GetAuthCertFlag(void);
+
     bool IsBootloader(void) { return isBootloader; }
     bool IsPmcdata(void) { return isPmcdata; }
     uint8_t GetChecksumType(void);
@@ -191,6 +199,8 @@ public:
     uint32_t GetPartitionWordOffset(void);
     uint32_t GetPartitionPadSize64bBoundary(Section*);
     PartitionType::Type GetPartitionType(void);
+	DpaCM::Type GetDpaCMFlag(void);
+	PufHdLoc::Type GetPufHdLocation(void);
     uint32_t GetPartitionUid(void);
     uint64_t GetLQspiExecAddrForXip(uint64_t addr);
     uint32_t GetSectionCount(void);
@@ -212,6 +222,7 @@ class VersalPartitionHeaderTable : public PartitionHeaderTable
 {
 public:
     void Build(BootImage& bi, Binary& cache);
+    void ConfigureMetaHdrAuthenticationContext(BootImage& bi);
     void Link(BootImage& bi);
     Section* firstSection;
 };

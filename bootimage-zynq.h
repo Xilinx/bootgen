@@ -39,7 +39,7 @@
 class ZynqBootImage : public BootImage
 {
 public:
-    ZynqBootImage(Options& options);
+    ZynqBootImage(Options& options, uint8_t index);
     ~ZynqBootImage()
     {
         if (importedBh != NULL)
@@ -59,7 +59,6 @@ public:
     void ParsePartitionDataToImage(BifOptions* bifoptions, PartitionBifOptions* it);
 
     void Add(BifOptions* bifoptions);
-
 protected:
     ZynqBootHeader* importedBh;
 };

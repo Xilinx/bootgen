@@ -74,7 +74,8 @@ void ShowCommonHelp(int,bool);
 %token _DUAL_QSPI_MODE _DUAL_OSPI_MODE PARALLEL STACKED
 %token _W ON OFF
 %token _NOAUTHBLOCKS _ZYNQMPES1
-%token _EFUSEPPKBITS _GENERATE_HASHES _PADIMAGEHEADER _SPKSIGNATURE _GENERATE_KEYS PEM RSA AUTH GREY METAL _SECUREDEBUG ECDSA
+%token _EFUSEPPKBITS _GENERATE_HASHES _PADIMAGEHEADER _SPKSIGNATURE _GENERATE_KEYS PEM RSA AUTH GREY METAL
+%token _SECUREDEBUG ECDSA _AUTHJTAG
 %token _ENCRYPT BBRAM EFUSE _P_TOK
 %token _INTERFACE SMAPx8 SMAPx16 SMAPx32 SPI BPIx8 BPIx16
 %token _READ READ_BH READ_IHT READ_IH READ_PHT READ_AC
@@ -97,7 +98,7 @@ void ShowCommonHelp(int,bool);
 %token H_BIF_AUTHPARAM H_BIF_BHKEY H_BIF_PFW H_BIF_BLOCKS H_BIF_METAL H_BIF_BHIV H_BIF_BOOTVEC
 %token H_BIF_PUFDATA H_BIF_PTYPE H_BIF_IMAGECFG H_BIF_PMCCONFIG H_BIF_AARCH32 H_BIF_BIGENDIAN H_BIF_BOOTCONFIG H_BIF_COPY
 %token H_BIF_CORE H_BIF_DELAY_HANDOFF H_BIF_DELAY_LOAD H_BIF_FILE H_BIF_ID H_BIF_IMAGE H_BIF_METAHDR H_BIF_NAME H_BIF_PARTITION
-%token H_BIF_SLR H_BIF_TYPE H_BIF_KEYSRCENCR H_BIF_PARENTID
+%token H_BIF_SLR H_BIF_TYPE H_BIF_KEYSRCENCR H_BIF_PARENTID H_DPACM_ENABLE
 
 %%
 top             : option_list;
@@ -108,7 +109,7 @@ option_list     : /* empty */
 
 option          : _IMAGE filename                   { options.SetBifFilename($2); }
                 | _SPLIT memsplit
-                | filloption                                                       
+                | filloption
                 | _O_TOK I   filename               { options.GetOutputFileNames().push_back($3); }
                 | _O_TOK     filename               { options.GetOutputFileNames().push_back($2); } /* superfluous i can be ommitted */
                 | _P_TOK     IDENTIFIER             { options.SetDevicePartName($2); }
@@ -136,7 +137,8 @@ option          : _IMAGE filename                   { options.SetBifFilename($2)
                 | _DEBUG_TOK                        { LOG_ERROR("'-debug' option is no more supported. Please use '-log' option"); }
                 | _ZYNQMPENCRDUMP encrDumpOptions
                 | _ZYNQMPES1                        { options.SetZynqmpes1Flag(true); }
-                | _SECUREDEBUG auth_type
+                | _SECUREDEBUG auth_type            { LOG_WARNING("The option '-securedebugimage'is deprecated. Use '-authenticatedjtag' instead."); }
+                | _AUTHJTAG authJtagOptions
                 | _READ readImageOptions
                 | _VERIFY verifyImageOptions
                 | _DUMP dumpOptions
@@ -253,6 +255,7 @@ bifhelpoption	: /* empty */                       { ShowBifHelp(0); exit(0); }
                 | H_BIF_SLR                         { ShowBifHelp(CO::BisonParser::token::H_BIF_SLR); exit(0); }
                 | H_BIF_TYPE                        { ShowBifHelp(CO::BisonParser::token::H_BIF_TYPE); exit(0); }
                 | H_BIF_KEYSRCENCR                  { ShowBifHelp(CO::BisonParser::token::H_BIF_KEYSRCENCR); exit(0); }
+                | H_DPACM_ENABLE                    { ShowBifHelp(CO::BisonParser::token::H_DPACM_ENABLE); exit(0); }
                 ;
 
 wopt            : /* empty*/                        { options.SetOverwrite(true); }
@@ -316,9 +319,20 @@ auth_key_options: PEM                               { options.SetAuthKeyGenerati
                 | RSA                               { options.SetAuthKeyGeneration(GenAuthKeys::RSA); }
                 ;
 
-auth_type       : ECDSA                             { options.SetSecureDebugAuthType(Authentication::ECDSA); }
-                | RSA                               { options.SetSecureDebugAuthType(Authentication::RSA); }
-  
+auth_type       : ECDSA                             { options.SetSecureDebugAuthType(Authentication::ECDSA);
+                                                      options.SetSecureDebugImageFile("secureDebugImage-ecdsa.bin"); }
+                | RSA                               { options.SetSecureDebugAuthType(Authentication::RSA);
+                                                      options.SetSecureDebugImageFile("secureDebugImage-rsa.bin"); }
+
+authJtagOptions : authJtagType filename             { options.SetSecureDebugImageFile($2); }
+                | authJtagType
+
+authJtagType    : ECDSA                             { options.SetSecureDebugAuthType(Authentication::ECDSA);
+                                                      options.SetSecureDebugImageFile("authenticatedJtagImage-ecdsa.bin"); }
+                | RSA                               { options.SetSecureDebugAuthType(Authentication::RSA);
+                                                      options.SetSecureDebugImageFile("authenticatedJtagImage-rsa.bin"); }
+
+
 verifyImageOptions: filename                        { options.SetReadImageFile($1);
                                                       options.SetVerifyImageOption(true); }
 
@@ -349,8 +363,8 @@ dumpOptions     : READ_BH                           { options.SetDumpOption(Dump
                                                       options.SetDumpOption(DumpOption::BOOT_FILES); }
                 ;
 
-encrDumpOptions : /* empty */                       { options.SetZynqMpEncrDump(true,"aes_log.txt"); }
-                | filename                          { options.SetZynqMpEncrDump(true,$1); }
+encrDumpOptions : /* empty */                       { options.SetEncryptionDump(true,"aes_log.txt"); }
+                | filename                          { options.SetEncryptionDump(true,$1); }
 
 									
 %%
@@ -485,6 +499,10 @@ void ShowCmdHelp(int a)
         std::cout << READHELP << std::endl;
         break;
 
+    case CO::BisonParser::token::HSECUREDEBUG:
+        std::cout << SECUREDEBUGHELP << std::endl;
+        break;
+
     case CO::BisonParser::token::HDUMP:
         std::cout << DUMPHELP << std::endl;
         break;
@@ -591,6 +609,10 @@ void ShowBifHelp(int a)
 
     case CO::BisonParser::token::H_BIF_STARTUP:
         std::cout << H_BIF_STARTUP_H << std::endl;
+        break;
+
+    case CO::BisonParser::token::H_BIF_KEYSRC:
+        std::cout << H_BIF_KEYSRC_H << std::endl;
         break;
 
     case CO::BisonParser::token::H_BIF_FSBLCFG:
@@ -700,6 +722,10 @@ void ShowBifHelp(int a)
     case CO::BisonParser::token::H_BIF_IMAGE:
         std::cout << H_BIF_IMAGE_H << std::endl;
         break;
+
+    case CO::BisonParser::token::H_BIF_METAHDR:
+        std::cout << H_BIF_METAHDR_H << std::endl;
+        break;
         
     case CO::BisonParser::token::H_BIF_NAME:
         std::cout << H_BIF_NAME_H << std::endl;
@@ -723,6 +749,10 @@ void ShowBifHelp(int a)
         
     case CO::BisonParser::token::H_BIF_KEYSRCENCR:
         std::cout << H_BIF_KEYSRCENCR_H << std::endl;
+        break;
+
+    case CO::BisonParser::token::H_DPACM_ENABLE:
+        std::cout << H_DPACM_ENABLE_H << std::endl;
         break;
 
     case 0:

@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -118,13 +118,13 @@ public:
     void SetNextPartitionHeaderOffset(void);
     void SetBitLoadAddress(bool load, uint32_t val);
     
-    bool    IsBootloader(void) { return isBootloader; }
+    bool IsBootloader(void) { return isBootloader; }
     uint8_t GetDestinationDevice(void);
     uint8_t GetEncryptFlag(void);
     uint8_t GetAuthCertFlag(void);
     uint8_t GetChecksumType(void);
     uint8_t GetOwnerType(void);
-    uint8_t	GetDestinationCpu(void);
+    uint8_t GetDestinationCpu(void);
     uint8_t GetProcessorExecState(void);
     uint8_t GetElfEndianess(void);
     uint8_t GetExceptionLevel(void);

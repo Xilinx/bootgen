@@ -109,12 +109,12 @@ void PartitionHeaderTable::Build(BootImage &bi, Binary& cache)
             {
                 if (bi.options.archType == Arch::ZYNQMP)
                 {
-                    AuthenticationContext::SetRsaKeyLength(RSA_4096_KEY_LENGTH);
+                    AuthenticationContext::SetAuthenticationKeyLength(RSA_4096_KEY_LENGTH);
                     biAuth = (AuthenticationContext*) new ZynqMpAuthenticationContext(imageAuth);
                 }
                 else
                 {
-                    AuthenticationContext::SetRsaKeyLength(RSA_2048_KEY_LENGTH);
+                    AuthenticationContext::SetAuthenticationKeyLength(RSA_2048_KEY_LENGTH);
                     biAuth = (AuthenticationContext*) new ZynqAuthenticationContext(imageAuth);
                 }
                 biAuth->hashType = bi.GetAuthHashAlgo();
@@ -123,12 +123,12 @@ void PartitionHeaderTable::Build(BootImage &bi, Binary& cache)
             {
                 if (bi.options.archType == Arch::ZYNQMP)
                 {
-                    AuthenticationContext::SetRsaKeyLength(RSA_4096_KEY_LENGTH);
+                    AuthenticationContext::SetAuthenticationKeyLength(RSA_4096_KEY_LENGTH);
                     biAuth = (AuthenticationContext*) new ZynqMpAuthenticationContext(imageAuth);
                 }
                 else
                 {
-                    AuthenticationContext::SetRsaKeyLength(RSA_2048_KEY_LENGTH);
+                    AuthenticationContext::SetAuthenticationKeyLength(RSA_2048_KEY_LENGTH);
                     biAuth = (AuthenticationContext*) new ZynqAuthenticationContext(imageAuth);
                 }
                 biAuth->hashType = bi.GetAuthHashAlgo();
@@ -138,12 +138,12 @@ void PartitionHeaderTable::Build(BootImage &bi, Binary& cache)
         {
             if (bi.options.archType == Arch::ZYNQMP)
             {
-                AuthenticationContext::SetRsaKeyLength(RSA_4096_KEY_LENGTH);
+                AuthenticationContext::SetAuthenticationKeyLength(RSA_4096_KEY_LENGTH);
                 biAuth = (AuthenticationContext*) new ZynqMpAuthenticationContext(bi.currentAuthCtx);
             }
             else
             {
-                AuthenticationContext::SetRsaKeyLength(RSA_2048_KEY_LENGTH);
+                AuthenticationContext::SetAuthenticationKeyLength(RSA_2048_KEY_LENGTH);
                 biAuth = (AuthenticationContext*) new ZynqAuthenticationContext(bi.currentAuthCtx);
             }
             biAuth->hashType = bi.GetAuthHashAlgo();

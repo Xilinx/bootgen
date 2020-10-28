@@ -23,11 +23,37 @@
 #include "readimage-zynqmp.h"
 
 /*******************************************************************************/
+ZynqMpReadImage::~ZynqMpReadImage()
+{
+    if (bH != NULL)
+    {
+        delete[] bH;
+    }
+    if (iH != NULL)
+    {
+        delete[] iH;
+    }
+    if (iHT != NULL)
+    {
+        delete[] iHT;
+    }
+    if (pHT != NULL)
+    {
+        delete[] pHT;
+    }
+}
+
+/*******************************************************************************/
 void ZynqMpReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
 {
     size_t result;
     uint64_t offset = 0;
     uint32_t index = 0;
+
+    if (StringUtils::GetExtension(binFilename) == ".mcs")
+    {
+        LOG_ERROR("The option '-read' is not supported on mcs format file : %s", binFilename.c_str());
+    }
 
     FILE *binFile;
     binFile = fopen(binFilename.c_str(), "rb");
@@ -73,7 +99,7 @@ void ZynqMpReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
     offset = 4 * (iHT->firstImageHeaderWordOffset);
     do
     {
-        ZynqMpImageHeaderStructure *iH = new ZynqMpImageHeaderStructure;
+        iH = new ZynqMpImageHeaderStructure;
         if (!(fseek(binFile, offset, SEEK_SET)))
         {
             result = fread(iH, 1, 4 * sizeof(uint32_t), binFile);
@@ -116,7 +142,7 @@ void ZynqMpReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
     offset = 4 * (iHT->firstPartitionHeaderWordOffset);
     for (index = 0; index < iHT->partitionTotalCount; index++)
     {
-        ZynqMpPartitionHeaderTableStructure* pHT = new ZynqMpPartitionHeaderTableStructure;
+        pHT = new ZynqMpPartitionHeaderTableStructure;
         if (!(fseek(binFile, offset, SEEK_SET)))
         {
             result = fread(pHT, 1, sizeof(ZynqMpPartitionHeaderTableStructure), binFile);

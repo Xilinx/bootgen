@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -205,4 +205,5 @@ void Logger::Message(const char* format, ...)
     msg = StringUtils::vFormat(format, ap);
     va_end(ap);
     std::cout << msg.c_str() << std::endl;
+    Logger::outFile << msg.c_str() << std::endl;
 }

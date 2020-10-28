@@ -15,11 +15,11 @@
 ******************************************************************************/
 
 #ifndef RDI_VERSION
-#define RDI_VERSION "2020.1"
+#define RDI_VERSION "2020.2"
 #endif
 
 #define PROGRAMNAME     "Xilinx Bootgen"
-#define COPYRIGHT       "Copyright (c) 1995-2019 Xilinx, Inc. All rights reserved.\n"
+#define COPYRIGHT       "Copyright (c) 1995-2020 Xilinx, Inc. All rights reserved.\n"
 
 
 /******************************************************************************
@@ -50,7 +50,7 @@
  padimageheader    - Pad header tables                                        |\n\
  process_bitstream - Outputs bitstream in bin/mcs format                      |\n\
  read              - Dumps the header tables in human readable form           |\n\
- securedebugimage  - Generate a Secure Debug Image                            |\n\
+ authenticatedjtag - Generate a Image to authenticate PSK and enable jtag     |\n\
  split             - Split partitions to diff files                           |\n\
  spksignature      - Generate SPK signature file                              |\n\
  verify            - Verify BootImage authentication                          |\n\
@@ -79,14 +79,16 @@
  aarch32_mode         - 32-bit mode execution for binary partitions           |\n\
  alignment            - Alignment for the partition                           |\n\
  big_endian           - Big endian partition                                  |\n\
- blocks               - Blocks for Key Rolling Encryption                     |\n\
  bootimage            - Boot Image File (in Xilinx Boot Image format)         |\n\
  bootloader           - First Stage Boot Loader                               |\n\
  bootvectors          - Vector table for XIP                                  |\n\
  boot_device          - Secondary Boot Device                                 |\n\
  boot_config          - Configuration for boot image                          |\n\
  checksum             - Checksum for the partition                            |\n\
+ copy                 - Copy image from flash to memory address               |\n\
  core                 - CPU Core on which partition executes                  |\n\
+ delay_handoff        - Handoff to the image is delayed                       |\n\
+ delay_load           - Loading of the image is delayed                       |\n\
  destination_cpu      - CPU Core on which partition executes                  |\n\
  destination_device   - Destination Device for the partition                  |\n\
  early_handoff        - Enable Early Handoff                                  |\n\
@@ -99,6 +101,7 @@
  init                 - Register Initialization File (.ini file)              |\n\
  load                 - Load address of the partition in memory               |\n\
  metaheader           - Configuration of Meta Header                          |\n\
+ name                 - Name of the image                                     |\n\
  owner                - Owner of the partition                                |\n\
  offset               - Offset of the partition in the boot image             |\n\
  parent_id            - PDI ID of the parent PDI incase of partial PDI        |\n\
@@ -118,12 +121,20 @@
  Encryption attributes                                                        |\n\
 ------------------------------------------------------------------------------+\n\
  aeskeyfile           - AES Encryption Key File (.nky file)                   |\n\
+ bbram_kek_iv         - IV for decrypting key in BBRAM KEK key                |\n\
  bh_key_iv            - IV for Obfuscated or Black AES Encryption Key         |\n\
  bh_keyfile           - Obfuscated or Black AES Encryption Key                |\n\
+ bh_kek_iv            - IV for decrypting the Boot Header KEK                 |\n\
+ efuse_kek_iv         - IV for decrypting the efuse KEK                       |\n\
+ efuse_user_kek0_iv   - IV for decrypting the efuse User KEK0                 |\n\
+ efuse_user_kek1_iv   - IV for decrypting the efuse User KEK1                 |\n\
  encryption           - Encryption for the partition                          |\n\
  familykey            - Family Key                                            |\n\
+ keysrc               - Encryption Key Source                                 |\n\
  keysrc_encryption    - Encryption Key Source                                 |\n\
  puf_file             - PUF Helper Data File                                  |\n\
+ blocks               - Blocks for Key Rolling Encryption                     |\n\
+ dpacm_enable          - Enables DPA Counter Measure for Encryption           |\n\
 ------------------------------------------------------------------------------+\n\
  Authentication attributes                                                    |\n\
 ------------------------------------------------------------------------------+\n\
@@ -134,6 +145,7 @@
  ppkfile              - Primary Public Key (.pub, .txt, .pk1)                 |\n\
  presign              - Partition Signature (.sig file)                       |\n\
  pskfile              - Primary Secret Key (.pem, .txt, .pk1)                 |\n\
+ revoke_id            - ID for revoking the keys                              |\n\
  spkfile              - Secondary Public Key (.pub, .txt, .pk1)               |\n\
  spksignature         - SPK Signature File (.sig file)                        |\n\
  sskfile              - Secondary Secret Key (.pem, .txt, .pk1)               |\n\

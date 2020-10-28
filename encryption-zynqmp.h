@@ -91,9 +91,7 @@ protected:
     int partNum;
 
     void ChunkifyAndEncrypt(Options& options, const uint8_t *inBuf, uint32_t inLen, uint8_t* outBuf, uint32_t& outLen);
-    void SetMetalKeyString(const std::string & key, uint8_t * metalKey);
     void GenerateGreyKey();
-    void GenerateMetalKey();
     void ReadBhIv(uint8_t * bhIv);
     AesGcmEncryptionContext* encryptionAlgorithm;
 };

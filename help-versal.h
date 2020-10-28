@@ -1,4 +1,4 @@
-//******************************************************************************
+/******************************************************************************
 * Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
@@ -596,31 +596,6 @@
              |         }                                                      |\n\
              |     }                                                          |\n\
              | }                                                              |\n\
-             +----------------------------------------------------------------|\n\
-             | dpacm_enable:                                                  |\n\
-             |  {                                                             |\n\
-             |      boot_config { dpacm_enable }                              |\n\
-             |      image                                                     |\n\
-             |      {                                                         |\n\
-             |          {                                                     |\n\
-             |               type = bootloader,                               |\n\
-             |               encryption = aes,  blocks = 4096(*),             |\n\
-             |               keysrc = bbram_red_key,  aeskeyfile = key1.nky,  |\n\
-             |               file = plm.elf                                   |\n\
-             |          }                                                     |\n\
-             |          {                                                     |\n\
-             |               type = pmcdata, load = 0xf2000000,               |\n\
-             |               aeskeyfile = key2.nky,                           |\n\
-             |               file = pmc_cdo.bin                               |\n\
-             |          }                                                     |\n\
-             |          {                                                     |\n\
-             |               core = psm,                                      |\n\
-             |               encryption = aes, blocks = 4096(*),              |\n\
-             |               keysrc = bbram_red_key, aeskeyfile = key3.nky,   |\n\
-             |               file = psm.elf                                   |\n\
-             |          }                                                     |\n\
-             |      }                                                         |\n\
-             |  }                                                             |\n\
 -------------+----------------------------------------------------------------+\n"
 
 #define HV_BIF_DESTCPU_H "\

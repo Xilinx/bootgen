@@ -37,6 +37,7 @@ extern "C" {
 #include "cdo-npi.h"
 #include "cdo-source.h"
 #include "cdo-binary.h"
+#include "cdo-load.h"
 };
 
 static uint8_t bufferIndex = 0;
@@ -61,7 +62,7 @@ VersalImageHeaderTable::VersalImageHeaderTable()
     , prebuilt(false)
     , dpacm(DpaCM::DpaCMDisable)
 {
-    section = new Section("ImageHeaderTable", sizeof(VersalImageHeaderTableStructure));
+    section = new Section("MetaHeader", sizeof(VersalImageHeaderTableStructure));
     iHTable = (VersalImageHeaderTableStructure*)section->Data;
 }
 
@@ -69,7 +70,7 @@ VersalImageHeaderTable::VersalImageHeaderTable()
 VersalImageHeaderTable::VersalImageHeaderTable(std::ifstream& src)
 {
     prebuilt = true;
-    section = new Section("ImageHeaderTable", sizeof(VersalImageHeaderTableStructure));
+    section = new Section("MetaHeader", sizeof(VersalImageHeaderTableStructure));
     iHTable = (VersalImageHeaderTableStructure*)section->Data;
     
     /* Import the Image Header Table from a boot image file */
@@ -112,7 +113,7 @@ void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
         bypassIdCode = bi.bifOptions->GetBypassIdcodeFlag();
         bootDevice = bi.bifOptions->GetBootDevice();
 
-        SetImageHeaderTableVersion(0x00020000);
+        SetImageHeaderTableVersion(VERSION_v3_00_VERSAL);
         SetHeaderTablesSize();
         SetTotalMetaHdrLength(0);
         SetIdentificationString(bi.IsBootloaderFound());
@@ -122,14 +123,75 @@ void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
         dpacm = bi.bifOptions->metaHdrAttributes.dpaCM;
         pufHDLoc = bi.bifOptions->metaHdrAttributes.pufHdLoc;
     }
-
-    for (std::list<ImageHeader*>::iterator image = bi.imageList.begin(); image != bi.imageList.end(); image++)
+    else
     {
-        (*image)->Build(bi, cache);
-        ValidateSecurityCombinations((*image)->GetAuthenticationType(), (*image)->GetEncryptContext()->Type(),
-            (*image)->GetChecksumContext()->Type());
+        if (bi.bifOptions->GetPdiId() != 0)
+        {
+            pdiId = bi.bifOptions->GetPdiId();
+        }
+        if (bi.bifOptions->GetParentId() != 0)
+        {
+            parentId = bi.bifOptions->GetParentId();
+        }
 
-        imageHeaderList.push_back(*image);
+        if (bi.bifOptions->GetIdCode() != 0)
+        {
+            idCode = bi.bifOptions->GetIdCode();
+        }
+        if (bi.bifOptions->GetExtendedIdCode() != 0)
+        {
+            extendedIdCode = bi.bifOptions->GetExtendedIdCode();
+        }
+
+        if (bi.bifOptions->GetBypassIdcodeFlag() != false)
+        {
+            bypassIdCode = bi.bifOptions->GetBypassIdcodeFlag();
+        }
+        if (bi.bifOptions->GetBootDevice() != 0)
+        {
+            bootDevice = bi.bifOptions->GetBootDevice();
+        }
+
+        SetIdentificationString(bi.IsBootloaderFound());
+        SetIds();
+
+        if (bi.bifOptions->metaHdrAttributes.encrKeySource != KeySource::None)
+        {
+            metaHdrKeySrc = bi.options.bifOptions->metaHdrAttributes.encrKeySource;
+        }
+        if (bi.bifOptions->metaHdrAttributes.dpaCM != DpaCM::DpaCMDisable)
+        {
+            dpacm = bi.bifOptions->metaHdrAttributes.dpaCM;
+        }
+        if (bi.bifOptions->metaHdrAttributes.pufHdLoc != PufHdLoc::PUFinEFuse)
+        {
+            pufHDLoc = bi.bifOptions->metaHdrAttributes.pufHdLoc;
+        }
+    }
+
+    /* Sub system Image Header creation */
+    if (bi.createSubSystemPdis == true)
+    {
+        for (std::list<SubSysImageHeader*>::iterator subsysimage = bi.subSysImageList.begin(); subsysimage != bi.subSysImageList.end(); subsysimage++)
+        {
+            (*subsysimage)->Build(bi, cache);
+            for (std::list<ImageHeader*>::iterator img = (*subsysimage)->imgList.begin(); img != (*subsysimage)->imgList.end(); img++)
+            {
+                ValidateSecurityCombinations((*img)->GetAuthenticationType(), (*img)->GetEncryptContext()->Type(),
+                    (*img)->GetChecksumContext()->Type());
+            }
+        }
+    }
+    else
+    {
+        for (std::list<ImageHeader*>::iterator image = bi.imageList.begin(); image != bi.imageList.end(); image++)
+        {
+            (*image)->Build(bi, cache);
+            ValidateSecurityCombinations((*image)->GetAuthenticationType(), (*image)->GetEncryptContext()->Type(),
+                (*image)->GetChecksumContext()->Type());
+
+            imageHeaderList.push_back(*image);
+        }
     }
 
     bi.options.SetPadHeaderTable(false);
@@ -209,6 +271,10 @@ void VersalImageHeaderTable::Link(BootImage &bi)
         }
     }
 
+    if (prebuilt)
+    {
+        SetTotalMetaHdrLength(bi.imageHeaderTable->metaHeaderLength);
+    }
     SetBootDevice(bi.bifOptions->GetBootDevice());
     SetBootDeviceAddress(bi.bifOptions->GetBootDeviceAddress());
     SetMetaHdrKeySrc(bi.imageHeaderTable->metaHdrKeySrc, bi.bifOptions);
@@ -314,7 +380,86 @@ void VersalImageHeaderTable::SetMetaHdrSecureHdrIv(uint8_t* iv)
 /******************************************************************************/
 void VersalImageHeaderTable::SetMetaHdrKeySrc(KeySource::Type keyType, BifOptions* bifOptions)
 {
-    iHTable->metaHdrKeySource = 0;
+    //Encryption key source, only key source used for PLM is valid for meta header
+    kekIvMust = false;
+    switch (keyType)
+    {
+    case KeySource::EfuseRedKey:
+        iHTable->metaHdrKeySource = EFUSE_RED_KEY;
+        break;
+
+    case KeySource::BbramRedKey:
+        iHTable->metaHdrKeySource = BBRAM_RED_KEY;
+        break;
+
+    case KeySource::EfuseBlkKey:
+        iHTable->metaHdrKeySource = EFUSE_BLK_KEY;
+        kekIvFile = bifOptions->GetEfuseKekIVFile();
+        if (kekIvFile == "")
+        {
+            LOG_ERROR("'efuse_kek_iv' is mandatory with 'keysrc=efuse_blk_key'");
+        }
+        kekIvMust = true;
+        break;
+
+    case KeySource::BbramBlkKey:
+        iHTable->metaHdrKeySource = BBRAM_BLK_KEY;
+        kekIvFile = bifOptions->GetBbramKekIVFile();
+        if (kekIvFile == "")
+        {
+            LOG_ERROR("'bbram_kek_iv' is mandatory with 'keysrc=bbram_blk_key'");
+        }
+        kekIvMust = true;
+        break;
+
+    case KeySource::BhBlkKey:
+        iHTable->metaHdrKeySource = BH_BLACK_KEY;
+        kekIvFile = bifOptions->GetBHKekIVFile();
+        if (kekIvFile == "")
+        {
+            LOG_ERROR("'bh_kek_iv' is mandatory with 'keysrc=bh_blk_key'");
+        }
+        kekIvMust = true;
+        break;
+
+    case KeySource::EfuseGryKey:
+        iHTable->metaHdrKeySource = EFUSE_GRY_KEY;
+        kekIvFile = bifOptions->GetEfuseKekIVFile();
+        if (kekIvFile == "")
+        {
+            LOG_ERROR("'efuse_kek_iv' is mandatory with 'keysrc=efuse_gry_key'");
+        }
+        kekIvMust = true;
+        break;
+
+    case KeySource::BbramGryKey:
+        iHTable->metaHdrKeySource = BBRAM_GRY_KEY;
+        kekIvFile = bifOptions->GetBbramKekIVFile();
+        if (kekIvFile == "")
+        {
+            LOG_ERROR("'bbram_kek_iv' is mandatory with 'keysrc=bbram_gry_key'");
+        }
+        kekIvMust = true;
+        break;
+
+    case KeySource::BhGryKey:
+        iHTable->metaHdrKeySource = BH_GRY_KEY;
+        kekIvFile = bifOptions->GetBHKekIVFile();
+        if (kekIvFile == "")
+        {
+            LOG_ERROR("'bh_kek_iv' is mandatory with 'keysrc=bh_gry_key'");
+        }
+        kekIvMust = true;
+        break;
+
+    case KeySource::None:
+        iHTable->metaHdrKeySource = 0;
+        break;
+
+    default:
+        LOG_ERROR("BIF attribute error !!!\n\t\tInvalid 'keysrc' mentioned for MetaHeader.");
+        break;
+    }
 }
 
 /******************************************************************************/
@@ -322,6 +467,22 @@ void VersalImageHeaderTable::SetMetaHdrGreyOrBlackIv(std::string ivFile)
 {
     uint8_t* ivData = new uint8_t[IV_LENGTH * 4];
     memset(ivData, 0, IV_LENGTH * 4);
+
+    if (ivFile != "")
+    {
+        FileImport fileReader;
+        if (!fileReader.LoadHexData(ivFile, ivData, IV_LENGTH * 4))
+        {
+            LOG_ERROR("Invalid no. of data bytes for Black/Grey Key IV.\n           Expected length for Grey/Black IV is 12 bytes");
+        }
+    }
+    else
+    {
+        if (kekIvMust)
+        {
+            LOG_ERROR("Black/Grey IV is mandatory in case of Black/Grey key sources\n           Please use 'bh_kek_iv' to specify the IV in BIF file");
+        }
+    }
 
     memcpy(&iHTable->metaHdrGreyOrBlackIV, ivData, IV_LENGTH * 4);
     delete[] ivData;
@@ -525,7 +686,7 @@ VersalImageHeader::VersalImageHeader(std::ifstream& ifs, bool IsBootloader)
     {
         Bootloader = IsBootloader;
 
-        PartitionHeader* hdr = new VersalPartitionHeader(this, index);
+        VersalPartitionHeader* hdr = new VersalPartitionHeader(this, index);
         if (!firstValidHdr)
         {
             hdr->firstValidIndex = true;
@@ -534,7 +695,10 @@ VersalImageHeader::VersalImageHeader(std::ifstream& ifs, bool IsBootloader)
         ifs.seekg(offset);
         hdr->ReadHeader(ifs);
         hdr->ReadData(ifs);
-
+        if (hdr->GetPartitionKeySource())
+        {
+            hdr->preencrypted = true;
+        }
         partitionHeaderList.push_back(hdr);
 
         Alignment = 0;
@@ -547,7 +711,9 @@ VersalImageHeader::VersalImageHeader(std::ifstream& ifs, bool IsBootloader)
         early_handoff = hdr->GetEarlyHandoff();
         hivec = hdr->GetHivec();
         partitionType = hdr->GetPartitionType();
-
+        PartOwner = (PartitionOwner::Type)hdr->GetOwnerType();
+        dpacm = hdr->GetDpaCMFlag();
+        pufHdLoc = hdr->GetPufHdLocation();
         offset += hdr->GetPartitionHeaderSize();
     }
 }
@@ -585,7 +751,7 @@ VersalImageHeader::VersalImageHeader(std::ifstream& ifs, VersalImageHeaderStruct
     {
         Bootloader = IsBootloader;
 
-        PartitionHeader* hdr = new VersalPartitionHeader(this, index);
+        VersalPartitionHeader* hdr = new VersalPartitionHeader(this, index);
         if (!firstValidHdr)
         {
             hdr->firstValidIndex = true;
@@ -594,7 +760,10 @@ VersalImageHeader::VersalImageHeader(std::ifstream& ifs, VersalImageHeaderStruct
         ifs.seekg(offset);
         hdr->ReadHeader(ifs);
         hdr->ReadData(ifs);
-
+        if (hdr->GetPartitionKeySource())
+        {
+            hdr->preencrypted = true;
+        }
         partitionHeaderList.push_back(hdr);
 
         Alignment = 0;
@@ -607,6 +776,9 @@ VersalImageHeader::VersalImageHeader(std::ifstream& ifs, VersalImageHeaderStruct
         early_handoff = hdr->GetEarlyHandoff();
         hivec = hdr->GetHivec();
         partitionType = hdr->GetPartitionType();
+        PartOwner = (PartitionOwner::Type)hdr->GetOwnerType();
+        dpacm = hdr->GetDpaCMFlag();
+        pufHdLoc = hdr->GetPufHdLocation();
         offset += hdr->GetPartitionHeaderSize();
     }
 }
@@ -733,7 +905,6 @@ std::string VersalImageHeader::GetKekIV(void)
 /******************************************************************************/
 void VersalImageHeader::Build(BootImage& bi, Binary& cache)
 {
-
     if ((bi.subSysImageList.size() == 0) || (bi.createSubSystemPdis == false))
     {
         if (section != NULL)
@@ -1078,7 +1249,11 @@ void VersalImageHeader::ParseFileToImport(BootImage& bi)
     {
         if (Filename != "")
         {
-            LOG_INFO("Parsing file - %s", StringUtils::BaseName(Filename).c_str());
+            if ((filelist.size() > 1) && (GetPartitionType() != PartitionType::CONFIG_DATA_OBJ))
+            {
+                LOG_ERROR("File for merging is not in CDO format - %s", Filename.c_str());
+            }
+            LOG_INFO("Parsing file - %s", filelist.at(0).c_str());
             std::ifstream stream(Filename.c_str(), std::ios_base::binary);
             if (!stream)
             {
@@ -1094,13 +1269,10 @@ void VersalImageHeader::ParseFileToImport(BootImage& bi)
             {
                 ImportBit(bi);
             }
-            else if ((line.find("Xilinx ASCII NPI Deviceimage") != std::string::npos) || (line.find("Xilinx ASCII PSAXIMM Deviceimage") != std::string::npos))
+            else if ((line.find("Xilinx ASCII NPI Deviceimage") != std::string::npos) || (line.find("Xilinx ASCII PSAXIMM Deviceimage") != std::string::npos)
+                     || (line.find("version") != std::string::npos) || (GetPartitionType() == PartitionType::CONFIG_DATA_OBJ))
             {
-                ImportNpi(bi);
-            }
-            else if (line.find("version") != std::string::npos)
-            {
-                ImportCdoSource(bi);
+                ImportCdo(bi);
             }
             else
             {
@@ -1140,6 +1312,29 @@ void VersalImageHeader::ImportCdoSource(BootImage& bi)
 
     hdr->partition = new VersalPartition(hdr, buffer, size);
     hdr->partitionSize = size;
+    delete[] buffer;
+    SetLoadAndExecAddress(hdr);
+    partitionHeaderList.push_back(hdr);
+}
+
+/******************************************************************************/
+void VersalImageHeader::ImportCdo(BootImage& bi)
+{
+    uint8_t* buffer = NULL;
+    size_t size = 0;
+
+    if (filelist.size() > 0)
+    {
+        ParseCdos(bi, filelist, &buffer, &size);
+    }
+    SetPartitionType(PartitionType::CONFIG_DATA_OBJ);
+    PartitionHeader* hdr = new VersalPartitionHeader(this, 0);
+    hdr->firstValidIndex = true;
+    hdr->loadAddress = 0xFFFFFFFFFFFFFFFF;
+    hdr->execAddress = 0;
+
+    hdr->partition = new VersalPartition(hdr, buffer, size);
+    hdr->partitionSize = hdr->transferSize = size;
     delete[] buffer;
     SetLoadAndExecAddress(hdr);
     partitionHeaderList.push_back(hdr);
@@ -1187,7 +1382,7 @@ void VersalImageHeader::SetMetaHdrRevokeId(uint32_t revokeId)
 /******************************************************************************/
 void VersalImageHeader::SetReservedFields(void)
 {
-    memset(imageHeader->reserved, 0x00, MAX_IH_RESERVED_VERSAL * sizeof(uint32_t));
+    imageHeader->reserved = 0x00;
 }
 
 /******************************************************************************/
@@ -1396,111 +1591,32 @@ void VersalImageHeader::ImportElf(BootImage& bi)
             SetFsblFwSizeIh(pmc_fw_size + pmc_fw_pad_bytes);
             SetTotalFsblFwSizeIh(pmc_fw_size + pmc_fw_pad_bytes);
 
-            /* Attach pmcdata, if available, to PLM to create a single partition */
-            std::string pmc_cdo_file = bi.bifOptions->GetPmcdataFile();
-            if ((pmc_cdo_file != "") || (bi.bifOptions->GetPmcDataBuffer() != NULL))
+            if ((bi.bifOptions->GetPmcCdoFileList().size() > 0) || (bi.bifOptions->GetPmcDataBuffer() != NULL))
             {
-                Binary::Length_t pmc_cdo_length = 0;
-                uint8_t* pmc_cdo_data = NULL;
-
-                /* If PMC CDO is passed as a file */
-                if (pmc_cdo_file != "")
+                uint8_t* cdo_partition = NULL;
+                size_t cdo_length = 0;
+                if(bi.bifOptions->GetPmcCdoFileList().size() != 0)
                 {
-                    std::ifstream stream(pmc_cdo_file.c_str(), std::ios_base::binary);
-                    if (!stream)
-                    {
-                        LOG_ERROR("Cannot read PMC Data file - %s ", pmc_cdo_file.c_str());
-                    }
-                    std::string line;
-                    getline(stream, line);
-                    if ((line.find("Xilinx ASCII NPI Deviceimage") != std::string::npos) || (line.find("Xilinx ASCII PSAXIMM Deviceimage") != std::string::npos))
-                    {
-                        /* If PMC CDO is in ASCII format */
-                        stream.seekg(0, std::ios::beg);
-                        BitFile *bit = new VersalBitFile(stream);
-                        bit->ParseBit(bi);
-                        OutputStream *os = bit->GetOutputStreamType();
-                        bit->CopyNpi(os);
-                        pmc_cdo_length = os->Size();
-                        pmc_cdo_data = new uint8_t[pmc_cdo_length];
-                        memcpy(pmc_cdo_data, os->Start(), pmc_cdo_length);
-                    }
-                    else if (line.find("version") != std::string::npos)
-                    {
-                        size_t len = 0;
-                        pmc_cdo_data = DecodeCdo(pmc_cdo_file, &len);
-                        pmc_cdo_length = len;
-                    }
-                    else
-                    {
-                        /* If PMC CDO is in BIN format */
-                        ByteFile pmc_cdo_partition(pmc_cdo_file);
-                        pmc_cdo_length = pmc_cdo_partition.len;
-                        /* Read ID value (XNLX/CDO) from CDO Header to identify endianness */
-                        uint32_t dataValue = ReadBigEndian32(pmc_cdo_partition.bytes + 4);
-                        /*if ((dataValue != 0x584c4e58) && (dataValue != 0x584e4c58) && (dataValue != 0x004f4443) && (dataValue != 0x43444f00))
-                        {
-                        LOG_ERROR("Invalid CDO format - incorrect identification word (XLNX/CDO) - 0x%x", dataValue);
-                        }*/
-                        bool change_endianness = false;
-                        /* Convert BE CDOs to LE */
-                        if (dataValue == 0x584c4e58 || dataValue == 0x004f4443)
-                        {
-                            change_endianness = true;
-                        }
-                        pmc_cdo_data = new uint8_t[pmc_cdo_length];
-                        for (uint32_t index = 0; index < pmc_cdo_partition.len; index += 4)
-                        {
-                            dataValue = ReadBigEndian32(pmc_cdo_partition.bytes + index);
-                            if (change_endianness)
-                            {
-                                WriteLittleEndian32(pmc_cdo_data + index, dataValue);
-                            }
-                            else
-                            {
-                                WriteBigEndian32(pmc_cdo_data + index, dataValue);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    /* If PMC CDO is passed as a buffer */
-                    pmc_cdo_length = bi.bifOptions->GetTotalpmcdataSize();
-                    pmc_cdo_data = new uint8_t[pmc_cdo_length];
-                    memcpy(pmc_cdo_data, bi.bifOptions->GetPmcDataBuffer(), pmc_cdo_length);
-                }
-                
-                void *pmc_data_pp = NULL;
-                size_t pmc_data_pp_length = 0;
-                if (cdocmd_post_process_cdo(pmc_cdo_data, pmc_cdo_length, &pmc_data_pp, &pmc_data_pp_length))
-                {
-                    LOG_ERROR("PMC CDO post process error");
-                }
-                if (pmc_data_pp != NULL)
-                {
-                    delete[] pmc_cdo_data;
-                    pmc_cdo_data = new uint8_t[pmc_data_pp_length];
-                    memcpy(pmc_cdo_data, pmc_data_pp, pmc_data_pp_length);
-                    pmc_cdo_length = pmc_data_pp_length;
+                    LOG_INFO("File for merging - %s ", bi.bifOptions->GetPmcCdoFileList().at(0).c_str());
                 }
 
+                ParseCdos(bi, bi.bifOptions->GetPmcCdoFileList(), &cdo_partition, &cdo_length);
                 /* Calculate pad bytes for aligning PMC CDO for 16 byte-alignment */
-                uint32_t pmc_cdo_pad_bytes = 0;
-                if (pmc_cdo_length % 16 != 0)
+                uint32_t total_cdo_pad_bytes = 0;
+                if (cdo_length % 16 != 0)
                 {
-                    pmc_cdo_pad_bytes = 16 - (pmc_cdo_length % 16);
+                    total_cdo_pad_bytes = 16 - (cdo_length % 16);
                 }
-                pmcdataSize = totalpmcdataSize = pmc_cdo_length + pmc_cdo_pad_bytes;
 
                 /* Append PMC CDO to PMC FW to create a single partition */
-                total_size = pmc_fw_size + pmc_fw_pad_bytes + pmc_cdo_length + pmc_cdo_pad_bytes;
+                pmcdataSize = totalpmcdataSize = cdo_length + total_cdo_pad_bytes;
+                total_size = pmc_fw_size + pmc_fw_pad_bytes + pmcdataSize;
                 partition_data = (uint8_t*)realloc(partition_data, total_size);
                 memset(partition_data + pmc_fw_size, 0, pmc_fw_pad_bytes);
-                memcpy(partition_data + pmc_fw_size + pmc_fw_pad_bytes, pmc_cdo_data, pmc_cdo_length);
-                memset(partition_data + pmc_fw_size + pmc_fw_pad_bytes + pmc_cdo_length, 0, pmc_cdo_pad_bytes);
+                memcpy(partition_data + pmc_fw_size + pmc_fw_pad_bytes, cdo_partition, cdo_length);
+                memset(partition_data + pmc_fw_size + pmc_fw_pad_bytes + cdo_length, 0, total_cdo_pad_bytes);
 
-                delete[] pmc_cdo_data;
+                delete[] cdo_partition;
             }
         }
         /* For all other partitions add each loadable section as a different partition */
@@ -1550,6 +1666,79 @@ void VersalImageHeader::ImportElf(BootImage& bi)
             partition_data = NULL;
         }
     }
+}
+
+/******************************************************************************/
+void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> filelist, uint8_t** cdo_data, size_t* cdo_size)
+{
+    uint8_t* total_cdo_data = NULL;
+    uint64_t total_cdo_length = 0;
+    void *cdo_data_pp = NULL;
+    size_t cdo_data_pp_length = 0;
+
+    if (filelist.size() > 0)
+    {
+        /* Offset and length are set to CDO header size, to take into account the addition of
+        merged CDO header which will be added at the end */
+        uint64_t offset = sizeof(VersalCdoHeader);
+        total_cdo_length = sizeof(VersalCdoHeader);
+        for (uint8_t idx = 0; idx != filelist.size(); idx++)
+        {
+            void* cdo_data = NULL;
+            size_t cdo_length = 0;
+            uint64_t actual_cdo_size = 0;
+            char* cdo_filename = (char*)filelist.at(idx).c_str();
+            CdoSequence * cdo_seq;
+            cdo_seq = cdoseq_load_cdo(cdo_filename);
+            if (cdo_seq == NULL)
+            {
+                LOG_ERROR("Error parsing CDO file");
+            }
+            cdo_data = cdoseq_to_binary(cdo_seq, &cdo_length, 0);
+            CheckIdsInCdo(cdo_seq);
+            //cdocmd_delete_sequence(cdo_seq);
+
+            if (cdo_data_pp != NULL)
+            {
+                //delete cdo_data;
+                cdo_data = (uint8_t*)cdo_data_pp;
+                cdo_length = cdo_data_pp_length;
+            }
+
+            actual_cdo_size = cdo_length - sizeof(VersalCdoHeader);
+            total_cdo_length += (actual_cdo_size);
+            total_cdo_data = (uint8_t*)realloc(total_cdo_data, total_cdo_length);
+            memcpy(total_cdo_data + offset, (uint8_t*)cdo_data + sizeof(VersalCdoHeader), actual_cdo_size);
+            offset += actual_cdo_size;
+            //delete cdo_data;
+        }
+        VersalCdoHeader* cdo_header = new VersalCdoHeader;
+        cdo_header->remaining_words = 0x04;
+        cdo_header->id_word = 0x004f4443; /* CDO */
+        cdo_header->version = 0x00000200; /* Version - 2.0 */
+        cdo_header->length = (total_cdo_length - sizeof(VersalCdoHeader)) / 4;
+        cdo_header->checksum = ~(cdo_header->remaining_words + cdo_header->id_word + cdo_header->version + cdo_header->length);
+        memcpy(total_cdo_data, cdo_header, sizeof(VersalCdoHeader));
+        delete cdo_header;
+    }
+    else
+    {
+        /* If PMC CDO is passed as a buffer 
+           or in case PDI is passed as input in BIF, PMC data is read into a buffer from the PDI */
+        total_cdo_length = bi.bifOptions->GetTotalpmcdataSize();
+        total_cdo_data = new uint8_t[total_cdo_length];
+        memcpy(total_cdo_data, bi.bifOptions->GetPmcDataBuffer(), total_cdo_length);
+
+        if (cdo_data_pp != NULL)
+        {
+            delete[] total_cdo_data;
+            total_cdo_data = (uint8_t*)cdo_data_pp;
+            total_cdo_length = cdo_data_pp_length;
+        }
+    }
+
+    *cdo_size = total_cdo_length;
+    *cdo_data = total_cdo_data;
 }
 
 /******************************************************************************/
@@ -2210,6 +2399,20 @@ CdoCommandWriteKeyhole* CdoCmdWriteKeyHole(uint32_t size, SlrId::Type slr_index)
 }
 
 /******************************************************************************/
+CdoCommandNop* CdoCmdNoOperation(size_t size)
+{
+    CdoCommandNop* cdoCmd = new CdoCommandNop;
+    uint8_t length = size - CDO_CMD_NOP_SIZE;
+    cdoCmd->header.reserved = 0x00;
+    /* If 1 word needs to be ignored, then no need to add length and payload */
+    cdoCmd->header.length = length / sizeof(uint32_t);
+    cdoCmd->header.handler_id = 1;
+    cdoCmd->header.cmd_id = CdoCmds::NOP;
+    LOG_TRACE("CDO_CMD_NOP");
+    return cdoCmd;
+}
+
+/******************************************************************************/
 bool IsCdoCmdEndFound(const uint8_t* buffer, size_t size)
 {
     bool status = false;
@@ -2232,6 +2435,43 @@ bool IsCdoFile(uint32_t value)
     return false;
 }
 
+/******************************************************************************/
+bool IsCdoFile(std::string file)
+{
+    std::ifstream stream(file.c_str(), std::ios_base::binary);
+    if (!stream)
+    {
+        LOG_ERROR("Cannot read file - %s ", (file.c_str()));
+    }
+    std::string line;
+    getline(stream, line);
+    if ((line.find("Xilinx ASCII NPI Deviceimage") != std::string::npos) || (line.find("Xilinx ASCII PSAXIMM Deviceimage") != std::string::npos) || (line.find("version") != std::string::npos))
+    {
+        return true;
+    }
+    else
+    {
+        FILE *binFile = fopen(file.c_str(), "rb");
+
+        if (!binFile)
+        {
+            LOG_ERROR("Cannot read file %s", file.c_str());
+        }
+
+        uint32_t value = 0;
+        size_t result = fread(&value, 1, 4, binFile);
+        if (result == 4)
+        {
+            if ((value == 0x584c4e58) || (value == 0x584e4c58) || (value == 0x004f4443) || (value == 0x43444f00))
+            {
+                return true;
+            }
+        }
+        fclose(binFile);
+    }
+    return false;
+}
+
 
 /******************************************************************************/
 SlrPdiType GetSlrType(SlrPdiInfo* slr)
@@ -2246,7 +2486,7 @@ SlrPdiType GetSlrType(SlrPdiInfo* slr)
     getline(stream, line);
     if ((line.find("Xilinx ASCII NPI Deviceimage") != std::string::npos) || (line.find("Xilinx ASCII PSAXIMM Deviceimage") != std::string::npos))
     {
-        slr_type = SlrPdiType::NOC_FREQ;
+        slr_type = SlrPdiType::MASTER_CDO;
     }
     else
     {
@@ -2256,7 +2496,7 @@ SlrPdiType GetSlrType(SlrPdiInfo* slr)
         fl.close();
         if ((dataValue == 0x584c4e58) || (dataValue == 0x584e4c58) || (dataValue == 0x004f4443) || (dataValue == 0x43444f00))
         {
-            slr_type = SlrPdiType::NOC_FREQ;
+            slr_type = SlrPdiType::MASTER_CDO;
         }
     }
     stream.close();
@@ -2304,54 +2544,197 @@ Total SLR boot partition:
 void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
 {
     LOG_INFO("Creating SLR Boot CDO partition");
-    SetPartitionType(PartitionType::CONFIG_DATA_OBJ);
-    PartitionHeader* partHdr = new VersalPartitionHeader(this, 0);
-    partHdr->execState = 0;
-    partHdr->elfEndianess = 0;
-    partHdr->firstValidIndex = true;
 
-    std::ifstream stream(slrBootPdiInfo.front()->file.c_str(), std::ios_base::binary);
-    if (!stream)
+    if ((slrBootPdiInfo.size() == 1) && GetSlrType(slrBootPdiInfo.front()) == MASTER_CDO)
     {
-        LOG_ERROR("Cannot read file - %s ", slrBootPdiInfo.front()->file.c_str());
-    }
-    std::string line;
-    getline(stream, line);
-    uint8_t* cdo_buffer;
-    size_t size = 0;
-
-    if ((line.find("Xilinx ASCII NPI Deviceimage") != std::string::npos) || (line.find("Xilinx ASCII PSAXIMM Deviceimage") != std::string::npos))
-    {
-        /* CDO in ASCII/raw format */
-        stream.seekg(0, std::ios::beg);
-        BitFile *bit = new VersalBitFile(stream);
-        bit->ParseBit(bi);
-        OutputStream *os = bit->GetOutputStreamType();
-        bit->CopyNpi(os);
-        size = os->Size();
-        cdo_buffer = new uint8_t[size];
-        memcpy(cdo_buffer, os->Start(), size);
-        delete os;
-    }
-    else if (line.find("version") != std::string::npos)
-    {
-        /* CDO in source format */
-        cdo_buffer = DecodeCdo(Filename, &size);
+        SetPartitionType(PartitionType::CONFIG_DATA_OBJ);
+        PartitionHeader* partHdr = new VersalPartitionHeader(this, 0);
+        partHdr->execState = 0;
+        partHdr->elfEndianess = 0;
+        partHdr->firstValidIndex = true;
+        uint8_t* cdo_buffer = NULL;
+        size_t size = 0;
+        char* cdo_filename = (char*)slrBootPdiInfo.front()->file.c_str();
+        CdoSequence * cdo_seq;
+        cdo_seq = cdoseq_load_cdo(cdo_filename);
+        if (cdo_seq == NULL)
+        {
+            LOG_ERROR("Error parsing CDO file");
+        }
+        cdo_buffer = (uint8_t*)cdoseq_to_binary(cdo_seq, &size, 0);
+        partHdr->partitionSize = size;
+        partHdr->partition = new VersalPartition(partHdr, cdo_buffer, size);
+        partitionHeaderList.push_back(partHdr);
+        delete cdo_buffer;
+        delete cdoHeader;
+        cdoSections.clear();
     }
     else
     {
-        /* CDO in BIN format */
-        ByteFile slr_boot_data(slrBootPdiInfo.front()->file);
-        size = slr_boot_data.len;
-        cdo_buffer = new uint8_t[size];
-        memcpy(cdo_buffer, slr_boot_data.bytes, size);
+        uint32_t p_offset = 0;
+        uint64_t size = 0;
+        /* Add CDO Header */
+        cdoHeader = new VersalCdoHeader;
+        cdoHeader->remaining_words = CDO_REMAINING_WORDS;
+        cdoHeader->id_word = CDO_IDENTIFICATION; /* CDO */
+        cdoHeader->version = CDO_VERSION; /* Version - 2.0 */
+        cdoHeader->length = 0;
+        cdoHeader->checksum = 0;
+
+        size += sizeof(VersalCdoHeader);
+        uint8_t* p_buffer = new uint8_t[size];
+        memcpy(p_buffer, cdoHeader, sizeof(VersalCdoHeader));
+        p_offset += sizeof(VersalCdoHeader);
+
+        slrBootPdiInfo.sort(SortByIndex);
+        /* Add CDO Write Keyhole commands */
+        for (std::list<SlrPdiInfo*>::iterator slr_id = slrBootPdiInfo.begin(); slr_id != slrBootPdiInfo.end(); slr_id++)
+        {
+            uint32_t file_size;
+            uint32_t pad_size;
+            std::ifstream stream((*slr_id)->file.c_str(), std::ios_base::binary);
+            if (!stream)
+            {
+                LOG_ERROR("Cannot read file - %s ", (*slr_id)->file.c_str());
+            }
+            
+            if (GetSlrType(*slr_id) == SlrPdiType::BOOT)
+            {
+                ByteFile slr_boot_data((*slr_id)->file);
+                file_size = slr_boot_data.len;
+                pad_size = file_size + ((4 - (file_size & 3)) & 3);
+                uint32_t bh_offset = 0;
+                /* Remove the 16-bytes of SMAP bus width from start of PDI */
+                uint32_t smap_data = (slr_boot_data.bytes[0]) + (slr_boot_data.bytes[1] << 8) + (slr_boot_data.bytes[2] << 16) + (slr_boot_data.bytes[3] << 24);
+                if ((smap_data == 0xDD000000) || (smap_data == 0x00DD0000) || (smap_data == 0x000000DD))
+                {
+                    bh_offset = (SMAP_BUS_WIDTH * 4);
+                    file_size -= (SMAP_BUS_WIDTH * 4);
+                    pad_size -= (SMAP_BUS_WIDTH * 4);
+                }
+                /* For DMA alignment - add nop commands to align it to 128-bit (16-byte) */
+                size_t pad_bytes = ((16 - ((p_offset + CDO_CMD_WRITE_KEYHOLE_SIZE) & 15)) & 15);
+                size += (CDO_CMD_WRITE_KEYHOLE_SIZE + pad_size + pad_bytes);
+                p_buffer = (uint8_t*)realloc(p_buffer, size);
+
+                if (pad_bytes != 0)
+                {
+                    CdoCommandNop* cdoCmd = CdoCmdNoOperation(pad_bytes);
+                    LOG_TRACE("NOP - 0x%x", p_offset);
+                    memcpy(p_buffer + p_offset, cdoCmd, CDO_CMD_NOP_SIZE);
+                    p_offset += CDO_CMD_NOP_SIZE;
+                    if (cdoCmd->header.length > 0)
+                    {
+                        memset(p_buffer + p_offset, 0, cdoCmd->header.length * sizeof(uint32_t));
+                        p_offset += (cdoCmd->header.length * sizeof(uint32_t));
+                    }
+                }
+
+                /* Add Write Key Hole command with SLR Boot PDI data */
+                CdoCommandWriteKeyhole* cdoCmd = CdoCmdWriteKeyHole(pad_size, (*slr_id)->index);
+                memcpy(p_buffer + p_offset, cdoCmd, CDO_CMD_WRITE_KEYHOLE_SIZE);
+                p_offset += CDO_CMD_WRITE_KEYHOLE_SIZE;
+                delete cdoCmd;
+                memcpy(p_buffer + p_offset, slr_boot_data.bytes + bh_offset, file_size);
+                p_offset += file_size;
+                if ((pad_size - file_size) != 0)
+                {
+                    memset(p_buffer + p_offset, 0, pad_size - file_size);
+                    p_offset += pad_size;
+                }
+
+                /* Add SSIT Wait Slave command */
+                size += sizeof(CdoSsitSlaves);
+                p_buffer = (uint8_t*)realloc(p_buffer, size);
+                CdoSsitSlaves *ssit_wait_slaves_cmd = CdoCmdWriteSsitWaitSlaves(1 << ((*slr_id)->index - 1));
+                memcpy(p_buffer + p_offset, ssit_wait_slaves_cmd, sizeof(CdoSsitSlaves));
+                p_offset += sizeof(CdoSsitSlaves);
+                delete ssit_wait_slaves_cmd;
+
+                num_of_slrs++;
+            }
+            else if (GetSlrType(*slr_id) == SlrPdiType::MASTER_CDO)
+            {
+                if ((*slr_id)->index == slrBootPdiInfo.size())
+                {
+                    /* Add SSIT Sync Slave command */
+                    size += sizeof(CdoSsitSlaves);
+                    p_buffer = (uint8_t*)realloc(p_buffer, size);
+                    CdoSsitSlaves *ssit_sync_slaves_cmd = CdoCmdWriteSsitSyncSlaves(num_of_slrs);
+                    memcpy(p_buffer + p_offset, ssit_sync_slaves_cmd, sizeof(CdoSsitSlaves));
+                    p_offset += sizeof(CdoSsitSlaves);
+                    delete ssit_sync_slaves_cmd;
+                }
+
+                /* Add Master Boot NPI and NoC freq CDO commands by parsing the CDO file */
+                uint8_t* cdo_buffer = NULL;
+                size_t cdo_size = 0;
+                char* cdo_filename = (char*)slrBootPdiInfo.front()->file.c_str();
+                CdoSequence * cdo_seq;
+                cdo_seq = cdoseq_load_cdo(cdo_filename);
+                if (cdo_seq == NULL)
+                {
+                    LOG_ERROR("Error parsing CDO file");
+                }
+                cdo_buffer = (uint8_t*)cdoseq_to_binary(cdo_seq, &cdo_size, 0);
+                file_size = cdo_size;
+
+                pad_size = file_size + ((4 - (file_size & 3)) & 3);
+                file_size -= sizeof(VersalCdoHeader);
+                pad_size -= sizeof(VersalCdoHeader);
+                if (IsCdoCmdEndFound(cdo_buffer, file_size))
+                {
+                    file_size -= +sizeof(CdoCommandHeader);
+                    pad_size -= +sizeof(CdoCommandHeader);
+                }
+                size += pad_size;
+                p_buffer = (uint8_t*)realloc(p_buffer, size);
+
+                memcpy(p_buffer + p_offset, cdo_buffer + sizeof(VersalCdoHeader), file_size);
+                if ((pad_size - file_size) != 0)
+                {
+                    memset(p_buffer + p_offset + file_size, 0, pad_size - file_size);
+                }
+                delete[] cdo_buffer;
+                p_offset += pad_size;
+                if ((*slr_id)->index == slrBootPdiInfo.size())
+                {
+                    /* Add SSIT Sync Slave command */
+                    size += sizeof(CdoSsitSlaves);
+                    p_buffer = (uint8_t*)realloc(p_buffer, size);
+
+                    /* Add SSIT Sync Slave command */
+                    CdoSsitSlaves *ssit_sync_slaves_cmd = CdoCmdWriteSsitSyncSlaves(num_of_slrs);
+                    memcpy(p_buffer + p_offset, ssit_sync_slaves_cmd, sizeof(CdoSsitSlaves));
+                    p_offset += sizeof(CdoSsitSlaves);
+                    delete ssit_sync_slaves_cmd;
+                }
+            }
+        }
+
+        size += sizeof(CdoCommandHeader);
+        p_buffer = (uint8_t*)realloc(p_buffer, size);
+        CdoCommandHeader* cmd_end = CdoCmdEnd();
+        memcpy(p_buffer + p_offset, cmd_end, sizeof(CdoCommandHeader));
+        delete cmd_end;
+
+        /* Update CDO header lengths and checksum */
+        cdoHeader->length = (size - sizeof(VersalCdoHeader)) / 4;
+        cdoHeader->checksum = ~(cdoHeader->remaining_words + cdoHeader->id_word + cdoHeader->version + cdoHeader->length);
+        memcpy(p_buffer, cdoHeader, sizeof(VersalCdoHeader));
+
+        SetPartitionType(PartitionType::CONFIG_DATA_OBJ);
+        PartitionHeader* partHdr = new VersalPartitionHeader(this, 0);
+        partHdr->execState = 0;
+        partHdr->elfEndianess = 0;
+        partHdr->firstValidIndex = true;
+        partHdr->partitionSize = size;
+        partHdr->partition = new VersalPartition(partHdr, p_buffer, size);
+        partitionHeaderList.push_back(partHdr);
+        delete[] p_buffer;
+        delete cdoHeader;
+        cdoSections.clear();
     }
-    partHdr->partitionSize = size;
-    partHdr->partition = new Partition(partHdr, cdo_buffer, size);
-    partitionHeaderList.push_back(partHdr);
-    delete cdo_buffer;
-    delete cdoHeader;
-    cdoSections.clear();
 }
 
 /******************************************************************************/
@@ -2380,7 +2763,7 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
 */
 void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
 {
-    uint64_t chunk_size = 0x1000;
+    uint64_t chunk_size = 0x8000; //32KB
     uint64_t size = 0;
     uint32_t p_offset = 0;
     uint32_t slr_sync_points[4] = { 0, 0, 0, 0 };
@@ -2441,8 +2824,23 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
                 if(bytes_to_read != 0)
                 {
                     num_chunks[file_index]++;
-                    size += (bytes_to_read + CDO_CMD_WRITE_KEYHOLE_SIZE);
+                    /* For DMA alignment - add nop commands to align it to 128-bit (16-byte) */
+                    size_t pad_bytes = ((16 - ((p_offset + CDO_CMD_WRITE_KEYHOLE_SIZE) & 15)) & 15);
+                    size += (bytes_to_read + CDO_CMD_WRITE_KEYHOLE_SIZE + pad_bytes);
                     p_buffer = (uint8_t*)realloc(p_buffer, size);
+
+                    if (pad_bytes != 0)
+                    {
+                        CdoCommandNop* cdoCmd = CdoCmdNoOperation(pad_bytes);
+                        LOG_TRACE("NOP - 0x%x", p_offset);
+                        memcpy(p_buffer + p_offset, cdoCmd, CDO_CMD_NOP_SIZE);
+                        p_offset += CDO_CMD_NOP_SIZE;
+                        if (cdoCmd->header.length > 0)
+                        {
+                            memset(p_buffer + p_offset, 0, cdoCmd->header.length * sizeof(uint32_t));
+                            p_offset += (cdoCmd->header.length * sizeof(uint32_t));
+                        }
+                    }
                     LOG_TRACE("SSIT: %d. slr_%d, chunk_offset=0x%x", chunk_num++, (((*slr_id)->index == 4) ? 0 : (*slr_id)->index), p_offset);
 
                     /* Add write keyhole command for slave SLRs and master config */
@@ -2525,7 +2923,7 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
     partHdr->elfEndianess = 0;
     partHdr->firstValidIndex = true;
     partHdr->partitionSize = size;
-    partHdr->partition = new Partition(partHdr, p_buffer, size);
+    partHdr->partition = new VersalPartition(partHdr, p_buffer, size);
     partitionHeaderList.push_back(partHdr);
 
     delete[] p_buffer;
@@ -2554,76 +2952,34 @@ void VersalImageHeader::IdentifySyncPoints(BootImage& bi)
     for (std::list<SlrPdiInfo*>::iterator slr_id = slrConfigPdiInfo.begin(); slr_id != slrConfigPdiInfo.end(); slr_id++)
     {
         file_index = (*slr_id)->index - 1;
-        std::ifstream stream((*slr_id)->file.c_str(), std::ios_base::binary);
-        if (!stream)
+
+        if (IsCdoFile((*slr_id)->file))
         {
-            LOG_ERROR("Cannot read file - %s ", (*slr_id)->file.c_str());
-        }
-        std::string line;
-        getline(stream, line);
-        if ((line.find("Xilinx ASCII NPI Deviceimage") != std::string::npos) || (line.find("Xilinx ASCII PSAXIMM Deviceimage") != std::string::npos))
-        {
-            /* CDO in ASCII/raw format */
-            stream.seekg(0, std::ios::beg);
-            BitFile *bit = new VersalBitFile(stream);
-            bit->ParseBit(bi);
-            OutputStream *os = bit->GetOutputStreamType();
-            bit->CopyNpi(os);
-            uint32_t data_len = os->Size() - sizeof(VersalCdoHeader);
-            slr_data[file_index] = (uint8_t*)malloc(data_len);
-            memcpy(slr_data[file_index], os->Start() + sizeof(VersalCdoHeader), data_len);
-            slr_file_size[file_index] = data_len;
-            delete os;
-        }
-        else if (line.find("version") != std::string::npos)
-        {
-            /* CDO in source format */
-            uint8_t* cdo_buffer;
-            size_t size = 0;
-            cdo_buffer = DecodeCdo(Filename, &size);
-            uint32_t data_len = size - sizeof(VersalCdoHeader);
-            slr_data[file_index] = (uint8_t*)malloc(data_len);
-            memcpy(slr_data[file_index], cdo_buffer + sizeof(VersalCdoHeader), data_len);
-            slr_file_size[file_index] = data_len;
-            delete cdo_buffer;
+            void* cdo_data = NULL;
+            size_t cdo_length = 0;
+            
+            char* cdo_filename = (char*)(*slr_id)->file.c_str();
+            CdoSequence * cdo_seq;
+            cdo_seq = cdoseq_load_cdo(cdo_filename);
+            if (cdo_seq == NULL)
+            {
+                LOG_ERROR("Error parsing CDO file");
+            }
+            cdo_data = cdoseq_to_binary(cdo_seq, &cdo_length, 0);
+            /* As we strip the CDO HEADER, we are replacing that with NOP commands to ensure other alignments are not disturbed */
+            CdoCommandNop* cdoCmd = CdoCmdNoOperation(sizeof(VersalCdoHeader));
+            memcpy(cdo_data, cdoCmd, CDO_CMD_NOP_SIZE);
+            memset((uint8_t*)cdo_data + CDO_CMD_NOP_SIZE, 0, sizeof(VersalCdoHeader) - CDO_CMD_NOP_SIZE);
+            slr_data[file_index] = (uint8_t*)malloc(cdo_length);
+            memcpy(slr_data[file_index], (uint8_t*)cdo_data, cdo_length);
+            slr_file_size[file_index] = cdo_length;
         }
         else
         {
-            /* PDI/CDO in BIN format */
             ByteFile slr_boot_data((*slr_id)->file);
-            /* If CDO file, strip off the CDO header as this will go into a CDO partition */
-            uint32_t dataValue = ReadBigEndian32(slr_boot_data.bytes + 4);
-            if (IsCdoFile(dataValue))
-            {
-                bool change_endianness = false;
-                Binary::Length_t data_len = slr_boot_data.len - sizeof(VersalCdoHeader);
-                slr_data[file_index] = (uint8_t*)malloc(data_len);
-                if (dataValue == 0x584c4e58 || dataValue == 0x004f4443)
-                {
-                    /* Convert BE CDOs to LE */
-                    change_endianness = true;
-                    LOG_WARNING("CDO is in Big Endian format. Big Endian CDOs are deprecated. Please use little endian CDOs.");
-                }
-                for (uint32_t index = 0; index < data_len; index += 4)
-                {
-                    dataValue = ReadBigEndian32(slr_boot_data.bytes + sizeof(VersalCdoHeader) + index);
-                    if (change_endianness)
-                    {
-                        WriteLittleEndian32(slr_data[file_index] + index, dataValue);
-                    }
-                    else
-                    {
-                        WriteBigEndian32(slr_data[file_index] + index, dataValue);
-                    }
-                }
-                slr_file_size[file_index] = data_len;
-            }
-            else
-            {
-                slr_data[file_index] = (uint8_t*)malloc(slr_boot_data.len);
-                memcpy(slr_data[file_index], slr_boot_data.bytes, slr_boot_data.len);
-                slr_file_size[file_index] = slr_boot_data.len;
-            }
+            slr_data[file_index] = (uint8_t*)malloc(slr_boot_data.len);
+            memcpy(slr_data[file_index], slr_boot_data.bytes, slr_boot_data.len);
+            slr_file_size[file_index] = slr_boot_data.len;
         }
 
         std::vector<uint32_t> sync_pt;
@@ -2733,6 +3089,10 @@ void SubSysImageHeader::Build(BootImage& bi, Binary& cache)
         bi.imageHeaderTable->metaHeaderLength += section->Length;
     }
 
+    if (imgList.size() == 0)
+    {
+        LOG_ERROR("Partitions not specified in subsystem - %s", imageName.c_str());
+    }
     if (subSysImageHeaderTable == NULL)
     {
         subSysImageHeaderTable = (VersalImageHeaderStructure*)section->Data;
@@ -2741,14 +3101,30 @@ void SubSysImageHeader::Build(BootImage& bi, Binary& cache)
         //SetImageNameLength((uint32_t)Name.length()); // this is overwritten later for legacy purpose
         SetPartitionHeaderOffset(0);
         SetMetaHdrRevokeId(bi.bifOptions->metaHdrAttributes.revokeId);
-        SetImageHeaderPuid();
         SetMemCopyAddress();
     }
-
+    bool uid_updated = false;
     for (std::list<ImageHeader*>::iterator image = imgList.begin(); image != imgList.end(); image++)
     {
         (*image)->Build(bi, cache);
+        if(((*image)->GetImageId() != 0) && ((*image)->IsUidInfoFoundInCdo() == true) && (uid_updated == false))
+        {
+            if (uniqueId == 0xFFFFFFFF)
+            {
+                uniqueId = (*image)->GetUniqueId();
+            }
+            if (parentUniqueId == 0xFFFFFFFF)
+            {
+                parentUniqueId = (*image)->GetParentUniqueId();
+            }
+            if (functionId == 0xFFFFFFFF)
+            {
+                functionId = (*image)->GetFunctionId();
+            }
+            uid_updated = true;
+        }
     }
+    SetImageHeaderIds();
 }
 
 /******************************************************************************/
@@ -2761,7 +3137,7 @@ void SubSysImageHeader::Link(BootImage &bi, SubSysImageHeader* nextHeader)
     }
 
     SetDataSectionCount();
-    SetImageHeaderPuid();
+    SetImageHeaderIds();
     SetReservedFields();
     SetChecksum();
 }
@@ -2770,7 +3146,7 @@ void SubSysImageHeader::Link(BootImage &bi, SubSysImageHeader* nextHeader)
 /******************************************************************************/
 void SubSysImageHeader::SetReservedFields(void)
 {
-    memset(subSysImageHeaderTable->reserved, 0x00, MAX_IH_RESERVED_VERSAL * sizeof(uint32_t));
+    subSysImageHeaderTable->reserved = 0x0;
 }
 
 /******************************************************************************/
@@ -2802,9 +3178,12 @@ void SubSysImageHeader::SetMetaHdrRevokeId(uint32_t id)
 }
 
 /******************************************************************************/
-void SubSysImageHeader::SetImageHeaderPuid(void)
+void SubSysImageHeader::SetImageHeaderIds(void)
 {
     subSysImageHeaderTable->imageId = imageId;
+    subSysImageHeaderTable->uniqueId = (uniqueId != 0xFFFFFFFF) ? uniqueId : 0;
+    subSysImageHeaderTable->parentUniqueId = (parentUniqueId != 0xFFFFFFFF) ? parentUniqueId : 0;
+    subSysImageHeaderTable->functionId = (functionId != 0xFFFFFFFF) ? functionId : 0;
 }
 
 /******************************************************************************/
@@ -2931,9 +3310,16 @@ PartitionType::Type SubSysImageHeader::GetSubSystemType(void)
     return imageType;
 }
 
+/******************************************************************************/
 std::string SubSysImageHeader::GetSubSystemName(void)
 {
     return imageName;
+}
+
+/******************************************************************************/
+uint32_t SubSysImageHeader::GetSubSystemId(void)
+{
+    return imageId;
 }
 
 /******************************************************************************/
@@ -2947,6 +3333,9 @@ SubSysImageHeader::SubSysImageHeader(ImageBifOptions *imgOptions)
     delayHandoff = imgOptions->GetDelayHandoff();
     memCopyAddr = imgOptions->GetMemCopyAddress();
     imageType = imgOptions->GetImageType();
+    uniqueId = imgOptions->GetUniqueId();
+    parentUniqueId = imgOptions->GetParentUniqueId();
+    functionId = imgOptions->GetFunctionId();
 
     std::string name = "ImageHeader " + imageName;
     uint32_t size = sizeof(VersalImageHeaderStructure);
@@ -2985,17 +3374,16 @@ SubSysImageHeader::SubSysImageHeader(std::ifstream& ifs)
     }
     imageName = name;
     uint32_t size = sizeof(VersalImageHeaderStructure);
-    
 
     ifs.seekg(pos);
     section = new Section("ImageHeader " + imageName, size);
     subSysImageHeaderTable = (VersalImageHeaderStructure*)section->Data;
-    //memset(subSysImageHeaderTable->imageName, 0, sizeof(subSysImageHeaderTable->imageName));
-    //strcpy(subSysImageHeaderTable->imageName, imageName.c_str());
-
     ifs.read((char*)subSysImageHeaderTable, size);
 
     imageId = subSysImageHeaderTable->imageId;
+    uniqueId = subSysImageHeaderTable->uniqueId;
+    parentUniqueId = subSysImageHeaderTable->parentUniqueId;
+    functionId = subSysImageHeaderTable->functionId;
     delayLoad = ((subSysImageHeaderTable->imageAttributes >> vihDelayLoadShift) & vihDelayLoadMask);
     delayHandoff = ((subSysImageHeaderTable->imageAttributes >> vihDelayHandoffShift) & vihDelayHandoffMask);
     memCopyAddr = (uint64_t) (subSysImageHeaderTable->memcpyAddressLo) >> 32;
@@ -3016,5 +3404,31 @@ SubSysImageHeader::SubSysImageHeader(std::ifstream& ifs)
             num_of_images++;
         }
         p_offset += sizeof(VersalPartitionHeaderTableStructure);
+    }
+}
+
+/******************************************************************************/
+void VersalImageHeader::CheckIdsInCdo(CdoSequence * seq)
+{
+    LINK * l = seq->cmds.next;
+    while (l != &seq->cmds) 
+    {
+        CdoCommand * cmd = all2cmds(l);
+        l = l->next;
+        if(cmd->type == CdoCmdPmInitNode)
+        {
+            imageId = u32le(cmd->id);
+        }
+        if(cmd->type == CdoCmdLdrSetImageInfo)
+        {
+            if (imageId == u32le(cmd->id))
+            {
+                uniqueId = u32le(cmd->value);
+                parentUniqueId = u32le(cmd->mask);
+                functionId = u32le(cmd->count);
+                uidInfoFoundInCdo = true;
+            }
+            break;
+        }
     }
 }

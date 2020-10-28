@@ -389,14 +389,10 @@ void ElfFormat32::TrimUnwantedELFHeaders( Elf32ProgramHeader& prgHeader, uint8_t
                 ( sectionHdr.sh_addr + sectionHdr.sh_size <= prgHeader.p_paddr + prgHeader.p_filesz ) )
             {
                 // Save section if this is the first, or it is lowest in memory order.
-                if (isFoundSection == false)
+                if( isFoundSection == false || sectionHdr.sh_addr < foundSection.sh_addr)
                 {
                     foundSection = sectionHdr;
                     isFoundSection = true;
-                }
-                if ((isFoundSection = true) && (sectionHdr.sh_addr < foundSection.sh_addr))
-                {
-                    foundSection = sectionHdr;
                 }
             }
         }
@@ -660,14 +656,10 @@ void ElfFormat64::TrimUnwantedELFHeaders(Elf64ProgramHeader& prgHeader, uint8_t*
                 ( sectionHdr.sh_addr + sectionHdr.sh_size     <= prgHeader.p_paddr + prgHeader.p_filesz ) )
             {
                 // Save section if this is the first, or it is lowest in memory order.
-                if (isFoundSection == false)
+                if( isFoundSection == false || sectionHdr.sh_addr < foundSection.sh_addr)
                 {
                     foundSection = sectionHdr;
                     isFoundSection = true;
-                }
-                if ((isFoundSection = true) && (sectionHdr.sh_addr < foundSection.sh_addr))
-                {
-                    foundSection = sectionHdr;
                 }
             }
         }

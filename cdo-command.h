@@ -111,6 +111,7 @@ typedef enum CdoCmdType {
     CdoCmdCfuGsrGsc,
     CdoCmdCfuGcapClkEn,
     CdoCmdCfuCfiType,
+    CdoCmdLdrSetImageInfo,
 
     /* The following line must be last */
     CdoCmdLast

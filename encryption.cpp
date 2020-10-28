@@ -68,7 +68,7 @@ void EncryptionContext::GenerateEncryptionKeyFile(const std::string & baseFileNa
     bool useOptionalKey = options.bifOptions->GetAesOptKeyFlag();
 
     /* The extra 1 Key pair is for Secure Header */
-    CounterModeKDF(options.bifOptions->GetEncryptionBlocksList().size() + useOptionalKey + 1, baseFileName, options.GetZynqMpEncrDump());
+    CounterModeKDF(options.bifOptions->GetEncryptionBlocksList().size() + useOptionalKey + 1, baseFileName, options.GetEncryptionDumpFlag());
 
     WriteEncryptionKeyFile(baseFileName, useOptionalKey, options.bifOptions->GetEncryptionBlocksList().size() + 1);
 }
@@ -147,6 +147,30 @@ void EncryptionContext::SetBHKekIVFile(std::string file)
 }
 
 /******************************************************************************/
+void EncryptionContext::SetBbramKekIVFile(std::string file)
+{
+    bbramKekIVFile = file;
+}
+
+/******************************************************************************/
+void EncryptionContext::SetEfuseKekIVFile(std::string file)
+{
+    efuseKekIVFile = file;
+}
+
+/******************************************************************************/
+void EncryptionContext::SetEfuseUserKek0IVFile(std::string file)
+{
+    efuseUserKek0IVFile = file;
+}
+
+/******************************************************************************/
+void EncryptionContext::SetEfuseUserKek1IVFile(std::string file)
+{
+    efuseUserKek1IVFile = file;
+}
+
+/******************************************************************************/
 std::string EncryptionContext::GetAesFileName()
 {
     return aesFilename;
@@ -162,6 +186,30 @@ std::string EncryptionContext::GetMetalKeyFile(void)
 std::string EncryptionContext::GetBHKekIVFile(void)
 {
     return bhKekIVFile;
+}
+
+/******************************************************************************/
+std::string EncryptionContext::GetBbramKekIVFile(void)
+{
+    return bbramKekIVFile;
+}
+
+/******************************************************************************/
+std::string EncryptionContext::GetEfuseKekIVFile(void)
+{
+    return efuseKekIVFile;
+}
+
+/******************************************************************************/
+std::string EncryptionContext::GetEfuseUserKek0IVFile(void)
+{
+   return efuseUserKek0IVFile;
+}
+
+/******************************************************************************/
+std::string EncryptionContext::GetEfuseUserKek1IVFile(void)
+{
+    return efuseUserKek1IVFile;
 }
 
 /******************************************************************************/

@@ -767,6 +767,15 @@ void cdocmd_add_nop(CdoSequence * seq, uint32_t count, void * buf, uint32_t be) 
     add_command(seq, cmd);
 }
 
+void cdocmd_add_ldr_set_image_info(CdoSequence * seq, uint32_t nodeid, uint32_t uid, uint32_t puid, uint32_t funcid) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdLdrSetImageInfo);
+    cmd->id = nodeid;
+    cmd->value = uid;
+    cmd->mask = puid;
+    cmd->count = funcid;
+    add_command(seq, cmd);
+}
+
 void cdocmd_insert_seq(CdoCommand * cmd, CdoSequence * seq) {
     list_concat(&cmd->link_all, &seq->cmds);
     list_init(&seq->cmds);

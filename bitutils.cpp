@@ -334,7 +334,7 @@ bool ZynqMpBitFile::GetBitPadFlag(bool legacyFlag)
 /******************************************************************************/
 void ZynqMpBitFile::ComparePartsDataBase(const std::string& packageName)
 {
-    const char* parts[] = { "xqzu", "xczu", "xazu", NULL };
+    const char* parts[] = { "xqzu", "xczu", "xazu", "xck", NULL };
     for(int i=0; parts[i]; i++) 
     {
         if (packageName.compare(0,strlen(parts[i]),parts[i]) == 0) 

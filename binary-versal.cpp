@@ -180,7 +180,6 @@ void VersalBinary::StackAndAlign(Options& options)
     for (SectionList::iterator i = Sections.begin(); i != Sections.end(); i++)
     {
         Section& section(**i);
-        //ProcessEverestImage(section, options);
         /* Write to output file */
         if (section.Name.compare("BootHeader") && !(section.isBootloader) && section.Name.compare(acBootloader))
         {

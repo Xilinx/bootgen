@@ -71,6 +71,7 @@ struct Authentication
         None,
         RSA, 
         ECDSA,
+        ECDSAp521,
     } Type;
 };
 
@@ -402,7 +403,7 @@ struct PartitionType
         NPI,
         REG_INIT,
         BOOTLOADER,
-	SLR_BOOT,
+        SLR_BOOT,
         SLR_CONFIG
     } Type;
 };
