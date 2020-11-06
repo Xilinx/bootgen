@@ -82,10 +82,17 @@ enum {
     CMD2_SSIT_SYNC_SLAVES = 0x10fU,
     CMD2_SSIT_WAIT_SLAVES = 0x110U,
     CMD2_NOP		 = 0x111U,
+    CMD2_GET_DEVICE_ID	 = 0x112U,
+    CMD2_EVENT_LOGGING	 = 0x113U,
+    CMD2_SET_BOARD	 = 0x114U,
+    CMD2_GET_BOARD	 = 0x115U,
+    CMD2_SET_PLM_WDT	 = 0x116U,
 
     /* PM Commands */
     CMD2_PM_GET_API_VERSION	= 0x201U,
     CMD2_PM_GET_DEVICE_STATUS	= 0x203U,
+    CMD2_PM_GET_OP_CHARACTERISTIC = 0x204U,
+    CMD2_PM_REGISTER_NOTIFIER	= 0x205U,
     CMD2_PM_REQUEST_SUSPEND	= 0x206U,
     CMD2_PM_SELF_SUSPEND	= 0x207U,
     CMD2_PM_FORCE_POWERDOWN	= 0x208U,
@@ -112,6 +119,8 @@ enum {
     CMD2_PM_CLOCK_GETSTATE	= 0x226U,
     CMD2_PM_CLOCK_SETDIVIDER	= 0x227U,
     CMD2_PM_CLOCK_GETDIVIDER	= 0x228U,
+    CMD2_PM_CLOCK_SETRATE	= 0x229U,
+    CMD2_PM_CLOCK_GETRATE	= 0x22aU,
     CMD2_PM_CLOCK_SETPARENT	= 0x22bU,
     CMD2_PM_CLOCK_GETPARENT	= 0x22cU,
     CMD2_PM_PLL_SET_PARAMETER	= 0x230U,
@@ -146,6 +155,12 @@ enum {
     CMD2_CFU_GSR_GSC	 = 0x407U,
     CMD2_CFU_GCAP_CLK_EN = 0x408U,
     CMD2_CFU_CFI_TYPE	 = 0x409U,
+
+    /* Loader Commands */
+    CMD2_LDR_SET_IMAGE_INFO	 = 0x704U,
+
+    /* EM Commands */
+    CMD2_EM_SET_ACTION		 = 0x801U,
 
     CMD2_END             = 0xffffffffU
 };
@@ -453,6 +468,24 @@ static uint32_t decode_v2(CdoSequence * seq, uint32_t * p, uint32_t l, uint32_t 
         case CMD2_NOP:
             cdocmd_add_nop(seq, args, &p[i+0], be);
             break;
+        case CMD2_EVENT_LOGGING:
+            if (args < 1) goto unexpected;
+            cdocmd_add_event_logging(seq, u32xe(p[i+0]), args - 1, &p[i+1], be);
+            break;
+        case CMD2_SET_BOARD: {
+            uint32_t * tmpbuf;
+            tmpbuf = malloc((args + 1) * sizeof *tmpbuf);
+            memcpy(tmpbuf, &p[i+0], args * sizeof *tmpbuf);
+            tmpbuf[args] = 0;
+            byte_swap_buffer(tmpbuf, args, be);
+            cdocmd_add_set_board(seq, (char *)tmpbuf);
+            free(tmpbuf);
+            break;
+        }
+        case CMD2_SET_PLM_WDT:
+            if (args != 2) goto unexpected;
+            cdocmd_add_set_plm_wdt(seq, u32xe(p[i+0]), u32xe(p[i+1]));
+            break;
         case CMD2_NPI_SEQ:
             if (args != 2) goto unexpected;
             cdocmd_add_npi_seq(seq, u32xe(p[i+0]), u32xe(p[i+1]));
@@ -476,6 +509,10 @@ static uint32_t decode_v2(CdoSequence * seq, uint32_t * p, uint32_t l, uint32_t 
         case CMD2_PM_GET_DEVICE_STATUS:
             if (args != 1) goto unexpected;
             cdocmd_add_pm_get_device_status(seq, u32xe(p[i+0]));
+            break;
+        case CMD2_PM_REGISTER_NOTIFIER:
+            if (args != 4) goto unexpected;
+            cdocmd_add_pm_register_notifier(seq, u32xe(p[i+0]), u32xe(p[i+1]), u32xe(p[i+2]), u32xe(p[i+3]));
             break;
         case CMD2_PM_REQUEST_SUSPEND:
             if (args != 4) goto unexpected;
@@ -580,6 +617,14 @@ static uint32_t decode_v2(CdoSequence * seq, uint32_t * p, uint32_t l, uint32_t 
         case CMD2_PM_CLOCK_GETDIVIDER:
             if (args != 1) goto unexpected;
             cdocmd_add_pm_clock_getdivider(seq, u32xe(p[i+0]));
+            break;
+        case CMD2_PM_CLOCK_SETRATE:
+            if (args != 2) goto unexpected;
+            cdocmd_add_pm_clock_setrate(seq, u32xe(p[i+0]), u32xe(p[i+1]));
+            break;
+        case CMD2_PM_CLOCK_GETRATE:
+            if (args != 1) goto unexpected;
+            cdocmd_add_pm_clock_getrate(seq, u32xe(p[i+0]));
             break;
         case CMD2_PM_CLOCK_SETPARENT:
             if (args != 2) goto unexpected;
@@ -695,6 +740,14 @@ static uint32_t decode_v2(CdoSequence * seq, uint32_t * p, uint32_t l, uint32_t 
         case CMD2_CFU_CFI_TYPE:
             if (args < 1) goto unexpected;
             cdocmd_add_cfu_cfi_type(seq, u32xe(p[i+0]));
+            break;
+        case CMD2_EM_SET_ACTION:
+            if (args != 3) goto unexpected;
+            cdocmd_add_em_set_action(seq, u32xe(p[i+0]), u32xe(p[i+1]), u32xe(p[i+2]));
+            break;
+        case CMD2_LDR_SET_IMAGE_INFO:
+            if (args != 4) goto unexpected;
+            cdocmd_add_ldr_set_image_info(seq, u32xe(p[i+0]), u32xe(p[i+1]), u32xe(p[i+2]), u32xe(p[i+3]));
             break;
         default:
             cdocmd_add_generic_command(seq, hdr & 0xffff, p + i, args, be);
@@ -1264,6 +1317,28 @@ static void * encode_v2(CdoSequence * seq, size_t * sizep, uint32_t be) {
             byte_swap_buffer(p + pos, cmd->count, be);
             pos += cmd->count;
             break;
+        case CdoCmdEventLogging:
+            hdr2(&p, &pos, CMD2_EVENT_LOGGING, 1 + cmd->count, be);
+            p[pos++] = u32xe(cmd->value);
+            memcpy(p + pos, cmd->buf, cmd->count * sizeof(uint32_t));
+            byte_swap_buffer(p + pos, cmd->count, be);
+            pos += cmd->count;
+            break;
+        case CdoCmdSetBoard: {
+            uint32_t len = strlen((char *)cmd->buf);
+            uint32_t count = (len + 3)/4;
+            hdr2(&p, &pos, CMD2_SET_BOARD, count, be);
+            memset(p + pos, 0, count*4);
+            memcpy(p + pos, cmd->buf, len);
+            byte_swap_buffer(p + pos, count, be);
+            pos += count;
+            break;
+        }
+        case CdoCmdSetPlmWdt:
+            hdr2(&p, &pos, CMD2_SET_PLM_WDT, 2, be);
+            p[pos++] = u32xe(cmd->id);
+            p[pos++] = u32xe(cmd->value);
+            break;
         case CdoCmdNpiSeq:
             hdr2(&p, &pos, CMD2_NPI_SEQ, 2, be);
             p[pos++] = u32xe_lo(cmd->dstaddr);
@@ -1294,6 +1369,13 @@ static void * encode_v2(CdoSequence * seq, size_t * sizep, uint32_t be) {
         case CdoCmdPmGetDeviceStatus:
             hdr2(&p, &pos, CMD2_PM_GET_DEVICE_STATUS, 1, be);
             p[pos++] = u32xe(cmd->id);
+            break;
+        case CdoCmdPmRegisterNotifier:
+            hdr2(&p, &pos, CMD2_PM_REGISTER_NOTIFIER, 4, be);
+            p[pos++] = u32xe(cmd->id);
+            p[pos++] = u32xe(cmd->mask);
+            p[pos++] = u32xe(cmd->value);
+            p[pos++] = u32xe(cmd->count);
             break;
         case CdoCmdPmRequestSuspend:
             hdr2(&p, &pos, CMD2_PM_REQUEST_SUSPEND, 4, be);
@@ -1432,6 +1514,15 @@ static void * encode_v2(CdoSequence * seq, size_t * sizep, uint32_t be) {
             break;
         case CdoCmdPmClockGetDivider:
             hdr2(&p, &pos, CMD2_PM_CLOCK_GETDIVIDER, 1, be);
+            p[pos++] = u32xe(cmd->id);
+            break;
+        case CdoCmdPmClockSetRate:
+            hdr2(&p, &pos, CMD2_PM_CLOCK_SETRATE, 2, be);
+            p[pos++] = u32xe(cmd->id);
+            p[pos++] = u32xe(cmd->value);
+            break;
+        case CdoCmdPmClockGetRate:
+            hdr2(&p, &pos, CMD2_PM_CLOCK_GETRATE, 1, be);
             p[pos++] = u32xe(cmd->id);
             break;
         case CdoCmdPmClockSetParent:
@@ -1577,6 +1668,19 @@ static void * encode_v2(CdoSequence * seq, size_t * sizep, uint32_t be) {
         case CdoCmdCfuCfiType:
             hdr2(&p, &pos, CMD2_CFU_CFI_TYPE, 1, be);
             p[pos++] = u32xe(cmd->value);
+            break;
+        case CdoCmdEmSetAction:
+            hdr2(&p, &pos, CMD2_EM_SET_ACTION, 3, be);
+            p[pos++] = u32xe(cmd->id);
+            p[pos++] = u32xe(cmd->value);
+            p[pos++] = u32xe(cmd->mask);
+            break;
+        case CdoCmdLdrSetImageInfo:
+            hdr2(&p, &pos, CMD2_LDR_SET_IMAGE_INFO, 4, be);
+            p[pos++] = u32xe(cmd->id);
+            p[pos++] = u32xe(cmd->value);
+            p[pos++] = u32xe(cmd->mask);
+            p[pos++] = u32xe(cmd->count);
             break;
         default:
             fprintf(stderr, "unknown command (%u)\n", cmd->type);

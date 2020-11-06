@@ -23,6 +23,7 @@
 
 
 #define is_be_host() (0)
+#define DEFAULT_CDO_VERSION 0x200
 
 typedef struct CdoSequence CdoSequence;
 
@@ -53,12 +54,16 @@ typedef enum CdoCmdType {
     CdoCmdSsitSyncSlaves,
     CdoCmdSsitWaitSlaves,
     CdoCmdNop,
+    CdoCmdEventLogging,
+    CdoCmdSetBoard,
+    CdoCmdSetPlmWdt,
     CdoCmdNpiSeq,
     CdoCmdNpiPreCfg,
     CdoCmdNpiWrite,
     CdoCmdNpiShutdown,
     CdoCmdPmGetApiVersion,
     CdoCmdPmGetDeviceStatus,
+    CdoCmdPmRegisterNotifier,
     CdoCmdPmRequestSuspend,
     CdoCmdPmSelfSuspend,
     CdoCmdPmForcePowerdown,
@@ -85,6 +90,8 @@ typedef enum CdoCmdType {
     CdoCmdPmClockGetState,
     CdoCmdPmClockSetDivider,
     CdoCmdPmClockGetDivider,
+    CdoCmdPmClockSetRate,
+    CdoCmdPmClockGetRate,
     CdoCmdPmClockSetParent,
     CdoCmdPmClockGetParent,
     CdoCmdPmPllSetParameter,
@@ -111,6 +118,7 @@ typedef enum CdoCmdType {
     CdoCmdCfuGsrGsc,
     CdoCmdCfuGcapClkEn,
     CdoCmdCfuCfiType,
+    CdoCmdEmSetAction,
     CdoCmdLdrSetImageInfo,
 
     /* The following line must be last */
@@ -158,6 +166,7 @@ void cdocmd_add_npi_shutdown(CdoSequence * seq, uint32_t addr, uint32_t flags);
 
 void cdocmd_add_pm_get_api_version(CdoSequence * seq);
 void cdocmd_add_pm_get_device_status(CdoSequence * seq, uint32_t nodeid);
+void cdocmd_add_pm_register_notifier(CdoSequence * seq, uint32_t nodeid, uint32_t mask, uint32_t arg1, uint32_t arg2);
 void cdocmd_add_pm_request_suspend(CdoSequence * seq, uint32_t nodeid, uint32_t ack, uint32_t latency, uint32_t state);
 void cdocmd_add_pm_self_suspend(CdoSequence * seq, uint32_t nodeid, uint32_t latency, uint32_t state, uint64_t addr);
 void cdocmd_add_pm_force_powerdown(CdoSequence * seq, uint32_t nodeid, uint32_t ack);
@@ -184,6 +193,8 @@ void cdocmd_add_pm_clock_disable(CdoSequence * seq, uint32_t nodeid);
 void cdocmd_add_pm_clock_getstate(CdoSequence * seq, uint32_t nodeid);
 void cdocmd_add_pm_clock_setdivider(CdoSequence * seq, uint32_t nodeid, uint32_t div);
 void cdocmd_add_pm_clock_getdivider(CdoSequence * seq, uint32_t nodeid);
+void cdocmd_add_pm_clock_setrate(CdoSequence * seq, uint32_t nodeid, uint32_t rate);
+void cdocmd_add_pm_clock_getrate(CdoSequence * seq, uint32_t nodeid);
 void cdocmd_add_pm_clock_setparent(CdoSequence * seq, uint32_t nodeid, uint32_t parentid);
 void cdocmd_add_pm_clock_getparent(CdoSequence * seq, uint32_t nodeid);
 void cdocmd_add_pm_pll_set_parameter(CdoSequence * seq, uint32_t nodeid, uint32_t param, uint32_t value);
@@ -216,6 +227,11 @@ void cdocmd_add_ssit_sync_master(CdoSequence * seq);
 void cdocmd_add_ssit_sync_slaves(CdoSequence * seq, uint32_t mask, uint32_t count);
 void cdocmd_add_ssit_wait_slaves(CdoSequence * seq, uint32_t mask, uint32_t count);
 void cdocmd_add_nop(CdoSequence * seq, uint32_t count, void * buf, uint32_t be);
+void cdocmd_add_event_logging(CdoSequence * seq, uint32_t subcmd, uint32_t count, void * buf, uint32_t be);
+void cdocmd_add_set_board(CdoSequence * seq, const char * name);
+void cdocmd_add_set_plm_wdt(CdoSequence * seq, uint32_t nodeid, uint32_t periodicity);
+void cdocmd_add_ldr_set_image_info(CdoSequence * seq, uint32_t nodeid, uint32_t uid, uint32_t puid, uint32_t funcid);
+void cdocmd_add_em_set_action(CdoSequence * seq, uint32_t nodeid, uint32_t action, uint32_t mask);
 void cdocmd_insert_seq(CdoCommand * cmd, CdoSequence * seq);
 void cdocmd_concat_seq(CdoSequence * seq, CdoSequence * seq2);
 

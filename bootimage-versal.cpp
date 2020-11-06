@@ -48,6 +48,7 @@ VersalBootImage::VersalBootImage(Options& options, uint8_t index) : BootImage(op
     currentAuthCtx->hash = hash;
     partitionHeaderTable->firstSection = NULL;
     convertAieElfToCdo = true;
+    createSubSystemPdis = true;
 }
 
 /******************************************************************************/
@@ -1708,7 +1709,15 @@ void VersalBootImage::BuildAndLink(Binary* cache)
 
     DetermineEncryptionDefaults();
     partitionHeaderList.clear();
-    ReplaceImagesNoSubSys();
+    if (createSubSystemPdis == true)
+    {
+        AppendImagesInSubsystems();
+        ReplaceImages();
+    }
+    else
+    {
+        ReplaceImagesNoSubSys();
+    }
 
     /* Build stage */
     /* all static fields within the header tables are populated here */

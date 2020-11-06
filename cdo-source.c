@@ -27,8 +27,6 @@
 #define strncasecmp(x,y,z) strnicmp(x,y,z)
 #endif
 
-#define DEFAULT_CDO_VERSION 0x200
-
 #define isspc(c) (c == ' ' || c == '\t')
 #define istok(c) (c != '\0' && !isspc(c))
 #define skipsp(s)                               \
@@ -63,12 +61,16 @@ struct command_info {
     { "ssit_sync_slaves", CdoCmdSsitSyncSlaves },
     { "ssit_wait_slaves", CdoCmdSsitWaitSlaves },
     { "nop", CdoCmdNop },
+    { "event_logging", CdoCmdEventLogging },
+    { "set_board", CdoCmdSetBoard },
+    { "set_plm_wdt", CdoCmdSetPlmWdt },
     { "npi_seq", CdoCmdNpiSeq },
     { "npi_precfg", CdoCmdNpiPreCfg },
     { "npi_write", CdoCmdNpiWrite },
     { "npi_shutdown", CdoCmdNpiShutdown },
     { "pm_get_api_version", CdoCmdPmGetApiVersion },
     { "pm_get_device_status", CdoCmdPmGetDeviceStatus },
+    { "pm_register_notifier", CdoCmdPmRegisterNotifier },
     { "pm_request_suspend", CdoCmdPmRequestSuspend },
     { "pm_self_suspend", CdoCmdPmSelfSuspend },
     { "pm_force_powerdown", CdoCmdPmForcePowerdown },
@@ -95,6 +97,8 @@ struct command_info {
     { "pm_clock_get_state", CdoCmdPmClockGetState },
     { "pm_clock_set_divider", CdoCmdPmClockSetDivider },
     { "pm_clock_get_divider", CdoCmdPmClockGetDivider },
+    { "pm_clock_set_rate", CdoCmdPmClockSetRate },
+    { "pm_clock_get_rate", CdoCmdPmClockGetRate },
     { "pm_clock_set_parent", CdoCmdPmClockSetParent },
     { "pm_clock_get_parent", CdoCmdPmClockGetParent },
     { "pm_pll_set_parameter", CdoCmdPmPllSetParameter },
@@ -121,6 +125,8 @@ struct command_info {
     { "cfu_gsr_gsc", CdoCmdCfuGsrGsc },
     { "cfu_gcap_clk_en", CdoCmdCfuGcapClkEn },
     { "cfu_cfi_type", CdoCmdCfuCfiType },
+    { "em_set_action", CdoCmdEmSetAction },
+    { "ldr_set_image_info", CdoCmdLdrSetImageInfo },
     { NULL, 0 }
 };
 
@@ -193,7 +199,6 @@ CdoSequence * cdoseq_from_source(FILE * f) {
     uint32_t cap = 2;
     char * line = (char *)malloc(cap * sizeof *line);
     uint32_t first = 1;
-    seq->version = DEFAULT_CDO_VERSION;
     for (;;) {
         char * s;
         char * p;
@@ -427,6 +432,36 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             free(buf);
             break;
         }
+        case CdoCmdEventLogging: {
+            uint32_t * buf;
+            uint32_t count;
+            uint32_t subcmd;
+            if (parse_u32(&s, &subcmd)) goto syntax_error;
+            if (parse_buf(&s, &buf, &count)) goto syntax_error;
+            cdocmd_add_event_logging(seq, subcmd, count, buf, is_be_host());
+            free(buf);
+            break;
+        }
+        case CdoCmdSetBoard: {
+            char * name;
+            int c;
+            skipsp(s);
+            name = s;
+            skiptok(s);
+            c = *s;
+            *s = '\0';
+            cdocmd_add_set_board(seq, name);
+            *s = c;
+            break;
+        }
+        case CdoCmdSetPlmWdt: {
+            uint32_t nodeid;
+            uint32_t periodicity;
+            if (parse_u32(&s, &nodeid)) goto syntax_error;
+            if (parse_u32(&s, &periodicity)) goto syntax_error;
+            cdocmd_add_set_plm_wdt(seq, nodeid, periodicity);
+            break;
+        }
         case CdoCmdNpiSeq:
         case CdoCmdNpiPreCfg:
         case CdoCmdNpiShutdown: {
@@ -463,6 +498,18 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             uint32_t nodeid;
             if (parse_u32(&s, &nodeid)) goto syntax_error;
             cdocmd_add_pm_get_device_status(seq, nodeid);
+            break;
+        }
+        case CdoCmdPmRegisterNotifier: {
+            uint32_t nodeid;
+            uint32_t mask;
+            uint32_t arg1;
+            uint32_t arg2;
+            if (parse_u32(&s, &nodeid)) goto syntax_error;
+            if (parse_u32(&s, &mask)) goto syntax_error;
+            if (parse_u32(&s, &arg1)) goto syntax_error;
+            if (parse_u32(&s, &arg2)) goto syntax_error;
+            cdocmd_add_pm_register_notifier(seq, nodeid, mask, arg1, arg2);
             break;
         }
         case CdoCmdPmRequestSuspend: {
@@ -683,6 +730,20 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             cdocmd_add_pm_clock_getdivider(seq, nodeid);
             break;
         }
+        case CdoCmdPmClockSetRate: {
+            uint32_t nodeid;
+            uint32_t rate;
+            if (parse_u32(&s, &nodeid)) goto syntax_error;
+            if (parse_u32(&s, &rate)) goto syntax_error;
+            cdocmd_add_pm_clock_setrate(seq, nodeid, rate);
+            break;
+        }
+        case CdoCmdPmClockGetRate: {
+            uint32_t nodeid;
+            if (parse_u32(&s, &nodeid)) goto syntax_error;
+            cdocmd_add_pm_clock_getrate(seq, nodeid);
+            break;
+        }
         case CdoCmdPmClockSetParent: {
             uint32_t nodeid;
             uint32_t parentid;
@@ -889,6 +950,28 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             cdocmd_add_cfu_cfi_type(seq, value);
             break;
         }
+        case CdoCmdEmSetAction: {
+            uint32_t nodeid;
+            uint32_t action;
+            uint32_t mask;
+            if (parse_u32(&s, &nodeid)) goto syntax_error;
+            if (parse_u32(&s, &action)) goto syntax_error;
+            if (parse_u32(&s, &mask)) goto syntax_error;
+            cdocmd_add_em_set_action(seq, nodeid, action, mask);
+            break;
+        }
+        case CdoCmdLdrSetImageInfo: {
+            uint32_t nodeid;
+            uint32_t uid;
+            uint32_t puid;
+            uint32_t funcid;
+            if (parse_u32(&s, &nodeid)) goto syntax_error;
+            if (parse_u32(&s, &uid)) goto syntax_error;
+            if (parse_u32(&s, &puid)) goto syntax_error;
+            if (parse_u32(&s, &funcid)) goto syntax_error;
+            cdocmd_add_ldr_set_image_info(seq, nodeid, uid, puid, funcid);
+            break;
+        }
         default:
             goto syntax_error;
         }
@@ -1060,6 +1143,22 @@ void cdoseq_to_source(FILE * f, CdoSequence * seq) {
             print_buf(f, cmd->buf, cmd->count);
             fprintf(f, "\n");
             break;
+        case CdoCmdEventLogging:
+            fprintf(f, "event_logging ");
+            print_x64(f, cmd->value);
+            print_buf(f, cmd->buf, cmd->count);
+            fprintf(f, "\n");
+            break;
+        case CdoCmdSetBoard:
+            fprintf(f, "set_board %s\n", (char *)cmd->buf);
+            break;
+        case CdoCmdSetPlmWdt:
+            fprintf(f, "set_plm_wdt ");
+            print_x64(f, cmd->id);
+            fprintf(f, " ");
+            print_x64(f, cmd->value);
+            fprintf(f, "\n");
+            break;
         case CdoCmdNpiSeq:
             fprintf(f, "npi_seq ");
             print_x64(f, cmd->dstaddr);
@@ -1096,6 +1195,17 @@ void cdoseq_to_source(FILE * f, CdoSequence * seq) {
         case CdoCmdPmGetDeviceStatus:
             fprintf(f, "pm_get_device_status ");
             print_x64(f, cmd->id);
+            fprintf(f, "\n");
+            break;
+        case CdoCmdPmRegisterNotifier:
+            fprintf(f, "pm_register_notifier ");
+            print_x64(f, cmd->id);
+            fprintf(f, " ");
+            print_x64(f, cmd->mask);
+            fprintf(f, " ");
+            print_x64(f, cmd->value);
+            fprintf(f, " ");
+            print_x64(f, cmd->count);
             fprintf(f, "\n");
             break;
         case CdoCmdPmRequestSuspend:
@@ -1284,6 +1394,18 @@ void cdoseq_to_source(FILE * f, CdoSequence * seq) {
             print_x64(f, cmd->id);
             fprintf(f, "\n");
             break;
+        case CdoCmdPmClockSetRate:
+            fprintf(f, "pm_clock_set_rate ");
+            print_x64(f, cmd->id);
+            fprintf(f, " ");
+            print_x64(f, cmd->value);
+            fprintf(f, "\n");
+            break;
+        case CdoCmdPmClockGetRate:
+            fprintf(f, "pm_clock_get_rate ");
+            print_x64(f, cmd->id);
+            fprintf(f, "\n");
+            break;
         case CdoCmdPmClockSetParent:
             fprintf(f, "pm_clock_set_parent ");
             print_x64(f, cmd->id);
@@ -1438,6 +1560,26 @@ void cdoseq_to_source(FILE * f, CdoSequence * seq) {
         case CdoCmdCfuCfiType:
             fprintf(f, "cfu_cfi_type ");
             print_x64(f, cmd->value);
+            fprintf(f, "\n");
+            break;
+        case CdoCmdEmSetAction:
+            fprintf(f, "em_set_action ");
+            print_x64(f, cmd->id);
+            fprintf(f, " ");
+            print_x64(f, cmd->value);
+            fprintf(f, " ");
+            print_x64(f, cmd->mask);
+            fprintf(f, "\n");
+            break;
+        case CdoCmdLdrSetImageInfo:
+            fprintf(f, "ldr_set_image_info ");
+            print_x64(f, cmd->id);
+            fprintf(f, " ");
+            print_x64(f, cmd->value);
+            fprintf(f, " ");
+            print_x64(f, cmd->mask);
+            fprintf(f, " ");
+            print_x64(f, cmd->count);
             fprintf(f, "\n");
             break;
         default:

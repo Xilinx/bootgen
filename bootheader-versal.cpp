@@ -152,7 +152,17 @@ void VersalBootHeader::Link(BootImage& bi)
 
     ImageHeaderTable* iHT = bi.imageHeaderTable;
     ImageHeader* fsbl = NULL;
-    fsbl = iHT->GetFSBLImageHeader();
+    if (bi.createSubSystemPdis == true)
+    {
+        if (bi.subSysImageList.front()->imgList.front()->IsBootloader())
+        {
+            fsbl = bi.subSysImageList.front()->imgList.front();
+        }
+    }
+    else
+    {
+        fsbl = iHT->GetFSBLImageHeader();
+    }
 
     slaveBootSplitMode = (bi.bifOptions->GetSplitMode() == SplitMode::SlaveMode) ? true : false;
     fullBhSize = bi.options.bootheaderSize;

@@ -70,26 +70,32 @@ Key::~Key()
     if(N != NULL)
     {
         delete[] N;
+        N = nullptr;
     }
     if(N_ext != NULL)
     {
         delete[] N_ext;
+        N_ext = nullptr;
     }
     if(D != NULL)
     {
         delete[] D;
+        D = nullptr;
     }
     if(E != NULL)
     {
         delete[] E;
+        E = nullptr;
     }
     if(P != NULL)
     {
         delete[] P;
+        P = nullptr;
     }
     if(Q != NULL)
     {
         delete[] Q;
+        Q = nullptr;
     }
 }
 

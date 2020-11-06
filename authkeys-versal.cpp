@@ -38,6 +38,7 @@ VersalKey::VersalKey(const std::string& name0)
     if (keySize == RSA_4096_KEY_LENGTH)
     {
         //Do Nothing
+        eckey = nullptr;
     }
     else if (keySize == EC_P384_KEY_LENGTH)
     {
@@ -48,6 +49,8 @@ VersalKey::VersalKey(const std::string& name0)
     {
         eckey = EC_KEY_new_by_curve_name(NID_secp521r1);
     }
+    x = nullptr;
+    y = nullptr;
 }
 
 
@@ -75,49 +78,22 @@ VersalKey::VersalKey(const Key& otherKey)
 /******************************************************************************/
 VersalKey::~VersalKey()
 {
-    if (N != NULL)
-    {
-        delete[] N;
-    }
-
-    if (N_ext != NULL)
-    {
-        delete[] N_ext;
-    }
-
-    if (D != NULL)
-    {
-        delete[] D;
-    }
-
-    if (E != NULL)
-    {
-        delete[] E;
-    }
-
-    if (P != NULL)
-    {
-        delete[] P;
-    }
-
-    if (Q != NULL)
-    {
-        delete[] Q;
-    }
-
     if (x != NULL)
     {
         delete[] x;
+        x = nullptr;
     }
 
     if (y != NULL)
     {
         delete[] y;
+        y = nullptr;
     }
 
     if (eckey != NULL)
     {
         EC_KEY_free(eckey);
+        eckey = nullptr;
     }
 }
 

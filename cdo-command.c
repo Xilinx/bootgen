@@ -68,6 +68,7 @@ CdoCommand * cdocmd_alloc(CdoCmdType type) {
 
 CdoSequence * cdocmd_create_sequence(void) {
     CdoSequence * seq = myalloc_zero(sizeof *seq);
+    seq->version = DEFAULT_CDO_VERSION;
     list_init(&seq->cmds);
     return seq;
 }
@@ -176,6 +177,7 @@ void cdocmd_add_random_command(CdoSequence * seq) {
         cmd->type == CdoCmdDmaXfer ||
         cmd->type == CdoCmdCframeRead ||
         cmd->type == CdoCmdNop ||
+        cmd->type == CdoCmdEventLogging ||
         cmd->type == CdoCmdNpiWrite ||
         cmd->type == CdoCmdPmIoctl ||
         cmd->type == CdoCmdPmQueryData ||
@@ -199,6 +201,7 @@ void cdocmd_add_random_command(CdoSequence * seq) {
             }
         }
     } else if (cmd->type == CdoCmdComment ||
+               cmd->type == CdoCmdSetBoard ||
                cmd->type == CdoCmdPmAddNodeName) {
         uint8_t * p;
         uint32_t count = (cmd->count & 7) + 1;
@@ -555,6 +558,19 @@ void cdocmd_add_pm_clock_getdivider(CdoSequence * seq, uint32_t nodeid) {
     add_command(seq, cmd);
 }
 
+void cdocmd_add_pm_clock_setrate(CdoSequence * seq, uint32_t nodeid, uint32_t rate) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdPmClockSetRate);
+    cmd->id = nodeid;
+    cmd->value = rate;
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_pm_clock_getrate(CdoSequence * seq, uint32_t nodeid) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdPmClockGetRate);
+    cmd->id = nodeid;
+    add_command(seq, cmd);
+}
+
 void cdocmd_add_pm_clock_setparent(CdoSequence * seq, uint32_t nodeid, uint32_t parentid) {
     CdoCommand * cmd = cdocmd_alloc(CdoCmdPmClockSetParent);
     cmd->id = nodeid;
@@ -764,6 +780,44 @@ void cdocmd_add_nop(CdoSequence * seq, uint32_t count, void * buf, uint32_t be) 
     CdoCommand * cmd = cdocmd_alloc(CdoCmdNop);
     cmd->count = count;
     cmd->buf = copy_buf(buf, count, be);
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_event_logging(CdoSequence * seq, uint32_t subcmd, uint32_t count, void * buf, uint32_t be) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdEventLogging);
+    cmd->value = subcmd;
+    cmd->count = count;
+    cmd->buf = copy_buf(buf, count, be);
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_set_board(CdoSequence * seq, const char * name) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdSetBoard);
+    cmd->buf = strdup(name);
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_set_plm_wdt(CdoSequence * seq, uint32_t nodeid, uint32_t periodicity) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdSetPlmWdt);
+    cmd->id = nodeid;
+    cmd->value = periodicity;
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_pm_register_notifier(CdoSequence * seq, uint32_t nodeid, uint32_t mask, uint32_t arg1, uint32_t arg2) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdPmRegisterNotifier);
+    cmd->id = nodeid;
+    cmd->mask = mask;
+    cmd->value = arg1;
+    cmd->count = arg2;
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_em_set_action(CdoSequence * seq, uint32_t nodeid, uint32_t action, uint32_t mask) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdEmSetAction);
+    cmd->id = nodeid;
+    cmd->value = action;
+    cmd->mask = mask;
     add_command(seq, cmd);
 }
 

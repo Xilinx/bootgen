@@ -239,21 +239,25 @@ VersalAuthenticationContext::~VersalAuthenticationContext()
     if (spksignature != NULL)
     {
         delete[] spksignature;
+        spksignature = nullptr;
     }
 
     if (bHsignature != NULL)
     {
         delete[] bHsignature;
+        bHsignature = nullptr;
     }
 
     if (primaryKey != NULL)
     {
-        delete[] primaryKey;
+        delete primaryKey;
+        primaryKey = nullptr;
     }
 
     if (secondaryKey != NULL)
     {
-        delete[] secondaryKey;
+        delete secondaryKey;
+        secondaryKey = nullptr;
     }
 }
 

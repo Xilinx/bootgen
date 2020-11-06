@@ -250,27 +250,63 @@ void VersalImageHeaderTable::Link(BootImage &bi)
         }
     }
 
+    if (bi.createSubSystemPdis == true)
+    {
+        if (bi.options.bifOptions->GetHeaderEncyption())
+        {
+            SetFirstImageHeaderOffset(bi.encryptedHeaders->WordAddress());
+            SetImageCount((uint32_t)bi.subSysImageList.size());
+        }
+        else if (bi.subSysImageList.size() != 0)
+        {
+            if (bi.subSysImageList.front()->section != NULL)
+            {
+                uint32_t size = (bi.subSysImageList.size() > 0) ? (uint32_t)bi.subSysImageList.front()->section->WordAddress() : 0;
+                SetFirstImageHeaderOffset(size);
+            }
+            SetImageCount((uint32_t)bi.subSysImageList.size());
+        }
+    }
     SetPartitionCount((uint32_t)bi.partitionHeaderList.size());
 
     uint32_t acOffset = (bi.headerAC != 0) ? (bi.headerAC->section->WordAddress()) : 0;
     SetHeaderAuthCertificateOffset(acOffset);
 
     // Go through image list, to set the next image's offset parameters
-    for (std::list<ImageHeader*>::iterator currentImage = imageHeaderList.begin(); currentImage != imageHeaderList.end(); )
+    if (bi.createSubSystemPdis == true)
     {
-        std::list<ImageHeader*>::iterator prevImage = currentImage;
-        currentImage++;
-
-        if (currentImage == imageHeaderList.end())
+        /* Sub system Image Header creation */
+        for (std::list<SubSysImageHeader*>::iterator subsysimage = bi.subSysImageList.begin(); subsysimage != bi.subSysImageList.end();)
         {
-            (*prevImage)->Link(bi, (*prevImage)->GetPartitionHeaderList().front(), 0);
-        }
-        else
-        {
-            (*prevImage)->Link(bi, (*prevImage)->GetPartitionHeaderList().front(), (*currentImage));
+            std::list<SubSysImageHeader*>::iterator prevSubSysImage = subsysimage;
+            subsysimage++;
+            if (subsysimage == bi.subSysImageList.end())
+            {
+                (*prevSubSysImage)->Link(bi, 0);
+            }
+            else
+            {
+                (*prevSubSysImage)->Link(bi, (*subsysimage));
+            }
         }
     }
+    else
+    {
+        for (std::list<ImageHeader*>::iterator currentImage = imageHeaderList.begin(); currentImage != imageHeaderList.end(); )
+        {
+            std::list<ImageHeader*>::iterator prevImage = currentImage;
+            currentImage++;
 
+            if (currentImage == imageHeaderList.end())
+            {
+                (*prevImage)->Link(bi, (*prevImage)->GetPartitionHeaderList().front(), 0);
+            }
+            else
+            {
+                (*prevImage)->Link(bi, (*prevImage)->GetPartitionHeaderList().front(), (*currentImage));
+            }
+        }
+    }
     if (prebuilt)
     {
         SetTotalMetaHdrLength(bi.imageHeaderTable->metaHeaderLength);
@@ -1698,6 +1734,11 @@ void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> fileli
             CheckIdsInCdo(cdo_seq);
             //cdocmd_delete_sequence(cdo_seq);
 
+            if (cdocmd_post_process_cdo(cdo_data, cdo_length, &cdo_data_pp, &cdo_data_pp_length))
+            {
+                LOG_ERROR("PMC CDO post process error");
+            }
+
             if (cdo_data_pp != NULL)
             {
                 //delete cdo_data;
@@ -1728,6 +1769,11 @@ void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> fileli
         total_cdo_length = bi.bifOptions->GetTotalpmcdataSize();
         total_cdo_data = new uint8_t[total_cdo_length];
         memcpy(total_cdo_data, bi.bifOptions->GetPmcDataBuffer(), total_cdo_length);
+
+        if (cdocmd_post_process_cdo(total_cdo_data, total_cdo_length, &cdo_data_pp, &cdo_data_pp_length))
+        {
+            LOG_ERROR("PMC CDO post process error");
+        }
 
         if (cdo_data_pp != NULL)
         {
