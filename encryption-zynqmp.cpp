@@ -26,6 +26,7 @@
 #include "encryptutils.h"
 #include "fileutils.h"
 #include <openssl/rand.h>
+#include "obfskutil.h"
 
 /*
 ------------------------------------------------------------------------------------------------
@@ -1336,8 +1337,32 @@ void ZynqMpEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr)
 /******************************************************************************/
 void ZynqMpEncryptionContext::GenerateGreyKey()
 {
-    LOG_ERROR("Grey Key generation is not supported in this version of Bootgen. \n\
-           Please use Bootgen from Xilinx install");
+#ifdef ENABLE_OBFUSCATED_KEY
+    ReadEncryptionKeyFile(aesFilename);
+    uint8_t *bhIv = new uint8_t[AES_GCM_IV_SZ];
+    uint8_t *redKey = new uint8_t[AES_GCM_KEY_SZ];
+
+    if (aesKey != NULL)
+    {
+        memcpy_be(redKey, aesKey, AES_GCM_KEY_SZ);
+    }
+    else
+    {
+        LOG_ERROR("Encryption Error !!!\n           Key 0 does not exist in the AES key file ");
+    }
+
+    ReadBhIv(bhIv);
+    std::string filename = "obfuscatedkey.txt";
+    obfs key(redKey, bhIv, metalFile.c_str(), filename.c_str());
+    obfsk((void*)&key);
+    LOG_TRACE("Obfuscated key file : '%s' generated successfully", filename.c_str());
+    LOG_INFO("Obfuscated Key generated successfully");
+
+    delete[] bhIv;
+    delete[] redKey;
+#else
+    LOG_ERROR("Obfuscated Key generation is not supported. Please refer to README on how to enable the same.");
+#endif
 }
 
 /******************************************************************************/

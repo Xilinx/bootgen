@@ -1216,7 +1216,7 @@ void VersalBootImage::Add(BifOptions* bifoptions)
 
             if (authCtx != NULL)
             {
-                delete[] authCtx;
+                delete authCtx;
             }
         }
 

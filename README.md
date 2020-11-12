@@ -1,8 +1,7 @@
 bootgen.git - Source code for Xilinx Bootgen
 
 # Overview
-This repository contains source code to build Bootgen for SoC devices. Code related to generating
-obfuscated key is not part of this repository.
+This repository contains source code to build Bootgen for SoC devices.
 
 This repository provides _NO_ support for traditional FPGA devices (Artix, Kintex, and Virtex families).
 These features are only available as part of Bootgen shipped with Vivado tools.
@@ -11,6 +10,11 @@ For SoC devices (Zynq-7000, Zynq UltraScale+ MPSoC, etc), this repository includ
 including BIN file construction and boot-time authentication and encryption based on OpenSSL (see details below).
 
 For more details about Bootgen usage, please refer to Xilinx UG1283.
+
+## Obfuscated Key generation
+Bootgen also supports Obfuscated Key generation using a Xilinx proprietary software.
+If you are using this proprietary flow, please contact a Xilinx® representative at 'secure.solutions@xilinx.com'for details
+and to ensure export compliance.
 
 # Build instructions
 ## Platform Support
