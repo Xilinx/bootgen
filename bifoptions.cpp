@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -894,7 +894,7 @@ static void ValidateEncryptionKeySource(KeySource::Type type)
     if ((type == KeySource::EfuseGryKey) || (type == KeySource::BhGryKey) || (type == KeySource::BbramGryKey)
         || (type == KeySource::EfuseUserGryKey0) || (type == KeySource::EfuseUserGryKey1))
     {
-        LOG_WARNING("The usage of obfuscated keys is deprecated in Versal.\n\t   Refer 'bootgen -arch versal -bif_help keysrc' for valid key sources.");
+        LOG_ERROR("The usage of obfuscated keys is deprecated in Versal.\n\t   Refer 'bootgen -arch versal -bif_help keysrc' for valid key sources.");
     }
     static bool bhBlkKek = false;
     static bool bhGryKek = false;

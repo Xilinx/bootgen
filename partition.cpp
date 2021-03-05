@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -165,25 +165,25 @@ void Partition::Build( BootImage& bi, Binary& cache)
     {
         if ((header->loadAddress < (R5_TCM_START_ADDRESS + R5_TCM_BANK_LENGTH)) && (header->loadAddress + header->partition->section->Length >= (R5_TCM_START_ADDRESS + R5_TCM_BANK_LENGTH)))
         {
-            LOG_WARNING("The length of %s has exceeded TCM and cannot be loaded by FSBL.\n\t   Partition Length : 0x%llx , Partition Load Address : %llX.",  header->section->Name.substr(header->section->Name.find(" ") + 1).c_str(), header->partition->section->Length, header->loadAddress);
+            LOG_ERROR("The length of %s has exceeded TCM and cannot be loaded by FSBL.\n\t   Partition Length : 0x%llx , Partition Load Address : %llX.",  header->section->Name.substr(header->section->Name.find(" ") + 1).c_str(), header->partition->section->Length, header->loadAddress);
         }
         else if ((header->loadAddress > R5_BTCM_START_ADDRESS) && (header->loadAddress < (R5_BTCM_START_ADDRESS + R5_TCM_BANK_LENGTH)) && (header->loadAddress + header->partition->section->Length >= (R5_BTCM_START_ADDRESS + R5_TCM_BANK_LENGTH)))
         {
-            LOG_WARNING("The length of %s has exceeded TCM and cannot be loaded by FSBL.\n\t   Partition Length : 0x%llx , Partition Load Address : %llX.", header->section->Name.substr(header->section->Name.find(" ") + 1).c_str(), header->partition->section->Length, header->loadAddress);
+            LOG_ERROR("The length of %s has exceeded TCM and cannot be loaded by FSBL.\n\t   Partition Length : 0x%llx , Partition Load Address : %llX.", header->section->Name.substr(header->section->Name.find(" ") + 1).c_str(), header->partition->section->Length, header->loadAddress);
         }
     }
     else if (header->imageHeader->GetDestCpu() == DestinationCPU::R5_lockstep)
     {
         if ((header->loadAddress < (R5_TCM_START_ADDRESS + R5_TCM_BANK_LENGTH*4)) && (header->loadAddress + header->partition->section->Length >= (R5_TCM_START_ADDRESS + R5_TCM_BANK_LENGTH * 4)))
         {
-            LOG_WARNING("The length of %s has exceeded TCM and cannot be loaded by FSBL.\n\t   Partition Length : 0x%llx , Partition Load Address : %llX.", header->section->Name.substr(header->section->Name.find(" ") + 1).c_str(), header->partition->section->Length, header->loadAddress);
+            LOG_ERROR("The length of %s has exceeded TCM and cannot be loaded by FSBL.\n\t   Partition Length : 0x%llx , Partition Load Address : %llX.", header->section->Name.substr(header->section->Name.find(" ") + 1).c_str(), header->partition->section->Length, header->loadAddress);
         }
     }
     else if (header->imageHeader->GetDestCpu() == DestinationCPU::PMU)
     {
         if (header->loadAddress + header->partition->section->Length >= PMU_RAM_END_ADDRESS)
         {
-            LOG_WARNING("The length of %s has exceeded PMU RAM and cannot be loaded by FSBL.\n\t   Partition Length : 0x%llx, Partition Load Address : %llX.", header->section->Name.substr(header->section->Name.find(" ") + 1).c_str(), header->partition->section->Length, header->loadAddress);
+            LOG_ERROR("The length of %s has exceeded PMU RAM and cannot be loaded by FSBL.\n\t   Partition Length : 0x%llx, Partition Load Address : %llX.", header->section->Name.substr(header->section->Name.find(" ") + 1).c_str(), header->partition->section->Length, header->loadAddress);
         }
     }
 

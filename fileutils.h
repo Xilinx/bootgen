@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -144,9 +144,17 @@ public:
     static uint32_t GetFileSize(std::string filename)
     {
         FILE *p_file = NULL;
+        uint32_t size = 0;
         p_file = fopen(filename.c_str(), "rb");
-        fseek(p_file, 0, SEEK_END);
-        uint32_t size = ftell(p_file);
+        if (p_file)
+        {
+            fseek(p_file, 0, SEEK_END);
+            size = ftell(p_file);
+        }
+        else
+        {
+            LOG_ERROR("Unable to open file - %s", filename.c_str());
+        }
         fclose(p_file);
         return size;
     }

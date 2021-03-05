@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -242,6 +242,28 @@ typedef struct
 } VersalCdoHeader;
 
 
+typedef struct
+{
+    std::string file;                       /* SLR partition PDI/CDO file */
+    SlrId::Type index;                      /* SLR index - master, slr-1, slr-2 etc. */
+    uint8_t* data;                          /* SLR partition data */
+    size_t size;                            /* SLR partition size */
+    uint32_t offset;                        /* To track the offset of data pointer for packing next chunk */
+    std::vector<uint32_t> sync_addresses;   /* List of addresses for CDO_SSIT_SYNC_MASTER_CMD/CDO_SSIT_SYNC_SLAVES_CMD */
+    std::vector<uint32_t> partition_sizes;  /* Individual partition sizes of each SLR PDI */
+    uint32_t partition_index;               /* To track current partition of SLR PDI to chunk and pack */
+    uint32_t partition_offset;              /* To track current partition of SLR PDI to chunk and pack */
+    uint32_t sync_points;                   /* To track how many sync points are processed within SLR PDI */
+    uint32_t num_chunks;                    /* To track no of chunks created or processed */
+    bool eof;                               /* To track end of file for each SLR PDI */
+} SsitConfigSlrInfo;
+
+typedef struct
+{
+    uint8_t slr_num;
+    size_t offset;
+    size_t size;
+} SsitConfigSlrLog;
 /*
 -------------------------------------------------------------------------------
 *********************************************************   C L A S S E S   ***
@@ -373,18 +395,16 @@ public:
     std::string GetKekIV(void);
 
 private:
-    void IdentifySyncPoints(BootImage &bi);
-    void CheckSyncPointInChunk(uint64_t size, uint8_t slr_num, uint32_t* slr_sync);
-    void CheckSyncPointInChunk(uint8_t* buffer, uint64_t size, uint8_t slr_num, uint32_t* slr_sync);
-    uint32_t FindCommonSyncPoint(uint32_t* slr_sync_points, uint32_t* eof_slr, uint8_t num_slrs);
+    void ParseSlrConfigFiles(size_t* slr_total_file_size);
+    void CheckSyncPointInChunk(SsitConfigSlrInfo* slr_info, size_t size);
+    uint32_t FindCurrentSyncPoint(void);
     void CheckIdsInCdo(CdoSequence * cdo_seq);
-    std::vector<uint32_t> slr_sync_addresses[4];
-    uint8_t* slr_data[4];
-    uint64_t slr_file_size[4];
-    uint32_t slr_offsets[4];
+    void LogConfigSlrDetails(size_t chunk_num, uint8_t slr_num, size_t offset, size_t chunk_size);
+    void PrintConfigSlrSummary(void);
     uint64_t slr_total_file_size;
-    bool master_slr_available;
 
+    std::vector<SsitConfigSlrInfo*> configSlrsInfo;
+    std::vector<SsitConfigSlrLog*> configSlrLog;
     VersalImageHeaderStructure *imageHeader;
     VersalCdoHeader* cdoHeader;
  

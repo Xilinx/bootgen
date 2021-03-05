@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -638,7 +638,6 @@ VersalImageHeader::VersalImageHeader(std::string& filename)
     , northBankBaseAddr(0)
     , eastBankBaseAddr(0)
     , num_of_slrs(0)
-    , master_slr_available(false)
 {
     Name = StringUtils::BaseName(filename);
     uint32_t size = sizeof(VersalImageHeaderStructure);
@@ -659,7 +658,6 @@ VersalImageHeader::VersalImageHeader(uint8_t* data, uint64_t len)
     , northBankBaseAddr(0)
     , eastBankBaseAddr(0)
     , num_of_slrs(0)
-    , master_slr_available(false)
 {
     Name = "Buffer" + StringUtils::Format(".%d", bufferIndex++);
     uint32_t size = sizeof(VersalImageHeaderStructure);
@@ -680,7 +678,6 @@ VersalImageHeader::VersalImageHeader(std::ifstream& ifs, bool IsBootloader)
     , northBankBaseAddr(0)
     , eastBankBaseAddr(0)
     , num_of_slrs(0)
-    , master_slr_available(false)
 {
     bool firstValidHdr = false;
     VersalImageHeaderStructure importedIH;
@@ -764,7 +761,6 @@ VersalImageHeader::VersalImageHeader(std::ifstream& ifs, VersalImageHeaderStruct
     , northBankBaseAddr(0)
     , eastBankBaseAddr(0)
     , num_of_slrs(0)
-    , master_slr_available(false)
 {
     bool firstValidHdr = false;
 
@@ -1285,6 +1281,10 @@ void VersalImageHeader::ParseFileToImport(BootImage& bi)
     {
         if (Filename != "")
         {
+            if (FileUtils::GetFileSize(Filename) == 0)
+            {
+                LOG_ERROR("Cannot read empty file - %s ", Filename.c_str());
+            }
             if ((filelist.size() > 1) && (GetPartitionType() != PartitionType::CONFIG_DATA_OBJ))
             {
                 LOG_ERROR("File for merging is not in CDO format - %s", Filename.c_str());
@@ -1769,18 +1769,6 @@ void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> fileli
         total_cdo_length = bi.bifOptions->GetTotalpmcdataSize();
         total_cdo_data = new uint8_t[total_cdo_length];
         memcpy(total_cdo_data, bi.bifOptions->GetPmcDataBuffer(), total_cdo_length);
-
-        if (cdocmd_post_process_cdo(total_cdo_data, total_cdo_length, &cdo_data_pp, &cdo_data_pp_length))
-        {
-            LOG_ERROR("PMC CDO post process error");
-        }
-
-        if (cdo_data_pp != NULL)
-        {
-            delete[] total_cdo_data;
-            total_cdo_data = (uint8_t*)cdo_data_pp;
-            total_cdo_length = cdo_data_pp_length;
-        }
     }
 
     *cdo_size = total_cdo_length;
@@ -2522,31 +2510,14 @@ bool IsCdoFile(std::string file)
 /******************************************************************************/
 SlrPdiType GetSlrType(SlrPdiInfo* slr)
 {
-    SlrPdiType slr_type = SlrPdiType::BOOT;
-    std::ifstream stream(slr->file.c_str(), std::ios_base::binary);
-    if (!stream)
+    if (IsCdoFile(slr->file))
     {
-        LOG_ERROR("Cannot read file - %s ", slr->file.c_str());
-    }
-    std::string line;
-    getline(stream, line);
-    if ((line.find("Xilinx ASCII NPI Deviceimage") != std::string::npos) || (line.find("Xilinx ASCII PSAXIMM Deviceimage") != std::string::npos))
-    {
-        slr_type = SlrPdiType::MASTER_CDO;
+        return SlrPdiType::MASTER_CDO;
     }
     else
     {
-        uint32_t dataValue;
-        std::ifstream fl(slr->file.c_str(), std::ios::binary);
-        fl.read((char*)&dataValue, 4);
-        fl.close();
-        if ((dataValue == 0x584c4e58) || (dataValue == 0x584e4c58) || (dataValue == 0x004f4443) || (dataValue == 0x43444f00))
-        {
-            slr_type = SlrPdiType::MASTER_CDO;
-        }
+        return SlrPdiType::BOOT;
     }
-    stream.close();
-    return slr_type;
 }
 
 /******************************************************************************/
@@ -2715,7 +2686,7 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                 /* Add Master Boot NPI and NoC freq CDO commands by parsing the CDO file */
                 uint8_t* cdo_buffer = NULL;
                 size_t cdo_size = 0;
-                char* cdo_filename = (char*)slrBootPdiInfo.front()->file.c_str();
+                char* cdo_filename = (char*)(*slr_id)->file.c_str();
                 CdoSequence * cdo_seq;
                 cdo_seq = cdoseq_load_cdo(cdo_filename);
                 if (cdo_seq == NULL)
@@ -2784,6 +2755,76 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
 }
 
 /******************************************************************************/
+size_t GetActualChunkSize(SsitConfigSlrInfo* slr_info)
+{
+    size_t num_bytes = 0;
+    static bool chunk_size_info_printed = false;
+    /* Default chunk size - 32KB */
+    uint64_t chunk_size = 0x8000;
+    char * ssit_chunk_size = getenv("BOOTGEN_SSIT_CHUNK_SIZE");
+    if (ssit_chunk_size != NULL)
+    {
+        chunk_size = strtoull(ssit_chunk_size, NULL, 16);
+    }
+    if (!chunk_size_info_printed)
+    {
+        LOG_INFO("SSIT chunk size = 0x%x", chunk_size);
+        chunk_size_info_printed = true;
+    }
+
+    /* Create chunks such that each partition within a SLR PDI starts as a new chunk */
+    size_t partition_size = slr_info->partition_sizes.at(slr_info->partition_index);
+
+    if((partition_size - slr_info->partition_offset) <= chunk_size)
+    {
+        /* If remaining bytes in partition are less than chunk size, create a chunk with remaining bytes */
+        num_bytes = partition_size - slr_info->partition_offset;
+        if (slr_info->partition_index < (slr_info->partition_sizes.size() - 1))
+        {
+            slr_info->partition_index++;
+            slr_info->partition_offset = 0;
+        }
+        else
+        {
+            slr_info->partition_offset += num_bytes;
+        }
+    }
+    else
+    {
+        /* If partition size is greater than chunk size, create a chunk with chunk size */
+        num_bytes = chunk_size;
+        slr_info->partition_offset += num_bytes;
+    }
+
+    return num_bytes;
+}
+
+/******************************************************************************/
+void VersalImageHeader::LogConfigSlrDetails(size_t chunk_num, uint8_t slr_num, size_t offset, size_t chunk_size)
+{
+    SsitConfigSlrLog* log_details = new SsitConfigSlrLog;
+    log_details->slr_num = slr_num;
+    log_details->offset = offset;
+    log_details->size = chunk_size;
+    configSlrLog.push_back(log_details);
+}
+
+/******************************************************************************/
+void VersalImageHeader::PrintConfigSlrSummary(void)
+{
+    LOG_TRACE("SSIT Summary -");
+    LOG_TRACE("-------------------------------------");
+    LOG_TRACE(" Chunks   SLR     Offset       Size");
+    LOG_TRACE("-------------------------------------");
+    uint32_t index = 1;
+    for (std::vector<SsitConfigSlrLog*>::iterator slr_info = configSlrLog.begin(); slr_info != configSlrLog.end(); slr_info++)
+    {
+        std::string slr = ((*slr_info)->slr_num == 4) ? "master" : ("slr-" + std::to_string((*slr_info)->slr_num));
+        LOG_TRACE("  %2d  %8s    0x%-6x     0x%x", index++, slr.c_str(), (*slr_info)->offset, (*slr_info)->size);
+    }
+}
+
+/******************************************************************************/
 /* SLR Slave config partition CDO with round robin chunking
         +--------------+--------------+--------------+--------------+
         |     SLR1     |     SLR2     |     SLR3     |  Master SLR  |
@@ -2807,31 +2848,21 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
         |              |      -       |     14 (S)   |     15 (S)   |
         +--------------+--------------+--------------+--------------+
 */
+
 void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
 {
-    uint64_t chunk_size = 0x8000; //32KB
-    uint64_t size = 0;
-    uint32_t p_offset = 0;
-    uint32_t slr_sync_points[4] = { 0, 0, 0, 0 };
-    uint32_t common_sync_point = 0, current_sync_point = 0, last_sync_point = 0;
-    uint8_t file_index = 0;
-    uint32_t num_chunks[4] = { 0, 0, 0, 0 };
-    uint32_t eof_slr[4] = { 0, 0, 0, 0 };
-    uint64_t total_slr_chunk_size = 0;
+    size_t size = 0;
+    size_t p_offset = 0;
+    size_t common_sync_point = 0, current_sync_point = 0, last_sync_point = 0;
+    size_t total_slr_chunk_size = 0;
+    size_t master_index = 0;
+    size_t prev_master_slr_offset = 0;
+    size_t master_file_size = 0;
+    size_t slr_total_file_size = 0;
     uint32_t chunk_num = 1;
-    uint32_t master_index = 0;
-    uint32_t prev_master_slr_offset = 0;
-    uint32_t master_file_size = 0;
-
-    for (uint8_t i = 0; i < 4; i++)
-    {
-        slr_file_size[i] = 0;
-        slr_offsets[i] = 0;
-    }
-    slr_total_file_size = 0;
+    bool master_slr_available = false;
 
     LOG_INFO("Creating SLR Config CDO partition");
-    LOG_INFO("SSIT chunk size = 0x%x", chunk_size);
 
     /* CDO Header */
     cdoHeader = new VersalCdoHeader;
@@ -2847,38 +2878,60 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
     memcpy(p_buffer, cdoHeader, sizeof(VersalCdoHeader));
     p_offset += sizeof(VersalCdoHeader);
 
-    /* Parse slave SLR config files and identify sync points, file sizes */
+    /* Initialize the individual SLR config structures */
     slrConfigPdiInfo.sort(SortByIndex);
-    IdentifySyncPoints(bi);
+    for (std::list<SlrPdiInfo*>::iterator slr_id = slrConfigPdiInfo.begin(); slr_id != slrConfigPdiInfo.end(); slr_id++)
+    {
+        SsitConfigSlrInfo* configSlr = new SsitConfigSlrInfo;
+        configSlr->file = (*slr_id)->file;
+        configSlr->index = (*slr_id)->index;
+        configSlr->offset = 0;
+        configSlr->size = 0;
+        configSlr->sync_points = 0;
+        configSlr->data = NULL;
+        configSlr->partition_index = 0;
+        configSlr->partition_offset = 0;
+        configSlr->num_chunks = 0;
+        configSlr->eof = false;
+        configSlrsInfo.push_back(configSlr);
+        if (configSlr->index ==SlrId::MASTER)
+        {
+            master_slr_available = true;
+        }
+    }
 
+    /* Parse slave SLR config files to get SLR data, identify sync points, file sizes and get total file size */
+    ParseSlrConfigFiles(&slr_total_file_size);
+
+    /* 1. Create DMA write keyhole command for chunk from each slave SLR in a round robin fashion.
+       2. Continue the above process till a sync point is found in the current chunk.
+       3. Once a sync point is reached for a slave SLRx, don't include this slave SLRx chunks in the round robin.
+       4. Continue the above steps for remaining slave SLRs.
+       5. Once all the slave SLRs reach a common sync point, create a master SLR chunk.
+       6. Master SLR chunk is data between two sync points (CDO_SSIT_SYNC_SLAVES_CMD).
+       7. Repeat the above steps, till all the sync points are processed or EOF for each slave SLR PDI.
+    */
     while (total_slr_chunk_size < slr_total_file_size)
     {
-        file_index = 0;
-        for (std::list<SlrPdiInfo*>::iterator slr_id = slrConfigPdiInfo.begin(); slr_id != slrConfigPdiInfo.end(); slr_id++)
+        for (std::vector<SsitConfigSlrInfo*>::iterator slr_info = configSlrsInfo.begin(); slr_info != configSlrsInfo.end(); slr_info++)
         {
-            file_index = (*slr_id)->index - 1;
             /* Process slave SLR data only if it has not yet reached the common sync point */
-            if ((slr_sync_points[file_index] == common_sync_point) && ((*slr_id)->index != SlrId::MASTER))
+            if (((*slr_info)->sync_points == common_sync_point) && ((*slr_info)->index != SlrId::MASTER))
             {
-                size_t bytes_to_read = chunk_size;
-                /* If remaining bytes are less than chunk size */
-                if (slr_file_size[file_index] - slr_offsets[file_index] < chunk_size)
-                {
-                    bytes_to_read = slr_file_size[file_index] - slr_offsets[file_index];
-                }
+                /* Slave SLRs processing */
+                size_t chunk_size = GetActualChunkSize(*slr_info);
                 
-                if(bytes_to_read != 0)
+                if(chunk_size != 0)
                 {
-                    num_chunks[file_index]++;
+                    (*slr_info)->num_chunks++;
                     /* For DMA alignment - add nop commands to align it to 128-bit (16-byte) */
                     size_t pad_bytes = ((16 - ((p_offset + CDO_CMD_WRITE_KEYHOLE_SIZE) & 15)) & 15);
-                    size += (bytes_to_read + CDO_CMD_WRITE_KEYHOLE_SIZE + pad_bytes);
+                    size += (chunk_size + CDO_CMD_WRITE_KEYHOLE_SIZE + pad_bytes);
                     p_buffer = (uint8_t*)realloc(p_buffer, size);
 
                     if (pad_bytes != 0)
                     {
                         CdoCommandNop* cdoCmd = CdoCmdNoOperation(pad_bytes);
-                        LOG_TRACE("NOP - 0x%x", p_offset);
                         memcpy(p_buffer + p_offset, cdoCmd, CDO_CMD_NOP_SIZE);
                         p_offset += CDO_CMD_NOP_SIZE;
                         if (cdoCmd->header.length > 0)
@@ -2887,59 +2940,65 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
                             p_offset += (cdoCmd->header.length * sizeof(uint32_t));
                         }
                     }
-                    LOG_TRACE("SSIT: %d. slr_%d, chunk_offset=0x%x", chunk_num++, (((*slr_id)->index == 4) ? 0 : (*slr_id)->index), p_offset);
+                    //LOG_TRACE("SSIT: %d. slr_%d, chunk_offset=0x%x", chunk_num++, (((*slr_info)->index == 4) ? 0 : (*slr_info)->index), p_offset);
+                    LogConfigSlrDetails(chunk_num++, (((*slr_info)->index == 4) ? 0 : (*slr_info)->index), p_offset, chunk_size);
 
                     /* Add write keyhole command for slave SLRs and master config */
-                    CdoCommandWriteKeyhole* cdoCmd = CdoCmdWriteKeyHole(bytes_to_read, (*slr_id)->index);
+                    CdoCommandWriteKeyhole* cdoCmd = CdoCmdWriteKeyHole(chunk_size, (*slr_info)->index);
                     memcpy(p_buffer + p_offset, cdoCmd, CDO_CMD_WRITE_KEYHOLE_SIZE);
                     delete cdoCmd;
                     p_offset += CDO_CMD_WRITE_KEYHOLE_SIZE;
-                    memcpy(p_buffer + p_offset, slr_data[file_index] + slr_offsets[file_index], bytes_to_read);
+                    memcpy(p_buffer + p_offset, (*slr_info)->data + (*slr_info)->offset, chunk_size);
                     
-                    /* Check for sync points in the chunk */
-                    CheckSyncPointInChunk(bytes_to_read, file_index, slr_sync_points);
-                    p_offset += bytes_to_read;
-                    total_slr_chunk_size += bytes_to_read;
-                    slr_offsets[file_index] += bytes_to_read;
+                    /* Check for sync points in the current chunk */
+                    CheckSyncPointInChunk(*slr_info, chunk_size);
+                    p_offset += chunk_size;
+                    total_slr_chunk_size += chunk_size;
+                    (*slr_info)->offset += chunk_size;
                 }
                 else
                 {
                     /* If EOF reached, don't consider this SLR for finding common sync points */
-                    eof_slr[file_index] = 1;
+                    (*slr_info)->eof = true;
                 }
             }
-            /* Get the sync point which all the slave SLRs have serviced */
-            current_sync_point = FindCommonSyncPoint(slr_sync_points, eof_slr, num_of_slrs);
+
+            /* Get the common sync point - sync point which all the slave SLRs have serviced */
+            current_sync_point = FindCurrentSyncPoint();
             
             if ((last_sync_point != current_sync_point))
             {
                 if (master_slr_available)
                 {
                     /* Do not process any other SLR data, until the master data is processed */
-                    if (((*slr_id)->index == SlrId::MASTER) && (master_file_size < slr_file_size[file_index]))
+                    if (((*slr_info)->index == SlrId::MASTER) && (master_file_size < (*slr_info)->size))
                     {
-                        size_t bytes_to_read = 0;
-                        if (master_index < slr_sync_addresses[file_index].size())
+                        /* Chunk size in master is different from the chunk size of slave SLR chunk sizes
+                           Master SLRs chunk size is data size between two sync points (CDO_SSIT_SYNC_SLAVES_CMD )in Master SLR CDO */
+                        size_t chunk_size = 0;
+                        if (master_index < (*slr_info)->sync_addresses.size())
                         {
-                            bytes_to_read = slr_sync_addresses[file_index][master_index] - prev_master_slr_offset;
-                            prev_master_slr_offset = slr_sync_addresses[file_index][master_index];
+                            chunk_size = (*slr_info)->sync_addresses[master_index] - prev_master_slr_offset;
+                            prev_master_slr_offset = (*slr_info)->sync_addresses[master_index];
                             master_index++;
                         }
                         else
                         {
-                            bytes_to_read = slr_file_size[file_index] - prev_master_slr_offset;
+                            chunk_size = (*slr_info)->size - prev_master_slr_offset;
                         }
-                        if (bytes_to_read != 0)
+                        if (chunk_size != 0)
                         {
-                            num_chunks[file_index]++;
-                            size += bytes_to_read;
+                            /* For master SLR, just copy the CDO contents to chunk. No need to create seperate DMA commands like slave SLRs */
+                            (*slr_info)->num_chunks++;
+                            size += chunk_size;
                             p_buffer = (uint8_t*)realloc(p_buffer, size);
-                            memcpy(p_buffer + p_offset, slr_data[file_index] + slr_offsets[file_index], bytes_to_read);
-                            LOG_TRACE("SSIT: %d. slr_master, chunk_offset=0x%x, length=0x%x", chunk_num++, p_offset, bytes_to_read);
-                            p_offset += bytes_to_read;
-                            slr_offsets[file_index] += bytes_to_read;
-                            master_file_size += bytes_to_read;
-                            total_slr_chunk_size += bytes_to_read;
+                            memcpy(p_buffer + p_offset, (*slr_info)->data + (*slr_info)->offset, chunk_size);
+                            //LOG_TRACE("SSIT: %d. slr_master, chunk_offset=0x%x, length=0x%x", chunk_num++, p_offset, chunk_size);
+                            LogConfigSlrDetails(chunk_num++, SlrId::MASTER, p_offset, chunk_size);
+                            p_offset += chunk_size;
+                            (*slr_info)->offset += chunk_size;
+                            master_file_size += chunk_size;
+                            total_slr_chunk_size += chunk_size;
                         }
                         last_sync_point++;
                     }
@@ -2975,129 +3034,138 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
     delete[] p_buffer;
     delete cmd_end;
 
-    file_index = 0;
-    for (std::list<SlrPdiInfo*>::iterator slr_id = slrConfigPdiInfo.begin(); slr_id != slrConfigPdiInfo.end(); slr_id++)
+    for (std::vector<SsitConfigSlrInfo*>::iterator slr_info = configSlrsInfo.begin(); slr_info != configSlrsInfo.end(); slr_info++)
     {
-        file_index = (*slr_id)->index - 1;
-        if ((*slr_id)->index != SlrId::MASTER)
+        if ((*slr_info)->index != SlrId::MASTER)
         {
-            LOG_TRACE("SSIT: total slr_%d chunks = %d", (*slr_id)->index, num_chunks[file_index]);
+            LOG_TRACE("SSIT: total slr-%d chunks  = %d", (*slr_info)->index, (*slr_info)->num_chunks);
         }
         else
         {
-            LOG_TRACE("SSIT: total slr_master chunks = %d", num_chunks[file_index]);
+            LOG_TRACE("SSIT: total master chunks = %d", (*slr_info)->num_chunks);
         }
+    }
+
+    PrintConfigSlrSummary();
+}
+
+/******************************************************************************/
+void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size)
+{
+    VersalImageHeaderTableStructure* iHT = (VersalImageHeaderTableStructure*)data;
+    size_t offset = iHT->firstPartitionHeaderWordOffset * 4;
+    slr_info->partition_sizes.push_back(sizeof(VersalImageHeaderTableStructure) + (iHT->totalMetaHdrLength * 4));
+    for (uint8_t index = 0; index < iHT->partitionTotalCount; index++)
+    {
+        VersalPartitionHeaderTableStructure* pHT = (VersalPartitionHeaderTableStructure*)(data + offset);
+        slr_info->partition_sizes.push_back(pHT->totalPartitionLength * 4);
+        offset += sizeof(VersalPartitionHeaderTableStructure);
     }
 }
 
 /******************************************************************************/
-void VersalImageHeader::IdentifySyncPoints(BootImage& bi)
+void VersalImageHeader::ParseSlrConfigFiles(size_t* slr_total_file_size)
 {
-    uint8_t file_index = 0;
-    LOG_TRACE("CDO_CMD_SSIT_SYNC_MASTER command detected at following offsets:");
-    for (std::list<SlrPdiInfo*>::iterator slr_id = slrConfigPdiInfo.begin(); slr_id != slrConfigPdiInfo.end(); slr_id++)
+    for (std::vector<SsitConfigSlrInfo*>::iterator slr_info = configSlrsInfo.begin(); slr_info != configSlrsInfo.end(); slr_info++)
     {
-        file_index = (*slr_id)->index - 1;
-
-        if (IsCdoFile((*slr_id)->file))
+        if (IsCdoFile((*slr_info)->file))
         {
-            void* cdo_data = NULL;
-            size_t cdo_length = 0;
-            
-            char* cdo_filename = (char*)(*slr_id)->file.c_str();
+            /* For CDO files - master CDO */
+            char* cdo_filename = (char*)(*slr_info)->file.c_str();
             CdoSequence * cdo_seq;
             cdo_seq = cdoseq_load_cdo(cdo_filename);
             if (cdo_seq == NULL)
             {
                 LOG_ERROR("Error parsing CDO file");
             }
-            cdo_data = cdoseq_to_binary(cdo_seq, &cdo_length, 0);
+            (*slr_info)->data = (uint8_t*) cdoseq_to_binary(cdo_seq, &(*slr_info)->size, 0);
+
             /* As we strip the CDO HEADER, we are replacing that with NOP commands to ensure other alignments are not disturbed */
             CdoCommandNop* cdoCmd = CdoCmdNoOperation(sizeof(VersalCdoHeader));
-            memcpy(cdo_data, cdoCmd, CDO_CMD_NOP_SIZE);
-            memset((uint8_t*)cdo_data + CDO_CMD_NOP_SIZE, 0, sizeof(VersalCdoHeader) - CDO_CMD_NOP_SIZE);
-            slr_data[file_index] = (uint8_t*)malloc(cdo_length);
-            memcpy(slr_data[file_index], (uint8_t*)cdo_data, cdo_length);
-            slr_file_size[file_index] = cdo_length;
+            memcpy((*slr_info)->data, cdoCmd, CDO_CMD_NOP_SIZE);
+            memset((*slr_info)->data + CDO_CMD_NOP_SIZE, 0, sizeof(VersalCdoHeader) - CDO_CMD_NOP_SIZE);
         }
         else
         {
-            ByteFile slr_boot_data((*slr_id)->file);
-            slr_data[file_index] = (uint8_t*)malloc(slr_boot_data.len);
-            memcpy(slr_data[file_index], slr_boot_data.bytes, slr_boot_data.len);
-            slr_file_size[file_index] = slr_boot_data.len;
+            /* For PDI files - slave PDIs */
+            std::ifstream fl((*slr_info)->file.c_str(), std::ios::binary);
+            fl.seekg(0, std::ios::end);
+            if (fl.bad() || fl.fail())
+            {
+                LOG_ERROR("Cannot seek to end of file - %s", (*slr_info)->file.c_str());
+            }
+            (*slr_info)->size = fl.tellg();
+            (*slr_info)->data = new uint8_t[(*slr_info)->size];
+            fl.seekg(0, std::ios::beg);
+            fl.read((char*)(*slr_info)->data, (*slr_info)->size);
+            fl.close();
+            GetPartitionOffsets((*slr_info), (*slr_info)->data, (*slr_info)->size);
         }
 
-        std::vector<uint32_t> sync_pt;
-        if ((*slr_id)->index != SlrId::MASTER)
+        if ((*slr_info)->index != SlrId::MASTER)
         {
-            LOG_TRACE("   slr_%d:", (*slr_id)->index);
-            for (uint32_t i = 0; i < slr_file_size[file_index]; i = i + 4)
+            LOG_TRACE("SSIT_SYNC_MASTER command detected at following offsets:");
+            LOG_TRACE("   slr_%d:", (*slr_info)->index);
+            for (uint32_t i = 0; i < (*slr_info)->size; i = i + 4)
             {
-                uint32_t search_cmd = (slr_data[file_index][i] << 24) | (slr_data[file_index][i + 1] << 16) | (slr_data[file_index][i + 2] << 8) | (slr_data[file_index][i + 3]);
+                uint32_t search_cmd = ((*slr_info)->data[i] << 24) | ((*slr_info)->data[i + 1] << 16) | ((*slr_info)->data[i + 2] << 8) | ((*slr_info)->data[i + 3]);
                 if (search_cmd == CDO_SSIT_SYNC_MASTER_CMD)
                 {
-                    sync_pt.push_back(i);
+                    (*slr_info)->sync_addresses.push_back(i);
                     LOG_TRACE("       offset = 0x%x", i);
                 }
             }
             num_of_slrs++;
-            slr_total_file_size += slr_file_size[file_index];
         }
         else
         {
-            master_slr_available = true;
-            LOG_TRACE("   master_slr:", (*slr_id)->index);
-            for (uint32_t i = 0; i < slr_file_size[file_index]; i = i + 4)
+            LOG_TRACE("SSIT_SYNC_SLAVES command detected at following offsets:");
+            for (uint32_t i = 0; i < (*slr_info)->size; i = i + 4)
             {
-                uint32_t search_cmd = (slr_data[file_index][i] << 24) | (slr_data[file_index][i + 1] << 16) | (slr_data[file_index][i + 2] << 8) | (slr_data[file_index][i + 3]);
+                uint32_t search_cmd = ((*slr_info)->data[i] << 24) | ((*slr_info)->data[i + 1] << 16) | ((*slr_info)->data[i + 2] << 8) | ((*slr_info)->data[i + 3]);
                 if (search_cmd == CDO_SSIT_SYNC_SLAVES_CMD)
                 {
                     LOG_TRACE("       offset = 0x%x", i);
-                    sync_pt.push_back(i + sizeof(CdoSsitSlaves));
+                    (*slr_info)->sync_addresses.push_back(i + sizeof(CdoSsitSlaves));
                 }
             }
-            slr_total_file_size += slr_file_size[file_index];
         }
-        slr_sync_addresses[file_index] = sync_pt;
+        *slr_total_file_size += (*slr_info)->size;
     }
 }
 
 /******************************************************************************/
-uint32_t VersalImageHeader::FindCommonSyncPoint(uint32_t* slr_sync_points, uint32_t* eof_slr, uint8_t num_slrs)
+uint32_t VersalImageHeader::FindCurrentSyncPoint(void)
 {
     uint32_t temp = 0xFFFFFFFF;
-    for (uint8_t i = 0; i < num_slrs; i++)
+
+    /* Check  */
+    for (std::vector<SsitConfigSlrInfo*>::iterator slr_info = configSlrsInfo.begin(); slr_info != configSlrsInfo.end(); slr_info++)
     {
-        if ((slr_sync_points[i] < temp) && (eof_slr[i] != 1))
+        /* Don't check sync points in MASTER */
+        if ((*slr_info)->index != SlrId::MASTER)
         {
-            temp = slr_sync_points[i];
+            if (((*slr_info)->sync_points < temp) && ((*slr_info)->eof != true))
+            {
+                temp = (*slr_info)->sync_points;
+            }
         }
     }
     return temp;
 }
 
 /******************************************************************************/
-void VersalImageHeader::CheckSyncPointInChunk(uint8_t* buffer, uint64_t size, uint8_t slr_num, uint32_t* slr_sync)
+void VersalImageHeader::CheckSyncPointInChunk(SsitConfigSlrInfo* slr_info, size_t size)
 {
-    for (uint32_t i = 0; i < size; i = i + 4)
+    /* Check if the current chunk has the identified sync point for the SLR
+       If yes, increment the sync point.
+       "sync_point" points to the no. of sync points processed
+    */
+    for (uint32_t ix = 0; ix < slr_info->sync_addresses.size(); ix++)
     {
-        uint32_t search_cmd = (buffer[i] << 24) | (buffer[i + 1] << 16) | (buffer[i + 2] << 8) | (buffer[i + 3]);
-        if (search_cmd == CDO_SSIT_SYNC_MASTER_CMD)
+        if ((slr_info->sync_addresses[ix] > slr_info->offset) && (slr_info->sync_addresses[ix] < (slr_info->offset + size)))
         {
-            slr_sync[slr_num]++;
-        }
-    }
-}
-
-/******************************************************************************/
-void VersalImageHeader::CheckSyncPointInChunk(uint64_t size, uint8_t slr_num, uint32_t* slr_sync)
-{
-    for (uint32_t j = 0; j < slr_sync_addresses[slr_num].size(); j++)
-    {
-        if ((slr_sync_addresses[slr_num][j] > slr_offsets[slr_num]) && (slr_sync_addresses[slr_num][j] < (slr_offsets[slr_num] + size)))
-        {
-            slr_sync[slr_num]++;
+            slr_info->sync_points++;
         }
     }
 }

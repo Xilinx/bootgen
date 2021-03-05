@@ -535,7 +535,7 @@ namespace CO {
   case 35:
 /* Line 670 of lalr1.cc  */
 #line 140 "../../s/cmdoptions.y"
-    { LOG_WARNING("The option '-securedebugimage'is deprecated. Use '-authenticatedjtag' instead."); }
+    { LOG_ERROR("The option '-securedebugimage'is deprecated. Use '-authenticatedjtag' instead."); }
     break;
 
   case 40:

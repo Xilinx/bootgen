@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -300,6 +300,11 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
     std::string baseFile = StringUtils::BaseName(it->filename);
     bool full_pdi = true;
     bool smap_exists = true;
+
+    if (StringUtils::GetExtension(baseFile) == ".mcs")
+    {
+        LOG_ERROR("Parsing mcs format file is not supported : %s", baseFile.c_str());
+    }
 
     FILE *binFile = fopen(it->filename.c_str(), "rb");
 

@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -137,7 +137,7 @@ option          : _IMAGE filename                   { options.SetBifFilename($2)
                 | _DEBUG_TOK                        { LOG_ERROR("'-debug' option is no more supported. Please use '-log' option"); }
                 | _ZYNQMPENCRDUMP encrDumpOptions
                 | _ZYNQMPES1                        { options.SetZynqmpes1Flag(true); }
-                | _SECUREDEBUG auth_type            { LOG_WARNING("The option '-securedebugimage'is deprecated. Use '-authenticatedjtag' instead."); }
+                | _SECUREDEBUG auth_type            { LOG_ERROR("The option '-securedebugimage' is deprecated. Use '-authenticatedjtag' instead."); }
                 | _AUTHJTAG authJtagOptions
                 | _READ readImageOptions
                 | _VERIFY verifyImageOptions

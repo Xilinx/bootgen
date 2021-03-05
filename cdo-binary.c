@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2019-2020 Xilinx, Inc.
+* Copyright 2019-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -1165,9 +1165,39 @@ static void * encode_v2(CdoSequence * seq, size_t * sizep, uint32_t be) {
                     p[pos++] = u32xe_hi(cmd->dstaddr);
                     p[pos++] = u32xe_lo(cmd->dstaddr);
                 }
+                memcpy(p + pos, cmd->buf, cmd->count * sizeof(uint32_t));
+                byte_swap_buffer(p + pos, cmd->count, be);
+                pos += cmd->count;
             } else {
                 uint32_t padding = 0;
                 uint32_t pos_save = pos;
+                uint64_t dstaddr = cmd->dstaddr;
+                uint32_t count = cmd->count;
+                uint32_t count2 = 0;
+                void * buf = cmd->buf;
+                if (auto_align && dstaddr >= 0xf6000000 && dstaddr < 0xf8000000) {
+                    /* DMA writes to NPI must be 16 byte aligned on
+                     * both address and size (EDT-983251) */
+                    while (count > 0 && ((dstaddr >> 2) & 3) != 0) {
+                        if ((dstaddr >> 32) == 0) {
+                            hdr2(&p, &pos, CMD2_WRITE, 2, be);
+                            p[pos++] = u32xe_lo(dstaddr);
+                        } else {
+                            hdr2(&p, &pos, CMD2_WRITE64, 3, be);
+                            p[pos++] = u32xe_hi(dstaddr);
+                            p[pos++] = u32xe_lo(dstaddr);
+                        }
+                        memcpy(p + pos, buf, sizeof(uint32_t));
+                        byte_swap_buffer(p + pos, 1, be);
+                        pos++;
+                        dstaddr += sizeof(uint32_t);
+                        buf = (char *)buf + sizeof(uint32_t);
+                        count--;
+                    }
+                    count2 = count & 3;
+                    count -= count2;
+                    pos_save = pos;
+                }
                 do {
                     assert(padding < 4);
                     if (padding) {
@@ -1175,18 +1205,38 @@ static void * encode_v2(CdoSequence * seq, size_t * sizep, uint32_t be) {
                         memset(p + pos, 0, (padding - 1)*4);
                         pos += padding - 1;
                     }
-                    hdr2(&p, &pos, CMD2_DMA_WRITE, 2 + cmd->count, be);
-                    p[pos++] = u32xe_hi(cmd->dstaddr);
-                    p[pos++] = u32xe_lo(cmd->dstaddr);
+                    hdr2(&p, &pos, CMD2_DMA_WRITE, 2 + count, be);
+                    p[pos++] = u32xe_hi(dstaddr);
+                    p[pos++] = u32xe_lo(dstaddr);
                     if (!auto_align) break;
-                    if ((pos & 3) == ((cmd->dstaddr >> 2) & 3)) break;
+                    if ((pos & 3) == ((dstaddr >> 2) & 3)) break;
                     padding++;
                     pos = pos_save;
                 } while (1);
+                memcpy(p + pos, buf, count * sizeof(uint32_t));
+                byte_swap_buffer(p + pos, count, be);
+                pos += count;
+                if (count2 > 0) {
+                    dstaddr += count * sizeof(uint32_t);
+                    buf = (char *)buf + count * sizeof(uint32_t);
+                    while (count2 > 0) {
+                        if ((dstaddr >> 32) == 0) {
+                            hdr2(&p, &pos, CMD2_WRITE, 2, be);
+                            p[pos++] = u32xe_lo(dstaddr);
+                        } else {
+                            hdr2(&p, &pos, CMD2_WRITE64, 3, be);
+                            p[pos++] = u32xe_hi(dstaddr);
+                            p[pos++] = u32xe_lo(dstaddr);
+                        }
+                        memcpy(p + pos, buf, sizeof(uint32_t));
+                        byte_swap_buffer(p + pos, 1, be);
+                        pos++;
+                        dstaddr += sizeof(uint32_t);
+                        buf = (char *)buf + sizeof(uint32_t);
+                        count2--;
+                    }
+                }
             }
-            memcpy(p + pos, cmd->buf, cmd->count * sizeof(uint32_t));
-            byte_swap_buffer(p + pos, cmd->count, be);
-            pos += cmd->count;
             break;
         case CdoCmdWriteKeyhole: {
             uint32_t padding = 0;

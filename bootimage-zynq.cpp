@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -276,6 +276,12 @@ void ZynqBootImage::ParseBootImage(PartitionBifOptions* it)
 {
     LOG_INFO("Importing BootImage...");
     std::string baseFile = StringUtils::BaseName(it->filename);
+
+    if (StringUtils::GetExtension(baseFile) == ".mcs")
+    {
+        LOG_ERROR("Parsing mcs format file is not supported : %s", baseFile.c_str());
+    }
+
     std::ifstream src(it->filename.c_str(), std::ios::binary);
 
     if (!src.good())

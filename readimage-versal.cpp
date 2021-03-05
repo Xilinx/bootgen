@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -151,6 +151,10 @@ void VersalReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
     {
         iHT = new VersalImageHeaderTableStructure;
         result = fread(iHT, 1, sizeof(VersalImageHeaderTableStructure), binFile);
+        if ((iHT->version != VERSION_v1_00_VERSAL) && (iHT->version != VERSION_v2_00_VERSAL) && (iHT->version != VERSION_v3_00_VERSAL))
+        {
+            LOG_ERROR("Improper version (0x%.8x) read from Image Header Table of the PDI file.",iHT->version);
+        }
         if (result != sizeof(VersalImageHeaderTableStructure))
         {
             LOG_ERROR("Error parsing Image Header Table from PDI file");
