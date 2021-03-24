@@ -186,9 +186,11 @@ uint8_t Key::ParseOpenSSLKey(FILE* f)
     RSA_Class rsaInst;
     OpenSSL_add_all_algorithms();
     uint32_t keySzRd;
+    char *key_pass = NULL;
     if (isSecret) 
     {
-        rsaInst.rsa = PEM_read_RSAPrivateKey(f, NULL, NULL, NULL);
+        key_pass = getenv("KEY_PASS");
+        rsaInst.rsa = PEM_read_RSAPrivateKey(f, NULL, NULL, (void *)key_pass);
         if(rsaInst.rsa == NULL)
         {
             return 1;
