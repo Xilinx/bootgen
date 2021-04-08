@@ -704,6 +704,12 @@ ElfFormat* ElfFormat::GetElfFormat(ElfClass::Type elfClass, uint8_t* start, uint
         *state = (A53ExecState::Type)A53ExecState::AARCH64;
         return new ElfFormat64(start);
     }
+    /* ELF32 may contain either ARMv7/AArch32 or AArch64 using the ILP32 data model */
+    else if (((Elf32_Ehdr*)start)->e_machine != 0x28)
+    {
+        *state = (A53ExecState::Type)A53ExecState::AARCH64;
+        return new ElfFormat32(start);
+    }
     else 
     {
         *state = (A53ExecState::Type)A53ExecState::AARCH32;
