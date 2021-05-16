@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -389,152 +389,177 @@ uint8_t Key::ParseXilinxRsaKey(FILE* f)
 }
 
 /******************************************************************************/
-void Key::WriteRsaFile(std::ofstream& file, const RSA* rsa, bool secret, uint16_t keyLength)
+void Key::WriteRsaFile(std::string filename, const RSA* rsa, bool secret, uint16_t keyLength)
 {
-    uint8_t *temp = new uint8_t [keyLength];
+    std::ofstream file(filename.c_str());
+    bool fileWritten = false;
 
-    file << "N = ";
+    if (file)
+    {
+        uint8_t *temp = new uint8_t[keyLength];
+
+        file << "N = ";
 
 #if OPENSSL_VERSION_NUMBER > 0x10100000L
-    memcpy(temp, RSA_get0_n(rsa)->d, keyLength);
+        memcpy(temp, RSA_get0_n(rsa)->d, keyLength);
 #else
-    memcpy(temp, rsa->n->d, keyLength);
+        memcpy(temp, rsa->n->d, keyLength);
 #endif
-    for (uint32_t index = keyLength; index != 0; index--)
-    {
-        file << std::uppercase << std::hex << std::setfill('0') << std::setw(2) << int(temp[index-1]);
-    }
-
-    file << "\n\nE = ";
-#if OPENSSL_VERSION_NUMBER > 0x10100000L
-    uint32_t* temp_e = (uint32_t*)RSA_get0_e(rsa)->d;
-#else
-    uint32_t* temp_e = (uint32_t*)rsa->e->d;
-#endif    
-    file << std::uppercase << std::hex << std::setfill('0') << std::setw(8) << *temp_e;
-    if (secret)
-    {
-        file << "\n\nD = ";
-#if OPENSSL_VERSION_NUMBER > 0x10100000L
-        memcpy(temp, RSA_get0_d(rsa)->d, keyLength);
-#else
-        memcpy(temp, rsa->d->d, keyLength);
-#endif        
         for (uint32_t index = keyLength; index != 0; index--)
         {
             file << std::uppercase << std::hex << std::setfill('0') << std::setw(2) << int(temp[index - 1]);
         }
+
+        file << "\n\nE = ";
+#if OPENSSL_VERSION_NUMBER > 0x10100000L
+        uint32_t* temp_e = (uint32_t*)RSA_get0_e(rsa)->d;
+#else
+        uint32_t* temp_e = (uint32_t*)rsa->e->d;
+#endif    
+        file << std::uppercase << std::hex << std::setfill('0') << std::setw(8) << *temp_e;
+        if (secret)
+        {
+            file << "\n\nD = ";
+#if OPENSSL_VERSION_NUMBER > 0x10100000L
+            memcpy(temp, RSA_get0_d(rsa)->d, keyLength);
+#else
+            memcpy(temp, rsa->d->d, keyLength);
+#endif        
+            for (uint32_t index = keyLength; index != 0; index--)
+            {
+                file << std::uppercase << std::hex << std::setfill('0') << std::setw(2) << int(temp[index - 1]);
+            }
+        }
+        delete[] temp;
+        fileWritten = !file.bad();
+        file.close();
     }
-    delete[] temp;
+
+    if (!fileWritten)
+    {
+        LOG_ERROR("Failure writing authentication key file : %s", filename.c_str());
+    }
+    else
+    {
+        LOG_INFO("%s key file generation in RSA format successful", filename.c_str());
+    }
 }
 
 /******************************************************************************/
-void Key::GenerateRsaKeys(KeyGenerationStruct* keygen) 
+void Key::WritePemFile(std::string filename, RSA * rsa, bool secret)
+{
+    FILE* file = fopen(filename.c_str(), "wb");
+    bool fileWritten = false;
+    if (file)
+    {
+        if (!secret)
+        {
+            if (PEM_write_RSA_PUBKEY(file, rsa))
+            {
+                fileWritten = true;
+            }
+        }
+        else
+        {
+            if (PEM_write_RSAPrivateKey(file, rsa, NULL, NULL, 0, NULL, NULL))
+            {
+                fileWritten = true;
+            }
+        }
+        fclose(file);
+    }
+
+    if (!fileWritten)
+    {
+        LOG_ERROR("Failure writing authentication key file : %s", filename.c_str());
+    }
+    else
+    {
+        LOG_INFO("%s key file generation in PEM format successful",filename.c_str());
+    }
+}
+
+/******************************************************************************/
+void Key::GenerateRsaKeys(KeyGenerationStruct* keygen)
 {
     RSA *rsa = NULL;
-
-    bool publicKeyGenerated = false;
-    bool privateKeyGenerated = false;
-
     OpenSSL_add_all_algorithms();
-    FILE* file;
-    
-    if ((rsa = RSA_generate_key(keygen->keyLength*8, RSA_F4, NULL, NULL)) == NULL)
+
+    if (!(keygen->ppk_file != "" || keygen->psk_file != "" || keygen->spk_file != "" || keygen->ssk_file != ""))
     {
-        LOG_ERROR("Failure creating authentication Keys");
-    }
-    else
-    {
-        if(keygen->format == GenAuthKeys::PEM)
-        {
-            if(keygen->ppk_file != "")
-            {
-                file = fopen(keygen->ppk_file.c_str(), "wb");
-                PEM_write_RSA_PUBKEY(file, rsa);
-                fclose(file);
-                LOG_INFO("PPK generation in PEM format successful");
-                publicKeyGenerated = true;
-            }
-            if(keygen->psk_file != "")
-            {
-                file = fopen(keygen->psk_file.c_str(), "wb");
-                PEM_write_RSAPrivateKey(file, rsa, NULL, NULL, 0, NULL, NULL);
-                fclose(file);
-                LOG_INFO("PSK generation in PEM format successful");
-                publicKeyGenerated = true;
-            }
-        }
-        else
-        {
-            if(keygen->ppk_file != "")
-            {
-                std::ofstream file1(keygen->ppk_file.c_str());
-                WriteRsaFile(file1, rsa, false, keygen->keyLength);
-                file1.close();
-                LOG_INFO("PPK generation in RSA format successful");
-                publicKeyGenerated = true;
-            }
-            if(keygen->psk_file != "")
-            {
-                std::ofstream file2(keygen->psk_file.c_str());
-                WriteRsaFile(file2, rsa, true, keygen->keyLength);
-                file2.close();
-                LOG_INFO("PSK generation in RSA format successful");
-                publicKeyGenerated = true;
-            }
-        }
+        LOG_ERROR("Failed to generate authentication keys. Please specify the key paths in BIF file");
     }
 
-    rsa=NULL;
-    if ((rsa=RSA_generate_key(keygen->keyLength*8, RSA_F4, NULL, NULL)) == NULL)
+    if (keygen->ppk_file != "" || keygen->psk_file != "")
     {
-        LOG_ERROR("Failure creating authentication Keys");
-    }
-    else
-    {
-        if(keygen->format == GenAuthKeys::PEM)
+        if ((rsa = RSA_generate_key(keygen->keyLength * 8, RSA_F4, NULL, NULL)) == NULL)
         {
-            if(keygen->spk_file != "")
-            {
-                file = fopen(keygen->spk_file.c_str(), "wb");
-                PEM_write_RSA_PUBKEY(file, rsa);
-                fclose(file);
-                LOG_INFO("SPK generation in PEM format successful");
-                privateKeyGenerated = true;
-            }
-            if(keygen->ssk_file != "")
-            {
-                file = fopen(keygen->ssk_file.c_str(), "wb");
-                PEM_write_RSAPrivateKey(file, rsa, NULL, NULL, 0, NULL, NULL);
-                fclose(file);
-                LOG_INFO("SSK generation in PEM format successful");
-                privateKeyGenerated = true;
-            }
+            LOG_ERROR("Failure creating authentication Keys");
         }
         else
         {
-            if(keygen->spk_file != "")
+            if (keygen->format == GenAuthKeys::PEM)
             {
-                std::ofstream file3(keygen->spk_file.c_str());
-                WriteRsaFile(file3, rsa, false, keygen->keyLength);
-                file3.close();
-                LOG_INFO("SPK generation in RSA format successful");
-                privateKeyGenerated = true;
+                if (keygen->ppk_file != "")
+                {
+                    WritePemFile(keygen->ppk_file, rsa, false);
+                }
+
+                if (keygen->psk_file != "")
+                {
+                    WritePemFile(keygen->psk_file, rsa, true);
+                }
             }
-            if(keygen->ssk_file != "")
+            else
             {
-                std::ofstream file4(keygen->ssk_file.c_str());
-                WriteRsaFile(file4, rsa, true, keygen->keyLength);
-                file4.close();
-                LOG_INFO("SSK generation in RSA format successful");
-                privateKeyGenerated = true;
+                if (keygen->ppk_file != "")
+                {
+                    WriteRsaFile(keygen->ppk_file, rsa, false, keygen->keyLength);
+                }
+
+                if (keygen->psk_file != "")
+                {
+                    WriteRsaFile(keygen->psk_file, rsa, true, keygen->keyLength);
+                }
             }
         }
+        rsa = NULL;
     }
-    if(!publicKeyGenerated && !privateKeyGenerated)
+
+    if (keygen->spk_file != "" || keygen->ssk_file != "")
     {
-        LOG_DEBUG(DEBUG_STAMP, "Key paths are not specified in the BIF file");
-        LOG_ERROR("Failed to generate authentication keys. Please specify the key paths in BIF file");
+        if ((rsa = RSA_generate_key(keygen->keyLength * 8, RSA_F4, NULL, NULL)) == NULL)
+        {
+            LOG_ERROR("Failure creating authentication Keys");
+        }
+        else
+        {
+            if (keygen->format == GenAuthKeys::PEM)
+            {
+                if (keygen->spk_file != "")
+                {
+                    WritePemFile(keygen->spk_file, rsa, false);
+                }
+
+                if (keygen->ssk_file != "")
+                {
+                    WritePemFile(keygen->ssk_file, rsa, true);
+                }
+            }
+            else
+            {
+                if (keygen->spk_file != "")
+                {
+                    WriteRsaFile(keygen->spk_file, rsa, false, keygen->keyLength);
+                }
+
+                if (keygen->ssk_file != "")
+                {
+                    WriteRsaFile(keygen->ssk_file, rsa, true, keygen->keyLength);
+                }
+            }
+        }
+        rsa = NULL;
     }
 }
 
