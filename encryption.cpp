@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -218,6 +218,7 @@ void EncryptionContext::GenerateAesSeed(void)
     uint8_t seed[BYTES_PER_AES_KEY];
     RAND_bytes(seed, WORDS_PER_AES_KEY * sizeof(uint32_t));
     SetAesSeed(seed);
+    LOG_WARNING("Seed needed for KDF is generated using RAND_Bytes. To have a secure keying material, we encourage the users to provide the Seed. \n\t   Refer to UG1283 for more details");
     LOG_INFO("AES Seed generated successfully");
 }
 
