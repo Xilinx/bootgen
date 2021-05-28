@@ -260,6 +260,7 @@ void ZynqMpBootImage::ParseBootImage(PartitionBifOptions* it)
         image->SetReserve(it->reserve);
         image->SetLoad(it->load);
         image->SetStartup(it->startup);
+        image->SetUserPartitionNum(it->pid);
         image->SetPpkSelect(bifOptions->GetPpkSelection());
 
         /* Local key files/signatures within partition attributes have more priority than global key/signature files, 

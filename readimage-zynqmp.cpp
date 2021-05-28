@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@
 
 #include "readimage-zynqmp.h"
 
+#define BITSTREAM_AUTH_CHUNK_SIZE  0x800000 //8MB = 8*1024*1024
 /*******************************************************************************/
 ZynqMpReadImage::~ZynqMpReadImage()
 {
@@ -159,6 +160,18 @@ void ZynqMpReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
         offset += sizeof(ZynqMpPartitionHeaderTableStructure);
     }
 
+    /* Insert Partition Names from Image Header based on Section Count */
+    std::list<std::string>::iterator iHName = iHNames.begin();
+    for (std::list<ZynqMpImageHeaderStructure*>::iterator iH = iHs.begin(); iH != iHs.end(); iH++, iHName++)
+    {
+        for (uint32_t sectionIndex = 0; sectionIndex < (*iH)->imageNameLength; sectionIndex++)
+        {
+            std::stringstream ss;
+            ss << sectionIndex;
+            pHTNames.push_back(*iHName + "." + ss.str());
+        }
+    }
+
     /* Authentication Certificates Extraction */
     uint8_t*  header_ac = NULL;
     if (iHT->headerAuthCertificateWordOffset != 0)
@@ -174,25 +187,45 @@ void ZynqMpReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
         }
     }
     aCs.push_back(header_ac);
+    aCNames.push_back("Headers");
 
-    for (std::list<ZynqMpPartitionHeaderTableStructure*>::iterator partitionHdr = pHTs.begin(); partitionHdr != pHTs.end(); partitionHdr++)
+    std::list<std::string>::iterator pHTName = pHTNames.begin();
+    for (std::list<ZynqMpPartitionHeaderTableStructure*>::iterator partitionHdr = pHTs.begin(); partitionHdr != pHTs.end(); partitionHdr++, pHTName++)
     {
         uint8_t* aC = NULL;
-
         offset = (*partitionHdr)->authCertificateOffset * 4;
+
         if (offset != 0)
         {
-            aC = new uint8_t[sizeof(AuthCertificate4096Structure)];
-            if (!(fseek(binFile, offset, SEEK_SET)))
+            int acCount = 1;
+            /* Check if the partition is a PL */
+            if (((((*partitionHdr)->partitionAttributes) >> PH_DEST_DEVICE_SHIFT_ZYNQMP) & PH_DEST_DEVICE_MASK_ZYNQMP) == 2)
             {
-                result = fread(aC, 1, sizeof(AuthCertificate4096Structure), binFile);
-                if (result != sizeof(AuthCertificate4096Structure))
+                acCount = ((*partitionHdr)->encryptedPartitionLength * 4) / BITSTREAM_AUTH_CHUNK_SIZE;
+                if (((*partitionHdr)->encryptedPartitionLength * 4) % BITSTREAM_AUTH_CHUNK_SIZE != 0)
                 {
-                    LOG_ERROR("Error reading header authentication certificate");
+                    acCount += 1;
                 }
+                plAcCount = acCount;
+            }
+
+            for (int i = 0; i < acCount; i++)
+            {
+                aC = new uint8_t[sizeof(AuthCertificate4096Structure)];
+                if (!(fseek(binFile, offset, SEEK_SET)))
+                {
+                    result = fread(aC, 1, sizeof(AuthCertificate4096Structure), binFile);
+                    if (result != sizeof(AuthCertificate4096Structure))
+                    {
+                        LOG_ERROR("Error reading header authentication certificate");
+                    }
+                }
+
+                offset += sizeof(AuthCertificate4096Structure);
+                aCs.push_back(aC);
+                aCNames.push_back(*pHTName);
             }
         }
-        aCs.push_back(aC);
     }
     fclose(binFile);
 }
@@ -292,37 +325,20 @@ void ZynqMpReadImage::DisplayPartitionHeaderTable(void)
 /*******************************************************************************/
 void ZynqMpReadImage::DisplayAuthenicationCertificates(void)
 {
-    uint32_t cnt_index = 0;
     Authentication::Type auth_type;
-    std::list<uint8_t*>::iterator aC = aCs.begin();
+    std::list<std::string>::iterator aCName = aCNames.begin();
 
-    /* Header AC */
-    if ((*aC) != NULL)
+    for (std::list<uint8_t*>::iterator aC = aCs.begin(); aC != aCs.end(); aC++, aCName++)
     {
-        Separator();
-        std::cout << "   AUTHENTICATION CERTIFICATE " << "(Headers)" << std::endl;
-        Separator();
-        auth_type = (Authentication::Type) (*(*aC) & 3);
-        DisplayACFields(*aC, auth_type);
-    }
-    aC++;
-
-    /* Partition ACs */
-    std::list<std::string>::iterator name = iHNames.begin();
-    for (std::list<ZynqMpImageHeaderStructure*>::iterator iH = iHs.begin(); iH != iHs.end(); iH++, name++)
-    {
-        for (cnt_index = 0; cnt_index < (*iH)->imageNameLength; cnt_index++)
+        if ((*aC) != NULL)
         {
-            if ((*aC) != NULL)
-            {
-                Separator();
-                std::cout << "   AUTHENTICATION CERTIFICATE " << "(" << *name << "." << std::dec << cnt_index << ")" << std::endl;
-                Separator();
-                auth_type = (Authentication::Type) (*(*aC) & 3);
-                DisplayACFields(*aC, auth_type);
-            }
-            aC++;
+            Separator();
+            std::cout << "   AUTHENTICATION CERTIFICATE " << "(" << *aCName << ")" << std::endl;
+            Separator();
+            auth_type = (Authentication::Type) (*(*aC) & 3);
+            DisplayACFields(*aC, auth_type);
         }
+
     }
 }
 

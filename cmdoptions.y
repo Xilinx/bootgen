@@ -73,7 +73,7 @@ void ShowCommonHelp(int,bool);
 %token _ARCH ZYNQ ZYNQMP VERSAL _R FPGA
 %token _DUAL_QSPI_MODE _DUAL_OSPI_MODE PARALLEL STACKED
 %token _W ON OFF
-%token _NOAUTHBLOCKS _ZYNQMPES1
+%token _NOAUTHBLOCKS _ZYNQMPES1 _OVERLAYCDO
 %token _EFUSEPPKBITS _GENERATE_HASHES _PADIMAGEHEADER _SPKSIGNATURE _GENERATE_KEYS PEM RSA AUTH GREY METAL
 %token _SECUREDEBUG ECDSA _AUTHJTAG
 %token _ENCRYPT BBRAM EFUSE _P_TOK
@@ -98,7 +98,7 @@ void ShowCommonHelp(int,bool);
 %token H_BIF_AUTHPARAM H_BIF_BHKEY H_BIF_PFW H_BIF_BLOCKS H_BIF_METAL H_BIF_BHIV H_BIF_BOOTVEC
 %token H_BIF_PUFDATA H_BIF_PTYPE H_BIF_IMAGECFG H_BIF_PMCCONFIG H_BIF_AARCH32 H_BIF_BIGENDIAN H_BIF_BOOTCONFIG H_BIF_COPY
 %token H_BIF_CORE H_BIF_DELAY_HANDOFF H_BIF_DELAY_LOAD H_BIF_FILE H_BIF_ID H_BIF_IMAGE H_BIF_METAHDR H_BIF_NAME H_BIF_PARTITION
-%token H_BIF_SLR H_BIF_TYPE H_BIF_KEYSRCENCR H_BIF_PARENTID H_DPACM_ENABLE
+%token H_BIF_SLR H_BIF_TYPE H_BIF_KEYSRCENCR H_BIF_PARENTID H_DPACM_ENABLE H_BIF_USERKEYS
 
 %%
 top             : option_list;
@@ -144,6 +144,7 @@ option          : _IMAGE filename                   { options.SetBifFilename($2)
                 | _DUMP dumpOptions
                 | _DUMP_DIR FILENAME                { options.SetDumpDirectory($2); }
                 | _VERIFYKDF filename               { options.SetKDFTestVectorFile($2); }
+                | _OVERLAYCDO filename              { options.SetOverlayCDOFileName($2); }
                 ;
 
 charstring      : IDENTIFIER | HEXSTRING;
@@ -256,6 +257,7 @@ bifhelpoption	: /* empty */                       { ShowBifHelp(0); exit(0); }
                 | H_BIF_TYPE                        { ShowBifHelp(CO::BisonParser::token::H_BIF_TYPE); exit(0); }
                 | H_BIF_KEYSRCENCR                  { ShowBifHelp(CO::BisonParser::token::H_BIF_KEYSRCENCR); exit(0); }
                 | H_DPACM_ENABLE                    { ShowBifHelp(CO::BisonParser::token::H_DPACM_ENABLE); exit(0); }
+                | H_BIF_USERKEYS                    { ShowBifHelp(CO::BisonParser::token::H_BIF_USERKEYS); exit(0); }
                 ;
 
 wopt            : /* empty*/                        { options.SetOverwrite(true); }
@@ -753,6 +755,10 @@ void ShowBifHelp(int a)
 
     case CO::BisonParser::token::H_DPACM_ENABLE:
         std::cout << H_DPACM_ENABLE_H << std::endl;
+        break;
+
+    case CO::BisonParser::token::H_BIF_USERKEYS:
+        std::cout << H_BIF_USERKEYS_H << std::endl;
         break;
 
     case 0:

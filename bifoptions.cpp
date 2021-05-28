@@ -25,12 +25,14 @@
 #include "bifoptions.h"
 #include "bifscanner.h"
 #include "encryptutils.h"
+#include "cdo-command.h"
 #include <map>
 
 /* Forward Class Declaration */
 class BootImage;
 static bool delay_load_warning_given;
 static bool delay_handoff_warning_given;
+
 /*
 -------------------------------------------------------------------------------
 *************************************************************** FUNCTIONS *****
@@ -105,6 +107,12 @@ BifOptions::BifOptions(Arch::Type architecture, const char* name)
     metaHdrAttributes.checksum = Checksum::None;
     metaHdrAttributes.dpaCM = DpaCM::DpaCMDisable;
     metaHdrAttributes.pufHdLoc = PufHdLoc::PUFinEFuse;
+
+    authJtagInfo.jtagTimeout = 0;
+    authJtagInfo.userDeviceDNA = false;
+    memset(authJtagInfo.deviceDNA, 0, sizeof(authJtagInfo.deviceDNA));
+    authJtagInfo.revokeId = 0;
+    authJtagInfo.userRevokeId = false;
 }
 
 /******************************************************************************/
@@ -368,6 +376,10 @@ void BifOptions::AddFiles(int type, std::string filename)
         case BIF::BisonParser::token::EFUSE_USER_KEK1_IV:
             SetEfuseUserKek1IVFileName(filename);
             break;
+
+        case BIF::BisonParser::token::USER_KEYS:
+            SetUserKeysFileName(filename);
+            break;
     }
 }
 
@@ -571,6 +583,10 @@ void BifOptions::SetPufMode(PufMode::Type type)
 void BifOptions::SetShutterValue(uint32_t value)
 {
     shutterVal = value;
+    if((shutterVal & 0x80000000) == 0)
+    {
+        LOG_ERROR("The PUF shutter value specified in the BIF file indicates that the Global Variation Filter was not enabled during PUF registration/provisioning.\nThe Global Variation Filter must be used during PUF registration/provisioning to avoid PUF key encryption keys with lower than expected entropy ");
+    }
 }
 
 /******************************************************************************/
@@ -679,6 +695,104 @@ void BifOptions::SetEfuseUserKek1IVFileName(std::string filename)
 
     efuseUserKek1IVFile = filename;
     LOG_TRACE("Setting Efuse User Kek1 IV file as %s", efuseUserKek1IVFile.c_str());
+}
+
+/******************************************************************************/
+void BifOptions::SetUserKeysFileName(std::string filename)
+{
+    if (arch == Arch::ZYNQ  || arch == Arch::ZYNQMP)
+    {
+        LOG_ERROR("BIF attribute error !!!\n\t\t'userkeys' is not supported for ZYNQ/ZYNQMP architectures");
+    }
+
+    std::ifstream f(filename.c_str());
+    if (!f)
+    {
+        LOG_ERROR("Cannot read file - %s", filename.c_str());
+    }
+
+    userKeyFile = filename;
+    ParseUserKeyFile(userKeyFile);
+}
+
+/******************************************************************************/
+void static SetUserKey(const uint8_t* key, uint32_t* userKey)
+{
+    for (uint32_t index = 0; index < WORDS_PER_AES_KEY; index++)
+    {
+        userKey[index] = ReadBigEndian32(key);
+        key += sizeof(uint32_t);
+    }
+}
+
+/******************************************************************************/
+void BifOptions::ParseUserKeyFile(std::string inputFileName)
+{
+    LOG_TRACE("Reading the user key file %s",inputFileName.c_str());
+    std::ifstream keyFile(inputFileName.c_str());
+
+    if (!keyFile)
+    {
+        LOG_ERROR("Failure reading user key file - %s", inputFileName.c_str());
+    }
+
+    while (keyFile)
+    {
+        std::string word;
+        keyFile >> word;
+        if (word == "")
+        {
+            return;
+        }
+
+        //char c = ' ';
+        int c = (int)word.back() - 48;
+        word.pop_back();
+        if (word == "user_key")
+        {
+            if (c > 7 && c < 0)
+            {
+                LOG_ERROR("The AES user keys available are from 0 to 7. user_key%d is not supported", c);
+            }
+
+            word = "";
+            keyFile >> word;
+            uint8_t hexData[256] = { 0 };
+            if (!(word.size() == (WORDS_PER_AES_KEY * 8) || word.size() == (WORDS_PER_AES_KEY * 4)))
+            {
+                LOG_ERROR("An AES user key must be 128/256 bits long - %s", word.c_str());
+            }
+
+            if (word.size() & 1)
+            {
+                LOG_ERROR("Error parsing AES user key \n\t\t Hex String - %s - does not have even no.of hex digits", word.c_str());
+            }
+
+            for (uint32_t i = 0, j = 0; i < word.size(); i += 2, j++)
+            {
+                std::string byte = word.substr(i, 2);
+                if (!isxdigit(byte[0]) || !isxdigit(byte[1]))
+                {
+                    LOG_ERROR("Error parsing AES user key\n\t\t Hex String - %s - is has a non hex digit", word.c_str());
+                }
+                if (word.size() == WORDS_PER_AES_KEY * 4)
+                {
+                    hexData[j+16] = (uint8_t)strtoul(byte.c_str(), NULL, 16);
+                }
+                else
+                {
+                    hexData[j] = (uint8_t)strtoul(byte.c_str(), NULL, 16);
+                }
+            }
+            SetUserKey(hexData, (uint32_t*)&(user_keys.user_keys_array[c][0]));
+        }
+        else
+        {
+            /* If the word is neither of the above */
+            LOG_DEBUG(DEBUG_STAMP, "'user_key' identifier expected, '%s' found instead", word.c_str());
+            LOG_ERROR("Error parsing User key file - %s", inputFileName.c_str());
+        }
+    }
 }
 
 /******************************************************************************/
@@ -1001,6 +1115,46 @@ void BifOptions::SetPufHdinBHFlag()
 }
 
 /******************************************************************************/
+void BifOptions::SetAuthJtagRevokeID(uint32_t value)
+{
+    if (value > 0xFF)
+    {
+        LOG_ERROR("revoke_id can only take values from 0x0 to 0xFF.");
+    }
+    authJtagInfo.revokeId = value;
+    authJtagInfo.userRevokeId = true;
+}
+
+/******************************************************************************/
+void BifOptions::SetAuthJtagDeviceDna(std::string hexString)
+{
+    authJtagInfo.userDeviceDNA = true;
+    uint32_t hexStringLength = (uint32_t)hexString.size();
+    if (hexStringLength & 1)
+    {
+        LOG_DEBUG(DEBUG_STAMP, "Hex String - %s - does not have even no. of hex digits", hexString.c_str());
+        LOG_ERROR("Error parsing Device DNA");
+    }
+
+    for (uint32_t i = 0,j = 0; i < hexStringLength; i += 2,j++)
+    {
+        std::string byte = hexString.substr(i, 2);
+        if (!isxdigit(byte[0]) || !isxdigit(byte[1]))
+        {
+            LOG_DEBUG(DEBUG_STAMP, "Hex String - %s - is has a non hex digit", hexString.c_str());
+            LOG_ERROR("Error parsing Device DNA");
+        }
+        authJtagInfo.deviceDNA[j] = (uint8_t)strtoul(byte.c_str(), NULL, 16);
+    }
+}
+
+/******************************************************************************/
+void BifOptions::SetAuthJtagTimeOut(uint32_t value)
+{
+    authJtagInfo.jtagTimeout = value;
+}
+
+/******************************************************************************/
 void PartitionBifOptions::SetEncryptionKeySource(KeySource::Type type)
 {
     ValidateEncryptionKeySource(type);
@@ -1033,6 +1187,10 @@ void PartitionBifOptions::SetEncryptionBlocks(uint32_t size, uint32_t num)
         if (size < 64)
         {
             LOG_ERROR("BIF attribute error !!!\n\t\tThe minimum block size allowed is 4 AES encryption blocks (i.e., 64 bytes)");
+        }
+        if(size % 16 != 0)
+        {
+            LOG_ERROR("BIF attribute error !!!\n\t\tThe block size specified must be 16 byte aligned. Block size - %d",size);
         }
     }
 
@@ -1755,6 +1913,12 @@ uint32_t BifOptions::GetExtendedIdCode(void)
 bool BifOptions::GetBypassIdcodeFlag(void)
 {
     return bypassIdCode;
+}
+
+/******************************************************************************/
+void PartitionBifOptions::SetAesKeyFile(std::string filename)
+{
+    aesKeyFile = filename;
 }
 
 /******************************************************************************/

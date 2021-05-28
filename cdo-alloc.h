@@ -1,3 +1,4 @@
+// 67d7842dbbe25473c3c32b93c0da8047785f30d78e8a024de1b57352245f9689
 /******************************************************************************
 * Copyright 2019-2021 Xilinx, Inc.
 *
@@ -14,15 +15,12 @@
 * limitations under the License.
 ******************************************************************************/
 
-#ifndef D_cdo_load
-#define D_cdo_load
+#ifndef D_cdo_alloc
+#define D_cdo_alloc
 
-#include <stdlib.h>
-#include "cdo-command.h"
+void * myalloc(size_t len);
+void * myalloc_zero(size_t len);
+void * myrealloc(void * p, size_t len);
+void myfree(void * p);
 
-void * file_to_buf(const char * path, size_t * sizep);
-CdoSequence * cdoseq_load_cdo(const char * path);
-
-void cdoseq_extract_writes(CdoSequence * seq);
-
-#endif /* D_cdo_load */
+#endif /* D_cdo_alloc */

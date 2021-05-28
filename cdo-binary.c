@@ -87,6 +87,9 @@ enum {
     CMD2_SET_BOARD	 = 0x114U,
     CMD2_GET_BOARD	 = 0x115U,
     CMD2_SET_PLM_WDT	 = 0x116U,
+    CMD2_LOG_STRING	 = 0x117U,
+    CMD2_LOG_ADDRESS	 = 0x118U,
+    CMD2_MARKER		 = 0x119U,
 
     /* PM Commands */
     CMD2_PM_GET_API_VERSION	= 0x201U,
@@ -486,6 +489,36 @@ static uint32_t decode_v2(CdoSequence * seq, uint32_t * p, uint32_t l, uint32_t 
             if (args != 2) goto unexpected;
             cdocmd_add_set_plm_wdt(seq, u32xe(p[i+0]), u32xe(p[i+1]));
             break;
+        case CMD2_LOG_STRING: {
+            uint32_t * tmpbuf;
+            tmpbuf = malloc((args + 1) * sizeof *tmpbuf);
+            memcpy(tmpbuf, &p[i+0], args * sizeof *tmpbuf);
+            tmpbuf[args] = 0;
+            byte_swap_buffer(tmpbuf, args, be);
+            cdocmd_add_log_string(seq, (char *)tmpbuf);
+            free(tmpbuf);
+            break;
+        }
+        case CMD2_LOG_ADDRESS:
+            if (args == 1) {
+                cdocmd_add_log_address(seq, u32xe(p[i+0]));
+            } else if (args == 2) {
+                cdocmd_add_log_address(seq, u32pair(u32xe(p[i+1]), u32xe(p[i+0])));
+            } else {
+                goto unexpected;
+            }
+            break;
+        case CMD2_MARKER: {
+            uint32_t * tmpbuf;
+            if (args < 1) goto unexpected;
+            tmpbuf = malloc(args * sizeof *tmpbuf);
+            memcpy(tmpbuf, &p[i+1], (args - 1) * sizeof *tmpbuf);
+            tmpbuf[args - 1] = 0;
+            byte_swap_buffer(tmpbuf, args - 1, be);
+            cdocmd_add_marker(seq, u32xe(p[i+0]), (char *)tmpbuf);
+            free(tmpbuf);
+            break;
+        }
         case CMD2_NPI_SEQ:
             if (args != 2) goto unexpected;
             cdocmd_add_npi_seq(seq, u32xe(p[i+0]), u32xe(p[i+1]));
@@ -1389,6 +1422,37 @@ static void * encode_v2(CdoSequence * seq, size_t * sizep, uint32_t be) {
             p[pos++] = u32xe(cmd->id);
             p[pos++] = u32xe(cmd->value);
             break;
+        case CdoCmdLogString: {
+            uint32_t len = strlen((char *)cmd->buf);
+            uint32_t count = (len + 3)/4;
+            hdr2(&p, &pos, CMD2_LOG_STRING, count, be);
+            memset(p + pos, 0, count*4);
+            memcpy(p + pos, cmd->buf, len);
+            byte_swap_buffer(p + pos, count, be);
+            pos += count;
+            break;
+        }
+        case CdoCmdLogAddress:
+            if ((cmd->srcaddr >> 32) == 0) {
+                hdr2(&p, &pos, CMD2_LOG_ADDRESS, 1, be);
+                p[pos++] = u32xe_lo(cmd->srcaddr);
+            } else {
+                hdr2(&p, &pos, CMD2_LOG_ADDRESS, 2, be);
+                p[pos++] = u32xe_lo(cmd->srcaddr);
+                p[pos++] = u32xe_hi(cmd->srcaddr);
+            }
+            break;
+        case CdoCmdMarker: {
+            uint32_t len = strlen((char *)cmd->buf);
+            uint32_t count = (len + 3)/4;
+            hdr2(&p, &pos, CMD2_MARKER, 1 + count, be);
+            p[pos++] = u32xe(cmd->value);
+            memset(p + pos, 0, count*4);
+            memcpy(p + pos, cmd->buf, len);
+            byte_swap_buffer(p + pos, count, be);
+            pos += count;
+            break;
+        }
         case CdoCmdNpiSeq:
             hdr2(&p, &pos, CMD2_NPI_SEQ, 2, be);
             p[pos++] = u32xe_lo(cmd->dstaddr);

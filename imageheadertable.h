@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -251,6 +251,11 @@ public:
     uint32_t GetFunctionId(void);
     bool IsUidInfoFoundInCdo(void);
 
+    bool GetPLPowerDomainFlag() { return isIhPLPowerDomain; }
+    bool GetLowPowerDomainFlag() { return isIhLowPowerDomain; }
+    bool GetFullPowerDomainFlag() { return isIhFullPowerDomain; }
+    bool GetSystemPowerDomainFlag() { return isIhSystemPowerDomain; }
+
 protected:
     Domain::Type domain;
     uint8_t* buffer;
@@ -279,6 +284,10 @@ protected:
     bool ihDelayLoad;
     bool ihDelayHandoff;
     bool isSlrPartition;
+    bool isIhFullPowerDomain;
+    bool isIhLowPowerDomain;
+    bool isIhSystemPowerDomain;
+    bool isIhPLPowerDomain;
 
     // For multiple key files & auth parameters
     std::string aesKeyFile;

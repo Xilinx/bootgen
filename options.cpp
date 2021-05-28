@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -119,9 +119,9 @@ void Options::ProcessReadImage()
 
         if (GetVerifyImageOption())
         {
-            if (archType != Arch::ZYNQMP)
+            if (archType == Arch::ZYNQ)
             {
-                LOG_ERROR("'-verify' option supported only for ZynqMP architecture, '-arch zynqmp'.");
+                LOG_ERROR("'-verify' option supported only for ZynqMP and Versal architectures, '-arch zynqmp','-arch versal'.");
             }
             readImage->VerifyAuthentication(GetVerifyImageOption());
         }
@@ -380,6 +380,12 @@ void Options::SetReadImageOption(ReadImageOption::Type type)
 void Options::SetReadImageFile(std::string file)
 {
     readImageFile = file;
+}
+
+/******************************************************************************/
+void Options::SetOverlayCDOFileName(std::string filename)
+{
+    overlayCDOFile = filename;
 }
 
 /******************************************************************************/
@@ -693,4 +699,10 @@ DumpOption::Type Options::GetDumpOption(void)
 std::string Options::GetDumpDirectory(void)
 {
     return dumpPath;
+}
+
+/******************************************************************************/
+std::string Options::GetOverlayCDOFileName(void)
+{
+    return overlayCDOFile;
 }

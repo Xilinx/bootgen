@@ -24,6 +24,12 @@
 #include "binary-versal.h"
 #include "checksum-versal.h"
 #include "authentication-versal.h"
+extern "C" {
+#include "cdo-command.h"
+#include "cdo-overlay.h"
+#include "cdo-binary.h"
+#include "cdo-load.h"
+};
 /*
 -------------------------------------------------------------------------------
 *****************************************************   F U N C T I O N S   ***
@@ -1006,10 +1012,10 @@ void VersalBootImage::OutputOptionalSecureDebugImage()
 {
     std::string secureDebugImageFile = options.GetSecureDebugImageFile();
 
-    /* secureDebugImageLength = AH + SPKID + SHA3APdding + PPK + Sign
-                              = 4 + 4 + 96 + 1040 + 512 = 1656 = 0x678 */
+    uint32_t authJtagImageSize = sizeof(AuthenticatedJtagImageStructure);
+    uint8_t* writedata = new uint8_t[authJtagImageSize];
+    memset(writedata, 0, authJtagImageSize);
 
-    uint8_t* writedata = new uint8_t[SECURE_DEBUG_IMAGE_LENGTH];
     if (options.GetSecureDebugAuthType() != Authentication::None)
     {
         VersalAuthenticationContext* authCtx = new VersalAuthenticationContext(this->currentAuthCtx, options.GetSecureDebugAuthType());
@@ -1017,7 +1023,7 @@ void VersalBootImage::OutputOptionalSecureDebugImage()
         {
             authCtx->hashType = authHash;
             authCtx->hash = hash;
-            authCtx->CreateAcHdrSignature(writedata);
+            authCtx->CreateAuthJtagImage(writedata, bifOptions->authJtagInfo);
         }
 
         std::ofstream ofs;
@@ -1028,7 +1034,7 @@ void VersalBootImage::OutputOptionalSecureDebugImage()
             LOG_ERROR("Cannot write output to file : %s", secureDebugImageFile.c_str());
         }
 
-        ofs.write((const char*)writedata, SECURE_DEBUG_IMAGE_LENGTH);
+        ofs.write((const char*)writedata, authJtagImageSize);
         ofs.close();
 
         LOG_TRACE("Authenticated Jtag Image : '%s' generated.", secureDebugImageFile.c_str());
@@ -1058,6 +1064,10 @@ void VersalBootImage::ConfigureEncryptionBlocks(ImageHeader * image, PartitionBi
             Binary::Length_t encrBlocksSize = 0;
             Binary::Length_t encrOverhead = 0;
             Binary::Length_t secureChunkSize = VersalPartition::GetSecureChunkSize();
+            if (partitionBifOptions->authType == Authentication::None)
+            {
+                secureChunkSize += SHA3_LENGTH_BYTES;
+            }
 
             /* Creating encryption blocks for 64KB from user specified blocks. Consider encryption overhead as well */
             for (uint32_t itr = 0; itr < encrBlocks.size(); itr++)
@@ -1106,9 +1116,16 @@ void VersalBootImage::ConfigureEncryptionBlocks(ImageHeader * image, PartitionBi
                     /* When the sum of encr blocks and overhead goes beyond 64KB, truncate the default size and push.*/
                     if ((encrBlocksSize + encrOverhead) > secureChunkSize)
                     {
-                        lastBlock = secureChunkSize - (encrBlocksSize + encrOverhead - defaultEncrBlockSize);
-                        encrBlocksSize += (lastBlock - defaultEncrBlockSize);
-                        LOG_WARNING("The last encryption block size is truncated to %d to fit into the secure chunk of 32KB.", lastBlock);
+                        if (secureChunkSize > (encrBlocksSize + encrOverhead - defaultEncrBlockSize))
+                        {
+                            lastBlock = secureChunkSize - (encrBlocksSize + encrOverhead - defaultEncrBlockSize);
+                            encrBlocksSize += (lastBlock - defaultEncrBlockSize);
+                            LOG_WARNING("The last encryption block size is truncated to %d to fit into the secure chunk of 32KB.", lastBlock);
+                        }
+                        else
+                        {
+                            LOG_ERROR("The keyrolling block size '%d' cannot fit into the secure chunk of 32KB. Please choose another block size.\n           For details, refer to the section 'Design Advisories for Bootgen' from UG1283.", defaultEncrBlockSize);
+                        }
                     }
                     image->InsertEncrBlocksList(lastBlock);
                 }
@@ -1118,6 +1135,23 @@ void VersalBootImage::ConfigureEncryptionBlocks(ImageHeader * image, PartitionBi
                 {
                     encrOverhead += (SECURE_HDR_SZ + AES_GCM_TAG_SZ);
                     image->InsertEncrBlocksList(secureChunkSize - (encrBlocksSize + encrOverhead));
+                }
+            }
+        }
+
+        if (image->GetEncrBlocksList().size() != 0)
+        {
+            static bool warningGiven = false;
+            for (uint32_t itr = 0; itr < encrBlocks.size(); itr++)
+            {
+                if (encrBlocks[itr] > 1024 * 1024 * ENCR_BLOCK_IN_BYTES)
+                {
+                    if (!warningGiven)
+                    {
+                        LOG_WARNING("partition - %s, block - %d", partitionBifOptions->filename.c_str(), encrBlocks[itr]);
+                        LOG_WARNING("The key rolling rate associated with the partition - %s exceeds 1M traces per key.\n\t   If you are using a device with the AES masking DPA countermeasure enabled,\n\t   you should confirm that the key rolling rate is sufficient.\n\t   For more details on key rolling rates, please see the Versal Security Users Manual(UG1508).", partitionBifOptions->filename.c_str());
+                        warningGiven = true;
+                    }
                 }
             }
         }
@@ -1250,11 +1284,36 @@ void VersalBootImage::Add(BifOptions* bifoptions)
     currentEncryptCtx->SetEfuseUserKek1IVFile(bifoptions->GetEfuseUserKek1IVFile());
     XipMode = bifoptions->GetXipMode();
 
+    /* Overlay CDO */
+    {
+        std::string overlayFile = options.GetOverlayCDOFileName();
+
+        if (overlayFile != "")
+        {
+            CdoSequence * seq = cdoseq_load_cdo((char *)(overlayFile.c_str()));
+            if (seq == NULL)
+            {
+                LOG_ERROR("Error parsing overlay CDO file");
+            }
+            overlayCDO = cdooverlay_open(seq);
+            if (overlayCDO == NULL)
+            {
+                LOG_ERROR("Error parsing overlay CDO file");
+            }
+        }
+    }
+
     LOG_INFO("Parsing Partition Data to Image");
     if (bifoptions->imageBifOptionList.size() == 0)
     {
         for (std::list<PartitionBifOptions*>::iterator itr = bifoptions->partitionBifOptionList.begin(); itr != bifoptions->partitionBifOptionList.end(); itr++)
         {
+            static bool warningGiven = false;
+            if (!warningGiven)
+            {
+                LOG_WARNING("Legacy BIF format detected. The output PDI may not boot.\n\t   Please update to Versal BIF format. Refer UG1283 for more details.");
+                warningGiven = true;
+            }
             if ((*itr)->bootImage)
             {
                 ParseBootImage((*itr));
@@ -1572,7 +1631,7 @@ void VersalBootImage::OutputOptionalEfuseHash()
                 primaryKeyFile = bifOptions->GetPPKFileName();
 
                 std::string filename = primaryKeyFile;
-                FILE* f;
+                FILE* f = NULL;
                 f = fopen(filename.c_str(), "r");
                 if (f == NULL)
                 {
@@ -1596,7 +1655,34 @@ void VersalBootImage::OutputOptionalEfuseHash()
                 }
                 else if (eckeyLocal != NULL)
                 {
-                    authCtx = new VersalAuthenticationContext(currentAuthCtx, Authentication::ECDSA);
+                    FILE* f = NULL;
+                    f = fopen(primaryKeyFile.c_str(), "r");
+                    if (f == NULL)
+                    {
+                        LOG_ERROR("Cannot open key %s", primaryKeyFile.c_str());
+                    }
+
+                    EC_KEY *eckeyLocal = PEM_read_EC_PUBKEY(f, NULL, NULL, NULL);
+                    const EC_GROUP* ecgroup = EC_KEY_get0_group(eckeyLocal);
+                    int ecCurveNID = EC_GROUP_get_curve_name(ecgroup);
+                    fclose(f);
+
+                    if (ecCurveNID == NID_secp384r1)
+                    {
+                        authCtx = new VersalAuthenticationContext(currentAuthCtx, Authentication::ECDSA);
+                    }
+                    else if (ecCurveNID == NID_secp521r1)
+                    {
+                        authCtx = new VersalAuthenticationContext(currentAuthCtx, Authentication::ECDSAp521);
+                    }
+                    else
+                    {
+                        LOG_ERROR("Unsupported ECDSA curve read from key file : %s\n           Supported ECDSA curves: P384, P521", primaryKeyFile.c_str());
+                    }
+                }
+                else
+                {
+                    LOG_ERROR("Cannot read the public key file : %s", filename.c_str());
                 }
 
                 authCtx->hash = hash;
@@ -1607,24 +1693,40 @@ void VersalBootImage::OutputOptionalEfuseHash()
         {
             if (currentAuthCtx)
             {
-                if (bifOptions->GetPPKFileName() != "")
-                {
-                    primaryKeyFile = bifOptions->GetPPKFileName();
-                }
-                if (bifOptions->GetPSKFileName() != "")
-                {
-                    primaryKeyFile = bifOptions->GetPSKFileName();
-                }
+                primaryKeyFile = bifOptions->GetPSKFileName();
 
                 std::ifstream File(primaryKeyFile.c_str());
                 std::string word;
                 File >> word;
                 File >> word;
 
-                VersalAuthenticationContext* authCtx;
+                VersalAuthenticationContext* authCtx = NULL;
                 if (word == "EC")
                 {
-                    authCtx = new VersalAuthenticationContext(currentAuthCtx, Authentication::ECDSA);
+                    FILE* f = NULL;
+                    f = fopen(primaryKeyFile.c_str(), "r");
+                    if (f == NULL)
+                    {
+                        LOG_ERROR("Cannot open key %s", primaryKeyFile.c_str());
+                    }
+
+                    EC_KEY *eckeyLocal = PEM_read_ECPrivateKey(f, NULL, NULL, NULL);
+                    const EC_GROUP* ecgroup = EC_KEY_get0_group(eckeyLocal);
+                    int ecCurveNID = EC_GROUP_get_curve_name(ecgroup);
+                    fclose(f);
+
+                    if (ecCurveNID == NID_secp384r1)
+                    {
+                        authCtx = new VersalAuthenticationContext(currentAuthCtx, Authentication::ECDSA);
+                    }
+                    else if (ecCurveNID == NID_secp521r1)
+                    {
+                        authCtx = new VersalAuthenticationContext(currentAuthCtx, Authentication::ECDSAp521);
+                    }
+                    else
+                    {
+                        LOG_ERROR("Unsupported ECDSA curve read from key file : %s\n           Supported ECDSA curves: P384, P521", primaryKeyFile.c_str());
+                    }
                 }
                 else
                 {

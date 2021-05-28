@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -242,7 +242,7 @@ static void RearrangeEndianess(uint8_t *array, uint32_t size)
 }
 
 /******************************************************************************/
-uint8_t VersalKey::ParseECDSAOpenSSLKey(FILE* f)
+uint8_t VersalKey::ParseECDSAOpenSSLKey(const std::string& filename)
 {
     OpenSSL_add_all_algorithms();
     BIGNUM *X = BN_new();
@@ -255,9 +255,17 @@ uint8_t VersalKey::ParseECDSAOpenSSLKey(FILE* f)
     Y->top = 0;
     uint32_t keySzRdX;
     uint32_t keySzRdY;
+
+    FILE* file;
+    file = fopen(filename.c_str(), "r");
+    if (file == NULL)
+    {
+        LOG_ERROR("Cannot open key %s", filename.c_str());
+    }
+
     if (isSecret)
     {
-        eckey = PEM_read_ECPrivateKey(f, NULL, NULL, NULL);
+        eckey = PEM_read_ECPrivateKey(file, NULL, NULL, NULL);
         if (!EC_KEY_check_key(eckey))
         {
             LOG_TRACE("Failed to check EC Key\n");
@@ -292,6 +300,10 @@ uint8_t VersalKey::ParseECDSAOpenSSLKey(FILE* f)
                     RearrangeEndianess(x, keySize);
                     RearrangeEndianess(y, keySize);
                 }
+                else
+                {
+                    LOG_ERROR("Failed to parse key %s for ECDSAp384",filename.c_str());
+                }
             }
             else
             {
@@ -320,12 +332,16 @@ uint8_t VersalKey::ParseECDSAOpenSSLKey(FILE* f)
                     RearrangeEndianess(x, keySizeX);
                     RearrangeEndianess(y, keySizeY);
                 }
+                else
+                {
+                    LOG_ERROR("Failed to parse key %s for ECDSAp521",filename.c_str());
+                }
             }
         }
     }
     else
     {
-        eckey = PEM_read_EC_PUBKEY(f, NULL, NULL, NULL);
+        eckey = PEM_read_EC_PUBKEY(file, NULL, NULL, NULL);
         if (!EC_KEY_check_key(eckey))
         {
             LOG_TRACE("Failed to check EC Key\n");
@@ -348,8 +364,6 @@ uint8_t VersalKey::ParseECDSAOpenSSLKey(FILE* f)
                 if (EC_POINT_get_affine_coordinates_GFp(ecgroup, pub, X, Y, NULL))
                 {
                     keySzRdX = BN_num_bytes(X);
-                    keySzRdY = BN_num_bytes(Y);
-                    keySzRdX = BN_num_bytes(X);
                     if (keySzRdX != keySize)
                     {
                         LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", BN_num_bits(X), keySize * 8);
@@ -359,9 +373,12 @@ uint8_t VersalKey::ParseECDSAOpenSSLKey(FILE* f)
                     {
                         LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", BN_num_bits(Y), keySize * 8);
                     }
-
-                    RearrangeEndianess(x, keySizeX);
-                    RearrangeEndianess(y, keySizeY);
+                    RearrangeEndianess(x, keySize);
+                    RearrangeEndianess(y, keySize);
+                }
+                else
+                {
+                    LOG_ERROR("Failed to parse key %s for ECDSAp384",filename.c_str());
                 }
             }
             else
@@ -370,12 +387,12 @@ uint8_t VersalKey::ParseECDSAOpenSSLKey(FILE* f)
                 const EC_POINT *pub = EC_KEY_get0_public_key(eckey);
                 if (EC_POINT_get_affine_coordinates_GFp(ecgroup, pub, X, Y, NULL))
                 {
-                    keySzRdX = BN_num_bytes(X);
+                    keySizeX = BN_num_bytes(X);
                     if (keySizeX != EC_P521_KEY_LENGTH1 && keySizeX != EC_P521_KEY_LENGTH2)
                     {
                         LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", BN_num_bits(X), 521);
                     }
-                    keySzRdY = BN_num_bytes(Y);
+                    keySizeY = BN_num_bytes(Y);
                     if (keySizeY != EC_P521_KEY_LENGTH1 && keySizeY != EC_P521_KEY_LENGTH2)
                     {
                         LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", BN_num_bits(Y), 521);
@@ -391,9 +408,14 @@ uint8_t VersalKey::ParseECDSAOpenSSLKey(FILE* f)
                     RearrangeEndianess(x, keySizeX);
                     RearrangeEndianess(y, keySizeY);
                 }
+                else
+                {
+                    LOG_ERROR("Failed to parse key %s for ECDSAp521",filename.c_str());
+                }
             }
         }
     }
+    fclose(file);
     return 0;
 }
 
@@ -403,7 +425,6 @@ void VersalKey::Parse(const std::string& filename, bool isSecret0)
     uint8_t errCode = 0;
     isSecret = isSecret0;
     std::string basefile = StringUtils::BaseName(filename);
-    //LOG_TRACE("Parsing Authentication Key File - %s", filename.c_str());
 
     std::ifstream File(filename.c_str());
     std::string word;
@@ -429,170 +450,186 @@ void VersalKey::Parse(const std::string& filename, bool isSecret0)
         fclose(f);
         if (rsa != NULL)
         {
-            keySize = 0x200;
-            RSA_free(rsa);
-            FILE* f;
-            f = fopen(filename.c_str(), "r");
-            if (f == NULL)
+            if(authType == Authentication :: RSA)
             {
-                LOG_ERROR("Cannot open key %s", filename.c_str());
+                keySize = 0x200;
+                RSA_free(rsa);
+                FILE* f;
+                f = fopen(filename.c_str(), "r");
+                if (f == NULL)
+                {
+                    LOG_ERROR("Cannot open key %s", filename.c_str());
+                }
+
+                try
+                {
+                    int name;
+                    do
+                    {
+                        name = getc(f);
+                    } while (name >= 0 && isspace(name));
+
+                    fseek(f, 0, 0); // rewind
+
+                    /* If the file starts with 'N', then it is Xilinx Format
+                       If it starts with '-', then it is OpenSSL format */
+                    if (name == 'N')
+                    {
+                        LOG_INFO("Parsing RSA key (Xilinx Format)");
+                        errCode = ParseXilinxRsaKey(f);
+                    }
+                    else if (name == '-')
+                    {
+                        LOG_INFO("Parsing RSA key (OpenSSL Format)");
+                        errCode = ParseOpenSSLKey(f);
+                    }
+                    else
+                    {
+                        LOG_ERROR("Unsupported key file - %s\n           Supported key formats: Xilinx Format & OpenSSL format", basefile.c_str());
+                    }
+                    fclose(f);
+
+                    if (errCode != 0)
+                    {
+                        LOG_ERROR("RSA authentication key parsing failed - %s", basefile.c_str());
+                    }
+
+                    /* Calculate the modulus extension, i.e. Montgomery Reduction term RR
+                    and some sanity check for the keys passed */
+                    {
+                        BIGNUM m; // modulus
+                        m.d = (BN_ULONG*)N;
+                        m.dmax = keySize / sizeof(BN_ULONG);
+                        m.top = keySize / sizeof(BN_ULONG);
+                        m.flags = 0;
+                        m.neg = 0;
+
+                        BN_CTX_Class ctxInst;
+                        BN_MONT_CTX_Class montClass(ctxInst);
+
+                        montClass.Set(m);
+                        montClass.GetModulusExtension(N_ext, m, keySize);
+                    }
+                    Loaded = true;
+                }
+
+                catch (...)
+                {
+                    fclose(f);
+                    throw;
+                }
             }
-
-            try
+            else
             {
-                int name;
-                do
-                {
-                    name = getc(f);
-                } while (name >= 0 && isspace(name));
-
-                fseek(f, 0, 0); // rewind
-
-                /* If the file starts with 'N', then it is Xilinx Format
-                   If it starts with '-', then it is OpenSSL format */
-                if (name == 'N')
-                {
-                    LOG_INFO("Parsing RSA key (Xilinx Format)");
-                    errCode = ParseXilinxRsaKey(f);
-                }
-                else if (name == '-')
-                {
-                    LOG_INFO("Parsing RSA key (OpenSSL Format)");
-                    errCode = ParseOpenSSLKey(f);
-                }
-                else
-                {
-                    LOG_ERROR("Unsupported key file - %s\n           Supported key formats: Xilinx Format & OpenSSL format", basefile.c_str());
-                }
-                fclose(f);
-
-                if (errCode != 0)
-                {
-                    LOG_ERROR("RSA authentication key parsing failed - %s", basefile.c_str());
-                }
-
-                /* Calculate the modulus extension, i.e. Montgomery Reduction term RR
-                and some sanity check for the keys passed */
-                {
-                    BIGNUM m; // modulus
-                    m.d = (BN_ULONG*)N;
-                    m.dmax = keySize / sizeof(BN_ULONG);
-                    m.top = keySize / sizeof(BN_ULONG);
-                    m.flags = 0;
-                    m.neg = 0;
-
-                    BN_CTX_Class ctxInst;
-                    BN_MONT_CTX_Class montClass(ctxInst);
-
-                    montClass.Set(m);
-                    montClass.GetModulusExtension(N_ext, m, keySize);
-                }
-                Loaded = true;
-            }
-
-            catch (...)
-            {
-                fclose(f);
-                throw;
+                LOG_ERROR("RSA keys are specified for ECDSAp384/ECDSAp521 authentication. Keyname is -%s",filename.c_str());
             }
         }
         else if (eckeyLocal != NULL)
         {
-            FILE* f;
-            f = fopen(filename.c_str(), "r");
-            if (f == NULL)
+            if(authType != Authentication::RSA)
             {
-                LOG_ERROR("Cannot open key %s", filename.c_str());
+                LOG_INFO("Parsing EC key (OpenSSL Format)");
+                if (authType == Authentication::ECDSA)
+                {
+                    keySize = 0x30;
+                }
+                errCode = ParseECDSAOpenSSLKey(filename);
+                Loaded = true;
             }
-            LOG_INFO("Parsing EC key (OpenSSL Format)");
-            keySize = 0x30;
-            errCode = ParseECDSAOpenSSLKey(f);
-            Loaded = true;
-            fclose(f);
+            else
+            {
+                LOG_ERROR("ECDSA keys are specified for RSA authentication. Keyname is - %s",filename.c_str());
+            }
         }
     }
     else
     {
         // EC key
-        if (word == "EC")
+        if (word == "EC" )
         {
-            FILE* f;
-            f = fopen(filename.c_str(), "r");
-            if (f == NULL)
+            if(authType != Authentication :: RSA)
             {
-                LOG_ERROR("Cannot open key %s", filename.c_str());
+                LOG_INFO("Parsing EC key (OpenSSL Format)");
+                errCode = ParseECDSAOpenSSLKey(filename);
+                Loaded = true;
             }
-            LOG_INFO("Parsing EC key (OpenSSL Format)");
-            errCode = ParseECDSAOpenSSLKey(f);
-            Loaded = true;
-            fclose(f);
+            else
+            {
+                LOG_ERROR("ECDSA keys are specified for RSA authentication. Keyname is - %s",filename.c_str());
+            }
         }
         // RSA key
         else
         {
-            FILE* f;
-            f = fopen(filename.c_str(), "r");
-            if (f == NULL)
+            if(authType == Authentication :: RSA)
             {
-                LOG_ERROR("Cannot open key %s", filename.c_str());
+                FILE* f;
+                f = fopen(filename.c_str(), "r");
+                if (f == NULL)
+                {
+                    LOG_ERROR("Cannot open key %s", filename.c_str());
+                }
+
+                try
+                {
+                    int name;
+                    do
+                    {
+                        name = getc(f);
+                    } while (name >= 0 && isspace(name));
+
+                    fseek(f, 0, 0); // rewind
+
+                    /* If the file starts with 'N', then it is Xilinx Format. If it starts with '-', then it is OpenSSL format */
+                    if (name == 'N')
+                    {
+                        LOG_INFO("Parsing RSA key (Xilinx Format)");
+                        errCode = ParseXilinxRsaKey(f);
+                    }
+                    else if (name == '-')
+                    {
+                        LOG_INFO("Parsing RSA key (OpenSSL Format)");
+                        errCode = ParseOpenSSLKey(f);
+                    }
+                    else
+                    {
+                        LOG_ERROR("Unsupported key file - %s\n           Supported key formats: Xilinx Format & OpenSSL format", basefile.c_str());
+                    }
+                    fclose(f);
+
+                    if (errCode != 0)
+                    {
+                        LOG_ERROR("RSA authentication key parsing failed - %s", basefile.c_str());
+                    }
+
+                    /* Calculate the modulus extension, i.e. Montgomery Reduction term RR
+                    and some sanity check for the keys passed */
+                    {
+                        BIGNUM m; // modulus
+                        m.d = (BN_ULONG*)N;
+                        m.dmax = keySize / sizeof(BN_ULONG);
+                        m.top = keySize / sizeof(BN_ULONG);
+                        m.flags = 0;
+                        m.neg = 0;
+
+                        BN_CTX_Class ctxInst;
+                        BN_MONT_CTX_Class montClass(ctxInst);
+
+                        montClass.Set(m);
+                        montClass.GetModulusExtension(N_ext, m, keySize);
+                    }
+                    Loaded = true;
+                }
+
+                catch (...)
+                {
+                    fclose(f);
+                    throw;
+                }
             }
-
-            try
+            else
             {
-                int name;
-                do
-                {
-                    name = getc(f);
-                } while (name >= 0 && isspace(name));
-
-                fseek(f, 0, 0); // rewind
-
-                                /* If the file starts with 'N', then it is Xilinx Format
-                                If it starts with '-', then it is OpenSSL format */
-                if (name == 'N')
-                {
-                    LOG_INFO("Parsing RSA key (Xilinx Format)");
-                    errCode = ParseXilinxRsaKey(f);
-                }
-                else if (name == '-')
-                {
-                    LOG_INFO("Parsing RSA key (OpenSSL Format)");
-                    errCode = ParseOpenSSLKey(f);
-                }
-                else
-                {
-                    LOG_ERROR("Unsupported key file - %s\n           Supported key formats: Xilinx Format & OpenSSL format", basefile.c_str());
-                }
-                fclose(f);
-
-                if (errCode != 0)
-                {
-                    LOG_ERROR("RSA authentication key parsing failed - %s", basefile.c_str());
-                }
-
-                /* Calculate the modulus extension, i.e. Montgomery Reduction term RR
-                and some sanity check for the keys passed */
-                {
-                    BIGNUM m; // modulus
-                    m.d = (BN_ULONG*)N;
-                    m.dmax = keySize / sizeof(BN_ULONG);
-                    m.top = keySize / sizeof(BN_ULONG);
-                    m.flags = 0;
-                    m.neg = 0;
-
-                    BN_CTX_Class ctxInst;
-                    BN_MONT_CTX_Class montClass(ctxInst);
-
-                    montClass.Set(m);
-                    montClass.GetModulusExtension(N_ext, m, keySize);
-                }
-                Loaded = true;
-            }
-
-            catch (...)
-            {
-                fclose(f);
-                throw;
+                LOG_ERROR("RSA keys are specified for ECDSAp384/ECDSAp521 authentication. Keyname is -%s",filename.c_str());
             }
         }
     }

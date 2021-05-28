@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2019-2020 Xilinx, Inc.
+* Copyright 2019-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@
 #include <stdint.h>
 #include "link.h"
 
-
 #define is_be_host() (0)
 #define DEFAULT_CDO_VERSION 0x200
 
@@ -31,6 +30,18 @@ struct CdoSequence {
     LINK cmds;
     uint32_t version;
 };
+
+typedef struct UserKeys {
+    uint32_t user_keys_array[8][8];
+}UserKeys;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+    extern UserKeys user_keys;
+#ifdef __cplusplus
+}
+#endif
 
 #define all2cmds(A)  list_item_type((A), CdoCommand, link_all)
 
@@ -57,6 +68,9 @@ typedef enum CdoCmdType {
     CdoCmdEventLogging,
     CdoCmdSetBoard,
     CdoCmdSetPlmWdt,
+    CdoCmdLogString,
+    CdoCmdLogAddress,
+    CdoCmdMarker,
     CdoCmdNpiSeq,
     CdoCmdNpiPreCfg,
     CdoCmdNpiWrite,
@@ -143,6 +157,7 @@ CdoSequence * cdocmd_create_sequence(void);
 void cdocmd_delete_sequence(CdoSequence * seq);
 CdoCommand * cdocmd_alloc(CdoCmdType type);
 void cdocmd_free(CdoCommand * cmd);
+CdoCommand * cdocmd_duplicate(CdoCommand * cmd);
 void cdocmd_set_default_sequence(CdoSequence * seq);
 void cdocmd_append_command(CdoSequence * seq, CdoCommand * newcmd);
 void cdocmd_insert_command(CdoCommand * cmd, CdoCommand * newcmd);
@@ -230,6 +245,9 @@ void cdocmd_add_nop(CdoSequence * seq, uint32_t count, void * buf, uint32_t be);
 void cdocmd_add_event_logging(CdoSequence * seq, uint32_t subcmd, uint32_t count, void * buf, uint32_t be);
 void cdocmd_add_set_board(CdoSequence * seq, const char * name);
 void cdocmd_add_set_plm_wdt(CdoSequence * seq, uint32_t nodeid, uint32_t periodicity);
+void cdocmd_add_log_string(CdoSequence * seq, const char * str);
+void cdocmd_add_log_address(CdoSequence * seq, uint64_t srcaddr);
+void cdocmd_add_marker(CdoSequence * seq, uint32_t value, const char * str);
 void cdocmd_add_ldr_set_image_info(CdoSequence * seq, uint32_t nodeid, uint32_t uid, uint32_t puid, uint32_t funcid);
 void cdocmd_add_em_set_action(CdoSequence * seq, uint32_t nodeid, uint32_t action, uint32_t mask);
 void cdocmd_insert_seq(CdoCommand * cmd, CdoSequence * seq);

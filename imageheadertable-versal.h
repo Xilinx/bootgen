@@ -59,6 +59,7 @@ class BifOptions;
 #define SLR3_SBI_BUF_BASE_ADDR      (SLR3_PMC_BASE_ADDR + (PMC_SBI_BUF_ADDR - MASTER_PMC_BASE_ADDR))
 #define SBI_KEYHOLE_SIZE            0x10000
 #define AIE_BASE_ADDR               0x20000000000
+
 typedef enum
 {
     vihImageOwnerShift = 3,
@@ -72,6 +73,18 @@ typedef enum
 
     vihDelayHandoffShift = 8,
     vihDelayHandoffMask = 0x1,
+
+    vihLowPowerDomainShift = 9,
+    vihLowPowerDomainMask = 0x1,
+
+    vihFullPowerDomainShift = 10,
+    vihFullPowerDomainMask = 0x1,
+
+    vihSystemPowerDomainShift = 11,
+    vihSystemPowerDomainMask = 0x1,
+
+    vihPLPowerDomainShift = 12,
+    vihPLPowerDomainMask = 0x1,
 } VersalIHAttributes;
 
 typedef enum
@@ -93,9 +106,17 @@ typedef enum
 } VersalIHTAttributes;
 
 
+/* Version Updates :
+   v1 : Initial versal support
+   v2 : IHT,PHT sizes doubled
+   v3 : Partition secure chunk size changed to 32k from 64k
+   v4 : AAD support added for IHT
+      : Hash placemnet updated during chunking
+        Hash is included into the 32k secure chunk */
 #define VERSION_v1_00_VERSAL    0x01030000
 #define VERSION_v2_00_VERSAL    0x00020000
 #define VERSION_v3_00_VERSAL    0x00030000
+#define VERSION_v4_00_VERSAL    0x00040000
 
 
 /*
@@ -399,6 +420,7 @@ private:
     void CheckSyncPointInChunk(SsitConfigSlrInfo* slr_info, size_t size);
     uint32_t FindCurrentSyncPoint(void);
     void CheckIdsInCdo(CdoSequence * cdo_seq);
+    void SetPowerDomains(uint8_t* buf, uint32_t count);
     void LogConfigSlrDetails(size_t chunk_num, uint8_t slr_num, size_t offset, size_t chunk_size);
     void PrintConfigSlrSummary(void);
     uint64_t slr_total_file_size;
@@ -473,6 +495,10 @@ protected:
     std::string imageName;
     bool delayHandoff;
     bool delayLoad;
+    bool isFullPowerDomain;
+    bool isLowPowerDomain;
+    bool isSystemPowerDomain;
+    bool isPLPowerDomain;
     uint64_t memCopyAddr;
     PartitionType::Type imageType;
     uint32_t uniqueId;

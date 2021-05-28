@@ -119,16 +119,17 @@ ImageBifOptions* currentImageBifOptions;
 %token                  IMAGE ID NAME DELAY_HANDOFF DELAY_LOAD COPY
 %token                  PARTITION PFILE
 %token                  METAHEADER
-%token <string>         WORD
+%token <string>         WORD HEXWORD
 %token <string>         FILENAME QFILENAME
 %token <number>         NONE
 %token <number>         DECVALUE HEXVALUE
 %token <number>         KEYSRC_ENCRYPTION FSBL_CONFIG AUTH_PARAMS
+%token <number>         AUTHJTAG_CONFIG DEVICE_DNA JTAG_TIMEOUT
 %token <number>         PUF4KMODE SHUTTER SPLIT SMAP_WIDTH
 %token <number>         PUF_HELPER_FILE BH_KEY_FILE BH_KEY_IV
-%token <number>         BH_KEK_IV BBRAM_KEK_IV EFUSE_KEK_IV EFUSE_USER_KEK0_IV EFUSE_USER_KEK1_IV
+%token <number>         BH_KEK_IV BBRAM_KEK_IV EFUSE_KEK_IV EFUSE_USER_KEK0_IV EFUSE_USER_KEK1_IV USER_KEYS
 %token <number>         PMCDATA BOOTIMAGE UDF_BH INIT PMUFW_IMAGE
-%token <number>         AES_KEY_FILE FAMILY_KEY 
+%token <number>         AES_KEY_FILE FAMILY_KEY
 %token <number>         PPK_FILE PSK_FILE SPK_FILE SSK_FILE 
 %token <number>         SPK_SIGNATURE_FILE BH_SIGNATURE_FILE HEADER_SIGNATURE_FILE
 %token <authvalue_t>    AUTHVALUE
@@ -320,6 +321,7 @@ other_spec              :   OBRACKET KEYSRC_ENCRYPTION EBRACKET key_src         
                         |   OBRACKET AUTH_PARAMS EBRACKET auth_parameters
                         |   OBRACKET SPLIT EBRACKET split_options
                         |   OBRACKET BOOTVECTORS EBRACKET bootvectors_list
+                        |   AUTHJTAG_CONFIG OBRACE authjtag_attr_list EBRACE
                         ;
 
 sec_boot_attr_list      :   sec_boot_attr
@@ -332,6 +334,16 @@ sec_boot_attr           :   boot_device_type                                    
 
 fsbl_attr_list          :   fsbl_attr
                         |   fsbl_attr COMMA fsbl_attr_list
+                        ;
+
+authjtag_attr_list      :   authjtag_attr
+                        |   authjtag_attr COMMA authjtag_attr_list
+                        |   authjtag_attr authjtag_attr_list
+                        ;
+
+authjtag_attr           :   REVOKE_ID EQUAL expression           { currentBifOptions->SetAuthJtagRevokeID($3); }
+                        |   DEVICE_DNA EQUAL HEXWORD             { currentBifOptions->SetAuthJtagDeviceDna($3); }
+                        |   JTAG_TIMEOUT EQUAL expression        { currentBifOptions->SetAuthJtagTimeOut($3); }
                         ;
 
 fsbl_attr               :   core                                                { currentBifOptions->SetCore($1);
@@ -470,7 +482,7 @@ optattr                 :   AUTHENTICATION EQUAL authvalue                      
                         |   DEST_CPU EQUAL dest_cpu_type                        { currentPartitionBifOptions->SetDestCpu($3); }
                         |   DEST_DEVICE EQUAL dest_device_type                  { currentPartitionBifOptions->SetDestDevice($3);  }
                         |   EXCEPTION_LEVEL EQUAL exception_level_type          { currentPartitionBifOptions->SetExceptionLevel($3); }
-                        |   AES_KEY_FILE EQUAL filename                         { currentPartitionBifOptions->aesKeyFile = $3; }
+                        |   AES_KEY_FILE EQUAL filename                         { currentPartitionBifOptions->SetAesKeyFile($3); }
                         |   PPK_FILE EQUAL filename                             { currentPartitionBifOptions->ppkFile = ($3); }
                         |   PSK_FILE EQUAL filename                             { currentPartitionBifOptions->pskFile = ($3); }
                         |   SPK_FILE EQUAL filename                             { currentPartitionBifOptions->spkFile = ($3); }
@@ -494,6 +506,7 @@ other_file_attr         :   INIT
                         |   EFUSE_KEK_IV
                         |   EFUSE_USER_KEK0_IV
                         |   EFUSE_USER_KEK1_IV
+                        |   USER_KEYS
                         ;
 
 authvalue               :   NONE                                                { $$ = ::Authentication::None;}

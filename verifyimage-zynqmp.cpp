@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -22,6 +22,8 @@
 #include "readimage-zynqmp.h"
 #include "authkeys.h"
 #include "Keccak-compact.h"
+#define BITSTREAM_AUTH_CHUNK_SIZE  0x800000 //8MB = 8*1024*1024
+
 
 
 /*******************************************************************************/
@@ -222,7 +224,7 @@ void ZynqMpReadImage::VerifySPKSignature(AuthCertificate4096Structure* auth_cert
     memcpy(tempBuffer + sizeof(auth_cert->acHeader) + sizeof(auth_cert->spkId) + sizeof(key.N), auth_cert->acSpk.N_extension, sizeof(key.N_extension));
     memcpy(tempBuffer + sizeof(auth_cert->acHeader) + sizeof(auth_cert->spkId) + sizeof(key.N) + sizeof(key.N_extension), auth_cert->acSpk.E, sizeof(key.E));
     memcpy(tempBuffer + sizeof(auth_cert->acHeader) + sizeof(auth_cert->spkId) + sizeof(key.N) + sizeof(key.N_extension) + sizeof(key.E), auth_cert->acSpk.Padding, sizeof(key.Padding));
-    
+     
     bool signatureVerified = VerifySignature(nist, tempBuffer, size, &auth_cert->acPpk, (unsigned char*)(&auth_cert->acSpkSignature));
     if (signatureVerified)
     {
@@ -243,20 +245,8 @@ void ZynqMpReadImage::VerifyPartitionSignature(void)
 {
     size_t result;
     uint64_t offset = 0;
-    
-    /* Insert Partition Names from Iamge Header based on Section Count */
-    std::list<std::string>::iterator name = iHNames.begin();
-    for (std::list<ZynqMpImageHeaderStructure*>::iterator iH = iHs.begin(); iH != iHs.end(); iH++, name++)
-    {
-        for (uint32_t sectionIndex = 0; sectionIndex < (*iH)->imageNameLength; sectionIndex++)
-        {
-            std::stringstream ss;
-            ss << sectionIndex;
-            pHTNames.push_back(*name + "." + ss.str());
-        }
-    }
 
-    std::list<uint8_t*>::iterator authCertificate = aCs.begin();    
+    std::list<uint8_t*>::iterator authCertificate = aCs.begin();
     authCertificate++;
 
     FILE *binFile;
@@ -266,7 +256,6 @@ void ZynqMpReadImage::VerifyPartitionSignature(void)
     std::list<std::string>::iterator partitionName = pHTNames.begin();
     for (std::list<ZynqMpPartitionHeaderTableStructure*>::iterator partitionHdr = pHTs.begin(); partitionHdr != pHTs.end(); partitionHdr++, authCertificate++, partitionName++)
     {
-        
         if ((*partitionHdr)->authCertificateOffset != 0)
         {
             Separator();
@@ -309,25 +298,64 @@ void ZynqMpReadImage::VerifyPartitionSignature(void)
             /* Verifying Partition SPK Signature */
             VerifySPKSignature(auth_cert);
 
-            /* Partition Signature should not be included for hash calculation. */
+           /* Partition Signature should not be included for hash calculation. */
             uint32_t bufferLength = ((*partitionHdr)->totalPartitionLength * 4) - RSA_4096_KEY_LENGTH;
+              bool signatureVerified = false;
+            if (((((*partitionHdr)->partitionAttributes) >> PH_DEST_DEVICE_SHIFT_ZYNQMP) & PH_DEST_DEVICE_MASK_ZYNQMP) == 2)
+            {
+              bufferLength = ((*partitionHdr)->totalPartitionLength * 4);
+            }
+
             uint8_t* tempBuffer = new uint8_t[bufferLength];
             offset = (*partitionHdr)->partitionWordOffset * 4;
             if (!(fseek(binFile, offset, SEEK_SET)))
             {
-                result = fread(tempBuffer, 1, bufferLength, binFile);
-                if (result != bufferLength)
+              result = fread(tempBuffer, 1, bufferLength, binFile);
+            if (result != bufferLength)
+            {
+              LOG_ERROR("Error reading partition for hash calculation");
+            }
+            }
+            else
+            {
+              LOG_ERROR("Error parsing Partitions from BootImage file %s",binFilename.c_str());
+            }
+
+           
+            if (((((*partitionHdr)->partitionAttributes) >> PH_DEST_DEVICE_SHIFT_ZYNQMP) & PH_DEST_DEVICE_MASK_ZYNQMP) == 2)
+            {
+                uint32_t blockSize = BITSTREAM_AUTH_CHUNK_SIZE; 
+                uint32_t lastBlockSize = ((*partitionHdr)->totalPartitionLength * 4) - (sizeof(AuthCertificate4096Structure) * plAcCount) - (BITSTREAM_AUTH_CHUNK_SIZE * (plAcCount - 1));
+                
+                for(int i = 0; i<plAcCount ; i++)
                 {
-                    LOG_ERROR("Error reading partition for hash calculation");
+                    if (i == plAcCount - 1 && (lastBlockSize < BITSTREAM_AUTH_CHUNK_SIZE))
+                    {
+                        blockSize = lastBlockSize;
+                    }
+                    if(i != 0)
+                    {
+                      authCertificate++;
+                    }
+                    AuthCertificate4096Structure* cert = (AuthCertificate4096Structure*)(*authCertificate);
+                    uint8_t* buffer = new uint8_t[ blockSize + sizeof(AuthCertificate4096Structure) - RSA_4096_KEY_LENGTH];
+                    memcpy(buffer, tempBuffer + BITSTREAM_AUTH_CHUNK_SIZE * i, blockSize);
+                    memcpy(buffer + blockSize, cert, (sizeof(AuthCertificate4096Structure) - RSA_4096_KEY_LENGTH));
+                    signatureVerified = VerifySignature(!isItBootloader, buffer, blockSize + (sizeof(AuthCertificate4096Structure) - RSA_4096_KEY_LENGTH), &auth_cert->acSpk, (unsigned char*)(&cert->acPartitionSignature));             
+                    if(!signatureVerified)
+                    {
+                       LOG_MSG("    Partition Signature Verification Failed");
+                       authenticationVerified = false;
+                       LOG_ERROR("Authentication verification failed on bootimage %s", binFilename.c_str()); 
+                    }
+                    
+                    delete[] buffer;
                 }
             }
             else
             {
-                LOG_ERROR("Error parsing Partitions from BootImage file %s",binFilename.c_str());
+               signatureVerified = VerifySignature(!isItBootloader, tempBuffer, bufferLength, &auth_cert->acSpk, (unsigned char*)(&auth_cert->acPartitionSignature));
             }
-            
-            
-            bool signatureVerified = VerifySignature(!isItBootloader, tempBuffer, bufferLength, &auth_cert->acSpk, (unsigned char*)(&auth_cert->acPartitionSignature));
             if (signatureVerified)
             {
                 LOG_MSG("    Partition Signature Verified");
@@ -338,9 +366,9 @@ void ZynqMpReadImage::VerifyPartitionSignature(void)
                 authenticationVerified = false;
                 LOG_ERROR("Authentication verification failed on bootimage %s", binFilename.c_str());
             }
-
-            delete[] tempBuffer;
-        }
+                       
+              delete[] tempBuffer;
+            }       
         else
         {
             //EXIT
@@ -349,3 +377,4 @@ void ZynqMpReadImage::VerifyPartitionSignature(void)
     fclose(binFile);
     Separator();
 }
+

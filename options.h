@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -183,6 +183,7 @@ public:
     void SetReadImageFile(std::string);
     void SetSecureDebugAuthType(Authentication::Type type);
     void SetSecureDebugImageFile(std::string);
+    void SetOverlayCDOFileName (std::string);
     
     std::string GetBifFilename (void);
     KeySource::Type GetEncryptedKeySource (void);
@@ -229,6 +230,7 @@ public:
     std::string GetDumpDirectory(void);
     Authentication::Type GetSecureDebugAuthType(void);
     std::string GetSecureDebugImageFile(void);
+    std::string GetOverlayCDOFileName (void);
 
     uint32_t totalHeadersSize;
     uint32_t bootheaderSize;
@@ -282,6 +284,7 @@ public:
     std::string fsblFilename;
     Authentication::Type secureDebugAuthType;
     std::string secureDebugImageFilename;
+    std::string overlayCDOFile;
 };
 
 #endif

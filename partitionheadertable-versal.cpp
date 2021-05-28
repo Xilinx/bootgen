@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -472,25 +472,25 @@ void VersalPartitionHeader::SetLoadAddress(uint64_t addr)
 /******************************************************************************/
 void VersalPartitionHeader::SetPartitionWordOffset(uint32_t addr)
 {
-	if (presigned)
-	{
-		pHTable->partitionWordOffset = (addr+sizeof(AuthCertificate4096Sha3PaddingStructure)) / sizeof(uint32_t);
-	}
-	else
-	{
-		pHTable->partitionWordOffset = addr / sizeof(uint32_t);
-		if (slaveBootSplitMode && (pHTable->partitionWordOffset != 0))
-		{
-			if (IsBootloader())
-			{
-				pHTable->partitionWordOffset = 0;
-			}
-			else
-			{
-				pHTable->partitionWordOffset -= (fullBhSize + allHdrSize + bootloaderSize) / sizeof(uint32_t);
-			}
-		}
-	}
+    if (presigned)
+    {
+        pHTable->partitionWordOffset = (addr+sizeof(AuthCertificate4096Sha3PaddingStructure)) / sizeof(uint32_t);
+    }
+    else
+    {
+        pHTable->partitionWordOffset = addr / sizeof(uint32_t);
+        if (slaveBootSplitMode && (pHTable->partitionWordOffset != 0))
+        {
+            if (IsBootloader())
+            {
+                pHTable->partitionWordOffset = 0;
+            }
+            else
+            {
+                pHTable->partitionWordOffset -= (fullBhSize + allHdrSize + bootloaderSize) / sizeof(uint32_t);
+            }
+        }
+    }
 }
 
 /******************************************************************************/
@@ -1186,17 +1186,30 @@ void VersalPartitionHeaderTable::Link(BootImage & bi)
         }
     }
 
-    if (bi.options.bifOptions->GetHeaderEncyption())
-    {
-        LOG_INFO("Encrypting the Meta Header");
-        EncryptionContext* encryptCtx = bi.imageHeaderTable->GetEncryptContext();
-        encryptCtx->Process(bi);
-        bi.imageHeaderTable->metaHeaderLength = bi.imageHeaderTable->GetTotalMetaHdrLength();
-    }
     if (bi.bifOptions->GetHeaderAC())
     {
         bi.imageHeaderTable->SetTotalMetaHdrLength(bi.imageHeaderTable->metaHeaderLength + sizeof(AuthCertificate4096Sha3PaddingStructure));
         bi.imageHeaderTable->SetChecksum();
+    }
+
+    if (bi.options.bifOptions->GetHeaderEncyption())
+    {
+        LOG_INFO("Encrypting the Meta Header");
+        EncryptionContext* encryptCtx = bi.imageHeaderTable->GetEncryptContext();
+
+        bi.imageHeaderTable->SetTotalMetaHdrLength(bi.encryptedHeaders->Length);
+        if (bi.bifOptions->GetHeaderAC())
+        {
+            bi.imageHeaderTable->SetTotalMetaHdrLength(bi.encryptedHeaders->Length + sizeof(AuthCertificate4096Sha3PaddingStructure));
+        }
+        bi.imageHeaderTable->SetChecksum();
+
+        encryptCtx->Process(bi);
+        bi.imageHeaderTable->metaHeaderLength = bi.imageHeaderTable->GetTotalMetaHdrLength();
+    }
+
+    if (bi.bifOptions->GetHeaderAC())
+    {
         bi.headerAC->Link(bi, bi.imageHeaderTable->section);
     }
 

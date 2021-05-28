@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2019-2020 Xilinx, Inc.
+* Copyright 2019-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 #include "cdo-raw.h"
 #include "cdo-load.h"
 
-void * file_to_buf(char * path, size_t * sizep) {
+void * file_to_buf(const char * path, size_t * sizep) {
     FILE * f = fopen(path, "rb");
     void * buf = NULL;
     size_t capacity = 0;
@@ -64,7 +64,7 @@ error:
     return NULL;
 }
 
-CdoSequence * cdoseq_load_cdo(char * path) {
+CdoSequence * cdoseq_load_cdo(const char * path) {
     CdoSequence * seq = NULL;
     CdoRawInfo * raw = NULL;
     size_t size;
@@ -102,4 +102,25 @@ done:
         free(data);
     }
     return seq;
+}
+
+void cdoseq_extract_writes(CdoSequence * seq) {
+    LINK * l = seq->cmds.next;
+    while (l != &seq->cmds) {
+        CdoCommand * cmd = all2cmds(l);
+        l = l->next;
+        switch (cmd->type) {
+        case (CdoCmdWrite):
+        case (CdoCmdMaskWrite):
+            /* Ignore writes that configure frequency */
+            if (cmd->dstaddr == 0xf1260050 || cmd->dstaddr == 0xf1260054 ||
+                cmd->dstaddr == 0xf1260104) {
+                cdocmd_free(cmd);
+            }
+            break;
+        default:
+            cdocmd_free(cmd);
+            break;
+        }
+    }
 }

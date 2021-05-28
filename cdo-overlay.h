@@ -14,15 +14,28 @@
 * limitations under the License.
 ******************************************************************************/
 
-#ifndef D_cdo_load
-#define D_cdo_load
+#ifndef D_cdo_overlay
+#define D_cdo_overlay
 
-#include <stdlib.h>
 #include "cdo-command.h"
 
-void * file_to_buf(const char * path, size_t * sizep);
-CdoSequence * cdoseq_load_cdo(const char * path);
+typedef struct CdoOverlayInfo CdoOverlayInfo;
+typedef struct CdoOverlayEntry CdoOverlayEntry;
 
-void cdoseq_extract_writes(CdoSequence * seq);
+struct CdoOverlayEntry {
+    CdoCommand * start;
+    CdoCommand * end;
+    unsigned int level;
+};
 
-#endif /* D_cdo_load */
+struct CdoOverlayInfo {
+    CdoSequence * seq;
+    size_t count;
+    CdoOverlayEntry * list;
+};
+
+CdoOverlayInfo * cdooverlay_open(CdoSequence * seq);
+void cdooverlay_close(CdoOverlayInfo * info);
+int cdooverlay_apply(CdoSequence * seq, CdoOverlayInfo * ovl);
+
+#endif /* D_cdo_overlay */

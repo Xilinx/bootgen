@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -471,9 +471,7 @@ void ZynqMpImageHeader::Build(BootImage& bi, Binary& cache)
         SetDataSectionCount(0);
         SetImageNameLength((uint32_t)partitionHeaderList.size());
     }
-    bi.partitionHeaderList.insert(bi.partitionHeaderList.end(),
-    partitionHeaderList.begin(),
-    partitionHeaderList.end());
+    bi.partitionHeaderList.insert(bi.partitionHeaderList.end(),partitionHeaderList.begin(),partitionHeaderList.end());
 }
 
 /******************************************************************************/

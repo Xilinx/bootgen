@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -95,7 +95,7 @@ public:
     ~VersalKey();
 
     void Parse(const std::string& filename, bool isSecret0);
-    uint8_t ParseECDSAOpenSSLKey(FILE* f);
+    uint8_t ParseECDSAOpenSSLKey(const std::string& filename);
     EC_KEY *eckey;
     uint8_t *x;    // x co-ordinate (384 bits)
     uint8_t *y;    // y co-ordinate (384 bits)

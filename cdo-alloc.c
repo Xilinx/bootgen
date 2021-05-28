@@ -1,3 +1,4 @@
+// 67d7842dbbe25473c3c32b93c0da8047785f30d78e8a024de1b57352245f9689
 /******************************************************************************
 * Copyright 2019-2021 Xilinx, Inc.
 *
@@ -14,15 +15,37 @@
 * limitations under the License.
 ******************************************************************************/
 
-#ifndef D_cdo_load
-#define D_cdo_load
-
+#include <stdio.h>
 #include <stdlib.h>
-#include "cdo-command.h"
+#include <errno.h>
+#include <malloc.h>
+#include <string.h>
+#include "cdo-alloc.h"
 
-void * file_to_buf(const char * path, size_t * sizep);
-CdoSequence * cdoseq_load_cdo(const char * path);
+void * myalloc(size_t len) {
+    void * p = malloc(len);
+    if (p == NULL) {
+        fprintf(stderr, "end of memory\n");
+        exit(1);
+    }
+    return p;
+}
 
-void cdoseq_extract_writes(CdoSequence * seq);
+void * myalloc_zero(size_t len) {
+    void * p = myalloc(len);
+    memset(p, 0, len);
+    return p;
+}
 
-#endif /* D_cdo_load */
+void * myrealloc(void * p, size_t len) {
+    p = realloc(p, len);
+    if (p == NULL) {
+        fprintf(stderr, "end of memory\n");
+        exit(1);
+    }
+    return p;
+}
+
+void myfree(void * p) {
+    free(p);
+}

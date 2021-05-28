@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2019-2020 Xilinx, Inc.
+* Copyright 2019-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -14,45 +14,21 @@
 * limitations under the License.
 ******************************************************************************/
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdarg.h>
-#include <malloc.h>
 #include <string.h>
 #include <inttypes.h>
+#include "cdo-alloc.h"
 #include "cdo-command.h"
+UserKeys user_keys;
 
 static CdoSequence * default_seq;
 
-static void * myalloc(size_t len) {
-    void * p = malloc(len);
-    if (p == NULL) {
-        fprintf(stderr, "end of memory\n");
-        exit(1);
-    }
-    return p;
-}
-
-static void * myalloc_zero(size_t len) {
-    void * p = myalloc(len);
-    memset(p, 0, len);
-    return p;
-}
-
-static void * myrealloc(void * p, size_t len) {
-    p = realloc(p, len);
-    if (p == NULL) {
-        fprintf(stderr, "end of memory\n");
-        exit(1);
-    }
-    return p;
-}
-
-static void myfree(void * p) {
-    free(p);
-}
+#define USER_KEYS_BASE_ADDR 0xF11E0110
+#define USER_KEYS_END_ADDR  0xF11E020C
+#define USER_KEY_OFFSET     0x20
 
 void cdocmd_free(CdoCommand * cmd) {
     if (!list_is_empty(&cmd->link_all)) list_remove(&cmd->link_all);
@@ -96,6 +72,14 @@ static void * copy_buf(void * buf, uint32_t count, uint32_t be) {
         }
     }
     return p;
+}
+
+CdoCommand * cdocmd_duplicate(CdoCommand * origcmd) {
+    CdoCommand * cmd = (CdoCommand *)myalloc(sizeof *cmd);
+    *cmd = *origcmd;
+    list_init(&cmd->link_all)
+    cmd->buf = copy_buf(cmd->buf, cmd->count, is_be_host());
+    return cmd;
 }
 
 void cdocmd_set_default_sequence(CdoSequence * seq) {
@@ -202,6 +186,8 @@ void cdocmd_add_random_command(CdoSequence * seq) {
         }
     } else if (cmd->type == CdoCmdComment ||
                cmd->type == CdoCmdSetBoard ||
+               cmd->type == CdoCmdLogString ||
+               cmd->type == CdoCmdMarker ||
                cmd->type == CdoCmdPmAddNodeName) {
         uint8_t * p;
         uint32_t count = (cmd->count & 7) + 1;
@@ -242,6 +228,7 @@ void cdocmd_add_comment(CdoSequence * seq, const char * comment, ...) {
         }
         cmd->buf = myrealloc(cmd->buf, size);
     }
+    cmd->count = strlen(cmd->buf) / 4 + 1;
     add_command(seq, cmd);
 }
 
@@ -253,6 +240,7 @@ void cdocmd_add_section(CdoSequence * seq, uint32_t id) {
 
 void cdocmd_add_include(CdoSequence * seq, const char * name) {
     CdoCommand * cmd = cdocmd_alloc(CdoCmdInclude);
+    cmd->count = strlen(name) / 4 + 1;
     cmd->buf = strdup(name);
     add_command(seq, cmd);
 }
@@ -261,6 +249,23 @@ static CdoCommand * build_block_write(uint64_t addr, void * buf, uint32_t count,
     CdoCommand * cmd = cdocmd_alloc(CdoCmdWrite);
     cmd->dstaddr = addr;
     cmd->count = count;
+
+    if (addr  >= USER_KEYS_BASE_ADDR && addr <= USER_KEYS_END_ADDR)
+    {
+        /* copy user keys*/
+        int i, j;
+        for (j = 0; j < 8; j++)
+        {
+            for (i = 0; i < 8; i++)
+            {
+                if ((addr == USER_KEYS_BASE_ADDR + (USER_KEY_OFFSET * j) + (4 * i)) && (user_keys.user_keys_array[j] != 0))
+                {
+                    memcpy(buf, &user_keys.user_keys_array[j][7 - i], sizeof(uint32_t));
+                }
+            }
+        }
+    }
+
     cmd->buf = copy_buf(buf, count, be);
     return cmd;
 }
@@ -650,6 +655,7 @@ void cdocmd_add_pm_add_node_parent(CdoSequence * seq, uint32_t nodeid, uint32_t 
 void cdocmd_add_pm_add_node_name(CdoSequence * seq, uint32_t nodeid, const char * name) {
     CdoCommand * cmd = cdocmd_alloc(CdoCmdPmAddNodeName);
     cmd->id = nodeid;
+    cmd->count = strlen(name) / 4 + 1;
     cmd->buf = strdup(name);
     add_command(seq, cmd);
 }
@@ -793,6 +799,7 @@ void cdocmd_add_event_logging(CdoSequence * seq, uint32_t subcmd, uint32_t count
 
 void cdocmd_add_set_board(CdoSequence * seq, const char * name) {
     CdoCommand * cmd = cdocmd_alloc(CdoCmdSetBoard);
+    cmd->count = strlen(name) / 4 + 1;
     cmd->buf = strdup(name);
     add_command(seq, cmd);
 }
@@ -801,6 +808,27 @@ void cdocmd_add_set_plm_wdt(CdoSequence * seq, uint32_t nodeid, uint32_t periodi
     CdoCommand * cmd = cdocmd_alloc(CdoCmdSetPlmWdt);
     cmd->id = nodeid;
     cmd->value = periodicity;
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_log_string(CdoSequence * seq, const char * name) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdLogString);
+    cmd->count = strlen(name) / 4 + 1;
+    cmd->buf = strdup(name);
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_log_address(CdoSequence * seq, uint64_t addr) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdLogAddress);
+    cmd->srcaddr = addr;
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_marker(CdoSequence * seq, uint32_t value, const char * name) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdMarker);
+    cmd->value = value;
+    cmd->count = strlen(name) / 4 + 1;
+    cmd->buf = strdup(name);
     add_command(seq, cmd);
 }
 

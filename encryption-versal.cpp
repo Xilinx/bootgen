@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -425,7 +425,6 @@ void VersalEncryptionContext::PackNextEncryptionKey(uint8_t* aesKeyNext, int aes
         *hexDataPtr++ = (uint8_t)strtoul(byte.c_str(), NULL, 16);
     }
 
-
     hexDataPtr = hexData;
     memcpy(aesKeyNext, hexDataPtr, AES_GCM_KEY_SZ);
 }
@@ -646,7 +645,7 @@ void VersalEncryptionContext::GenerateRemainingKeys(Options& options)
 
 /******************************************************************************/
 void VersalEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint8_t *inBuf, uint32_t inLen,
-    uint8_t* outBuf, uint32_t& outLen)
+    uint8_t *aad, uint32_t aad_len, uint8_t* outBuf, uint32_t& outLen)
 {
     std::vector<uint32_t> blockList = options.bifOptions->GetEncryptionBlocksList();
     uint8_t *aesIv = new uint8_t[AES_GCM_IV_SZ];
@@ -677,7 +676,7 @@ void VersalEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint8_t
     /* Encrypt the Secure Header with device key and starting IV */
     LOG_TRACE("Encrypting the Secure Header");
     uint8_t* ptr = outBuf;
-    AesGcm256Encrypt(secureHdr_in, SECURE_HDR_SZ, aesKey, aesIv, NULL, 0, ptr, ct_len, gcm_tag);
+    AesGcm256Encrypt(secureHdr_in, SECURE_HDR_SZ, aesKey, aesIv, aad, aad_len, ptr, ct_len, gcm_tag);
 
     /* Attach the AES-GCM generated Hash Tag to end of the block */
     memcpy(outBuf + ct_len, gcm_tag, AES_GCM_TAG_SZ);
@@ -881,7 +880,7 @@ void VersalEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr)
 
     WarnforDPACMImpactonBootTime(encrBlocks.size() != 0, partHdr->imageHeader->GetDpacm() == DpaCM::DpaCMEnable);
 
-    /* Default key rolling to make a chunk size of 64KB - Valid for any partition other than bootloader */
+    /* Default key rolling to make a chunk size of 32KB - Valid for any partition other than bootloader */
     if (!partHdr->IsBootloader())
     {
         totalencrBlocks = encrBlocks.size();
@@ -895,6 +894,11 @@ void VersalEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr)
 
         std::vector<uint32_t> secureChunkEncrBlocks;
         uint32_t actualSecureChunkSize = VersalPartition::GetSecureChunkSize() - overhead;
+        if (partHdr->imageHeader->GetAuthenticationType() == Authentication::None)
+        {
+            actualSecureChunkSize += SHA3_LENGTH_BYTES;
+        }
+
         uint32_t totalKeyRollencrBlocks = GetTotalEncryptionBlocks(partHdr->partition->section->Length, secureChunkEncrBlocks, actualSecureChunkSize, &lastBlock);
         secureChunkEncrBlocks.clear();
 
@@ -1106,6 +1110,7 @@ void VersalEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr)
         ChunkifyAndEncrypt(options,
             partHdr->partition->section->Data,
             partHdr->imageHeader->GetFsblFwSizeIh(),
+            NULL, 0,
             encrFsblDataBuffer /* out*/,
             encrFsblByteLength /* out */);
 
@@ -1212,6 +1217,7 @@ void VersalEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr)
         ChunkifyAndEncrypt(options,
             partHdr->partition->section->Data + partHdr->imageHeader->GetFsblFwSizeIh(),
             partHdr->imageHeader->GetTotalPmcFwSizeIh(),
+            NULL, 0,
             encrPmcDataBuffer /* out*/,
             encrPmcByteLength /* out */);
 
@@ -1244,6 +1250,7 @@ void VersalEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr)
         ChunkifyAndEncrypt(options,
             partHdr->partition->section->Data,
             (uint32_t)partHdr->partition->section->Length,
+            NULL, 0,
             encryptedDataBuffer /* out*/,
             encryptedLength /* out */);
 
@@ -1388,6 +1395,7 @@ void VersalEncryptionContext::Process(BootImage& bi)
             memcpy_be(bi.imageHeaderTable->metaHdrSecHdrIv, tmpIv, BYTES_PER_IV);
         }
         bi.imageHeaderTable->SetMetaHdrSecureHdrIv(bi.imageHeaderTable->metaHdrSecHdrIv);
+        bi.imageHeaderTable->SetChecksum();
     }
     else
     {
@@ -1416,21 +1424,26 @@ void VersalEncryptionContext::Process(BootImage& bi)
     uint32_t estimatedEncrLength = size + totalBlocksOverhead;
     if (bi.encryptedHeaders->Length != estimatedEncrLength)
     {
-        LOG_ERROR("internal");
+        LOG_ERROR("Internal Error : Encrypted metaheader length calculation error.");
     }
+
     uint8_t* encryptedDataBuffer = new uint8_t[estimatedEncrLength];
 
     ChunkifyAndEncrypt(bi.options,
         dataBuffer,
         (uint32_t)size,
+        bi.imageHeaderTable->section->Data,
+        sizeof(VersalImageHeaderTableStructure),
         encryptedDataBuffer /* out*/,
         encryptedLength /* out */);
-    memset(bi.encryptedHeaders->Data, bi.options.GetOutputFillByte(), bi.encryptedHeaders->Length);
 
+    if (bi.encryptedHeaders->Length != encryptedLength)
+    {
+        LOG_ERROR("Internal Error : Encryption buffer allocation error.");
+    }
+
+    memset(bi.encryptedHeaders->Data, bi.options.GetOutputFillByte(), bi.encryptedHeaders->Length);
     memcpy(bi.encryptedHeaders->Data, encryptedDataBuffer, encryptedLength);
-    bi.encryptedHeaders->Length = encryptedLength;
-    bi.imageHeaderTable->SetTotalMetaHdrLength(encryptedLength);
-    bi.imageHeaderTable->SetChecksum();
     LOG_INFO("Encrypted the partition - %s", bi.encryptedHeaders->Name.c_str());
 
     bi.options.CloseEncryptionDumpFile();

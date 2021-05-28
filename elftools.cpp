@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -704,7 +704,13 @@ ElfFormat* ElfFormat::GetElfFormat(ElfClass::Type elfClass, uint8_t* start, uint
         *state = (A53ExecState::Type)A53ExecState::AARCH64;
         return new ElfFormat64(start);
     }
-    else 
+    /* ELF32 may contain either ARMv7/AArch32 or AArch64 using the ILP32 data model */
+    else if (((Elf32_Ehdr*)start)->e_machine != 0x28)
+    {
+        *state = (A53ExecState::Type)A53ExecState::AARCH64;
+        return new ElfFormat32(start);
+    }
+    else
     {
         *state = (A53ExecState::Type)A53ExecState::AARCH32;
         return new ElfFormat32(start);

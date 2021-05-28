@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -58,16 +58,22 @@ VersalAuthenticationContext::VersalAuthenticationContext(Authentication::Type ty
     {
         primaryKey = new Key4096Sha3Padding("Primary Key");
         secondaryKey = new Key4096Sha3Padding("Secondary Key");
+        primaryKey->authType = Authentication::RSA;
+        secondaryKey->authType = Authentication::RSA;
     }
     else if (type == Authentication::ECDSA)
     {
         primaryKey = new KeyECDSA("Primary Key");
         secondaryKey = new KeyECDSA("Secondary Key");
+        primaryKey->authType = Authentication::ECDSA;
+        secondaryKey->authType = Authentication::ECDSA;
     }
     else
     {
         primaryKey = new KeyECDSAp521("Primary Key");
         secondaryKey = new KeyECDSAp521("Secondary Key");
+        primaryKey->authType = Authentication::ECDSAp521;
+        secondaryKey->authType = Authentication::ECDSAp521;
     }
 }
 
@@ -93,16 +99,22 @@ VersalAuthenticationContext::VersalAuthenticationContext(const AuthenticationCon
     {
         primaryKey = new Key4096Sha3Padding("Primary Key");
         secondaryKey = new Key4096Sha3Padding("Secondary Key");
+        primaryKey->authType = Authentication :: RSA;
+        secondaryKey->authType = Authentication :: RSA;
     }
     else if(authtype == Authentication::ECDSA)
     {
         primaryKey = new KeyECDSA("Primary Key");
         secondaryKey = new KeyECDSA("Secondary Key");
+        primaryKey->authType = Authentication :: ECDSA;
+        secondaryKey->authType = Authentication :: ECDSA;
     }
     else
     {
         primaryKey = new KeyECDSAp521("Primary Key");
         secondaryKey = new KeyECDSAp521("Secondary Key");
+        primaryKey->authType = Authentication :: ECDSAp521;
+        secondaryKey->authType = Authentication :: ECDSAp521;
     }
 
     if (pskFile != "" || ppkFile != "")
@@ -176,16 +188,22 @@ VersalAuthenticationContext::VersalAuthenticationContext(const AuthCertificate40
     {
         primaryKey = new Key4096Sha3Padding("Primary Key");
         secondaryKey = new Key4096Sha3Padding("Secondary Key");
+        primaryKey->authType = Authentication::RSA;
+        secondaryKey->authType = Authentication::RSA;
     }
     else if (authtype == Authentication::ECDSA)
     {
         primaryKey = new KeyECDSA("Primary Key");
         secondaryKey = new KeyECDSA("Secondary Key");
+        primaryKey->authType = Authentication::ECDSA;
+        secondaryKey->authType = Authentication::ECDSA;
     }
     else
     {
         primaryKey = new KeyECDSAp521("Primary Key");
         secondaryKey = new KeyECDSAp521("Secondary Key");
+        primaryKey->authType = Authentication::ECDSAp521;
+        secondaryKey->authType = Authentication::ECDSAp521;
     }
 
     primaryKey->Import(&existingCert->acPpk, "Primary Key");
@@ -815,15 +833,16 @@ void RSA4096Sha3PaddingAuthenticationAlgorithm::CreatePadding(uint8_t * signatur
     //calculate mHash - hash on message(m)
     uint8_t mHash[48] = { 0 };
     memcpy(mHash, hash, 48);
+
     //calculate mPad - add padding1 and salt to mHash
     uint8_t mPad[104];
-    //mPad = new uint8_t[104];
     memset(mPad, 0, 104);
     memcpy(mPad, padding1, PAD1_LENGTH);
     memcpy(mPad + PAD1_LENGTH, mHash, 48);
     memcpy(mPad + PAD1_LENGTH + 48, salt, SALT_LENGTH);
+
     //calculate hash on mPad
-    uint8_t *m1; //= new uint8_t[208];
+    uint8_t *m1;
     uint8_t mPadHash[48];
     m1 = AttachSHA3Padding(mPad, 104);
     Versalcrypto_hash(mPadHash, m1, 208, false);
@@ -831,7 +850,7 @@ void RSA4096Sha3PaddingAuthenticationAlgorithm::CreatePadding(uint8_t * signatur
     uint8_t mask[463] = { 0 };
     if (MaskGenerationFunction(mask, maskedDBLen, mPadHash, 48, EVP_sha384()) == -1)
     {
-        LOG_ERROR("Authentication internal error");
+        LOG_ERROR("Internal Error : Mask generation failed during authentication.");
     }
     //DB Padding
     uint8_t *DB;
@@ -1414,71 +1433,58 @@ uint32_t RSA4096Sha3PaddingAuthenticationAlgorithm::GetAuthHeader(void)
 }
 
 /******************************************************************************/
-void VersalAuthenticationContext::CalculateAcHdrHash(uint8_t* sha_hash_padded, uint8_t*  buffer)
-{
-    LOG_TRACE("Calculating the Authentication Header Hash");
-    uint8_t SHA3Padding[96] = { 0 };
-    FillSha3Padding(SHA3Padding, sizeof(SHA3Padding));
-    hashLength = hash->GetHashLength();
-
-    uint8_t* shaHash = new uint8_t[hashLength];
-    uint32_t acHdr = authAlgorithm->GetAuthHeader();
-    acHdr |= ((hashType == AuthHash::Sha2) ? 0 : 1) << AC_HDR_SHA_2_3_BIT_SHIFT;
-    uint8_t* tempBuffer = new uint8_t[sizeof(acHdr) + sizeof(spkIdentification) + sizeof(SHA3Padding)];
-    WriteLittleEndian32(tempBuffer, acHdr);
-    WriteLittleEndian32(tempBuffer + sizeof(acHdr), spkIdentification);
-    memcpy(tempBuffer + sizeof(acHdr) + sizeof(spkIdentification), SHA3Padding, sizeof(SHA3Padding));
-    //Write AC Header+spkID+sha3Padding into buffer to copy to securedebugimage.bin
-    memcpy(buffer, tempBuffer, sizeof(acHdr) + sizeof(spkIdentification) + sizeof(SHA3Padding));
-    hash->CalculateVersalHash(false,(uint8_t*)tempBuffer, sizeof(acHdr) + sizeof(spkIdentification) + sizeof(SHA3Padding), shaHash);
-    authAlgorithm->CreatePadding(sha_hash_padded, shaHash, hashLength);
-    delete[] shaHash;
-    delete[] tempBuffer;
-}
-
-/******************************************************************************/
-void VersalAuthenticationContext::CreateAcHdrSignature(uint8_t *buffer)
+void VersalAuthenticationContext::CreateAuthJtagImage(uint8_t* buffer, AuthJtagInfo authJtagAttributes)
 {
     LOG_TRACE("Creating the Authentication Header signature");
-
-    /* Authentication Header is signed with PSK for Authenticated Jtag Image) */
+    AuthenticatedJtagImageStructure* authJtagImage = (AuthenticatedJtagImageStructure*)buffer;
     if (primaryKey->Loaded && primaryKey->isSecret)
     {
+        hashLength = hash->GetHashLength();
+        uint8_t* shaHash = new uint8_t[hashLength];
         uint8_t* shaHashPadded = new uint8_t[signatureLength];
-        uint8_t* acHdrSignaturetmp = new uint8_t[signatureLength];
-        memset(acHdrSignaturetmp, 0, signatureLength);
+        memset(shaHash, 0, hashLength);
         memset(shaHashPadded, 0, signatureLength);
-        // Calulate the acHdr+SPKID hash with PSS padding
-        CalculateAcHdrHash(shaHashPadded, buffer);
+
+        uint32_t acHdr = authAlgorithm->GetAuthHeader();
+        acHdr |= ((hashType == AuthHash::Sha2) ? 0 : 1) << AC_HDR_SHA_2_3_BIT_SHIFT;
+
+        WriteLittleEndian32(&authJtagImage->acHeader, acHdr);
+        if (!authJtagAttributes.userRevokeId)
+        {
+            LOG_WARNING("revoke_id is not specified in BIF, default revoke id is assigned as '0'.");
+        }
+        WriteLittleEndian32(&authJtagImage->spkId, authJtagAttributes.revokeId);
+
+        authJtagInfoStructurev2* v2 = (authJtagInfoStructurev2*)authJtagImage->authJtagInfo;
+        if (authJtagAttributes.userDeviceDNA)
+        {
+            WriteLittleEndian32(&v2->attributes, vauthJtagMessagenMask << vauthJtagMessageShift);
+        }
+        memcpy(v2->deviceDNA, authJtagAttributes.deviceDNA, sizeof(authJtagAttributes.deviceDNA));
+        WriteLittleEndian32(&v2->jtagTimeOut, authJtagAttributes.jtagTimeout);
+        FillSha3Padding(v2->SHA3Padding, sizeof(v2->SHA3Padding));
+
+        primaryKey->Export(authJtagImage->acPpk);
+        authAlgorithm->RearrangeEndianess(authJtagImage->acPpk + RSA_4096_N, RSA_4096_N_SIZE);
+        authAlgorithm->RearrangeEndianess(authJtagImage->acPpk + RSA_4096_N_EXT, RSA_4096_N_EXT_SIZE);
+        authAlgorithm->RearrangeEndianess(authJtagImage->acPpk + RSA_4096_E, RSA_4096_E_SIZE);
+
+        FillSha3Padding(authJtagImage->ppkSHA3Padding, sizeof(authJtagImage->ppkSHA3Padding));
+
+        hash->CalculateVersalHash(false, (uint8_t*)authJtagImage, sizeof(authJtagImage->acHeader) + sizeof(authJtagImage->spkId) + sizeof(authJtagImage->authJtagInfo), shaHash);
+        authAlgorithm->CreatePadding(shaHashPadded, shaHash, hashLength);
         authAlgorithm->RearrangeEndianess(shaHashPadded, signatureLength);
-        // Sign the acHdr+SPKID hash
-        authAlgorithm->CreateSignature(shaHashPadded, (uint8_t*)primaryKey, acHdrSignaturetmp);
-        authAlgorithm->RearrangeEndianess(acHdrSignaturetmp, signatureLength);
-        // Get PPK Key
-        uint8_t* ppkTemp = new uint8_t[VERSAL_ACKEY_STRUCT_SIZE];
-        primaryKey->Export(ppkTemp);
-        authAlgorithm->RearrangeEndianess(ppkTemp + RSA_4096_N, RSA_4096_N_SIZE);
-        authAlgorithm->RearrangeEndianess(ppkTemp + RSA_4096_N_EXT, RSA_4096_N_EXT_SIZE);
-        authAlgorithm->RearrangeEndianess(ppkTemp + RSA_4096_E, RSA_4096_E_SIZE);
-        uint8_t ppkSHA3Padding[12] = { 0 };
-        FillSha3Padding(ppkSHA3Padding, sizeof(ppkSHA3Padding));
-        uint8_t* tempBuffer = new uint8_t[VERSAL_ACKEY_STRUCT_SIZE + sizeof(ppkSHA3Padding)];
-        memcpy(tempBuffer, (uint8_t*)ppkTemp, VERSAL_ACKEY_STRUCT_SIZE);
-        memcpy(tempBuffer + VERSAL_ACKEY_STRUCT_SIZE, ppkSHA3Padding, sizeof(ppkSHA3Padding));
-        /* Write PPk and Signature into buffer to copy to securedebugimage.bin
-        AH + SPKID + SHA3APdding + (PPK + PPK SHA3 PAdding) + Sign
-        4 + 4 + 96 + 1040(1028+12) + 512 */
-        memcpy(buffer + 4 + 4 + 96, tempBuffer, VERSAL_ACKEY_STRUCT_SIZE + sizeof(ppkSHA3Padding));
-        memcpy(buffer + (4 + 4 + 96 + 1040), acHdrSignaturetmp, signatureLength);
-        delete[] tempBuffer;
+
+        authAlgorithm->CreateSignature(shaHashPadded, (uint8_t*)primaryKey, authJtagImage->authJtagSignature);
+        authAlgorithm->RearrangeEndianess(authJtagImage->authJtagSignature, signatureLength);
+
+        delete[] shaHash;
         delete[] shaHashPadded;
-        delete[] acHdrSignaturetmp;
     }
     else
     {
         LOG_ERROR("Authentication Error !!!\n          PSK must be specified to generate Authenticated Jtag Image");
     }
-    LOG_INFO("Authentication Header signature created successfully");
 }
 
 /******************************************************************************/

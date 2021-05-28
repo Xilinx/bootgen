@@ -151,7 +151,7 @@ void VersalReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
     {
         iHT = new VersalImageHeaderTableStructure;
         result = fread(iHT, 1, sizeof(VersalImageHeaderTableStructure), binFile);
-        if ((iHT->version != VERSION_v1_00_VERSAL) && (iHT->version != VERSION_v2_00_VERSAL) && (iHT->version != VERSION_v3_00_VERSAL))
+        if ((iHT->version != VERSION_v1_00_VERSAL) && (iHT->version != VERSION_v2_00_VERSAL) && (iHT->version != VERSION_v3_00_VERSAL) && (iHT->version != VERSION_v4_00_VERSAL))
         {
             LOG_ERROR("Improper version (0x%.8x) read from Image Header Table of the PDI file.",iHT->version);
         }
@@ -270,6 +270,10 @@ void VersalReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
                 }
                 if (dump == DumpOption::PARTITIONS)
                 {
+                    if (bH && bH->sourceOffset == offset)
+                    {
+                        length = bH->totalPlmLength;
+                    }
                     if (prev_id == id)
                     {
                         section_count++;
@@ -326,11 +330,6 @@ void VersalReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
             prev_id = id;
             delete[] buffer;
         }
-    }
-
-    if (header_ac != NULL)
-    {
-        delete[] header_ac;
     }
     fclose(binFile);
 }
@@ -717,20 +716,14 @@ void VersalReadImage::DisplaySmapVectors(void)
 void VersalReadImage::DisplayBhAttributes(uint32_t value)
 {
     std::string val, val1;
-
-    switch ((value >> AUTH_ONLY_BIT_SHIFT) & AUTH_ONLY_BIT_MASK)
-    {
-        case 3: val = "[true]";         break;
-        default: val = "[false]";       break;
-    }
-    val1 = val;
     
     switch ((value >> PUF_HD_BIT_SHIFT) & PUF_HD_BIT_MASK)
     {
         case 3: val = "[bh]";           break;
         default: val = "[efuse]";       break;
     }
-    DisplayAttributes("auth_only ", val1, "puf_hd_source ", val);
+    val1 = val;
+    DisplayAttributes("puf_hd_source ", val1,"","");
 
     switch ((value >> BI_HASH_BIT_SHIFT) & BI_HASH_BIT_MASK)
     {
@@ -755,7 +748,7 @@ void VersalReadImage::DisplayBhAttributes(uint32_t value)
     
     switch ((value >> BH_PUF_MODE_BIT_SHIFT) & BH_PUF_MODE_BIT_MASK)
     {
-        case 2: val = "[puf-12k]";      break;
+        case 0: val = "[puf-12k]";      break;
         case 3: val = "[puf-4k]";       break;
         default: val = "[invalid]";     break;
     }
@@ -853,6 +846,33 @@ void VersalReadImage::DisplayIhAttributes(uint32_t value)
         default: val = "[now]";      break;
     }
     DisplayAttributes("load ", val1, "handoff ", val);
+
+    std::string powerDomains = "";
+    switch ((value >> vihLowPowerDomainShift) & vihLowPowerDomainMask)
+    {
+    case 1: powerDomains += "[lpd]";    break;
+    default:                            break;
+    }
+
+    switch ((value >> vihFullPowerDomainShift) & vihFullPowerDomainMask)
+    {
+    case 1: powerDomains += "[fpd]";    break;
+    default:                            break;
+    }
+
+    switch ((value >> vihSystemPowerDomainShift) & vihSystemPowerDomainMask)
+    {
+    case 1: powerDomains += "[spd]";    break;
+    default:                            break;
+    }
+    val1 = val;
+    switch ((value >> vihPLPowerDomainShift) & vihPLPowerDomainMask)
+    {
+    case 1: powerDomains += "[pld]";    break;
+    default:                            break;
+    }
+    if (powerDomains == "") powerDomains = "[none]";
+    DisplayAttributes("dependentPowerDomains ", powerDomains, " ", "");
 }
 
 /************************************************************************************************/

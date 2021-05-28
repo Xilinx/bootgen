@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -87,13 +87,15 @@ VersalPartition::VersalPartition(PartitionHeader* header0, const uint8_t* data, 
 size_t VersalPartition::GetTotalDataChunks(Binary::Length_t partitionSize, std::vector<uint32_t>& dataChunks, bool encryptionFlag)
 {
     size_t newSectionLength = partitionSize;
+    size_t chunkOnlength = 0;
+    Binary::Length_t dataChunksCount = 0;
 
-    size_t chunkOnlength = partitionSize;
+    chunkOnlength = partitionSize;
     if (encryptionFlag)
     {
         chunkOnlength -= (SECURE_HDR_SZ + AES_GCM_TAG_SZ);
     }
-    Binary::Length_t dataChunksCount = (chunkOnlength / GetSecureChunkSize()) + (((chunkOnlength % GetSecureChunkSize()) == 0 ? 0 : 1));
+    dataChunksCount = (chunkOnlength / GetSecureChunkSize()) + (((chunkOnlength % GetSecureChunkSize()) == 0 ? 0 : 1));
 
     if (chunkOnlength % GetSecureChunkSize() != 0)
     {
@@ -107,6 +109,8 @@ size_t VersalPartition::GetTotalDataChunks(Binary::Length_t partitionSize, std::
 
     for (uint32_t itr = 0; itr < dataChunksCount - 1; itr++)
     {
+        dataChunks.push_back(SHA3_LENGTH_BYTES);
+        newSectionLength += SHA3_LENGTH_BYTES;
         if (itr == dataChunksCount - 2)
         {
             if (encryptionFlag)
@@ -124,8 +128,6 @@ size_t VersalPartition::GetTotalDataChunks(Binary::Length_t partitionSize, std::
         {
             dataChunks.push_back(GetSecureChunkSize());
         }
-        dataChunks.push_back(SHA3_LENGTH_BYTES);
-        newSectionLength += SHA3_LENGTH_BYTES;
     }
 
     return newSectionLength;
@@ -179,8 +181,13 @@ void VersalPartition::ChunkifyAndHash( Section* section, bool encryptionFlag)
     Versalcrypto_hash(shaHash, newDataPtr, dataChunks[0], !section->isBootloader);
     /*-------------------------------CHUNK N------------------------------------*/
 
-    for (int i = 1; i < itr; i += 2)
+    for (int i = 2; i <= itr; i += 2)
     {
+        /* Insert previous hash */
+        newDataPtr -= SHA3_LENGTH_BYTES;
+        memcpy(newDataPtr, shaHash, SHA3_LENGTH_BYTES);
+        delete[] shaHash;
+
         /* Insert Data */
         tempBufferSize = dataChunks[i];
         tempBuffer = new uint8_t[tempBufferSize];
@@ -193,19 +200,19 @@ void VersalPartition::ChunkifyAndHash( Section* section, bool encryptionFlag)
         memcpy(newDataPtr, tempBuffer, tempBufferSize);
         delete[] tempBuffer;
 
-        /* Insert previous hash */
-        newDataPtr -= SHA3_LENGTH_BYTES;
-
-        memcpy(newDataPtr, shaHash, SHA3_LENGTH_BYTES);
-        delete[] shaHash;
-
         /* Calculate hash */
         shaHash = new uint8_t[SHA3_LENGTH_BYTES];
-        Versalcrypto_hash(shaHash, newDataPtr, dataChunks[i] + dataChunks[i + 1], !section->isBootloader);
+        Versalcrypto_hash(shaHash, newDataPtr, dataChunks[i] + dataChunks[i - 1], !section->isBootloader);
     }
 
     /*-------------------------------CHUNK 1------------------------------------*/
-    itr += 1;
+    itr += 2;
+
+    /* Insert previous hash */
+    newDataPtr -= SHA3_LENGTH_BYTES;
+    memcpy(newDataPtr, shaHash, SHA3_LENGTH_BYTES);
+    delete[] shaHash;
+
     /* Insert Data */
     tempBufferSize = dataChunks[itr];
     tempBuffer = new uint8_t[tempBufferSize];
@@ -217,12 +224,6 @@ void VersalPartition::ChunkifyAndHash( Section* section, bool encryptionFlag)
 
     memcpy(newDataPtr, tempBuffer, tempBufferSize);
     delete[] tempBuffer;
-
-    /* Insert previous hash */
-    newDataPtr -= SHA3_LENGTH_BYTES;
-
-    memcpy(newDataPtr, shaHash, SHA3_LENGTH_BYTES);
-    delete[] shaHash;
     /*-------------------------------CHUNK 1------------------------------------*/
 
     delete[] dataPtr;
@@ -322,7 +323,7 @@ void VersalPartition::Build(BootImage& bi, Binary& cache)
         header->transferSize = section->Length;
         if ((imageHeader.GetChecksumContext()->Type() == Checksum::SHA3) || (currentAuthCtx->authAlgorithm->Type() != Authentication::None))
         {
-            /* No chunking on bootloader - Data should be alligned to 104 bytes before calculating the hash */
+            /* No chunking on bootloader for versal - Data should be alligned to 104 bytes before calculating the hash */
             if (imageHeader.IsBootloader())
             {
                 Binary::Length_t shaPadOnLength = header->partition->section->Length;
@@ -462,5 +463,5 @@ void VersalPartition::Link(BootImage &bi)
 /******************************************************************************/
 uint64_t VersalPartition::GetSecureChunkSize()
 {
-    return SECURE_32K_CHUNK;
+    return SECURE_32K_CHUNK - SHA3_LENGTH_BYTES;
 }

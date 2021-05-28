@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -91,6 +91,7 @@ protected:
     std::string binFilename;
     std::list<std::string> iHNames;
     std::list<std::string> pHTNames;
+    std::list<std::string> aCNames;
     std::list<uint8_t*> aCs;
     RSA* rsa;
 };

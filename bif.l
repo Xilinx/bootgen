@@ -106,6 +106,7 @@ bh_kek_iv           yylval->number = tok::BH_KEK_IV;                return tok::
 efuse_kek_iv        yylval->number = tok::EFUSE_KEK_IV;             return tok::EFUSE_KEK_IV;
 efuse_user_kek0_iv  yylval->number = tok::EFUSE_USER_KEK0_IV;       return tok::EFUSE_USER_KEK0_IV;
 efuse_user_kek1_iv  yylval->number = tok::EFUSE_USER_KEK1_IV;       return tok::EFUSE_USER_KEK1_IV;
+userkeys            yylval->number = tok::USER_KEYS;                return tok::USER_KEYS;
 
 familykey           yylval->number = tok::FAMILY_KEY;               return tok::FAMILY_KEY;
 
@@ -268,9 +269,14 @@ split               yylval->number = tok::SPLIT;                    return tok::
        mcs                                                          return tok::MCS;
        bin                                                          return tok::BIN;
 
+authjtag_config     yylval->number = tok::AUTHJTAG_CONFIG;          return tok::AUTHJTAG_CONFIG;
+    device_dna      yylval->number = tok::DEVICE_DNA;               return tok::DEVICE_DNA;
+    jtag_timeout    yylval->number = tok::JTAG_TIMEOUT;             return tok::JTAG_TIMEOUT;
 
 [0-9]+              yylval->number=atoi(yytext);                    return tok::DECVALUE;
 0[xX][0-9a-fA-F]+   yylval->number=strtoul(yytext+2,NULL,16);       return tok::HEXVALUE;
+[a-fA-F0-9]+        yylval->string=strdup(yytext);                  return tok::HEXWORD;
+
 :                                                                   return tok::COLON;
 ;                                                                   return tok::SEMICOLON;
 =                                                                   return tok::EQUAL;
@@ -294,7 +300,6 @@ split               yylval->number = tok::SPLIT;                    return tok::
 \&                                                                  return tok::AND;
 \|                                                                  return tok::OR;
 \^                                                                  return tok::XOR;
-
 
 [a-zA-Z_][a-zA-Z0-9_]*                          yylval->string=strdup(yytext);      return tok::WORD;
 ([a-zA-Z]:[\/\\])?[a-zA-Z0-9\/\\\+._-]+         yylval->string=strdup(yytext);      return tok::FILENAME;

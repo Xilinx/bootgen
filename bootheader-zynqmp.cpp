@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -344,7 +344,7 @@ void ZynqMpBootHeader::AddAcSizeToTotalFsblSize(BootImage & bi)
 {
     /* If authentication is enabled, and the image is not already authenticated, i.e if plain/encrypted
     image is provided through release mode flow, then add AC size to FSBL size */
-    if (bi.imageList.front()->GetAuthenticationType() != Authentication::None)
+    if ((bi.imageList.front()->GetAuthenticationType() != Authentication::None) && (bi.imageList.front()->IsBootloader()))
     {
         if (!(bi.imageList.front()->GetAuthContext()->preSigned))
         {

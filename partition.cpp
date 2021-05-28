@@ -161,32 +161,34 @@ void Partition::Build( BootImage& bi, Binary& cache)
     }
     encryptCtx->Process(bi, header);
 
-    if (header->imageHeader->GetDestCpu() == DestinationCPU::R5_0 || header->imageHeader->GetDestCpu() == DestinationCPU::R5_1)
+    if (bi.bootHeader->GetPrebuiltFlag() == false)
     {
-        if ((header->loadAddress < (R5_TCM_START_ADDRESS + R5_TCM_BANK_LENGTH)) && (header->loadAddress + header->partition->section->Length >= (R5_TCM_START_ADDRESS + R5_TCM_BANK_LENGTH)))
+        if (header->imageHeader->GetDestCpu() == DestinationCPU::R5_0 || header->imageHeader->GetDestCpu() == DestinationCPU::R5_1)
         {
-            LOG_ERROR("The length of %s has exceeded TCM and cannot be loaded by FSBL.\n\t   Partition Length : 0x%llx , Partition Load Address : %llX.",  header->section->Name.substr(header->section->Name.find(" ") + 1).c_str(), header->partition->section->Length, header->loadAddress);
+            if ((header->loadAddress < (R5_TCM_START_ADDRESS + R5_TCM_BANK_LENGTH)) && (header->loadAddress + header->partition->section->Length >= (R5_TCM_START_ADDRESS + R5_TCM_BANK_LENGTH)))
+            {
+                LOG_ERROR("The length of %s has exceeded TCM and cannot be loaded by FSBL.\n\t   Partition Length : 0x%llx , Partition Load Address : %llX.", header->section->Name.substr(header->section->Name.find(" ") + 1).c_str(), header->partition->section->Length, header->loadAddress);
+            }
+            else if ((header->loadAddress > R5_BTCM_START_ADDRESS) && (header->loadAddress < (R5_BTCM_START_ADDRESS + R5_TCM_BANK_LENGTH)) && (header->loadAddress + header->partition->section->Length >= (R5_BTCM_START_ADDRESS + R5_TCM_BANK_LENGTH)))
+            {
+                LOG_ERROR("The length of %s has exceeded TCM and cannot be loaded by FSBL.\n\t   Partition Length : 0x%llx , Partition Load Address : %llX.", header->section->Name.substr(header->section->Name.find(" ") + 1).c_str(), header->partition->section->Length, header->loadAddress);
+            }
         }
-        else if ((header->loadAddress > R5_BTCM_START_ADDRESS) && (header->loadAddress < (R5_BTCM_START_ADDRESS + R5_TCM_BANK_LENGTH)) && (header->loadAddress + header->partition->section->Length >= (R5_BTCM_START_ADDRESS + R5_TCM_BANK_LENGTH)))
+        else if (header->imageHeader->GetDestCpu() == DestinationCPU::R5_lockstep)
         {
-            LOG_ERROR("The length of %s has exceeded TCM and cannot be loaded by FSBL.\n\t   Partition Length : 0x%llx , Partition Load Address : %llX.", header->section->Name.substr(header->section->Name.find(" ") + 1).c_str(), header->partition->section->Length, header->loadAddress);
+            if ((header->loadAddress < (R5_TCM_START_ADDRESS + R5_TCM_BANK_LENGTH * 4)) && (header->loadAddress + header->partition->section->Length >= (R5_TCM_START_ADDRESS + R5_TCM_BANK_LENGTH * 4)))
+            {
+                LOG_ERROR("The length of %s has exceeded TCM and cannot be loaded by FSBL.\n\t   Partition Length : 0x%llx , Partition Load Address : %llX.", header->section->Name.substr(header->section->Name.find(" ") + 1).c_str(), header->partition->section->Length, header->loadAddress);
+            }
+        }
+        else if (header->imageHeader->GetDestCpu() == DestinationCPU::PMU)
+        {
+            if (header->loadAddress + header->partition->section->Length >= PMU_RAM_END_ADDRESS)
+            {
+                LOG_ERROR("The length of %s has exceeded PMU RAM and cannot be loaded by FSBL.\n\t   Partition Length : 0x%llx, Partition Load Address : %llX.", header->section->Name.substr(header->section->Name.find(" ") + 1).c_str(), header->partition->section->Length, header->loadAddress);
+            }
         }
     }
-    else if (header->imageHeader->GetDestCpu() == DestinationCPU::R5_lockstep)
-    {
-        if ((header->loadAddress < (R5_TCM_START_ADDRESS + R5_TCM_BANK_LENGTH*4)) && (header->loadAddress + header->partition->section->Length >= (R5_TCM_START_ADDRESS + R5_TCM_BANK_LENGTH * 4)))
-        {
-            LOG_ERROR("The length of %s has exceeded TCM and cannot be loaded by FSBL.\n\t   Partition Length : 0x%llx , Partition Load Address : %llX.", header->section->Name.substr(header->section->Name.find(" ") + 1).c_str(), header->partition->section->Length, header->loadAddress);
-        }
-    }
-    else if (header->imageHeader->GetDestCpu() == DestinationCPU::PMU)
-    {
-        if (header->loadAddress + header->partition->section->Length >= PMU_RAM_END_ADDRESS)
-        {
-            LOG_ERROR("The length of %s has exceeded PMU RAM and cannot be loaded by FSBL.\n\t   Partition Length : 0x%llx, Partition Load Address : %llX.", header->section->Name.substr(header->section->Name.find(" ") + 1).c_str(), header->partition->section->Length, header->loadAddress);
-        }
-    }
-
     uint32_t padLength = 0;
 
     /* Authentication process on the partition */

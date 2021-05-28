@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -150,18 +150,20 @@ void Logger::DumpBinaryImage(Binary &cache)
     }
     std::cout << "           -- Dump of Binary Image ----\n";
     Logger::outFile << "           -- Dump of Binary Image ----\n";
+    std::cout << "   Offset" << "      Length" << "     Reserve"<< "     Name\n";
+    Logger::outFile << "   Offset" << "     Length" << "      Reserve"<< "     Name\n";
    
     for(SectionList::iterator i=cache.Sections.begin(); i != cache.Sections.end(); i++)
     {
         Section& sec(**i);
-        std::cout << "           " << std::hex << std::setfill('0') << std::setw(8) << sec.Address 
-            << " Len: " << std::hex << std::setfill('0') << std::setw(8) << sec.Length 
-            << " Res: " << std::hex << std::setfill('0') << std::setw(8) << sec.Reserve
-            << " \"" << sec.Name << "\"" << std::endl;
-        Logger::outFile  << "           " << std::hex << std::setfill('0') << std::setw(8) << sec.Address 
-            << " Len: " << std::hex << std::setfill('0') << std::setw(8) << sec.Length 
-            << " Res: " << std::hex << std::setfill('0') << std::setw(8) << sec.Reserve
-            << " \"" << sec.Name << "\"" << std::endl;
+        std::cout << "   " << std::hex << std::setfill('0') << std::setw(8) << sec.Address 
+            << "   " << std::hex << std::setfill('0') << std::setw(8) << sec.Length 
+            << "   " << std::hex << std::setfill('0') << std::setw(8) << sec.Reserve
+            << "   " << sec.Name << "" << std::endl;
+        Logger::outFile  << " " << std::hex << std::setfill('0') << std::setw(8) << sec.Address 
+            << "   " << std::hex << std::setfill('0') << std::setw(8) << sec.Length 
+            << "   " << std::hex << std::setfill('0') << std::setw(8) << sec.Reserve
+            << "   " << sec.Name << "" << std::endl;
     }
     std::cout << "           -- End of Dump" << std::endl;
     Logger::outFile << "           -- End of Dump" << std::endl;

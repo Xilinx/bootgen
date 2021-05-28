@@ -133,6 +133,7 @@
 \-encryption_dump           return tok::_ZYNQMPENCRDUMP;
 \-noauthblocks              return tok::_NOAUTHBLOCKS;
 \-zynqmpes1                 return tok::_ZYNQMPES1;
+\-overlay_cdo               return tok::_OVERLAYCDO;
 
 \-h                         return tok::_H;
 \-help                      return tok::_H;
@@ -227,6 +228,7 @@ split                       return tok::H_SPLIT;
 bootvectors                 return tok::H_BIF_BOOTVEC;
 puf_file                    return tok::H_BIF_PUFDATA;
 dpacm_enable                return tok::H_DPACM_ENABLE;
+userkeys                    return tok::H_BIF_USERKEYS;
 
 
 

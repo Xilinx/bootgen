@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -30,7 +30,6 @@
 /* Forward Class References */
 class Options;
 
-
 /*
 -------------------------------------------------------------------------------
 *********************************************   P R E P R O C E S S O R S   ***
@@ -60,6 +59,15 @@ typedef struct
     DpaCM::Type dpaCM;
     PufHdLoc::Type pufHdLoc;
 } MetaHdrInfo;
+
+typedef struct
+{
+    uint32_t revokeId;
+    bool userRevokeId;
+    uint8_t deviceDNA[16];
+    uint32_t jtagTimeout;
+    bool userDeviceDNA;
+} AuthJtagInfo;
 /*
 -------------------------------------------------------------------------------
 *********************************************************   C L A S S E S   ***
@@ -89,6 +97,7 @@ public:
     void SetHivec(bool);
     void SetRevokeId(uint32_t);
     void SetSlrNum(uint8_t);
+    void SetAesKeyFile(std::string filename);
     void SetUdfDataFile(std::string filename);
     void SetEncryptionKeySource(KeySource::Type type);
     void SetAuthBlockAttr(size_t blocksizeattr);
@@ -326,6 +335,8 @@ public:
     void SetEfuseKekIVFileName(std::string filename);
     void SetEfuseUserKek0IVFileName(std::string filename);
     void SetEfuseUserKek1IVFileName(std::string filename);
+    void SetUserKeysFileName(std::string filename);
+    void ParseUserKeyFile(std::string filename);
     void SetFamilyKeyFileName(std::string filename);
     void SetAESKeyFileName(std::string filename);
     void SetEncryptionKeySource(KeySource::Type type);
@@ -363,6 +374,9 @@ public:
     void SetMetaHeaderEncryptType(Encryption::Type type);
     void SetMetaHeaderAuthType(Authentication::Type type);
     void SetPufHdinBHFlag();
+    void SetAuthJtagRevokeID(uint32_t value);
+    void SetAuthJtagDeviceDna(std::string string);
+    void SetAuthJtagTimeOut(uint32_t value);
 
     std::string GetGroupName(void);
     std::string GetAESKeyFileName(void);
@@ -448,6 +462,7 @@ public:
     uint8_t* pmcDataBuffer;
     uint32_t smapWidth;
     MetaHdrInfo metaHdrAttributes;
+    AuthJtagInfo authJtagInfo;
     uint32_t slrBootCnt;
     uint32_t slrConfigCnt;
     PartitionBifOptions* lastPartitionBifOption;
@@ -474,6 +489,7 @@ private:
     std::string efuseUserKek1IVFile;
     std::string familyKeyFile;
     std::string aesKeyFile;
+    std::string userKeyFile;
     KeySource::Type keySourceEncryption;
     BootDevice::Type bootDevice;
     uint32_t bootDeviceAddress;

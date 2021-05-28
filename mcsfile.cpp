@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -143,8 +143,8 @@ void McsFile::Fill(Binary::Address_t start, Binary::Address_t end, bool doFill, 
     uint8_t buffer[32];
     if (lineLength > sizeof(buffer)) 
     {
-        LOG_DEBUG(DEBUG_STAMP, "LineLength (%d) > sizeof(buffer) (%d) internal error", lineLength, sizeof(buffer));
-        LOG_ERROR("Line Length > sizeof(buffer) internal error");
+        LOG_DEBUG(DEBUG_STAMP, "Internal Error : LineLength (%d) > sizeof(buffer) (%d)", lineLength, sizeof(buffer));
+        LOG_ERROR("Internal Error : Line Length > sizeof(buffer)");
     }
 
     memset(buffer,fillByte,sizeof(buffer));

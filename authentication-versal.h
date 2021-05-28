@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -40,6 +40,7 @@
 #include "hash.h"
 #include "systemutils.h"
 #include "authentication.h"
+#include "bifoptions.h"
 
 /* Forward class references */
 class BaseThing;
@@ -89,6 +90,13 @@ class Key;
 ***************************************************   S T R U C T U R E S   ***
 -------------------------------------------------------------------------------
 */
+
+typedef enum
+{
+    vauthJtagMessageShift = 0,
+    vauthJtagMessagenMask = 0x3,
+} AuthJtagAttributes;
+
 typedef struct
 {
     uint32_t              acHeader;                // 0x000
@@ -135,27 +143,29 @@ typedef struct
     ACSignatureECDSA    acPartitionSignature;      // 0xC60
 } AuthCertificateECDSAp521Structure;
 
-/* RSA Secure-Debug Image Structure */
+/* Authenticated-Jtag Image Structure */
 typedef struct
 {
-    uint32_t           acHeader;                   // 0x000
-    uint32_t           spkId;                      // 0x004
-    uint8_t            SHA3Padding[96];            // 0x008
-    ACKey4096          acPpk;                      // 0x020
-    uint8_t            ppkSHA3Padding[12];         // 0x424
-    ACSignature4096    acPartitionSignature;       // 0x430
-} SecureDebugImage4096Sha3PaddingStructure;
+    uint32_t       acHeader;                                //0x00
+    uint32_t       spkId;                                   //0x04
+    uint8_t        authJtagInfo[96];                        //0x08
+    uint8_t        acPpk[VERSAL_ACKEY_STRUCT_SIZE];         //0x68
+    uint8_t        ppkSHA3Padding[12];                      //0x46C
+    uint8_t        authJtagSignature[SIGN_LENGTH_VERSAL];   //0x478
+} AuthenticatedJtagImageStructure;                          //0x678
 
-/* ECDSA Secure-Debug Image Structure */
 typedef struct
 {
-    uint32_t             acHeader;                  // 0x000
-    uint32_t             spkId;                     // 0x004
-    uint8_t              SHA3Padding[96];           // 0x008
-    ACKeyECDSA           acPpk;                     // 0x020
-    uint8_t              ppkSHA3Padding[12];        // 0x424
-    ACSignatureECDSA     acPartitionSignature;      // 0x430
-} SecureDebugImageECDSAStructure;
+    uint32_t             attributes;        //0x08
+    uint8_t              deviceDNA[16];     //0x0C
+    uint32_t             jtagTimeOut;       //0x1C
+    uint8_t              SHA3Padding[72];   //0x20
+} authJtagInfoStructurev2;
+
+typedef struct
+{
+    uint8_t              SHA3Padding[96];
+} authJtagInfoStructurev1;
 
 /******************************************************************************/
 class ECDSAAuthenticationAlgorithm : public AuthenticationAlgorithm
@@ -267,8 +277,7 @@ public:
     void ResizeIfNecessary(Section* section);
     void LoadUdfData(const std::string& filename, uint8_t* signature);
     void CreateSPKSignature(void);
-    void CalculateAcHdrHash(uint8_t* sha_hash_padded, uint8_t*  buffer);
-    void CreateAcHdrSignature(uint8_t *buffer);
+    void CreateAuthJtagImage(uint8_t * buffer, AuthJtagInfo authJtagAttributes);
     void SetKeyLength(Authentication::Type type);
     AuthenticationAlgorithm* GetAuthenticationAlgorithm(Authentication::Type type);
     uint32_t GetCertificateSize();

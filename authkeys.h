@@ -123,7 +123,7 @@ public:
     uint8_t *E;         // public (encryption) exponent (32 bits)
     uint8_t *N_ext;     // modular_ext (2048 bits)
     uint8_t *D;         // secret (decryption) exponent (2048 bits).
-
+    Authentication :: Type authType;
 protected:
     void Multiply_p_q(uint8_t p[], uint8_t q[], uint8_t n[]);
     void Hex2Byte(FILE* f, uint8_t* data, int count);

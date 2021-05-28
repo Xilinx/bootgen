@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -29,7 +29,8 @@
 #include "encryption-versal.h"
 #include "binary-versal.h"
 
-#define SECURE_DEBUG_IMAGE_LENGTH     0x678
+#define ENCR_BLOCK_IN_BYTES    16  //= 128 bits
+
 /*
 -------------------------------------------------------------------------------
 *********************************************************   C L A S S E S   ***

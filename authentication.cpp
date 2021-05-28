@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -632,8 +632,7 @@ void AuthenticationAlgorithm::RSA_Exponentiation(const uint8_t *base, const uint
 
     if (comp)
     {
-        LOG_DEBUG(DEBUG_STAMP, "Internal Montgomery Reduction is not same as externally calculated value");
-        LOG_ERROR("Authentication Error !!!");
+        LOG_ERROR("Internal Error : Montgomery Reduction is not same as externally calculated value.");
     }
 
     result.d = (BN_ULONG*)result0;

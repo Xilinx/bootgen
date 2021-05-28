@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@
 #include "bootheader-versal.h"
 #include "imageheadertable-versal.h"
 #include "partitionheadertable-versal.h"
+#include "authentication-versal.h"
 
 
 /* Forward Class References */
@@ -62,6 +63,7 @@ public:
         pHTs.clear();
         partitionBuffers.clear();
         aCs.clear();
+        authenticationVerified = true;
     }
     ~VersalReadImage();
 
@@ -78,6 +80,13 @@ public:
     void DisplayIhAttributes(uint32_t value);
     void DisplayPhtAttributes(uint32_t value);
     void DisplaySmapVectors(void);
+    void VerifyAuthentication(bool);
+    void VerifyHeaderTableSignature();
+    void VerifySPKSignature(uint8_t* aC);
+    void VerifyPartitionSignature(void);
+    bool VerifySignature(bool nist, uint8_t * data, size_t dataLength, ACKey4096Sha3Padding * acKey, uint8_t* signature);
+    bool VerifyECDSASignature(bool nist, uint8_t * data, size_t dataLength,  ACKeyECDSA *eckey, uint8_t* signature);
+    bool VerifyECDSAP521Signature(bool nist, uint8_t * data, size_t dataLength, ACKeyECDSAP521 *eckey, uint8_t* signature);
     void Separator(void);
     void DumpBootHeader(void);
     void DumpPartitions(uint8_t* buffer, uint32_t length, std::string name, uint32_t id = 0, uint32_t index = 0);
@@ -97,6 +106,7 @@ protected:
     std::list<VersalPartitionHeaderTableStructure*> pHTs;
     std::list<uint8_t*> aCs;
     std::list<uint8_t*> partitionBuffers;
+    bool authenticationVerified;
 };
 
 #endif

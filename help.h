@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -682,7 +682,7 @@ verify
 -------------+----------------------------------------------------------------+\n\
  OPTION      | verify                                                         |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynq, zynqmp                                                   |\n\
+ SUPPORTED   | versal, zynqmp                                                 |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | This option is used for verifying authentication of a bootimage|\n\
 -------------+----------------------------------------------------------------+\n\
@@ -2721,6 +2721,59 @@ bh_key_iv
              | }                                                              |\n\
 -------------+----------------------------------------------------------------+\n"
 
+/******************************************************************************
+userkeys
+******************************************************************************/
+#define H_BIF_USERKEYS_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | userkeys                                                       |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | versal                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+DESCRIPTION  | The path to the user keyfile. The keyfile contains user keys   |\n\
+             | used to encrypt the partitions.                                |\n\
+             | The size of user key can be 128 or 256 bits.                   |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | userkeys = <filename>                                          |\n\
+-------------+----------------------------------------------------------------+\n\
+ FILE FORMAT | user_key0 <userkey0 value>                                     |\n\
+             | user_key1 <userkey1 value>                                     |\n\
+             | user_key2 <userkey2 value>                                     |\n\
+             | user_key3 <userkey3 value>                                     |\n\
+             | user_key4 <userkey4 value>                                     |\n\
+             | user_key5 <userkey5 value>                                     |\n\
+             | user_key6 <userkey6 value>                                     |\n\
+             | user_key7 <userkey7 value>                                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             +----------------------------------------------------------------|\n\
+             | new_bif:                                                       |\n\
+             | {                                                              |\n\
+             |   userkeys = userkeyfile.txt                                   |\n\
+             |   id_code = 0x04ca8093                                         |\n\
+             |   extended_id_code = 0x01                                      |\n\
+             |   id = 0x2                                                     |\n\
+             |   image                                                        |\n\
+             |   {                                                            |\n\
+             |      name = pmc_subsys                                         |\n\
+             |      id = 0x1c000001                                           |\n\
+             |      partition                                                 |\n\
+             |      {                                                         |\n\
+             |        id = 0x01                                               |\n\
+             |        type = bootloader                                       |\n\
+             |        file = plm.elf                                          |\n\
+             |      }                                                         |\n\
+             |      partition                                                 |\n\
+             |      {                                                         |\n\
+             |        id = 0x09                                               |\n\
+             |        type = pmcdata, load = 0xf2000000                       |\n\
+             |        file = topology_xcvc1902.v2.cdo                         |\n\
+             |        file = bd_70da_ps_pmc_0_pmc_data.cdo                    |\n\
+             |      }                                                         |\n\
+             |   }                                                            |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+"
+ 
 /******************************************************************************
 encryption
 ******************************************************************************/

@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2019-2020 Xilinx, Inc.
+* Copyright 2019-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -64,6 +64,9 @@ struct command_info {
     { "event_logging", CdoCmdEventLogging },
     { "set_board", CdoCmdSetBoard },
     { "set_plm_wdt", CdoCmdSetPlmWdt },
+    { "log_string", CdoCmdLogString },
+    { "log_address", CdoCmdLogAddress },
+    { "marker", CdoCmdMarker },
     { "npi_seq", CdoCmdNpiSeq },
     { "npi_precfg", CdoCmdNpiPreCfg },
     { "npi_write", CdoCmdNpiWrite },
@@ -194,6 +197,53 @@ error:
     return 1;
 }
 
+static uint32_t parse_string(char ** sp, char ** strp) {
+    char * s = *sp;
+    char * str = NULL;
+    uint32_t count = 0;
+    uint32_t capacity = 0;
+    int quote = 0;
+    int c;
+
+    skipsp(s);
+    if (*s == '"') {
+        quote = 1;
+        s++;
+    }
+    while ((c = *s) != '\0') {
+        if (quote && c == '"') break;
+        s++;
+        if (c == '\\') {
+            if ((c = *s) == '\0') break;
+            s++;
+        }
+        if (count == capacity) {
+            capacity = capacity ? capacity*2 : 1;
+            str = (char *)realloc(str, capacity * sizeof *str);
+            if (str == NULL) goto error;
+        }
+        str[count++] = c;
+    }
+    if (quote) {
+        if (c != '"') goto error;
+        s++;
+    }
+    if (count == capacity) {
+        capacity++;
+        str = (char *)realloc(str, capacity * sizeof *str);
+        if (str == NULL) goto error;
+    }
+    str[count] = '\0';
+    *sp = s;
+    *strp = str;
+    return 0;
+
+error:
+    free(str);
+    *strp = NULL;
+    return 1;
+}
+
 CdoSequence * cdoseq_from_source(FILE * f) {
     CdoSequence * seq = cdocmd_create_sequence();
     uint32_t cap = 2;
@@ -215,6 +265,7 @@ CdoSequence * cdoseq_from_source(FILE * f) {
         }
         if (len == 0) break;
         if (line[len-1] == '\n') len--;
+        if (len > 0 && line[len-1] == '\r') len--;
         line[len] = '\0';
         s = line;
         if (iseol(&s)) {
@@ -273,22 +324,10 @@ CdoSequence * cdoseq_from_source(FILE * f) {
         case CdoCmdInclude: {
             CdoSequence * seq2;
             char * name;
-            int c;
-            skipsp(s);
-            if (*s != '"') goto syntax_error;
-            name = ++s;
-            p = s;
-            while ((c = *s) != '\0' && c != '"') {
-                s++;
-                if (c == '\\') {
-                    if ((c = *s) == '\0') break;
-                    s++;
-                }
-                *p++ = c;
-            }
-            if (c == '"') s++;
-            *p = '\0';
+            if (iseol(&s)) goto syntax_error;
+            if (parse_string(&s, &name)) goto syntax_error;
             seq2 = cdoseq_load_cdo(name);
+            free(name);
             if (seq2 == NULL) goto error;
             cdocmd_concat_seq(seq, seq2);
             cdocmd_delete_sequence(seq2);
@@ -444,14 +483,10 @@ CdoSequence * cdoseq_from_source(FILE * f) {
         }
         case CdoCmdSetBoard: {
             char * name;
-            int c;
-            skipsp(s);
-            name = s;
-            skiptok(s);
-            c = *s;
-            *s = '\0';
+            if (iseol(&s)) goto syntax_error;
+            if (parse_string(&s, &name)) goto syntax_error;
             cdocmd_add_set_board(seq, name);
-            *s = c;
+            free(name);
             break;
         }
         case CdoCmdSetPlmWdt: {
@@ -460,6 +495,30 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             if (parse_u32(&s, &nodeid)) goto syntax_error;
             if (parse_u32(&s, &periodicity)) goto syntax_error;
             cdocmd_add_set_plm_wdt(seq, nodeid, periodicity);
+            break;
+        }
+        case CdoCmdLogString: {
+            char * name;
+            if (iseol(&s)) goto syntax_error;
+            if (parse_string(&s, &name)) goto syntax_error;
+            cdocmd_add_log_string(seq, name);
+            free(name);
+            break;
+        }
+        case CdoCmdLogAddress: {
+            uint64_t addr;
+            if (parse_u64(&s, &addr)) goto syntax_error;
+            cdocmd_add_log_address(seq, addr);
+            break;
+        }
+        case CdoCmdMarker: {
+            uint32_t value;
+            char * name;
+            if (parse_u32(&s, &value)) goto syntax_error;
+            if (iseol(&s)) goto syntax_error;
+            if (parse_string(&s, &name)) goto syntax_error;
+            cdocmd_add_marker(seq, value, name);
+            free(name);
             break;
         }
         case CdoCmdNpiSeq:
@@ -833,15 +892,11 @@ CdoSequence * cdoseq_from_source(FILE * f) {
         case CdoCmdPmAddNodeName: {
             uint32_t id;
             char * name;
-            int c;
             if (parse_u32(&s, &id)) goto syntax_error;
             if (iseol(&s)) goto syntax_error;
-            name = s;
-            skiptok(s);
-            c = *s;
-            *s = '\0';
+            if (parse_string(&s, &name)) goto syntax_error;
             cdocmd_add_pm_add_node_name(seq, id, name);
-            *s = c;
+            free(name);
             break;
         }
         case CdoCmdPmAddRequirement: {
@@ -1007,6 +1062,20 @@ static void print_buf(FILE * f, void * buf, uint32_t count) {
     }
 }
 
+static void print_string(FILE * f, char * str) {
+    char * s = str;
+    fputc('"', f);
+    for (;;) {
+        int c = *s++;
+        if (c == '\0') break;
+        if (c == '\\' || c == '"') {
+            fputc('\\', f);
+        }
+        fputc(c, f);
+    }
+    fputc('"', f);
+}
+
 void cdoseq_to_source(FILE * f, CdoSequence * seq) {
     LINK * l = seq->cmds.next;
     fprintf(f, "version %"PRIu32".%"PRIu32"\n",
@@ -1030,17 +1099,9 @@ void cdoseq_to_source(FILE * f, CdoSequence * seq) {
             fprintf(f, "# %s\n", (char *)cmd->buf);
             break;
         case CdoCmdInclude: {
-            char *s = (char *)cmd->buf;
-            fprintf(f, "include \"");
-            for (;;) {
-                int c = *s++;
-                if (c == '\0') break;
-                if (c == '\\' || c == '"') {
-                    fputc('\\', f);
-                }
-                fputc(c, f);
-            }
-            fprintf(f, "\"\n");
+            fprintf(f, "include ");
+            print_string(f, (char *)cmd->buf);
+            fprintf(f, "\n");
             break;
         }
         case CdoCmdSetBaseAddress:
@@ -1150,13 +1211,32 @@ void cdoseq_to_source(FILE * f, CdoSequence * seq) {
             fprintf(f, "\n");
             break;
         case CdoCmdSetBoard:
-            fprintf(f, "set_board %s\n", (char *)cmd->buf);
+            fprintf(f, "set_board ");
+            print_string(f, (char *)cmd->buf);
+            fprintf(f, "\n");
             break;
         case CdoCmdSetPlmWdt:
             fprintf(f, "set_plm_wdt ");
             print_x64(f, cmd->id);
             fprintf(f, " ");
             print_x64(f, cmd->value);
+            fprintf(f, "\n");
+            break;
+        case CdoCmdLogString:
+            fprintf(f, "log_string ");
+            print_string(f, (char *)cmd->buf);
+            fprintf(f, "\n");
+            break;
+        case CdoCmdLogAddress:
+            fprintf(f, "log_address ");
+            print_x64(f, cmd->srcaddr);
+            fprintf(f, "\n");
+            break;
+        case CdoCmdMarker:
+            fprintf(f, "marker ");
+            print_x64(f, cmd->value);
+            fprintf(f, " ");
+            print_string(f, (char *)cmd->buf);
             fprintf(f, "\n");
             break;
         case CdoCmdNpiSeq:
@@ -1476,7 +1556,9 @@ void cdoseq_to_source(FILE * f, CdoSequence * seq) {
         case CdoCmdPmAddNodeName:
             fprintf(f, "pm_add_node_name ");
             print_x64(f, cmd->id);
-            fprintf(f, " %s\n", (char *)cmd->buf);
+            fprintf(f, " ");
+            print_string(f, (char *)cmd->buf);
+            fprintf(f, "\n");
             break;
         case CdoCmdPmAddRequirement:
             fprintf(f, "pm_add_requirement ");

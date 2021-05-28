@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -211,6 +211,10 @@ ImageHeader::ImageHeader(std::string& filename)
     , parentUniqueId(0)
     , functionId(0)
     , uidInfoFoundInCdo(false)
+    , isIhFullPowerDomain(false)
+    , isIhLowPowerDomain(false)
+    , isIhPLPowerDomain(false)
+    , isIhSystemPowerDomain(false)
 { }
 
 /******************************************************************************/
@@ -274,6 +278,10 @@ ImageHeader::ImageHeader(std::ifstream& ifs)
     , parentUniqueId(0)
     , functionId(0)
     , uidInfoFoundInCdo(false)
+    , isIhFullPowerDomain(false)
+    , isIhLowPowerDomain(false)
+    , isIhPLPowerDomain(false)
+    , isIhSystemPowerDomain(false)
 { }
 
 /******************************************************************************/
@@ -337,6 +345,10 @@ ImageHeader::ImageHeader(uint8_t* data, uint64_t len)
     , parentUniqueId(0)
     , functionId(0)
     , uidInfoFoundInCdo(false)
+    , isIhFullPowerDomain(false)
+    , isIhLowPowerDomain(false)
+    , isIhPLPowerDomain(false)
+    , isIhSystemPowerDomain(false)
 {
 }
 

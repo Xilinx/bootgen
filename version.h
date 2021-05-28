@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 ******************************************************************************/
 
 #ifndef RDI_VERSION
-#define RDI_VERSION "2020.3"
+#define RDI_VERSION "2021.1"
 #endif
 
 #define PROGRAMNAME     "Xilinx Bootgen"
