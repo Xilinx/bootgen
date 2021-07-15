@@ -384,6 +384,29 @@ void ZynqMpImageHeader::ImportBin(BootImage& bi)
         hdr->execState = A53ExecState::AARCH32;
     }
 
+    if (Bootloader) {
+	    /* PMUFW + SPL */
+	    std::string pmu_fw = bi.bifOptions->GetPmuFwImageFile();
+	    ByteFile pmu_fw_data(pmu_fw);
+	    Binary::Length_t pmu_size = pmu_fw_data.len;
+	    uint8_t *partition_data = (uint8_t *)malloc(pmu_size);
+	    memcpy(partition_data, pmu_fw_data.bytes, pmu_size);
+
+	    uint8_t pmu_padding = (4 - (pmu_size & 3)) & 3;
+	    pmuFwSize = totalPmuFwSize = pmu_size + pmu_padding;
+
+	    partition_data = (uint8_t *)realloc(partition_data, pmuFwSize + data.len);
+	    memset(partition_data + pmu_size, 0, pmu_padding);
+	    memcpy(partition_data + pmuFwSize, data.bytes, data.len);
+
+	    data.bytes = partition_data;
+	    fsblFwSize = totalFsblFwSize = data.len + ((4 - (data.len & 3)) & 3);
+	    data.len += pmuFwSize;
+
+	    if (Load.IsSet())
+		    hdr->execAddress = Load.Value();
+    }
+
     hdr->partition = new Partition(hdr, data.bytes, data.len);
     hdr->partitionSize = data.len;
     partitionHeaderList.push_back(hdr);
