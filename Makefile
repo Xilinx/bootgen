@@ -34,23 +34,35 @@ else ifneq ($(CROSS_COMPILER), )
  CXX	= $(CROSS_COMPILER)
  CC	= $(subst g++,gcc,$(CROSS_COMPILER))
 else
- CXX	= g++
- CC	= gcc
+ # Native host build, use the supplied compiler
+ CXX	= c++
+ CC	= cc
 endif
 
 OBJ = o
-CXXFLAGS ?= -std=c++0x -O -Wall -Wno-reorder -Wno-deprecated-declarations
+CXX_NO_WARN ?=  -Wno-reorder -Wno-deprecated-declarations
+CXXFLAGS ?= -std=c++0x -O -Wall
 CFLAGS ?= -O -Wall
 
+# A couple of steps to workaround gmake 3.81 issues
+CLANGr = $(shell ${CXX} -dM -E - < /dev/null | grep __clang__)
+CLANG = $(shell echo "$(CLANGr)" | sed "s/.*__clang__.*/yes/")
+
+ifeq ($(CLANG), yes)
+CXX_NO_WARN += -Wno-deprecated-register
+else
 GCCVERSIONGTEQ9 := $(shell expr `${CXX} -dumpversion | cut -f1 -d.` \>= 9)
 ifeq "$(GCCVERSIONGTEQ9)" "1"
-CXXFLAGS += -Wno-aligned-new -Wno-misleading-indentation -Wno-class-memaccess
+CXX_NO_WARN += -Wno-aligned-new -Wno-misleading-indentation -Wno-class-memaccess
 endif
+endif
+
+CXXFLAGS += $(CXX_NO_WARN)
 
 EXEC = bootgen
 UNAME := $(shell uname)
 
-ifeq ($(UNAME), Linux)
+ifeq ($(UNAME),$(filter $(UNAME),Linux FreeBSD))
 INCLUDE_SYS = -I.
 LIBS    = -lssl -lcrypto
 RTLIBS  =
@@ -61,16 +73,20 @@ INCLUDE = $(INCLUDE_USER) $(INCLUDE_SYS)
 
 OPTIONS = $(OPTIONS_USER)
 
+DEPS_GEN = -MD -MP -MF ${@:.o=.d}
+
 all: $(EXEC) $(RTLIBS)
 
 OBJECTS = $(addsuffix .o, $(basename $(wildcard *.cpp)))
 OBJECTS += $(addsuffix .o, $(basename $(wildcard *.c)))
 
+DEPS = $(OBJECTS:.o=.d)
+
 %.${OBJ} : %.cpp
-	${CXX} -c ${CXXFLAGS} $(OPTIONS) ${INCLUDE} $<
+	${CXX} -c ${CXXFLAGS} $(OPTIONS) $(DEPS_GEN) ${INCLUDE} $<
 
 %.${OBJ} : %.c
-	${CC} -c ${CFLAGS} $(OPTIONS) ${INCLUDE} $<
+	${CC} -c ${CFLAGS} $(OPTIONS) $(DEPS_GEN) ${INCLUDE} $<
 
 ${EXEC}: $(OBJECTS)
 	echo Building executable file: $@...
@@ -82,3 +98,7 @@ clean:
 	echo
 	rm -rf ${EXEC}
 	rm -f $(OBJECTS)
+
+ifneq ($(MAKECMDGOALS),clean)
+-include $(DEPS)
+endif
