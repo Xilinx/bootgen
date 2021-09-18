@@ -273,7 +273,6 @@ public:
     virtual void CopyPartitionSignature(BootImage& bi, std::list<Section*> sections, uint8_t* signatureBlock, Section* acSection) {};
     virtual void RearrangeEndianess(uint8_t *array, uint32_t size) {};
     virtual void AddAuthCertSizeToTotalFSBLSize(PartitionHeader* header) {};
-    virtual void CopySPKSignature(uint8_t* ptr) {};
     virtual void SetKeyLength(Authentication::Type type) {};
 
     void CreateSPKSignature(void);

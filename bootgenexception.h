@@ -50,13 +50,11 @@ public:
     BootGenExceptionClass(const char* filename0, int line0, const std::string& msg0 ) 
         : msg(msg0)
         , filename(filename0)
-        , line(line0) 
     {
     }
     
     BootGenExceptionClass(const char* filename0, int line0, const char* format, ...) 
         : filename(filename0)
-        , line(line0) 
     {
         va_list ap;
         va_start(ap, format);
@@ -76,6 +74,5 @@ public:
 private:
     std::string msg;
     std::string filename;
-    int line;
 };
 #endif

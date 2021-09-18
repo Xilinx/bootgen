@@ -101,7 +101,7 @@ public:
     void ReadHeader(std::ifstream& ifs);
     void ReadData(std::ifstream& ifs);
     void RealignSectionDataPtr(void);
-    
+
     void SetEncryptedPartitionLength(uint32_t len);
     void SetUnencryptedPartitionLength(uint32_t len);
     void SetTotalPartitionLength(uint32_t len);
@@ -115,9 +115,9 @@ public:
     void SetAuthCertificateOffset(void);
     void SetPartitionNumber(uint32_t partNum);
     void SetChecksum(void);
-    void SetNextPartitionHeaderOffset(void);
+    void SetNextPartitionHeaderOffset(uint32_t addr);
     void SetBitLoadAddress(bool load, uint32_t val);
-    
+
     bool IsBootloader(void) { return isBootloader; }
     uint8_t GetDestinationDevice(void);
     uint8_t GetEncryptFlag(void);

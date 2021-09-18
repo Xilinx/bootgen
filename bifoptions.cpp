@@ -750,7 +750,7 @@ void BifOptions::ParseUserKeyFile(std::string inputFileName)
         word.pop_back();
         if (word == "user_key")
         {
-            if (c > 7 && c < 0)
+            if (c > 7 || c < 0)
             {
                 LOG_ERROR("The AES user keys available are from 0 to 7. user_key%d is not supported", c);
             }
