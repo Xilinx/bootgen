@@ -72,7 +72,12 @@ VersalKey::VersalKey(const Key& otherKey)
         eckey = EC_KEY_new_by_curve_name(NID_secp521r1);
     }
 
+#if REMOVED__PLEASE_CHECK_AND_REMOVE
+    // @todo this memory copy is broken in a number of ways and should be handled
+    // in the base constructor; this is left here for Xilinx to consider and sort
+    // out
     memcpy(this, &otherKey, sizeof(Key));
+#endif
 }
 
 /******************************************************************************/

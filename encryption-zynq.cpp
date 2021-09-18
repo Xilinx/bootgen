@@ -897,7 +897,7 @@ void ZynqEncryptionContext::ReadEncryptionKeyFile(const std::string& inputFileNa
             break;
         }
 
-        char c;
+        char c = '\0';
         if (word == "Key")
         {
             // First Word is "Key"

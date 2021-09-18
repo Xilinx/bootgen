@@ -85,7 +85,7 @@ public:
     virtual void SetPartitionNumber(uint32_t partNum) {}
     virtual void SetChecksum(void) {}
     virtual void SetReserved(void) {}
-    virtual void SetNextPartitionHeaderOffset(void) {}
+    virtual void SetNextPartitionHeaderOffset(uint32_t addr) {}
     virtual void SetBitLoadAddress(bool load, uint32_t val) {}
     virtual void SetPartitionSize(Binary::Length_t) {}
 

@@ -229,7 +229,7 @@ void PartitionHeaderTable::Link(BootImage &bi)
     for(std::list<PartitionHeader*>::iterator partHdr = bi.partitionHeaderList.begin(); partHdr != bi.partitionHeaderList.end(); partHdr++) 
     {
         (*partHdr)->Link(bi, NULL);
-        (*partHdr)->SetNextPartitionHeaderOffset();
+        (*partHdr)->SetNextPartitionHeaderOffset(0);
     }
 
     if (bi.bifOptions->GetHeaderAC() && ! bi.options.GetLegacyFlag())

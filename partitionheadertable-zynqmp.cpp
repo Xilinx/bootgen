@@ -158,7 +158,7 @@ void ZynqMpPartitionHeader::SetTotalPartitionLength(uint32_t len)
 }
 
 /******************************************************************************/
-void ZynqMpPartitionHeader::SetNextPartitionHeaderOffset(void)
+void ZynqMpPartitionHeader::SetNextPartitionHeaderOffset(uint32_t )
 {
     static PartitionHeader* prev_part_hdr = NULL;
     if (prev_part_hdr != NULL)

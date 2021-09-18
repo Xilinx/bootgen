@@ -117,6 +117,8 @@ public:
     void SetKeyName(std::string);
     static void GenerateRsaKeys(KeyGenerationStruct*);
 
+    Key& operator=(const Key& otherKey);
+
     bool Loaded;
     bool isSecret;
     uint8_t *N;         // modulus (2048 bits)

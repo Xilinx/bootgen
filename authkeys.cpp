@@ -61,7 +61,7 @@ Key::Key(const Key& otherKey)
     E = new uint8_t [WORD_SIZE_IN_BYTES];
     P = new uint8_t [keySize/2];
     Q = new uint8_t [keySize/2];
-    memcpy(this,&otherKey,sizeof(Key)); 
+    *this = otherKey;
 }
 
 /******************************************************************************/
@@ -100,6 +100,19 @@ Key::~Key()
 }
 
 /******************************************************************************/
+Key& Key::operator=(const Key& otherKey)
+{
+    if (keySize == otherKey.keySize) {
+        memcpy(N, otherKey.N, keySize);
+        memcpy(N_ext, otherKey.N_ext, keySize);
+        memcpy(E, otherKey.E, WORD_SIZE_IN_BYTES);
+        memcpy(P, otherKey.P, keySize/2);
+        memcpy(Q, otherKey.Q, keySize/2);
+        memcpy(D, otherKey.D, keySize);
+    }
+    return *this;
+}
+
 void Key::ParsePublic(const std::string& filename)
 {
     Parse(filename,false); 
