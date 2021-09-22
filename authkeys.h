@@ -116,6 +116,7 @@ public:
     void ParseSecret(const std::string& filename);
     void SetKeyName(std::string);
     static void GenerateRsaKeys(KeyGenerationStruct*);
+    static void GenerateEcdsaKeys(KeyGenerationStruct*);
 
     bool Loaded;
     bool isSecret;
@@ -131,7 +132,7 @@ protected:
     uint8_t ParseXilinxRsaKey(FILE* f);
     uint8_t ParseOpenSSLKey(FILE* f);
     static void WriteRsaFile(std::string file, const RSA* rsa, bool secret, uint16_t keyLength);
-    static void WritePemFile(std::string file, RSA* rsa, bool secret);
+    static void WritePemFile(std::string file, RSA* rsa, EC_KEY* eckey, bool secret);
 
     uint8_t *P;
     uint8_t *Q;

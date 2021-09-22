@@ -20,9 +20,9 @@
 #include <stdlib.h>
 #include "cdo-command.h"
 
-void * file_to_buf(const char * path, size_t * sizep);
-CdoSequence * cdoseq_load_cdo(const char * path);
+CDOUTIL_EXPORT void * file_to_buf(const char * path, size_t * sizep);
+CDOUTIL_EXPORT CdoSequence * cdoseq_load_cdo(const char * path);
 
-void cdoseq_extract_writes(CdoSequence * seq);
-
+CDOUTIL_EXPORT void cdoseq_extract_writes(CdoSequence * seq);
+CDOUTIL_EXPORT CdoSequence* cdoseq_extract_cdo_till_ssit_sync_slaves(CdoSequence * seq, uint32_t sync_index);
 #endif /* D_cdo_load */

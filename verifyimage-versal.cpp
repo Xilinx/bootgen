@@ -510,69 +510,58 @@ void VersalReadImage::VerifyPartitionSignature(void)
                 /* Verifying Partition SPK Signature */
                 VerifySPKSignature(*auth_cert);
 
-                /* Partition Signature should not be included for hash calculation. */
-                uint32_t bufferLength = ((*partitionHdr)->totalPartitionLength * 4) - SIGN_LENGTH_VERSAL;
-                uint32_t bufferACLength = sizeof(AuthCertificate4096Sha3PaddingStructure) - SIGN_LENGTH_VERSAL;
-                uint8_t* tempBuffer = new uint8_t[bufferLength];
-                uint32_t chunkHashSize =  sizeof(AuthCertificate4096Sha3PaddingStructure) - SIGN_LENGTH_VERSAL + SECURE_32K_CHUNK + SHA3_LENGTH_BYTES;
-                uint8_t* chunkHashBuffer = new uint8_t[chunkHashSize];
-                uint32_t unencryptedSize = ((*partitionHdr)-> unencryptedPartitionLength * 4);
-                uint32_t dataSize = SECURE_32K_CHUNK + SHA3_LENGTH_BYTES;
-                uint8_t* hashBuffer = new uint8_t[SHA3_LENGTH_BYTES];
-                uint8_t* dataHashBuffer = new uint8_t[SHA3_LENGTH_BYTES];
-                int count = unencryptedSize/SECURE_32K_CHUNK;
+                uint32_t actualSecureChunkSize = SECURE_32K_CHUNK - SHA3_LENGTH_BYTES;
                 bool nist = true;
-                int compare;
+                /* Partition Signature should not be included for hash calculation. */
+                uint32_t encryptedSize = ((*partitionHdr)->encryptedPartitionLength * 4);
+                uint32_t dataBufferLength = ((*partitionHdr)->totalPartitionLength * 4) - SIGN_LENGTH_VERSAL;
+                uint32_t acBufferLength = sizeof(AuthCertificate4096Sha3PaddingStructure) - SIGN_LENGTH_VERSAL;
+                uint8_t* tempBuffer = new uint8_t[dataBufferLength];
 
-                if(unencryptedSize % SECURE_32K_CHUNK != 0)
-                {
-                    count = count + 1;
-                }
-                offset = (*partitionHdr)-> authCertificateOffset * 4;
+                offset = (*partitionHdr)->authCertificateOffset * 4;
                 if (!(fseek(binFile, offset, SEEK_SET)))
                 {
-                    result = fread(tempBuffer, 1, bufferACLength, binFile);
-                    if (result != bufferACLength)
+                    result = fread(tempBuffer, 1, acBufferLength, binFile);
+                    if (result != acBufferLength)
                     {
                         LOG_ERROR("Error reading partition for hash calculation");
                     }
                 }
                 else
                 {
-                    LOG_ERROR("Error parsing Partitions from BootImage file %s",binFilename.c_str());
+                    LOG_ERROR("Error parsing Partitions from BootImage file %s", binFilename.c_str());
                 }
 
-                offset = (*partitionHdr)-> partitionWordOffset * 4 ;
+                offset = (*partitionHdr)->partitionWordOffset * 4;
                 if (!(fseek(binFile, offset, SEEK_SET)))
                 {
-                    result = fread(tempBuffer + bufferACLength, 1, bufferLength - bufferACLength, binFile);
-                    if (result != bufferLength - bufferACLength)
+                    result = fread(tempBuffer + acBufferLength, 1, dataBufferLength - acBufferLength, binFile);
+                    if (result != dataBufferLength - acBufferLength)
                     {
                         LOG_ERROR("Error reading partition for hash calculation");
                     }
                 }
                 else
                 {
-                    LOG_ERROR("Error parsing Partitions from BootImage file %s",binFilename.c_str());
+                    LOG_ERROR("Error parsing Partitions from BootImage file %s", binFilename.c_str());
                 }
-
-                if(unencryptedSize <= SECURE_32K_CHUNK || isItBootloader)
+                if (encryptedSize <= actualSecureChunkSize || isItBootloader)
                 {
-                    if(isItBootloader)
+                    if (isItBootloader)
                     {
                         nist = false;
                     }
                     if ((*(*auth_cert) & 0xF3) == 0x02)
                     {
-                        signatureVerified = VerifyECDSASignature(nist,tempBuffer,bufferLength,  (ACKeyECDSA *)(*auth_cert +  AC_SPK_KEY_OFFSET),  *auth_cert +  AC_PARTITION_SIGN_OFFSET);
+                        signatureVerified = VerifyECDSASignature(nist, tempBuffer, dataBufferLength, (ACKeyECDSA *)(*auth_cert + AC_SPK_KEY_OFFSET), *auth_cert + AC_PARTITION_SIGN_OFFSET);
                     }
                     else if ((*(*auth_cert) & 0xF3) == 0x22)
                     {
-                        signatureVerified = VerifyECDSAP521Signature(nist,tempBuffer,bufferLength,  (ACKeyECDSAP521 *)(*auth_cert +  AC_SPK_KEY_OFFSET),  *auth_cert +  AC_PARTITION_SIGN_OFFSET);
+                        signatureVerified = VerifyECDSAP521Signature(nist, tempBuffer, dataBufferLength, (ACKeyECDSAP521 *)(*auth_cert + AC_SPK_KEY_OFFSET), *auth_cert + AC_PARTITION_SIGN_OFFSET);
                     }
                     else if ((*(*auth_cert) & 0xF3) == 0x11)
                     {
-                        signatureVerified = VerifySignature(nist, tempBuffer, bufferLength, (ACKey4096Sha3Padding *)(*auth_cert + AC_SPK_KEY_OFFSET),*auth_cert + AC_PARTITION_SIGN_OFFSET);
+                        signatureVerified = VerifySignature(nist, tempBuffer, dataBufferLength, (ACKey4096Sha3Padding *)(*auth_cert + AC_SPK_KEY_OFFSET), *auth_cert + AC_PARTITION_SIGN_OFFSET);
                     }
                     else
                     {
@@ -581,49 +570,68 @@ void VersalReadImage::VerifyPartitionSignature(void)
                 }
                 else
                 {
-                    memcpy(chunkHashBuffer,tempBuffer,bufferACLength);
-                    memcpy(chunkHashBuffer + bufferACLength,tempBuffer + bufferACLength,SECURE_32K_CHUNK + SHA3_LENGTH_BYTES);
+                    uint32_t chunk0Size = acBufferLength + actualSecureChunkSize + SHA3_LENGTH_BYTES;
+                    if ((*partitionHdr)->partitionKeySource != KeySource::None)
+                    {
+                        chunk0Size += SECURE_HDR_SZ + AES_GCM_TAG_SZ;
+                    }
+                    /* Verify Signature */
                     if ((*(*auth_cert) & 0xF3) == 0x02)
                     {
-                        signatureVerified = VerifyECDSASignature(true,chunkHashBuffer, chunkHashSize,  (ACKeyECDSA *)(*auth_cert + AC_SPK_KEY_OFFSET),*auth_cert + AC_PARTITION_SIGN_OFFSET);
+                        signatureVerified = VerifyECDSASignature(true, tempBuffer, chunk0Size, (ACKeyECDSA *)(*auth_cert + AC_SPK_KEY_OFFSET),*auth_cert + AC_PARTITION_SIGN_OFFSET);
                     }
                     else if ((*(*auth_cert) & 0xF3) == 0x22)
                     {
-                        signatureVerified = VerifyECDSAP521Signature(true,chunkHashBuffer, chunkHashSize,  (ACKeyECDSAP521 *)(*auth_cert + AC_SPK_KEY_OFFSET),*auth_cert + AC_PARTITION_SIGN_OFFSET);
+                        signatureVerified = VerifyECDSAP521Signature(true, tempBuffer, chunk0Size, (ACKeyECDSAP521 *)(*auth_cert + AC_SPK_KEY_OFFSET),*auth_cert + AC_PARTITION_SIGN_OFFSET);
                     }
                     else if ((*(*auth_cert) & 0xF3) == 0x11)
                     {
-                        signatureVerified = VerifySignature(true,chunkHashBuffer, chunkHashSize, (ACKey4096Sha3Padding *)(*auth_cert + AC_SPK_KEY_OFFSET),*auth_cert + AC_PARTITION_SIGN_OFFSET);
+                        signatureVerified = VerifySignature(true, tempBuffer, chunk0Size, (ACKey4096Sha3Padding *)(*auth_cert + AC_SPK_KEY_OFFSET),*auth_cert + AC_PARTITION_SIGN_OFFSET);
                     }
                     else
                     {
                         LOG_ERROR("Invalid Authentication Algorithm");
                     }
-                    for (int i = 0,j = 1;i < count && j < count; i += 2,j++)
-                    {
-                        uint32_t lastChunkSize = unencryptedSize - (count - 1) * SECURE_32K_CHUNK;
-                        if(i == count - 1)
-                        {
-                            i = i - 1;
-                            dataSize = lastChunkSize;
-                        }
-                        uint8_t* dataBuffer = new uint8_t[dataSize];
-                        memcpy(hashBuffer,tempBuffer + bufferACLength + (SECURE_32K_CHUNK + SHA3_LENGTH_BYTES) * i, SHA3_LENGTH_BYTES);
-                        memcpy(dataBuffer,tempBuffer + bufferACLength + (SECURE_32K_CHUNK + SHA3_LENGTH_BYTES) * (i + 1),dataSize);
-                        Versalcrypto_hash(dataHashBuffer,dataBuffer,dataSize, true);
-                        compare = memcmp(dataHashBuffer, hashBuffer, SHA3_LENGTH_BYTES);
 
-                        if(compare != 0)
-                        {
-                            LOG_MSG("    Chunk %d is not Verified",j);
-                        }
-                        delete[] dataBuffer;
-                    }
-                    if(compare == 0)
+                    if (signatureVerified)
                     {
-                        LOG_MSG("    All chunks are Verified");
+                        uint32_t dataSize = actualSecureChunkSize + SHA3_LENGTH_BYTES;
+                        uint8_t* hashBuffer = new uint8_t[SHA3_LENGTH_BYTES];
+                        if ((*partitionHdr)->partitionKeySource != KeySource::None)
+                        {
+                            encryptedSize -= (SECURE_HDR_SZ + AES_GCM_TAG_SZ);
+                        }
+                        int count = encryptedSize / actualSecureChunkSize;
+                        if (encryptedSize % actualSecureChunkSize != 0)
+                        {
+                            count = count + 1;
+                        }
+
+                        for (int i = 1;i < count; i++)
+                        {
+                            uint32_t lastChunkSize = encryptedSize - ((count - 1) * actualSecureChunkSize);
+                            if(i == count - 1)
+                            {
+                                dataSize = lastChunkSize;
+                            }
+                            uint8_t* dataBuffer = new uint8_t[dataSize];
+                            memcpy(hashBuffer, tempBuffer + chunk0Size - SHA3_LENGTH_BYTES + (SECURE_32K_CHUNK) * (i-1), SHA3_LENGTH_BYTES);
+                            memcpy(dataBuffer, tempBuffer + chunk0Size + (SECURE_32K_CHUNK) * (i-1), dataSize);
+                            uint8_t* shaHash = new uint8_t[SHA3_LENGTH_BYTES];
+                            Versalcrypto_hash(shaHash, dataBuffer, dataSize, true);
+                            int compare = memcmp(shaHash, hashBuffer, SHA3_LENGTH_BYTES);
+                            delete[] shaHash;
+
+                            if (compare != 0)
+                            {
+                                LOG_ERROR("    Partition Verification Failed at Chunk %d", i);
+                            }
+                            delete[] dataBuffer;
+                        }
+                        delete[] hashBuffer;
                     }
                 }
+
                 if (signatureVerified)
                 {
                     LOG_MSG("    Partition Signature Verified");
@@ -634,9 +642,6 @@ void VersalReadImage::VerifyPartitionSignature(void)
                     authenticationVerified = false;
                     LOG_ERROR("Authentication verification failed on bootimage %s", binFilename.c_str());
                 }
-                delete[] hashBuffer;
-                delete[] dataHashBuffer;
-                delete[] chunkHashBuffer;
                 delete[] tempBuffer;
       }
       else

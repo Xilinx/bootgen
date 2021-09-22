@@ -88,39 +88,6 @@ void VersalEncryptionContext::SetAesSeedString(const std::string& key)
 }
 
 /******************************************************************************/
-void VersalEncryptionContext::SetAesLabelString(const std::string& key)
-{
-    uint8_t* hexData = new uint8_t[key.size()];
-
-    PackHex(key, hexData);
-    SetAesLabel(hexData, key.size() / 2);
-    delete[] hexData;
-}
-
-/******************************************************************************/
-void VersalEncryptionContext::SetAesContextString(const std::string& key)
-{
-    uint8_t* hexData = new uint8_t[key.size()];
-    PackHex(key, hexData);
-    SetAesContext(hexData, key.size() / 2);
-    delete[] hexData;
-}
-
-/******************************************************************************/
-void VersalEncryptionContext::SetAesFixedInputDataString(const std::string& key)
-{
-    uint8_t* hexData = new uint8_t[key.size()];
-    PackHex(key, hexData);
-    if (key.size() / 2 != 60)
-    {
-        LOG_DEBUG(DEBUG_STAMP, "Fixed Input Data size - %d", key.size() / 2);
-        LOG_ERROR("An AES Fixed Input Data must be 60 Bytes long - %s", key.c_str());
-    }
-    SetAesFixedInputData(hexData, key.size() / 2);
-    delete[] hexData;
-}
-
-/******************************************************************************/
 void VersalEncryptionContext::GenerateAesKey(void)
 {
     uint32_t keysize = WORDS_PER_AES_KEY * sizeof(uint32_t);
@@ -333,23 +300,11 @@ void VersalEncryptionContext::ReadEncryptionKeyFile(const std::string& inputFile
         }
         else if (word == "Label")
         {
-            LOG_WARNING("The input 'Label' is deprecated.\n\t    Please construct a FixedInputData of 60 Bytes instead and provide the same in the nky file.This will be used along with Seed in KDF.");
-            word = "";
-            while ((keyFile >> c) && isalnum(c))
-            {
-                word.push_back(c);
-            }
-            SetAesLabelString(word);
+            LOG_ERROR("The input 'Label' is deprecated.\n\t    Please construct a FixedInputData of 60 Bytes instead and provide the same in the nky file.This will be used along with Seed in KDF.");
         }
         else if (word == "Context")
         {
-            LOG_WARNING("The input 'Context' is deprecated.\n\t    Please construct a FixedInputData of 60 Bytes instead and provide the same in the nky file.This will be used along with Seed in KDF.");
-            word = "";
-            while ((keyFile >> c) && isalnum(c))
-            {
-                word.push_back(c);
-            }
-            SetAesContextString(word);
+            LOG_ERROR("The input 'Context' is deprecated.\n\t    Please construct a FixedInputData of 60 Bytes instead and provide the same in the nky file.This will be used along with Seed in KDF.");
         }
         else if (word == "FixedInputData")
         {
@@ -487,55 +442,9 @@ void VersalEncryptionContext::SetAesSeed(const uint8_t* key)
 }
 
 /******************************************************************************/
-void VersalEncryptionContext::SetAesLabel(const uint8_t* key, int bytes)
-{
-    aesLabel = new uint8_t[bytes];
-
-    for (int index = 0; index<bytes; index++)
-    {
-        aesLabel[index] = key[index];
-    }
-}
-
-/******************************************************************************/
-void VersalEncryptionContext::SetAesContext(const uint8_t* key, int bytes)
-{
-    aesContext = new uint8_t[bytes];
-
-    for (int index = 0; index<bytes; index++)
-    {
-        aesContext[index] = key[index];
-    }
-}
-
-/******************************************************************************/
-void VersalEncryptionContext::SetAesFixedInputData(const uint8_t* key, int bytes)
-{
-    fixedInputData = new uint8_t[bytes];
-    fixedInputDataByteLength = bytes;
-
-    for (int index = 0; index<bytes; index++)
-    {
-        fixedInputData[index] = key[index];
-    }
-}
-
-/******************************************************************************/
 const uint32_t* VersalEncryptionContext::GetAesSeed(void)
 {
     return (uint32_t *)aesSeed;
-}
-
-/******************************************************************************/
-const uint8_t* VersalEncryptionContext::GetAesLabel(void)
-{
-    return (uint8_t *)aesLabel;
-}
-
-/******************************************************************************/
-const uint8_t* VersalEncryptionContext::GetAesContext(void)
-{
-    return (uint8_t *)aesContext;
 }
 
 /******************************************************************************/
@@ -615,7 +524,27 @@ void VersalEncryptionContext::GenerateRemainingKeys(Options& options)
         blocks = options.bifOptions->GetEncryptionBlocksList().size();
     }
 
-    CounterModeKDF(blocks, aesFilename, options.GetEncryptionDumpFlag());
+    if (GetAesSeed() == NULL)
+    {
+        aesSeed = new uint32_t[WORDS_PER_AES_KEY];
+        GenerateAesSeed();
+    }
+
+    if (GetFixedInputData() == NULL)
+    {
+        fixedInputData = new uint32_t[WORDS_PER_FID];
+        GenerateAesFixedInputData();
+    }
+
+    uint32_t outBufBytes = blocks * (AES_GCM_KEY_SZ + AES_GCM_IV_SZ);
+    outBufKDF = new uint32_t[outBufBytes];
+    SetKdfLogFile(options.GetEncryptionDumpFlag());
+
+    uint32_t ret = kdf->CounterModeKDF(aesSeed, fixedInputData, fixedInputDataByteLength, outBufKDF, outBufBytes);
+    if (ret != 0)
+    {
+        LOG_ERROR("Error generating encryption keys from Counter Mode KDF.");
+    }
 
     uint8_t aesKeyNext[AES_GCM_KEY_SZ];
     uint8_t aesIvNext[AES_GCM_IV_SZ];
@@ -1123,7 +1052,7 @@ void VersalEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr)
         if (options.bifOptions->pmcDataAesFile != "")
         {
             aesKey = aesIv = aesSeed = NULL;
-            aesContext = aesLabel = NULL;
+            fixedInputData = NULL;
             SetAesFileName(options.bifOptions->pmcDataAesFile);
             LOG_INFO("Key file - %s", aesFilename.c_str());
             std::ifstream keyFile(aesFilename);

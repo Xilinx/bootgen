@@ -166,6 +166,7 @@ PartitionBifOptions::PartitionBifOptions()
     , revokeId(0x00000000)
     , slrNum(0xFF)
     , pufHdLoc(PufHdLoc::PUFinEFuse)
+    , updateReserveInPh(false)
 { }
 
 /******************************************************************************/
@@ -583,9 +584,12 @@ void BifOptions::SetPufMode(PufMode::Type type)
 void BifOptions::SetShutterValue(uint32_t value)
 {
     shutterVal = value;
-    if((shutterVal & 0x80000000) == 0)
+    if (arch == Arch::VERSAL)
     {
-        LOG_ERROR("The PUF shutter value specified in the BIF file indicates that the Global Variation Filter was not enabled during PUF registration/provisioning.\nThe Global Variation Filter must be used during PUF registration/provisioning to avoid PUF key encryption keys with lower than expected entropy ");
+        if((shutterVal & 0x80000000) == 0)
+        {
+            LOG_ERROR("The PUF shutter value specified in the BIF file indicates that the Global Variation Filter was not enabled during PUF registration/provisioning.\n\t   The Global Variation Filter must be used during PUF registration/provisioning to avoid PUF key encryption keys with lower than expected entropy ");
+        }
     }
 }
 
@@ -1010,6 +1014,7 @@ static void ValidateEncryptionKeySource(KeySource::Type type)
     {
         LOG_ERROR("The usage of obfuscated keys is deprecated in Versal.\n\t   Refer 'bootgen -arch versal -bif_help keysrc' for valid key sources.");
     }
+
     static bool bhBlkKek = false;
     static bool bhGryKek = false;
     if ((type == KeySource::BhBlkKey && bhGryKek) || (type == KeySource::BhGryKey && bhBlkKek))
@@ -1413,6 +1418,22 @@ void PartitionBifOptions::SetAuthBlockAttr(size_t authBlockAttr)
 void PartitionBifOptions::SetPufHdLocation(PufHdLoc::Type type)
 {
     pufHdLoc = type;
+}
+
+/******************************************************************************/
+void PartitionBifOptions::SetReserveLength(uint64_t length, bool flag)
+{
+    reserve = length;
+    updateReserveInPh = flag;
+    if (updateReserveInPh)
+    {
+        static bool warningGiven = false;
+        if (!warningGiven)
+        {
+            LOG_WARNING("The existing reserve functionality is updated.\n\t   Please refer the section 'reserve' under 'Appendix A BIF Attribute Reference' in UG1283 for more details.");
+            warningGiven = true;
+        }
+    }
 }
 
 /******************************************************************************/

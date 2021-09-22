@@ -120,7 +120,7 @@ int cdooverlay_apply(CdoSequence * seq, CdoOverlayInfo * ovl) {
             CdoCommand * ovlcmd = NULL;
             if (dstentry->level != level) continue;
             more = 1;
-            fprintf(stderr, "check overlay \"%s\"\n", (char *)dstentry->start->buf);
+            fprintf(stdout, "check overlay \"%s\"\n", (char *)dstentry->start->buf);
             ovlentry = find_last_entry(ovl, dstentry->start->buf, 0);
             if (ovlentry == NULL) continue;
 
@@ -131,7 +131,7 @@ int cdooverlay_apply(CdoSequence * seq, CdoOverlayInfo * ovl) {
                 cdocmd_free(cmd);
             }
 
-	    /* Insert overlay commands */
+            /* Insert overlay commands */
             ovlcmd = ovlentry->start;
             for (;;) {
                 ovlcmd = all2cmds(ovlcmd->link_all.next);

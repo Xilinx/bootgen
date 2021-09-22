@@ -52,17 +52,7 @@ public:
 
     void SetAesSeedString(const std::string & key);
     void SetAesSeed(const uint8_t * key);
-    void SetAesFixedInputData(const uint8_t * key, int bytes);
     const uint32_t* GetAesSeed(void);
-
-    void SetAesLabelString(const std::string & key);
-    void SetAesLabel(const uint8_t * key, int bytes);
-    const uint8_t* GetAesLabel(void);
-
-    void SetAesContextString(const std::string & key);
-    void SetAesFixedInputDataString(const std::string & key);
-    void SetAesContext(const uint8_t * key, int bytes);
-    const uint8_t* GetAesContext(void);
 
     void SetAesKey(const uint8_t* binarykey);
     const uint32_t* GetAesKey(void);

@@ -102,6 +102,7 @@ public:
     void SetEncryptionKeySource(KeySource::Type type);
     void SetAuthBlockAttr(size_t blocksizeattr);
     void SetPufHdLocation(PufHdLoc::Type);
+    void SetReserveLength(uint64_t length, bool flag);
 
     std::string GetUdfDataFile(void);
     std::vector<uint32_t>& GetEncryptionBlocks(void);
@@ -194,7 +195,7 @@ public:
     std::string bifSection;
     std::string filename;
     std::vector<std::string> filelist;
-
+    bool updateReserveInPh;
     Arch::Type arch;
 };
 

@@ -67,6 +67,7 @@ class Key;
 
 #define AC_HDR_SHA_2_3_BIT_SHIFT    2
 #define SHA3_PAD_LENGTH             104
+#define WORDS_PER_DEVICE_DNA        4
 
 //Auth Certificate offset defines
 #define AC_HEADER_OFFSET            0x0

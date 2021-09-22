@@ -69,6 +69,7 @@ metaheader                                                          return tok::
 section                                                             return tok::BIF_SECTION;
 
 offset              yylval->number = tok::OFFSET;                   return tok::OFFSET;
+reserve_legacy      yylval->number = tok::RESERVE_LEGACY;           return tok::RESERVE_LEGACY;
 reserve             yylval->number = tok::RESERVE;                  return tok::RESERVE;
 load                yylval->number = tok::LOAD;                     return tok::LOAD;
 copy                yylval->number = tok::COPY;                     return tok::COPY;
@@ -231,7 +232,7 @@ core                                                                return tok::
     r5-lockstep     yylval->number = DestinationCPU::R5_lockstep;   return tok::DEST_CPU_TYPE;
     pmu             yylval->number = DestinationCPU::PMU;           return tok::DEST_CPU_TYPE;
     psm             yylval->number = DestinationCPU::PMU;           return tok::DEST_CPU_TYPE;
-    aie             yylval->number = DestinationCPU::AIE;            return tok::DEST_CPU_TYPE;
+    aie             yylval->number = DestinationCPU::AIE;           return tok::DEST_CPU_TYPE;
 
 destination_device                                                      return tok::DEST_DEVICE;
     ps              yylval->number = DestinationDevice::DEST_DEV_PS;    return tok::DEST_DEVICE_TYPE;

@@ -217,16 +217,16 @@ void PartitionHeaderTable::Build(BootImage &bi, Binary& cache)
 /******************************************************************************/
 void PartitionHeaderTable::BuildPartitions(BootImage &bi, Binary& cache)
 { 
-    for(std::list<PartitionHeader*>::iterator partHdr = bi.partitionHeaderList.begin(); partHdr != bi.partitionHeaderList.end(); partHdr++) 
+    for(std::list<PartitionHeader*>::iterator partHdr = bi.partitionHeaderList.begin(); partHdr != bi.partitionHeaderList.end(); partHdr++)
     {
         (*partHdr)->partition->Build(bi, cache);
     }
 }
 
 /******************************************************************************/
-void PartitionHeaderTable::Link(BootImage &bi) 
+void PartitionHeaderTable::Link(BootImage &bi)
 {
-    for(std::list<PartitionHeader*>::iterator partHdr = bi.partitionHeaderList.begin(); partHdr != bi.partitionHeaderList.end(); partHdr++) 
+    for(std::list<PartitionHeader*>::iterator partHdr = bi.partitionHeaderList.begin(); partHdr != bi.partitionHeaderList.end(); partHdr++)
     {
         (*partHdr)->Link(bi, NULL);
         (*partHdr)->SetNextPartitionHeaderOffset();

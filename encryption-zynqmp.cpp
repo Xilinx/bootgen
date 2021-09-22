@@ -72,29 +72,13 @@ ZynqMpEncryptionContext::~ZynqMpEncryptionContext()
     {
         delete aesSeed;
     }
-    if (aesContext)
-    {
-        delete aesContext;
-    }
-    if (aesLabel)
-    {
-        delete aesLabel;
-    }
     if (outBufKDF)
     {
         delete outBufKDF;
     }
-    if (kI)
-    {
-        delete kI;
-    }
     if (fixedInputData)
     {
         delete fixedInputData;
-    }
-    if (verifyKo)
-    {
-        delete verifyKo;
     }
 };
 
@@ -121,40 +105,6 @@ void ZynqMpEncryptionContext::SetAesSeedString(const std::string& key)
     }
     PackHex(key, hexData);
     SetAesSeed(hexData);
-}
-
-/******************************************************************************/
-void ZynqMpEncryptionContext::SetAesLabelString(const std::string& key)
-{
-    uint8_t* hexData = new uint8_t[key.size()];
-
-    PackHex(key, hexData);
-    SetAesLabel(hexData, key.size() / 2);
-    delete[] hexData;
-}
-
-/******************************************************************************/
-void ZynqMpEncryptionContext::SetAesContextString(const std::string& key)
-{
-    uint8_t* hexData = new uint8_t[key.size()];
-    PackHex(key, hexData);
-    SetAesContext(hexData, key.size() / 2);
-    delete[] hexData;
-}
-
-/******************************************************************************/
-void ZynqMpEncryptionContext::SetAesFixedInputDataString(const std::string& key)
-{
-    if (key.size() / 2 != 60)
-    {
-        LOG_DEBUG(DEBUG_STAMP, "Fixed Input Data size - %d", key.size() / 2);
-        LOG_ERROR("An AES Fixed Input Data must be 60 Bytes long - %s", key.c_str());
-    }
-
-    uint8_t* hexData = new uint8_t[key.size()];
-    PackHex(key, hexData);
-    SetAesFixedInputData(hexData, key.size() / 2);
-    delete[] hexData;
 }
 
 /******************************************************************************/
@@ -444,23 +394,11 @@ void ZynqMpEncryptionContext::ReadEncryptionKeyFile(const std::string&	inputFile
 
         else if (word == "Label")
         {
-            LOG_WARNING("The input 'Label' is deprecated.\n\t    Please construct a FixedInputData of 60 Bytes instead and provide the same in the nky file.This will be used along with Seed in KDF.");
-            word = "";
-            while ((keyFile >> c) && isalnum(c))
-            {
-                word.push_back(c);
-            }
-            SetAesLabelString(word);
+            LOG_ERROR("The input 'Label' is deprecated.\n\t    Please construct a FixedInputData of 60 Bytes instead and provide the same in the nky file.This will be used along with Seed in KDF.");
         }
         else if (word == "Context")
         {
-            LOG_WARNING("The input 'Context' is deprecated.\n\t    Please construct a FixedInputData of 60 Bytes instead and provide the same in the nky file.This will be used along with Seed in KDF.");
-            word = "";
-            while ((keyFile >> c) && isalnum(c))
-            {
-                word.push_back(c);
-            }
-            SetAesContextString(word);
+            LOG_ERROR("The input 'Context' is deprecated.\n\t    Please construct a FixedInputData of 60 Bytes instead and provide the same in the nky file.This will be used along with Seed in KDF.");
         }
         else if (word == "FixedInputData")
         {
@@ -602,57 +540,9 @@ void ZynqMpEncryptionContext::SetAesSeed(const uint8_t* key)
 }
 
 /******************************************************************************/
-void ZynqMpEncryptionContext::SetAesLabel(const uint8_t* key, int bytes)
-{
-    aesLabelBytes = bytes;
-    aesLabel = new uint8_t[aesLabelBytes];
-
-    for (int index = 0; index<aesLabelBytes; index++)
-    {
-        aesLabel[index] = key[index];
-    }
-}
-
-/******************************************************************************/
-void ZynqMpEncryptionContext::SetAesContext(const uint8_t* key, int bytes)
-{
-    aesContextBytes = bytes;
-    aesContext = new uint8_t[aesContextBytes];
-
-    for (int index = 0; index<aesContextBytes; index++)
-    {
-        aesContext[index] = key[index];
-    }
-}
-
-/******************************************************************************/
-void ZynqMpEncryptionContext::SetAesFixedInputData(const uint8_t* key, int bytes)
-{
-    fixedInputData = new uint8_t[bytes];
-    fixedInputDataByteLength = bytes;
-
-    for (int index = 0; index<bytes; index++)
-    {
-        fixedInputData[index] = key[index];
-    }
-}
-
-/******************************************************************************/
 const uint32_t* ZynqMpEncryptionContext::GetAesSeed(void)
 {
     return (uint32_t *)aesSeed;
-}
-
-/******************************************************************************/
-const uint8_t*ZynqMpEncryptionContext::GetAesLabel(void)
-{
-    return (uint8_t *)aesLabel;
-}
-
-/******************************************************************************/
-const uint8_t* ZynqMpEncryptionContext::GetAesContext(void)
-{
-    return (uint8_t *)aesContext;
 }
 
 /******************************************************************************/
@@ -807,7 +697,27 @@ void ZynqMpEncryptionContext::GenerateRemainingKeys(Options& options, std::strin
         }
     }
 
-    CounterModeKDF(blocks, aesFilename, options.GetEncryptionDumpFlag());
+    if (GetAesSeed() == NULL)
+    {
+        aesSeed = new uint32_t[WORDS_PER_AES_KEY];
+        GenerateAesSeed();
+    }
+
+    if (GetFixedInputData() == NULL)
+    {
+        fixedInputData = new uint32_t[WORDS_PER_FID];
+        GenerateAesFixedInputData();
+    }
+
+    uint32_t outBufBytes = blocks * (AES_GCM_KEY_SZ + AES_GCM_IV_SZ);
+    outBufKDF = new uint32_t[outBufBytes];
+    SetKdfLogFile(options.GetEncryptionDumpFlag());
+
+    uint32_t ret  = kdf->CounterModeKDF(aesSeed, fixedInputData, fixedInputDataByteLength, outBufKDF, outBufBytes);
+    if (ret != 0)
+    {
+        LOG_ERROR("Error generating encryption keys from Counter Mode KDF.");
+    }
 
     uint8_t aesKeyNext[AES_GCM_KEY_SZ];
     uint8_t aesIvNext[AES_GCM_IV_SZ];

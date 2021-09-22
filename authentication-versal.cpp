@@ -692,7 +692,7 @@ void VersalAuthenticationContext::GenerateBHHash(BootImage& bi, uint8_t* sha_has
 {
     LOG_TRACE("Calculating the Boot Header Hash");
     /* Donot include SMAP data to calculate BH hash */
-    uint8_t* tmpBh = bi.bootHeader->section->Data + 0x10; 
+    uint8_t* tmpBh = bi.bootHeader->section->Data + 0x10;
     uint8_t* sha_hash = new uint8_t[hashLength];
     hash->CalculateVersalHash(false, tmpBh, bi.bootHeader->section->Length, sha_hash);
     authAlgorithm->CreatePadding(sha_hash_padded, sha_hash, hashLength);
@@ -1433,6 +1433,16 @@ uint32_t RSA4096Sha3PaddingAuthenticationAlgorithm::GetAuthHeader(void)
 }
 
 /******************************************************************************/
+void static SetDeviceDNA(const uint8_t* dnaValue, uint32_t* deviceDNA)
+{
+    for (uint32_t index = 0; index < WORDS_PER_DEVICE_DNA; index++)
+    {
+        deviceDNA[index] = ReadBigEndian32(dnaValue);
+        dnaValue += sizeof(uint32_t);
+    }
+}
+
+/******************************************************************************/
 void VersalAuthenticationContext::CreateAuthJtagImage(uint8_t* buffer, AuthJtagInfo authJtagAttributes)
 {
     LOG_TRACE("Creating the Authentication Header signature");
@@ -1460,7 +1470,7 @@ void VersalAuthenticationContext::CreateAuthJtagImage(uint8_t* buffer, AuthJtagI
         {
             WriteLittleEndian32(&v2->attributes, vauthJtagMessagenMask << vauthJtagMessageShift);
         }
-        memcpy(v2->deviceDNA, authJtagAttributes.deviceDNA, sizeof(authJtagAttributes.deviceDNA));
+        SetDeviceDNA(authJtagAttributes.deviceDNA, (uint32_t*)v2->deviceDNA);
         WriteLittleEndian32(&v2->jtagTimeOut, authJtagAttributes.jtagTimeout);
         FillSha3Padding(v2->SHA3Padding, sizeof(v2->SHA3Padding));
 

@@ -174,6 +174,10 @@ void ZynqMpReadImage::VerifyHeaderTableSignature()
 
     /* Partition Signature should not be included for hash calculation. */
     size_t headersSize = bH->sourceOffset - bH->imageHeaderByteOffset - RSA_4096_KEY_LENGTH;
+    if(bH->sourceOffset == 0)
+    {
+        headersSize = (pHT->partitionWordOffset * 4) - bH->imageHeaderByteOffset - RSA_4096_KEY_LENGTH;
+    }
     uint8_t* tempBuffer = new uint8_t[headersSize];
 
     offset = bH->imageHeaderByteOffset;
@@ -300,7 +304,7 @@ void ZynqMpReadImage::VerifyPartitionSignature(void)
 
            /* Partition Signature should not be included for hash calculation. */
             uint32_t bufferLength = ((*partitionHdr)->totalPartitionLength * 4) - RSA_4096_KEY_LENGTH;
-              bool signatureVerified = false;
+            bool signatureVerified = false;
             if (((((*partitionHdr)->partitionAttributes) >> PH_DEST_DEVICE_SHIFT_ZYNQMP) & PH_DEST_DEVICE_MASK_ZYNQMP) == 2)
             {
               bufferLength = ((*partitionHdr)->totalPartitionLength * 4);

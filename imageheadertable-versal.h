@@ -284,6 +284,7 @@ typedef struct
     uint8_t slr_num;
     size_t offset;
     size_t size;
+    size_t sync_points;
 } SsitConfigSlrLog;
 /*
 -------------------------------------------------------------------------------
@@ -421,7 +422,7 @@ private:
     uint32_t FindCurrentSyncPoint(void);
     void CheckIdsInCdo(CdoSequence * cdo_seq);
     void SetPowerDomains(uint8_t* buf, uint32_t count);
-    void LogConfigSlrDetails(size_t chunk_num, uint8_t slr_num, size_t offset, size_t chunk_size);
+    void LogConfigSlrDetails(size_t chunk_num, uint8_t slr_num, size_t offset, size_t chunk_size, size_t sync_points);
     void PrintConfigSlrSummary(void);
     uint64_t slr_total_file_size;
 

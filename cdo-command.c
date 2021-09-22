@@ -129,7 +129,8 @@ static uint64_t randu64() {
     return value;
 }
 
-void cdocmd_add_random_command(CdoSequence * seq) {
+void cdocmd_add_random_command(CdoSequence * seq, uint32_t * levelp) {
+    uint32_t level = *levelp;
     CdoCmdType type;
     CdoCommand * cmd;
     do {
@@ -138,7 +139,11 @@ void cdocmd_add_random_command(CdoSequence * seq) {
              type == CdoCmdSection ||
              type == CdoCmdInclude ||
              type == CdoCmdComment ||
-             type == CdoCmdSetBaseAddress);
+             type == CdoCmdSetBaseAddress ||
+             (type == CdoCmdProc && level != 0) ||
+             (type == CdoCmdBegin && level >= (randu32() & 3)) ||
+             (type == CdoCmdEnd && level == 0) ||
+             (type == CdoCmdBreak && level == 0));
     cmd = cdocmd_alloc(type);
     cmd->id = randu32();
     cmd->dstaddr = randu64();
@@ -188,6 +193,7 @@ void cdocmd_add_random_command(CdoSequence * seq) {
                cmd->type == CdoCmdSetBoard ||
                cmd->type == CdoCmdLogString ||
                cmd->type == CdoCmdMarker ||
+               cmd->type == CdoCmdBegin ||
                cmd->type == CdoCmdPmAddNodeName) {
         uint8_t * p;
         uint32_t count = (cmd->count & 7) + 1;
@@ -198,8 +204,14 @@ void cdocmd_add_random_command(CdoSequence * seq) {
             p[i] = randchar();
         }
         p[i] = '\0';
+    } else if (cmd->type == CdoCmdBreak) {
+        cmd->value = (cmd->value % level) + 1;
     }
+    if (cmd->type == CdoCmdProc) level++;
+    if (cmd->type == CdoCmdBegin) level++;
+    if (cmd->type == CdoCmdEnd) level--;
     add_command(seq, cmd);
+    *levelp = level;
 }
 
 void cdocmd_add_generic_command(CdoSequence * seq, uint32_t id, void * buf, uint32_t count, uint32_t be) {
@@ -829,6 +841,30 @@ void cdocmd_add_marker(CdoSequence * seq, uint32_t value, const char * name) {
     cmd->value = value;
     cmd->count = strlen(name) / 4 + 1;
     cmd->buf = strdup(name);
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_proc(CdoSequence * seq, uint32_t value) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdProc);
+    cmd->value = value;
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_begin(CdoSequence * seq, const char * name) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdBegin);
+    cmd->count = strlen(name) / 4 + 1;
+    cmd->buf = strdup(name);
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_end(CdoSequence * seq) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdEnd);
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_break(CdoSequence * seq, uint32_t value) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdBreak);
+    cmd->value = value;
     add_command(seq, cmd);
 }
 

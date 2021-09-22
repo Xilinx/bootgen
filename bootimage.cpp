@@ -514,7 +514,18 @@ void BootImage::GenerateAuthenticationKeys(void)
         keygen->spk_file = bifOptions->GetSPKFileName();
         keygen->ssk_file = bifOptions->GetSSKFileName();
         keygen->keyLength = currentAuthCtx->GetRsaKeyLength();
-        Key::GenerateRsaKeys(keygen);
+        if (keygen->format == GenAuthKeys::PEM || keygen->format == GenAuthKeys::RSA)
+        {
+            Key::GenerateRsaKeys(keygen);
+        }
+        else if (keygen->format == GenAuthKeys::ECDSA || keygen->format == GenAuthKeys::ECDSAP521)
+        {
+            if (options.archType != Arch::VERSAL)
+            {
+                LOG_ERROR("'-generate_keys <ecdsa-p384/ecdsa-p521>' is supported only with '-arch versal'.");
+            }
+            Key::GenerateEcdsaKeys(keygen);
+        }
     }
 }
 

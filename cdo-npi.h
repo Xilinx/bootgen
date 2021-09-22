@@ -19,11 +19,11 @@
 
 #include "cdo-command.h"
 
-int cdocmd_post_process_mode(const char * s, uint32_t verbose);
-void cdocmd_post_process_start(void);
-uint32_t cdocmd_post_process_end_seq(CdoSequence ** seqp);
-void cdocmd_post_process_end(void ** new_data, size_t * new_size);
-uint32_t cdocmd_post_process_cdo_seq(const void * data, size_t size, CdoSequence ** seqp);
-uint32_t cdocmd_post_process_cdo(const void * data, size_t size, void ** new_data, size_t * new_size);
+CDOUTIL_EXPORT int cdocmd_post_process_mode(const char * s, uint32_t verbose);
+CDOUTIL_EXPORT void cdocmd_post_process_start(void);
+CDOUTIL_EXPORT uint32_t cdocmd_post_process_end_seq(CdoSequence ** seqp);
+CDOUTIL_EXPORT void cdocmd_post_process_end(void ** new_data, size_t * new_size);
+CDOUTIL_EXPORT uint32_t cdocmd_post_process_cdo_seq(const void * data, size_t size, CdoSequence ** seqp);
+CDOUTIL_EXPORT uint32_t cdocmd_post_process_cdo(const void * data, size_t size, void ** new_data, size_t * new_size);
 
 #endif /* D_cdo_npi */

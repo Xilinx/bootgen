@@ -78,7 +78,7 @@ class ImageHeader : public BaseThing
 {
 public:
     ImageHeader() {}
-    ImageHeader(std::string& filename); 
+    ImageHeader(std::string& filename);
     ImageHeader(std::ifstream& f);
     ImageHeader(uint8_t* data, uint64_t len);
     
@@ -132,7 +132,7 @@ public:
     void SetTrustZone(TrustZone::Type type) { trustzone = type; }
     void SetAlignment(Override<int> data) { Alignment = data; }
     void SetOffset(Override<Binary::Length_t> data) { Offset = data; }
-    void SetReserve(Override<Binary::Length_t> data) { Reserve = data; }
+    void SetReserve(Override<Binary::Length_t> data, bool updateReserveFlag) { Reserve = data; updateReserveInPh = updateReserveFlag;}
     void SetLoad(Override<Binary::Address_t> data) { Load = data; }
     void SetStartup(Override<Binary::Address_t> data) { Startup = data; }
     void InsertPartitionHeaderList(PartitionHeader* ph) { partitionHeaderList.push_back(ph); }
@@ -174,6 +174,7 @@ public:
     bool GetEarlyHandoff(void) { return early_handoff; }
     bool GetHivec(void) { return hivec; }
     bool IsSlrPartition(void) { return isSlrPartition; }
+
     Authentication::Type GetAuthenticationType(void) { return authType; }
     AuthenticationContext* GetAuthContext(void) { return Auth; }
     EncryptionContext* GetEncryptContext(void) { return Encrypt; }
@@ -279,6 +280,7 @@ protected:
     uint32_t totalPmuFwSize;
     uint32_t totalpmcdataSize;
     uint32_t totalFsblFwSize;
+    uint8_t non_zero_elf_sec_count;
     Binary::Address_t sourceAddr;
     uint64_t ihMemCpyAddr;
     bool ihDelayLoad;
@@ -324,6 +326,7 @@ protected:
     bool isUserPartitionNum;
     bool a32Mode;
     bool bigEndian;
+    bool updateReserveInPh;
     DpaCM::Type dpacm;
     PufHdLoc::Type pufHdLoc;
     std::string kekIvFile;

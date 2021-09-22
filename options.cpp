@@ -29,6 +29,7 @@
 #include "readimage-zynqmp.h"
 #include "readimage-versal.h"
 #include "logger.h"
+#include "encryption.h"
 
 
 /*
@@ -89,10 +90,18 @@ void Options::ProcessVerifyKDF()
         }
         else
         {
-            EncryptionContext* encryptCtx = new EncryptionContext;
-            encryptCtx->CAVPonCounterModeKDF(GetKDFTestVectorFile());
-            delete encryptCtx;
-            exit(0);
+            Kdf* kdfCtx = new Kdf;
+            LOG_TRACE("KDF Version : 0x%X", kdfCtx->GetVersion());
+            uint32_t ret_value = kdfCtx->CAVPonCounterModeKDF(GetKDFTestVectorFile());
+            delete kdfCtx;
+            if (ret_value != 0)
+            {
+                exit(1);
+            }
+            else
+            {
+                exit(0);
+            }
         }
     }
 }

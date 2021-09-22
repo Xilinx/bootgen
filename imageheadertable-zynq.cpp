@@ -161,6 +161,20 @@ void ZynqImageHeader::ImportFpgaDataFile(BootImage& bi)
     ByteFile data(Filename);
 
     PartitionHeader* partHdr = new ZynqPartitionHeader(this, 0);
+    if(updateReserveInPh == true)
+    {
+        if(Reserve.IsSet())
+        {
+            if(data.len > Reserve.Value())
+            {
+                LOG_WARNING("Total Partition length is more than Reserve Length. Hence reserve attribute is ignored.");
+            }
+            else
+            {
+                data.len = Reserve.Value();
+            }
+        }
+    }
 
     partHdr->partition = new Partition(partHdr, data.bytes, data.len);
     partitionHeaderList.push_back(partHdr);
@@ -182,6 +196,20 @@ void ZynqImageHeader::CreateElfPartitions(BootImage& bi, ElfFormat* elf, uint8_t
         if (Bootloader)
         {
             partition_data = CombineElfSections(elf, &total_size, &load_addr);
+            if(updateReserveInPh == true)
+            {
+                if(Reserve.IsSet())
+                {
+                    if(total_size > Reserve.Value())
+                    {
+                        LOG_WARNING("Total Partition length is more than Reserve Length. Hence reserve attribute is ignored.");
+                    }
+                    else
+                    {
+                        fsblFwSize = totalFsblFwSize = total_size = Reserve.Value();
+                    }
+                }
+            }
             fsblFwSize = totalFsblFwSize = total_size;
             if (bi.XipMode)
             {
@@ -191,6 +219,24 @@ void ZynqImageHeader::CreateElfPartitions(BootImage& bi, ElfFormat* elf, uint8_t
         else
         {
             partition_data = GetElfSections(elf, &total_size, &load_addr, iprog);
+            if(updateReserveInPh == true)
+            {
+                if(Reserve.IsSet() && non_zero_elf_sec_count > 1)
+                {
+                    LOG_WARNING("Multiple sections in elf. Hence reserve attribute is ignored.");
+                }
+                if(Reserve.IsSet()  && non_zero_elf_sec_count == 1)
+                {
+                    if(total_size > Reserve.Value())
+                    {
+                        LOG_WARNING("Total Partition length is more than Reserve Length. Hence reserve attribute is ignored.");
+                    }
+                    else
+                    {
+                        total_size = Reserve.Value();
+                    }
+                }
+            }
             if (partition_data == NULL)
             {
                 continue;
@@ -301,7 +347,22 @@ void ZynqImageHeader::ImportBit(BootImage& bi)
     hdr->transferSize = os->Size();
     hdr->preservedBitstreamHdr = os->pHdr;
     hdr->partition = new Partition(hdr, os->Start(), os->Size());
-
+    if(updateReserveInPh == true)
+    {
+        if(Reserve.IsSet())
+        {
+            if(hdr->transferSize > Reserve.Value())
+            {
+                LOG_WARNING("Total Partition length is more than Reserve Length. Hence reserve attribute is ignored.");
+            }
+            else
+            {
+                hdr->transferSize = Reserve.Value();
+                hdr->partitionSize = Reserve.Value();
+                hdr->partition = new Partition(hdr, os->Start(),Reserve.Value());
+            }
+        }
+    }
     partitionHeaderList.push_back(hdr);
 }
 
@@ -324,7 +385,20 @@ void ZynqImageHeader::ImportBin(BootImage& bi)
     {
         hdr->loadAddress = 0;
     }
-
+    if(updateReserveInPh == true)
+    {
+        if(Reserve.IsSet())
+        {
+            if(data.len > Reserve.Value())
+            {
+                LOG_WARNING("Total Partition length is more than Reserve Length. Hence reserve attribute is ignored.");
+            }
+            else
+            {
+                data.len = Reserve.Value();
+            }
+        }
+    }
     hdr->partition = new Partition(hdr, data.bytes, data.len);
     hdr->partitionSize = data.len;
     partitionHeaderList.push_back(hdr);
@@ -377,17 +451,17 @@ void ZynqImageHeader::Build(BootImage& bi, Binary& cache)
         if (Alignment.IsSet() && (Alignment.Value() & (defaultAlignment - 1)))
         {
             LOG_ERROR("Alignment (0x%X) is not a multiple of %d",
-                Alignment.Value(), defaultAlignment);
+            Alignment.Value(), defaultAlignment);
         }
         if (Reserve.IsSet() && (Reserve.Value()  & (defaultAlignment - 1)))
         {
             LOG_ERROR("Reserve (0x%X) is not a multiple of %d",
-                Reserve.Value(), defaultAlignment);
+            Reserve.Value(), defaultAlignment);
         }
         if (Offset.IsSet() && (Offset.Value() & (defaultAlignment - 1)))
         {
             LOG_ERROR("Offset (0x%X) is not a multiple of %d",
-                Offset.Value(), defaultAlignment);
+            Offset.Value(), defaultAlignment);
         }
 
         partitionHeaderList.clear();

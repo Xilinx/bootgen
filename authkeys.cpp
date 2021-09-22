@@ -446,27 +446,48 @@ void Key::WriteRsaFile(std::string filename, const RSA* rsa, bool secret, uint16
 }
 
 /******************************************************************************/
-void Key::WritePemFile(std::string filename, RSA * rsa, bool secret)
+void Key::WritePemFile(std::string filename, RSA * rsa, EC_KEY* eckey, bool secret)
 {
     FILE* file = fopen(filename.c_str(), "wb");
     bool fileWritten = false;
     if (file)
     {
-        if (!secret)
+        if (rsa != NULL)
         {
-            if (PEM_write_RSA_PUBKEY(file, rsa))
+            if (!secret)
             {
-                fileWritten = true;
+               if (PEM_write_RSA_PUBKEY(file, rsa))
+               {
+                   fileWritten = true;
+               }
             }
+            else
+            {
+               if (PEM_write_RSAPrivateKey(file, rsa, NULL, NULL, 0, NULL, NULL))
+               {
+                  fileWritten = true;
+               }
+            }
+            fclose(file);
         }
-        else
+        if (eckey != NULL)
         {
-            if (PEM_write_RSAPrivateKey(file, rsa, NULL, NULL, 0, NULL, NULL))
+            if (!secret)
             {
-                fileWritten = true;
+                if (PEM_write_EC_PUBKEY(file, eckey))
+                {
+                   fileWritten = true;
+                }
             }
+            else
+            {
+                if (PEM_write_ECPrivateKey(file, eckey, NULL, NULL, 0, NULL, NULL))
+                {
+                   fileWritten = true;
+                }
+            }
+            fclose(file);
         }
-        fclose(file);
     }
 
     if (!fileWritten)
@@ -502,12 +523,12 @@ void Key::GenerateRsaKeys(KeyGenerationStruct* keygen)
             {
                 if (keygen->ppk_file != "")
                 {
-                    WritePemFile(keygen->ppk_file, rsa, false);
+                    WritePemFile(keygen->ppk_file, rsa, NULL, false);
                 }
 
                 if (keygen->psk_file != "")
                 {
-                    WritePemFile(keygen->psk_file, rsa, true);
+                    WritePemFile(keygen->psk_file, rsa, NULL, true);
                 }
             }
             else
@@ -538,12 +559,12 @@ void Key::GenerateRsaKeys(KeyGenerationStruct* keygen)
             {
                 if (keygen->spk_file != "")
                 {
-                    WritePemFile(keygen->spk_file, rsa, false);
+                    WritePemFile(keygen->spk_file, rsa, NULL, false);
                 }
 
                 if (keygen->ssk_file != "")
                 {
-                    WritePemFile(keygen->ssk_file, rsa, true);
+                    WritePemFile(keygen->ssk_file, rsa, NULL, true);
                 }
             }
             else
@@ -560,6 +581,73 @@ void Key::GenerateRsaKeys(KeyGenerationStruct* keygen)
             }
         }
         rsa = NULL;
+    }
+}
+
+/************************************************************************************/
+void Key::GenerateEcdsaKeys(KeyGenerationStruct* keygen)
+{
+    EC_KEY* eckey = NULL;
+    OpenSSL_add_all_algorithms();
+
+    if (!(keygen->ppk_file != "" || keygen->psk_file != "" || keygen->spk_file != "" || keygen->ssk_file != ""))
+    {
+        LOG_ERROR("Failed to generate authentication keys. Please specify the key paths in BIF file");
+    }
+
+
+    if (keygen->format == GenAuthKeys::ECDSA)
+    {
+        eckey = EC_KEY_new_by_curve_name(NID_secp384r1);
+    }
+    else if(keygen->format == GenAuthKeys::ECDSAP521)
+    {
+        eckey = EC_KEY_new_by_curve_name(NID_secp521r1);
+    }
+    else
+    {
+        eckey = NULL;
+    }
+
+
+    if (keygen->ppk_file != "" || keygen->psk_file != "")
+    {
+        if((EC_KEY_generate_key(eckey)) == 0)
+        {
+            LOG_ERROR("Failure creating authentication Keys");
+        }
+        else
+        {
+            if (keygen->ppk_file != "")
+            {
+                WritePemFile(keygen->ppk_file, NULL, eckey, false);
+            }
+
+            if (keygen->psk_file != "")
+            {
+                WritePemFile(keygen->psk_file,NULL, eckey, true);
+            }
+        }
+    }
+
+    if (keygen->spk_file != "" || keygen->ssk_file != "")
+    {
+        if ((EC_KEY_generate_key(eckey)) == 0)
+        {
+            LOG_ERROR("Failure creating authentication Keys");
+        }
+        else
+        {
+            if (keygen->spk_file != "")
+            {
+                WritePemFile(keygen->spk_file, NULL, eckey, false);
+            }
+
+            if (keygen->ssk_file != "")
+            {
+                WritePemFile(keygen->ssk_file, NULL, eckey, true);
+            }
+        }
     }
 }
 

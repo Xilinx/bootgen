@@ -215,7 +215,6 @@ public:
     bool GetLegacyFlag (void);
     bool DoPadHeaderTable (void);
     bool GetNonBootingFlag (void);
-    uint32_t GetEncryptionBlocksIndex (uint32_t);
     GenAuthKeys::Type GetAuthKeyGeneration (void);
     bool GetGreyKeyGeneration (void);
     bool GetMetalKeyGeneration (void);

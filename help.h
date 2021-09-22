@@ -154,18 +154,35 @@ dual_qspi_mode
 -------------+----------------------------------------------------------------+\n\
  SUPPORTED   | versal                                                         |\n\
 -------------+----------------------------------------------------------------+\n\
- DESCRIPTION | This option is used to dump partitions as binary files         |\n\
+ DESCRIPTION | This option is used to dump partitions, bootheader and SSIT    |\n\
+             | slave PDIs as binary files.                                    |\n\
 -------------+----------------------------------------------------------------+\n\
  SYNOPSIS    | -dump <filename> [arguments]                                   |\n\
+             | The files are dumped from the PDI mentioned with <filename>    |\n\
+------------------------------------------------------------------------------|\n\
+ ARGUMENTS   | boot_files : Dumps all boot files(Boot header, PLM and PMC CDO)|\n\
+             | plm        : Dumps the plm partition                           |\n\
+             | pmc_cdo    : Dumps pmc_cdo partition                           |\n\
+             |                                                                |\n\
+             | Note : When no arguments are specifed, all the partitions are  |\n\
+             |        dumped.                                                 |\n\
 -------------+----------------------------------------------------------------+\n\
- ARGUMENTS   | boot_files :                                                   |\n\
-             |     Dumps all boot files - boot header, PLM and PMC CDO        |\n\
+ SYNOPSIS    | -dump [arguments]                                              |\n\
+             | This must used while generating the PDI, and the files are      |\n\
+             | dumped along with the PDI                                      |\n\
+------------------------------------------------------------------------------|\n\
+ ARGUMENTS   | bh         : Dumps the Boot Header                             |\n\
+             | slave_pdis : Dumps slave PDIs for SSIT devices                 |\n\
 -------------+----------------------------------------------------------------+\n\
  USAGE       | 1. bootgen -arch versal -dump test.pdi                         |\n\
              | 2. bootgen -arch versal -dump test.pdi boot_files              |\n\
+             | 3. bootgen -arch versal -image test.bif -w on -o               |\n\
+             |                          test.pdi -dump slave_pdis             |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | 1. The partitions in the PDI are dumped as binary files.       |\n\
-             | 2. Boot header, PLM and PMC CDO are dumped as binary files.    |\n\
+             | 2. Dumps all boot files - Boot header, PLM and PMC CDO, as     |\n\
+             |    binary files.                                               |\n\
+             | 3. Slave PDIs for SSIT devices are dumped as binary files.     |\n\
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************
@@ -316,7 +333,7 @@ generate_keys
 -------------+----------------------------------------------------------------+\n\
  OPTION      | generate_keys                                                  |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynq, zynqmp                                                   |\n\
+ SUPPORTED   | zynq, zynqmp, versal                                           |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | This option generates keys.                                    |\n\
              | . Generates authentication keys in rsa/pem format.             |\n\
@@ -331,9 +348,13 @@ generate_keys
  ARGUMENTS   | Format of authentication keys                                  |\n\
              |   rsa : RSA format keys                                        |\n\
              |   pem : PEM format keys                                        |\n\
+             |   ecdsa-p384 : ecdsap384 keys                                  |\n\
+             |   ecdsa-p521 : ecdsap521 keys                                  |\n\
 -------------+----------------------------------------------------------------+\n\
  USAGE       | For authentication :                                           |\n\
              |         bootgen -image test.bif -generate_keys rsa             |\n\
+             |         bootgen -image test.bif -generate_keys ecdsa-p384      |\n\
+             |         bootgen -image test.bif -generate_keys ecdsa-p521      |\n\
              | For encryption :                                               |\n\
              |          bootgen -image test.bif -generate_keys obfuscatedkey  |\n\
 -------------+----------------------------------------------------------------+\n\
@@ -361,6 +382,14 @@ generate_keys
              |   MIIEpAIBAAKCAQEAmlJyPcZVXltASHrtm/YnOMxskf0k2RZrIajqymqZptnG |\n\
              |   kyBMalXaqmGb1kqGCgGZVvQt3FSRO3yXa....                        |\n\
              |   -----END RSA PRIVATE KEY-----                                |\n\
+             |                                                                |\n\
+             |   -----BEGIN EC PRIVATE KEY-----                               |\n\
+             |  MIGkAgEBBDAqm8l04lfuEOFZI988uJ8b5UcP45hFIDk/OmsXItT3vk0SJM/   |\n\
+             |  HILiz4ZPnphfDt4egBwYFK4EEACKhZANiAAQiLcPBptJyMq4J+1/6wkUIrYY  |\n\
+             |  iTfiGTxRRZ7ZaejZQH/kcojjv6yqkHqkxt44f16nqwHCAkb4yb+2tDbqi9uMnf|\n\
+             |  5roGFnDx+6xkXn7ZCeldcLF2gdajH08AiXjXKgxTM0=                   |\n\
+             |    -----END EC PRIVATE KEY-----                                |\n\
+             |                                                                |\n\
              |----------------------------------------------------------------|\n\
              | RSA Key Format:                                                |\n\
              |   N = c6b9a521234567890abc4d4567e99f1234567891235987564....    |\n\

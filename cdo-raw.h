@@ -17,6 +17,8 @@
 #ifndef D_cdo_raw
 #define D_cdo_raw
 
+#include "dyn_link.h"
+
 typedef struct CdoRawInfo CdoRawInfo;
 
 typedef enum {
@@ -31,7 +33,7 @@ struct CdoRawInfo {
     uint32_t data[1];                   /* Must be last */
 };
 
-CdoRawInfo * decode_raw(void * data, size_t size);
-void encode_raw(FILE * f, void * data, size_t size);
+CDOUTIL_EXPORT CdoRawInfo * decode_raw(void * data, size_t size);
+CDOUTIL_EXPORT void encode_raw(FILE * f, void * data, size_t size);
 
 #endif /* D_cdo_raw */

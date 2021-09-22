@@ -91,6 +91,7 @@
     plm                     return tok::DUMP_PLM;
     pmc_cdo                 return tok::DUMP_PMC_CDO;
     boot_files              return tok::DUMP_BOOT_FILES;
+    slave_pdis              return tok::DUMP_SLAVE_PDIS;
 \-dump_dir                  return tok::_DUMP_DIR;
 \-legacy                    return tok::_LEGACY;
 \-padimageheader            return tok::_PADIMAGEHEADER;
@@ -108,6 +109,7 @@
     familykey               return tok::METAL;
     ecdsa                   return tok::ECDSA;
     ecdsa-p384              return tok::ECDSA;
+    ecdsa-p521              return tok::ECDSAP521;
 
 \-nonbooting                return tok::_NONBOOTING;
 \-spksignature              return tok::_SPKSIGNATURE;

@@ -23,12 +23,17 @@
 
 static uint32_t verbose;
 static uint32_t auto_align;
+static uint32_t add_offset;
 
 #define u32xe(v) (be ? u32be(v) : u32le(v))
 #define u32xe_lo(v) u32xe((uint32_t)(v))
 #define u32xe_hi(v) u32xe((uint32_t)(v >> 32))
 #define u32pair(hi, lo) (((uint64_t)(hi) << 32) | (lo))
 #define HDR_IDN_WRD		(0x584C4E58U)
+
+uint32_t* slr_sync_points;
+uint8_t num_of_sync_points = 0;
+uint8_t search_sync_points = 0;
 
 enum {
     /*General Commands */
@@ -90,6 +95,10 @@ enum {
     CMD2_LOG_STRING	 = 0x117U,
     CMD2_LOG_ADDRESS	 = 0x118U,
     CMD2_MARKER		 = 0x119U,
+    CMD2_PROC		 = 0x11aU,
+    CMD2_BLOCK_BEGIN	 = 0x11bU,
+    CMD2_BLOCK_END	 = 0x11cU,
+    CMD2_BREAK		 = 0x11dU,
 
     /* PM Commands */
     CMD2_PM_GET_API_VERSION	= 0x201U,
@@ -176,6 +185,10 @@ void cdobinary_set_auto_align(uint32_t enable) {
     auto_align = enable;
 }
 
+void cdobinary_set_add_offset(uint32_t enable) {
+    add_offset = enable;
+}
+
 static void byte_swap_buffer(uint32_t * p, uint32_t count, uint32_t be) {
     if (is_be_host() != be) {
         uint32_t i;
@@ -198,12 +211,18 @@ static uint32_t decode_v1(CdoSequence * seq, uint32_t * p, uint32_t l, uint32_t 
         if (verbose) {
             fprintf(stderr, "info: decoding section %#"PRIx32" len %"PRIu32" cmds %"PRIu32" at %"PRIu32"\n", secid, seclen, seccmds, i - 3);
         }
+        if (add_offset) {
+            cdocmd_add_comment(seq, "offset: %#"PRIx64, (uint64_t)i * 4);
+        }
         cdocmd_add_section(seq, secid);
         while (i < l && cmdno < seccmds) {
             uint32_t id = u32xe(p[i++]);
             uint32_t args = 0;
             if (verbose) {
                 fprintf(stderr, "info: decoding command %#"PRIx32" at %"PRIu32"\n", id, i - 1);
+            }
+            if (add_offset) {
+                cdocmd_add_comment(seq, "offset: %#"PRIx64, (uint64_t)i * 4);
             }
             switch (id) {
             case CMD1_MASK_POLL:
@@ -362,22 +381,16 @@ static uint32_t decode_v1(CdoSequence * seq, uint32_t * p, uint32_t l, uint32_t 
     return 0;
 }
 
-static uint32_t decode_v2(CdoSequence * seq, uint32_t * p, uint32_t l, uint32_t be) {
-    uint32_t hdrlen = u32xe(p[0]);
-    uint32_t len = u32xe(p[3]);
-    uint32_t total_len = hdrlen + 1 + len;
-    uint32_t i = hdrlen + 1;
+static uint32_t decode_v2_cmd(CdoSequence * seq, uint32_t * p, uint32_t * ip, uint32_t l, uint32_t be) {
+    uint32_t i = *ip;
     uint32_t cmdpos = 0;
     uint32_t hdr;
-    if (l < total_len) {
-        fprintf(stderr, "warning: incomplete CDO buffer %"PRIu32", expected %"PRIu32"\n", l, total_len);
-        total_len = l;
-    } else if (l > total_len) {
-        l = total_len;
-    }
     while (i < l) {
         uint32_t args;
         cmdpos = i;
+        if (add_offset) {
+            cdocmd_add_comment(seq, "offset: %#"PRIx64, (uint64_t)cmdpos * 4);
+        }
         hdr = u32xe(p[i++]);
         if (verbose) {
             fprintf(stderr, "info: decoding command %#"PRIx32" at %"PRIu32"\n", hdr, cmdpos);
@@ -387,13 +400,13 @@ static uint32_t decode_v2(CdoSequence * seq, uint32_t * p, uint32_t l, uint32_t 
             if (hdr == CMD2_END) goto found_end_marker;
             if (i >= l) {
                 fprintf(stderr, "incomplete CDO command %#"PRIx32" at %"PRIu32"\n", hdr, cmdpos);
-                return 1;
+                goto error;
             }
             args = u32xe(p[i++]);
         }
         if (l - i < args) {
             fprintf(stderr, "incomplete CDO command %#"PRIx32" at %"PRIu32"\n", hdr, cmdpos);
-            return 1;
+            goto error;
         }
         switch (hdr & 0xffff) {
         case CMD2_END_MARK:
@@ -517,6 +530,37 @@ static uint32_t decode_v2(CdoSequence * seq, uint32_t * p, uint32_t l, uint32_t 
             byte_swap_buffer(tmpbuf, args - 1, be);
             cdocmd_add_marker(seq, u32xe(p[i+0]), (char *)tmpbuf);
             free(tmpbuf);
+            break;
+        }
+        case CMD2_PROC: {
+            uint32_t i2 = i + 1;
+            if (args < 1) goto unexpected;
+            cdocmd_add_proc(seq, u32xe(p[i+0]));
+            if (decode_v2_cmd(seq, p, &i2, i2 + args - 1, be)) {
+                goto error;
+            }
+            cdocmd_add_end(seq);
+            break;
+        }
+        case CMD2_BLOCK_BEGIN: {
+            uint32_t * tmpbuf;
+            if (args < 1) goto unexpected;
+            tmpbuf = malloc(args * sizeof *tmpbuf);
+            memcpy(tmpbuf, &p[i+1], (args - 1) * sizeof *tmpbuf);
+            tmpbuf[args - 1] = 0;
+            byte_swap_buffer(tmpbuf, args - 1, be);
+            cdocmd_add_begin(seq, (char *)tmpbuf);
+            free(tmpbuf);
+            break;
+        }
+        case CMD2_BLOCK_END: {
+            if (args != 0) goto unexpected;
+            cdocmd_add_end(seq);
+            break;
+        }
+        case CMD2_BREAK: {
+            if (args > 1) goto unexpected;
+            cdocmd_add_break(seq, args > 0 ? u32xe(p[i+0]) : 1);
             break;
         }
         case CMD2_NPI_SEQ:
@@ -788,15 +832,37 @@ static uint32_t decode_v2(CdoSequence * seq, uint32_t * p, uint32_t l, uint32_t 
         }
         i += args;
     }
-    if (i < total_len) {
-        fprintf(stderr, "warning: mismatching CDO word count %"PRIu32", expected %"PRIu32"\n", i, total_len);
-    }
 found_end_marker:
+    *ip = i;
     return 0;
 
 unexpected:
     fprintf(stderr, "invalid payload size command %#"PRIx32" at %"PRIu32"\n", hdr, cmdpos);
+error:
+    *ip = i;
     return 1;
+}
+
+static uint32_t decode_v2(CdoSequence * seq, uint32_t * p, uint32_t l, uint32_t be) {
+    uint32_t hdrlen = u32xe(p[0]);
+    uint32_t len = u32xe(p[3]);
+    uint32_t total_len = hdrlen + 1 + len;
+    uint32_t i = hdrlen + 1;
+    if (l < total_len) {
+        fprintf(stderr, "warning: incomplete CDO buffer %"PRIu32", expected %"PRIu32"\n", l, total_len);
+        total_len = l;
+    } else if (l > total_len) {
+        l = total_len;
+    }
+
+    if (decode_v2_cmd(seq, p, &i, l, be)) {
+        return 1;
+    }
+
+    if (i < total_len) {
+        fprintf(stderr, "warning: mismatching CDO word count %"PRIu32", expected %"PRIu32"\n", i, total_len);
+    }
+    return 0;
 }
 
 static uint32_t checksum32(uint32_t * p, uint32_t l, uint32_t be) {
@@ -1161,15 +1227,31 @@ static void hdr2(uint32_t ** bufp, uint32_t * posp, uint32_t cmd, uint32_t len, 
     *posp = pos;
 }
 
-static void * encode_v2(CdoSequence * seq, size_t * sizep, uint32_t be) {
-    LINK * l = seq->cmds.next;
-    uint32_t hdrlen = 4;
-    uint32_t pos = hdrlen + 1;
+static LINK * find_block_end(LINK * l, LINK * lh) {
+    uint32_t level = 0;
+    while (l != lh) {
+        CdoCommand * cmd = all2cmds(l);
+        switch (cmd->type) {
+        case CdoCmdProc:
+        case CdoCmdBegin:
+            level++;
+            break;
+        case CdoCmdEnd:
+            if (level == 0) return l;
+            level--;
+            break;
+        default:
+            break;
+        }
+        l = l->next;
+    }
+    return lh;
+}
+
+static void * encode_v2_cmd(LINK * l, LINK * lh, uint32_t * posp, uint32_t be) {
+    uint32_t pos = *posp;
     uint32_t * p = grow_cdobuf(pos);
-    p[0] = u32xe(pos - 1);
-    p[1] = u32xe(0x004F4443);
-    p[2] = u32xe(seq->version);
-    while (l != &seq->cmds) {
+    while (l != lh) {
         CdoCommand * cmd = all2cmds(l);
         l = l->next;
         switch (cmd->type) {
@@ -1382,9 +1464,21 @@ static void * encode_v2(CdoSequence * seq, size_t * sizep, uint32_t be) {
             break;
         }
         case CdoCmdSsitSyncMaster:
+            if (search_sync_points)
+            {
+                num_of_sync_points++;
+                slr_sync_points = (uint32_t *)realloc(slr_sync_points, num_of_sync_points * sizeof(uint32_t));
+                memcpy(slr_sync_points + (num_of_sync_points - 1), &pos, 4);
+            }
             hdr2(&p, &pos, CMD2_SSIT_SYNC_MASTER, 0, be);
             break;
         case CdoCmdSsitSyncSlaves:
+            if (search_sync_points)
+            {
+                num_of_sync_points++;
+                slr_sync_points = (uint32_t *)realloc(slr_sync_points, num_of_sync_points * sizeof(uint32_t));
+                memcpy(slr_sync_points + (num_of_sync_points - 1), &pos, 4);
+            }
             hdr2(&p, &pos, CMD2_SSIT_SYNC_SLAVES, 2, be);
             p[pos++] = u32xe(cmd->mask);
             p[pos++] = u32xe(cmd->count);
@@ -1453,6 +1547,53 @@ static void * encode_v2(CdoSequence * seq, size_t * sizep, uint32_t be) {
             pos += count;
             break;
         }
+        case CdoCmdProc: {
+            uint32_t pos_save = pos;
+            uint32_t payload_start;
+            LINK * blockend = find_block_end(l, lh);
+            hdr2(&p, &pos, CMD2_PROC, 1, be);
+            payload_start = pos;
+            p[pos++] = u32xe(cmd->value);
+            p = encode_v2_cmd(l, blockend, &pos, be);
+            hdr2(&p, &pos_save, CMD2_PROC, pos - payload_start, be);
+            if (pos_save != payload_start) {
+                /* Header grew, regenerate payload */
+                pos = pos_save;
+                p[pos++] = u32xe(cmd->value);
+                p = encode_v2_cmd(l, blockend, &pos, be);
+            }
+            l = blockend;
+            if (l != lh) l = l->next;
+            break;
+        }
+        case CdoCmdBegin: {
+            uint32_t len = strlen((char *)cmd->buf);
+            uint32_t count = (len + 3)/4;
+            LINK * blockend = find_block_end(l, lh);
+            uint32_t payload_start;
+            hdr2(&p, &pos, CMD2_BLOCK_BEGIN, 1 + count, be);
+            payload_start = pos++;
+            memset(p + pos, 0, count*4);
+            memcpy(p + pos, cmd->buf, len);
+            byte_swap_buffer(p + pos, count, be);
+            pos += count;
+            p = encode_v2_cmd(l, blockend, &pos, be);
+            p[payload_start] = u32xe(pos - payload_start - 1);
+            l = blockend;
+            break;
+        }
+        case CdoCmdEnd:
+            hdr2(&p, &pos, CMD2_BLOCK_END, 0, be);
+            break;
+        case CdoCmdBreak:
+            if (cmd->value == 1) {
+                hdr2(&p, &pos, CMD2_BREAK, 0, be);
+            } else {
+                hdr2(&p, &pos, CMD2_BREAK, 1, be);
+                p[pos++] = u32xe(cmd->value);
+            }
+            break;
+
         case CdoCmdNpiSeq:
             hdr2(&p, &pos, CMD2_NPI_SEQ, 2, be);
             p[pos++] = u32xe_lo(cmd->dstaddr);
@@ -1801,6 +1942,19 @@ static void * encode_v2(CdoSequence * seq, size_t * sizep, uint32_t be) {
             break;
         }
     }
+    *posp = pos;
+    return p;
+}
+
+static void * encode_v2(CdoSequence * seq, size_t * sizep, uint32_t be) {
+    LINK * l = seq->cmds.next;
+    uint32_t hdrlen = 4;
+    uint32_t pos = hdrlen + 1;
+    uint32_t * p = grow_cdobuf(pos);
+    p[0] = u32xe(pos - 1);
+    p[1] = u32xe(0x004F4443);
+    p[2] = u32xe(seq->version);
+    p = encode_v2_cmd(l, &seq->cmds, &pos, be);
     p[3] = u32xe(pos - hdrlen - 1);
     p[4] = u32xe(checksum32(p, hdrlen, be));
     clear_cdobuf();
@@ -1820,4 +1974,21 @@ void * cdoseq_to_binary(CdoSequence * seq, size_t * sizep, uint32_t be) {
         return NULL;
     }
     return encode(seq, sizep, be);
+}
+void search_for_sync_points(void)
+{
+    num_of_sync_points = 0;
+    search_sync_points = 1;
+    slr_sync_points = NULL;
+}
+
+uint32_t* get_slr_sync_point_offsets(void)
+{
+    search_sync_points = 0;
+    return slr_sync_points;
+}
+
+size_t get_num_of_sync_points(void)
+{
+    return num_of_sync_points;
 }

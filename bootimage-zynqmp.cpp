@@ -257,7 +257,7 @@ void ZynqMpBootImage::ParseBootImage(PartitionBifOptions* it)
 
         image->SetAlignment(it->alignment);
         image->SetOffset(it->offset);
-        image->SetReserve(it->reserve);
+        image->SetReserve(it->reserve, it->updateReserveInPh);
         image->SetLoad(it->load);
         image->SetStartup(it->startup);
         image->SetUserPartitionNum(it->pid);
@@ -442,7 +442,7 @@ void ZynqMpBootImage::ParsePartitionDataToImage(BifOptions* bifoptions, Partitio
     image->SetBootloader(partitionBifOptions->bootloader);
     image->SetAlignment(partitionBifOptions->alignment);
     image->SetOffset(partitionBifOptions->offset);
-    image->SetReserve(partitionBifOptions->reserve);
+    image->SetReserve(partitionBifOptions->reserve, partitionBifOptions->updateReserveInPh);
     image->SetLoad(partitionBifOptions->load);
     image->SetStartup(partitionBifOptions->startup);
     image->SetUserPartitionNum(partitionBifOptions->pid);

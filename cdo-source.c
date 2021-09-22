@@ -67,6 +67,10 @@ struct command_info {
     { "log_string", CdoCmdLogString },
     { "log_address", CdoCmdLogAddress },
     { "marker", CdoCmdMarker },
+    { "proc", CdoCmdProc },
+    { "begin", CdoCmdBegin },
+    { "end", CdoCmdEnd },
+    { "break", CdoCmdBreak },
     { "npi_seq", CdoCmdNpiSeq },
     { "npi_precfg", CdoCmdNpiPreCfg },
     { "npi_write", CdoCmdNpiWrite },
@@ -249,6 +253,7 @@ CdoSequence * cdoseq_from_source(FILE * f) {
     uint32_t cap = 2;
     char * line = (char *)malloc(cap * sizeof *line);
     uint32_t first = 1;
+    uint32_t level = 0;
     for (;;) {
         char * s;
         char * p;
@@ -519,6 +524,37 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             if (parse_string(&s, &name)) goto syntax_error;
             cdocmd_add_marker(seq, value, name);
             free(name);
+            break;
+        }
+        case CdoCmdProc: {
+            uint32_t value;
+            if (parse_u32(&s, &value)) goto syntax_error;
+            cdocmd_add_proc(seq, value);
+            level++;
+            break;
+        }
+        case CdoCmdBegin: {
+            char * name;
+            if (parse_string(&s, &name)) goto syntax_error;
+            cdocmd_add_begin(seq, name);
+            free(name);
+            level++;
+            break;
+        }
+        case CdoCmdEnd: {
+            if (level == 0) goto syntax_error;
+            cdocmd_add_end(seq);
+            level--;
+            break;
+        }
+        case CdoCmdBreak: {
+            uint32_t value = 1;
+            skipsp(s);
+            if (istok(*s)) {
+                if (parse_u32(&s, &value)) goto syntax_error;
+                if (value < 1 || value > level) goto syntax_error;
+            }
+            cdocmd_add_break(seq, value);
             break;
         }
         case CdoCmdNpiSeq:
@@ -1033,6 +1069,10 @@ CdoSequence * cdoseq_from_source(FILE * f) {
         if (!iseol(&s)) goto syntax_error;
         first = 0;
     }
+    if (level > 0) {
+        fprintf(stderr, "missing one or more end statements\n");
+        goto error;
+    }
     free(line);
     return seq;
 
@@ -1078,11 +1118,14 @@ static void print_string(FILE * f, char * str) {
 
 void cdoseq_to_source(FILE * f, CdoSequence * seq) {
     LINK * l = seq->cmds.next;
+    uint32_t level = 0;
     fprintf(f, "version %"PRIu32".%"PRIu32"\n",
             seq->version >> 8, seq->version & (uint32_t)0xff);
     while (l != &seq->cmds) {
         CdoCommand * cmd = all2cmds(l);
         l = l->next;
+        if (level > 0 && cmd->type == CdoCmdEnd) level--;
+        fprintf(f, "%*s", level*2, "");
         switch (cmd->type) {
         case CdoCmdSection:
             fprintf(f, "section ");
@@ -1237,6 +1280,32 @@ void cdoseq_to_source(FILE * f, CdoSequence * seq) {
             print_x64(f, cmd->value);
             fprintf(f, " ");
             print_string(f, (char *)cmd->buf);
+            fprintf(f, "\n");
+            break;
+        case CdoCmdProc:
+            fprintf(f, "proc ");
+            print_x64(f, cmd->value);
+            fprintf(f, "\n");
+            level++;
+            break;
+        case CdoCmdBegin:
+            fprintf(f, "begin");
+            if (strlen(cmd->buf) != 0) {
+                fprintf(f, " ");
+                print_string(f, (char *)cmd->buf);
+            }
+            fprintf(f, "\n");
+            level++;
+            break;
+        case CdoCmdEnd:
+            fprintf(f, "end\n");
+            break;
+        case CdoCmdBreak:
+            fprintf(f, "break");
+            if (cmd->value != 1) {
+                fprintf(f, " ");
+                print_x64(f, cmd->value);
+            }
             fprintf(f, "\n");
             break;
         case CdoCmdNpiSeq:

@@ -428,7 +428,7 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
                 ImageHeader* image = new VersalImageHeader(src, (VersalImageHeaderStructure*)subsys->section->Data, IsBootloader, i);
                 image->SetAlignment(it->alignment);
                 image->SetOffset(it->offset);
-                image->SetReserve(it->reserve);
+                image->SetReserve(it->reserve, it->updateReserveInPh);
                 image->SetLoad(it->load);
                 image->SetStartup(it->startup);
                 image->SetPartitionRevocationId(it->GetRevokeId());
@@ -537,7 +537,7 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
 
             image->SetAlignment(it->alignment);
             image->SetOffset(it->offset);
-            image->SetReserve(it->reserve);
+            image->SetReserve(it->reserve, it->updateReserveInPh);
             image->SetLoad(it->load);
             image->SetStartup(it->startup);
             image->SetPartitionRevocationId(it->GetRevokeId());
@@ -783,7 +783,7 @@ ImageHeader* VersalBootImage::ParsePartitionDataToImage(BifOptions * bifoptions,
     image->SetBootloader(partitionBifOptions->bootloader);
     image->SetAlignment(partitionBifOptions->alignment);
     image->SetOffset(partitionBifOptions->offset);
-    image->SetReserve(partitionBifOptions->reserve);
+    image->SetReserve(partitionBifOptions->reserve, partitionBifOptions->updateReserveInPh);
     image->SetLoad(partitionBifOptions->load);
     image->SetStartup(partitionBifOptions->startup);
 
@@ -1302,18 +1302,17 @@ void VersalBootImage::Add(BifOptions* bifoptions)
             }
         }
     }
-
     LOG_INFO("Parsing Partition Data to Image");
+
     if (bifoptions->imageBifOptionList.size() == 0)
     {
+        if (bifoptions->partitionBifOptionList.size() != 0)
+        {
+            LOG_ERROR("Legacy BIF format detected. Please update to Versal BIF format. Refer UG1283 for more details.");
+        }
+
         for (std::list<PartitionBifOptions*>::iterator itr = bifoptions->partitionBifOptionList.begin(); itr != bifoptions->partitionBifOptionList.end(); itr++)
         {
-            static bool warningGiven = false;
-            if (!warningGiven)
-            {
-                LOG_WARNING("Legacy BIF format detected. The output PDI may not boot.\n\t   Please update to Versal BIF format. Refer UG1283 for more details.");
-                warningGiven = true;
-            }
             if ((*itr)->bootImage)
             {
                 ParseBootImage((*itr));

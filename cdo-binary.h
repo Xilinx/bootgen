@@ -19,10 +19,13 @@
 
 #include "cdo-command.h"
 
-void cdobinary_set_verbose(uint32_t verbose);
-void cdobinary_set_auto_align(uint32_t enable);
-CdoSequence * decode_cdo_binary(const void * data, size_t len);
-void * cdoseq_to_binary(CdoSequence * seq, size_t * sizep, uint32_t be);
-int is_cdo_data(void * data, size_t size);
-
+CDOUTIL_EXPORT void cdobinary_set_verbose(uint32_t verbose);
+CDOUTIL_EXPORT void cdobinary_set_auto_align(uint32_t enable);
+CDOUTIL_EXPORT void cdobinary_set_add_offset(uint32_t enable);
+CDOUTIL_EXPORT CdoSequence * decode_cdo_binary(const void * data, size_t len);
+CDOUTIL_EXPORT void * cdoseq_to_binary(CdoSequence * seq, size_t * sizep, uint32_t be);
+CDOUTIL_EXPORT int is_cdo_data(void * data, size_t size);
+CDOUTIL_EXPORT uint32_t*  get_slr_sync_point_offsets(void);
+CDOUTIL_EXPORT void search_for_sync_points(void);
+CDOUTIL_EXPORT size_t get_num_of_sync_points(void);
 #endif /* D_cdo_binary */

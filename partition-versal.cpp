@@ -105,7 +105,6 @@ size_t VersalPartition::GetTotalDataChunks(Binary::Length_t partitionSize, std::
     {
         dataChunks.push_back(GetSecureChunkSize());
     }
-    
 
     for (uint32_t itr = 0; itr < dataChunksCount - 1; itr++)
     {
@@ -134,7 +133,7 @@ size_t VersalPartition::GetTotalDataChunks(Binary::Length_t partitionSize, std::
 }
 
 /******************************************************************************/
-void VersalPartition::ChunkifyAndHash( Section* section, bool encryptionFlag)
+void VersalPartition::ChunkifyAndHash(Section* section, bool encryptionFlag)
 {
     std::vector<uint32_t> dataChunks;
     std::vector<uint8_t*> data;
@@ -178,7 +177,7 @@ void VersalPartition::ChunkifyAndHash( Section* section, bool encryptionFlag)
     /* Calculate hash */
     uint8_t* shaHash;
     shaHash = new uint8_t[SHA3_LENGTH_BYTES];
-    Versalcrypto_hash(shaHash, newDataPtr, dataChunks[0], !section->isBootloader);
+    Versalcrypto_hash(shaHash, newDataPtr, dataChunks[0], true);
     /*-------------------------------CHUNK N------------------------------------*/
 
     for (int i = 2; i <= itr; i += 2)
@@ -202,7 +201,7 @@ void VersalPartition::ChunkifyAndHash( Section* section, bool encryptionFlag)
 
         /* Calculate hash */
         shaHash = new uint8_t[SHA3_LENGTH_BYTES];
-        Versalcrypto_hash(shaHash, newDataPtr, dataChunks[i] + dataChunks[i - 1], !section->isBootloader);
+        Versalcrypto_hash(shaHash, newDataPtr, dataChunks[i] + dataChunks[i - 1], true);
     }
 
     /*-------------------------------CHUNK 1------------------------------------*/
@@ -232,7 +231,7 @@ void VersalPartition::ChunkifyAndHash( Section* section, bool encryptionFlag)
     section->Data = newDataPtr;
     section->Length = newLength;
 
-    LOG_TRACE("First Authentication Data Chunk Size %d", firstChunkSize);
+    LOG_TRACE("First Authentication Data Chunk Size 0x%X", firstChunkSize);
 }
 
 /******************************************************************************/

@@ -53,22 +53,25 @@ void EncryptionContext::GenerateEncryptionKeyFile(const std::string & baseFileNa
     }
     GenerateAesSeed();
 
-    if (GetAesLabel() == NULL)
+    if (GetFixedInputData() == NULL)
     {
-        aesLabel = new uint8_t[aesLabelBytes];
+        fixedInputData = new uint32_t[WORDS_PER_FID];
     }
-    RAND_bytes(aesLabel, aesLabelBytes);
-
-    if (GetAesContext() == NULL)
-    {
-        aesContext = new uint8_t[aesContextBytes];
-    }
-    RAND_bytes(aesContext, aesContextBytes);
+    GenerateAesFixedInputData();
 
     bool useOptionalKey = options.bifOptions->GetAesOptKeyFlag();
 
     /* The extra 1 Key pair is for Secure Header */
-    CounterModeKDF(options.bifOptions->GetEncryptionBlocksList().size() + useOptionalKey + 1, baseFileName, options.GetEncryptionDumpFlag());
+
+    uint32_t outBufBytes = (options.bifOptions->GetEncryptionBlocksList().size() + useOptionalKey + 1) * (AES_GCM_KEY_SZ + AES_GCM_IV_SZ);
+    outBufKDF = new uint32_t[outBufBytes];
+
+    SetKdfLogFile(options.GetEncryptionDumpFlag());
+    uint32_t ret = kdf->CounterModeKDF(aesSeed, fixedInputData, fixedInputDataByteLength, outBufKDF, outBufBytes);
+    if (ret != 0)
+    {
+        LOG_ERROR("Error generating encryption keys from Counter Mode KDF.");
+    }
 
     WriteEncryptionKeyFile(baseFileName, useOptionalKey, options.bifOptions->GetEncryptionBlocksList().size() + 1);
 }
@@ -218,8 +221,56 @@ void EncryptionContext::GenerateAesSeed(void)
     uint8_t seed[BYTES_PER_AES_KEY];
     RAND_bytes(seed, WORDS_PER_AES_KEY * sizeof(uint32_t));
     SetAesSeed(seed);
-    LOG_WARNING("Seed needed for KDF is generated using RAND_Bytes. To have a secure keying material, we encourage the users to provide the Seed. \n\t   Refer to UG1283 for more details");
-    LOG_INFO("AES Seed generated successfully");
+
+    static bool warningGiven = false;
+    if (!warningGiven)
+    {
+        LOG_WARNING("Seed needed for KDF is generated using RAND_Bytes. To have a secure keying material, we encourage the users to provide the Seed. \n\t   Refer to UG1283 for more details");
+        warningGiven = true;
+    }
+}
+
+/******************************************************************************/
+void EncryptionContext::SetAesFixedInputData(const uint8_t* key, uint32_t bytes)
+{
+    fixedInputData = new uint32_t[bytes/4];
+    fixedInputDataByteLength = bytes;
+
+    for (uint32_t index = 0; index < bytes/4; index++)
+    {
+        fixedInputData[index] = ReadBigEndian32(key);
+        key += sizeof(uint32_t);
+    }
+}
+
+/******************************************************************************/
+void EncryptionContext::SetAesFixedInputDataString(const std::string& key)
+{
+    if (key.size() / 2 != 60)
+    {
+        LOG_DEBUG(DEBUG_STAMP, "Fixed Input Data size - %d", key.size() / 2);
+        LOG_ERROR("An AES Fixed Input Data must be 60 Bytes long - %s", key.c_str());
+    }
+
+    uint8_t* hexData = new uint8_t[key.size()];
+    PackHex(key, hexData);
+    SetAesFixedInputData(hexData, key.size() / 2);
+    delete[] hexData;
+}
+
+/******************************************************************************/
+void EncryptionContext::GenerateAesFixedInputData(void)
+{
+    uint8_t fixedInputData[BYTES_PER_FID];
+    RAND_bytes(fixedInputData, BYTES_PER_FID);
+    SetAesFixedInputData(fixedInputData, BYTES_PER_FID);
+
+    static bool warningGiven = false;
+    if (!warningGiven)
+    {
+        LOG_WARNING("Fixed Input Data needed for KDF is generated using RAND_Bytes. To have a secure keying material, we encourage the users to provide the Fixed Input Data. \n\t   Refer to UG1283 for more details");
+        warningGiven = true;
+    }
 }
 
 /******************************************************************************/
@@ -251,6 +302,21 @@ static uint32_t GetRandomValue(uint32_t	maxValue)
     } while (returnValue > maxValue);
 
     return returnValue;
+}
+
+/******************************************************************************/
+void EncryptionContext::SetKdfLogFile(bool encrdump)
+{
+    if (encrdump)
+    {
+        static bool kdfLogInit = false;
+        if (!kdfLogInit)
+        {
+            kdfLogInit = true;
+            std::ofstream remove("kdf_log.txt");
+            kdf->SetKdfLogFilename("kdf_log.txt");
+        }
+    }
 }
 
 /******************************************************************************/

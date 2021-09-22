@@ -106,7 +106,7 @@ ImageBifOptions* currentImageBifOptions;
 %token                  PARTITION_OWNER PARTITION_TYPE PARTITION_NUM
 %token                  BOOT_DEVICE DEST_DEVICE DEST_CPU ADDRESS
 %token                  EXCEPTION_LEVEL TRUSTZONE 
-%token                  ALIGNMENT OFFSET RESERVE LOAD STARTUP BIGENDIAN A32_MODE
+%token                  ALIGNMENT OFFSET RESERVE_LEGACY RESERVE LOAD STARTUP BIGENDIAN A32_MODE
 %token                  PPK_SELECT SPK_ID SPK_SELECT HEADER_AUTH REVOKE_ID
 %token                  SPLIT_MODE SPLIT_FMT
 %token                  BOOT USER STATIC NOAUTOSTART MULTIBOOT PROTECTED  
@@ -568,7 +568,8 @@ exception_level_type    :   EXCEPTION_LEVEL_TYPE
 
 numattr                 :   ALIGNMENT EQUAL expression                          { currentPartitionBifOptions->alignment = $3; }
                         |   OFFSET EQUAL expression                             { currentPartitionBifOptions->offset = $3; }
-                        |   RESERVE EQUAL expression                            { currentPartitionBifOptions->reserve = $3; }
+                        |   RESERVE_LEGACY EQUAL expression                     { currentPartitionBifOptions->SetReserveLength($3, false); }
+                        |   RESERVE EQUAL expression                            { currentPartitionBifOptions->SetReserveLength($3, true); }
                         |   LOAD EQUAL expression                               { currentPartitionBifOptions->load = $3; }
                         |   STARTUP EQUAL expression                            { currentPartitionBifOptions->startup = $3; }
                         |   BIGENDIAN                                           { currentPartitionBifOptions->bigEndian = true; }

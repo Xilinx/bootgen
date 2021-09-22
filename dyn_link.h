@@ -1,6 +1,6 @@
 // 67d7842dbbe25473c3c32b93c0da8047785f30d78e8a024de1b57352245f9689
 /******************************************************************************
-* Copyright 2019-2021 Xilinx, Inc.
+* Copyright 2019-2020 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -15,14 +15,18 @@
 * limitations under the License.
 ******************************************************************************/
 
-#ifndef D_cdo_alloc
-#define D_cdo_alloc
+#ifndef D_cdo_dyn_link
+#define D_cdo_dyn_link
 
-#include "dyn_link.h"
+#ifdef _MSC_VER
+# define CDOUTIL_EXPORT __declspec(dllexport)
+#endif
+#ifdef __GNUC__
+# define CDOUTIL_EXPORT __attribute__ ((visibility("default")))
+#endif
 
-CDOUTIL_EXPORT void * myalloc(size_t len);
-CDOUTIL_EXPORT void * myalloc_zero(size_t len);
-CDOUTIL_EXPORT void * myrealloc(void * p, size_t len);
-CDOUTIL_EXPORT void myfree(void * p);
+#ifndef CDOUTIL_EXPORT
+# define CDOUTIL_EXPORT
+#endif
 
-#endif /* D_cdo_alloc */
+#endif /* D_cdo_dyn_link */

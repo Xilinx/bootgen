@@ -29,6 +29,8 @@
 #include <vector>
 #include <string>
 
+#include "kdf.h"
+
 #include "bootgenenum.h"
 #include "options.h"
 
@@ -46,6 +48,9 @@ class BootImage;
 #define WORDS_PER_AES_BLOCK                 4
 #define WORDS_PER_AES_KEY                   8
 #define BYTES_PER_AES_KEY                   32
+
+#define BYTES_PER_FID                       60
+#define WORDS_PER_FID                       15
 
 #define ENCRYPTION_ENABLE                   0x00000040
 #define EFUSE_KEY_SOURCE                    0x80000000
@@ -86,27 +91,29 @@ public:
         , aesOptKey(NULL)
         , aesIv(NULL)
         , aesSeed(NULL)
-        , aesContext(NULL)
-        , aesLabel(NULL)
-        , aesContextBytes(6)
-        , aesLabelBytes(32)
         , outBufKDF(NULL)
-        , koLength(0)
-        , kI(NULL)
         , fixedInputDataByteLength(0)
         , fixedInputData(NULL)
         , fixedInputDataExits(false)
-        , verifyKo(NULL)
-        , Ko(NULL)
-    { };
+    {
+        kdf = new Kdf();
+        LOG_TRACE("KDF Version : 0x%X", kdf->GetVersion());
+    };
 
-    virtual ~EncryptionContext() { };
+    virtual ~EncryptionContext()
+    {
+        if(kdf)
+        {
+            delete kdf;
+        }
+    };
 
     virtual Encryption::Type Type() 
     {
         return Encryption::None;
     }
     virtual void Process(BootImage& bi, PartitionHeader* partition) {};
+    virtual void Process(BootImage & bi, PartitionHeader * partHdr, bool chunkbootloader) {};
     virtual void Process(BootImage& bi) {};
     virtual void WriteEncryptionKeyFile(const std::string& baseFileName, bool useOptionalKey, uint32_t blocks) {};
     virtual void ReadEncryptionKeyFile(const std::string& keyFileName) {};
@@ -115,7 +122,7 @@ public:
     virtual void SetAesKey(const uint8_t* binarykey) {};
     virtual void ReadBhIv(uint8_t* bhIv) {};
     virtual void GenerateGreyKey() {};
-
+    virtual void GenerateRemainingKeys() {};
     void SetAesFileName(std::string);
     void SetMetalKeyFile(std::string file);
     void SetBHKekIVFile(std::string file);
@@ -129,6 +136,7 @@ public:
     void SetAesKeyString(const std::string& ASCIIkey);
     std::string ConvertKeyIvToString(uint8_t *keyIv, uint8_t size);
 
+    void SetKdfLogFile(bool encrdump);
     void GetRandomData(uint8_t* randomData, uint32_t randomDatabyteLength);
     uint32_t static GetTotalEncryptionBlocks(Binary::Length_t partitionSize, std::vector<uint32_t> encrBlocks, uint32_t defEncrBlockSize, Binary::Length_t * lastBlock);
 
@@ -144,22 +152,18 @@ public:
     std::string GetEfuseUserKek0IVFile(void);
     std::string GetEfuseUserKek1IVFile(void);
 
-    void CounterModeKDF(uint32_t blocks, std::string filename, bool dump);
-    void ParseKDFTestVectorFile(std::string filename);
-    void CAVPonCounterModeKDF(std::string filename);
-    void KDF(uint32_t blocks, std::string keyFilename, bool encrDump);
-
     virtual void SetAesSeed(const uint8_t * key) {};
     void GenerateAesSeed(void);
     virtual const uint32_t* GetAesSeed(void) { return NULL; };
 
-    virtual void SetAesLabel(const uint8_t * key, int bytes) {};
-    virtual const uint8_t* GetAesLabel(void) { return NULL; };
-
-    virtual void SetAesContext(const uint8_t * key, int bytes) {};
-    virtual const uint8_t* GetAesContext(void) { return NULL; };
+    void SetAesFixedInputDataString(const std::string & key);
+    void SetAesFixedInputData(const uint8_t * key, uint32_t bytes);
+    void GenerateAesFixedInputData(void);
+    uint32_t* GetFixedInputData(void) { return fixedInputData; };
 
     std::string aesFilename;
+    Kdf* kdf;
+
 protected:
     uint32_t* aesKey;
     uint32_t* aesOptKey;
@@ -167,11 +171,9 @@ protected:
     std::vector<std::string> aesKeyVec;
     std::vector<std::string> aesIvVec;
     uint32_t* aesSeed;
-    uint8_t* aesContext;
-    uint8_t* aesLabel;
     uint32_t* outBufKDF;
-    int aesContextBytes;
-    int aesLabelBytes;
+    uint32_t* fixedInputData;
+    uint32_t fixedInputDataByteLength;
     std::string deviceName;
     std::string metalFile;
     std::string bhKekIVFile;
@@ -179,14 +181,7 @@ protected:
     std::string efuseKekIVFile;
     std::string efuseUserKek0IVFile;
     std::string efuseUserKek1IVFile;
-
-    uint32_t koLength;
-    uint8_t* Ko;
-    uint8_t* kI;
-    uint32_t fixedInputDataByteLength;
-    uint8_t* fixedInputData;
     bool fixedInputDataExits;
-    uint8_t* verifyKo;
 };
 
 /******************************************************************************/
@@ -196,7 +191,7 @@ public:
     Encryption::Type Type()
     {
         return Encryption::None;
-    }    
+    }
 };
 
 /******************************************************************************/

@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2021 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -173,10 +173,9 @@ public:
     void SetNextPartitionHeaderOffset(uint32_t addr);
     void SetPartitionRevokeId(uint32_t id);
 
-	KeySource::Type GetPartitionKeySource(void);
-
-	uint8_t GetEncryptFlag(void);
-	uint8_t GetAuthCertFlag(void);
+    KeySource::Type GetPartitionKeySource(void);
+    uint8_t GetEncryptFlag(void);
+    uint8_t GetAuthCertFlag(void);
 
     bool IsBootloader(void) { return isBootloader; }
     bool IsPmcdata(void) { return isPmcdata; }
@@ -199,8 +198,8 @@ public:
     uint32_t GetPartitionWordOffset(void);
     uint32_t GetPartitionPadSize64bBoundary(Section*);
     PartitionType::Type GetPartitionType(void);
-	DpaCM::Type GetDpaCMFlag(void);
-	PufHdLoc::Type GetPufHdLocation(void);
+    DpaCM::Type GetDpaCMFlag(void);
+    PufHdLoc::Type GetPufHdLocation(void);
     uint32_t GetPartitionUid(void);
     uint64_t GetLQspiExecAddrForXip(uint64_t addr);
     uint32_t GetSectionCount(void);

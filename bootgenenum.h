@@ -277,6 +277,7 @@ struct GenAuthKeys
         PEM,
         RSA,
         ECDSA,
+        ECDSAP521,
     }Type;
 };
 
@@ -433,6 +434,7 @@ struct DumpOption
         PMC_CDO,
         BOOT_FILES,
         PARTITIONS,
+        SLAVE_PDIS,
     } Type;
 };
 #endif

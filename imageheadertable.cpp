@@ -200,6 +200,7 @@ ImageHeader::ImageHeader(std::string& filename)
     , authType(Authentication::None)
     , bigEndian(false)
     , a32Mode(false)
+    , updateReserveInPh(false)
     , keySrc(KeySource::None)
     , partitionType(PartitionType::RESERVED)
     , partitionRevokeId(0)
@@ -267,6 +268,7 @@ ImageHeader::ImageHeader(std::ifstream& ifs)
     , authType(Authentication::None)
     , bigEndian(false)
     , a32Mode(false)
+    , updateReserveInPh(false)
     , keySrc(KeySource::None)
     , partitionType(PartitionType::RESERVED)
     , partitionRevokeId(0)
@@ -334,6 +336,7 @@ ImageHeader::ImageHeader(uint8_t* data, uint64_t len)
     , defEncrBlockSize(0)
     , bigEndian(false)
     , a32Mode(false)
+    , updateReserveInPh(false)
     , keySrc(KeySource::None)
     , partitionType(PartitionType::RESERVED)
     , partitionRevokeId(0)
@@ -373,7 +376,7 @@ void ImageHeader::ImportElf(BootImage& bi)
 
     /* Check for no. of executable sections & non-zero size LOAD sections */
     uint8_t exec_count = 0;
-    uint8_t non_zero_count = 0;
+    non_zero_elf_sec_count = 0;
 
     for (uint8_t iprog = 0; iprog < elf->programHdrEntryCount; iprog++)
     {
@@ -383,10 +386,10 @@ void ImageHeader::ImportElf(BootImage& bi)
         }
         if ((elf->GetProgramHeaderFileSize(iprog) > 0) && (elf->GetProgramHeaderType(iprog) == xPT_LOAD))
         {
-            non_zero_count++;
+            non_zero_elf_sec_count++;
         }
     }
-    if (non_zero_count == 0)
+    if (non_zero_elf_sec_count == 0)
     {
         LOG_ERROR("No non-empty program sections in %s", Filename.c_str());
     }

@@ -174,6 +174,10 @@ void VersalBinary::StackAndAlign(Options& options)
             section.Address = runningAddress;
             unalignedRunningAddress = section.Address + section.Length;
             runningAddress = (unalignedRunningAddress + (options.GetDefaultAlignment() - 1)) & ~(options.GetDefaultAlignment() - 1);
+            if (section.Reserve != 0)
+            {
+                runningAddress = section.Address + section.Length;
+            }
         }
     }
 
@@ -190,6 +194,10 @@ void VersalBinary::StackAndAlign(Options& options)
 
             unalignedRunningAddress = section.Address + section.Length;
             runningAddress = (unalignedRunningAddress + (options.GetDefaultAlignment() - 1)) & ~(options.GetDefaultAlignment() - 1);
+            if (section.Reserve != 0)
+            {
+                runningAddress = section.Address + section.Reserve;
+            }
         }
     }
     TotalSize = runningAddress;

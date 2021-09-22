@@ -201,7 +201,7 @@ void VersalReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
             }
         }
 
-        offset = iHT->firstPartitionHeaderWordOffset * 4;
+        offset = (iHT->firstImageHeaderWordOffset * 4) + (sizeof(VersalImageHeaderStructure) * iHT->imageTotalCount);
         for (index = 0; index < iHT->partitionTotalCount; index++)
         {
             pHT = new VersalPartitionHeaderTableStructure;
@@ -949,7 +949,7 @@ void VersalReadImage::DisplayPhtAttributes(uint32_t value)
         default: val = "[invalid]";      break;
     }
     val1 = val;
-    switch ((value >> vihtPufHDLocationShift) & vihtPufHDLocationMask)
+    switch ((value >> vphtPufHDLocationShift) & vphtPufHDLocationMask)
     {
         case 0: val = "[efuse]";        break;
         case 3: val = "[bh]";           break;

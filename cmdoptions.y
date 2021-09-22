@@ -69,12 +69,12 @@ void ShowCommonHelp(int,bool);
 %token _IMAGE _FILL _O_TOK I _H _DEBUG_TOK _LEGACY _NONBOOTING _PACKAGENAME _BIF_HELP
 %token _LOG ERROR WARNING INFO DEBUG TRACE
 %token _SPLIT _PROCESS_BITSTREAM MCS BIN
-%token _DUMP DUMP_PLM DUMP_PMC_CDO DUMP_BOOT_FILES _DUMP_DIR
+%token _DUMP DUMP_PLM DUMP_PMC_CDO DUMP_BOOT_FILES _DUMP_DIR DUMP_SLAVE_PDIS
 %token _ARCH ZYNQ ZYNQMP VERSAL _R FPGA
 %token _DUAL_QSPI_MODE _DUAL_OSPI_MODE PARALLEL STACKED
 %token _W ON OFF
 %token _NOAUTHBLOCKS _ZYNQMPES1 _OVERLAYCDO
-%token _EFUSEPPKBITS _GENERATE_HASHES _PADIMAGEHEADER _SPKSIGNATURE _GENERATE_KEYS PEM RSA AUTH GREY METAL
+%token _EFUSEPPKBITS _GENERATE_HASHES _PADIMAGEHEADER _SPKSIGNATURE _GENERATE_KEYS PEM RSA ECDSAP521 AUTH GREY METAL
 %token _SECUREDEBUG ECDSA _AUTHJTAG
 %token _ENCRYPT BBRAM EFUSE _P_TOK
 %token _INTERFACE SMAPx8 SMAPx16 SMAPx32 SPI BPIx8 BPIx16
@@ -315,6 +315,8 @@ key_type        : AUTH  auth_key_options
                 | METAL                             { options.SetMetalKeyGeneration(true); }
                 | PEM                               { options.SetAuthKeyGeneration(GenAuthKeys::PEM); }
                 | RSA                               { options.SetAuthKeyGeneration(GenAuthKeys::RSA); }
+                | ECDSA                             { options.SetAuthKeyGeneration(GenAuthKeys::ECDSA); }
+                | ECDSAP521                         { options.SetAuthKeyGeneration(GenAuthKeys::ECDSAP521); }
                 ;
 
 auth_key_options: PEM                               { options.SetAuthKeyGeneration(GenAuthKeys::PEM); }
@@ -363,6 +365,7 @@ dumpOptions     : READ_BH                           { options.SetDumpOption(Dump
                                                       options.SetDumpOption(DumpOption::PMC_CDO); }
                 | filename DUMP_BOOT_FILES          { options.SetReadImageFile($1);
                                                       options.SetDumpOption(DumpOption::BOOT_FILES); }
+                | DUMP_SLAVE_PDIS                   { options.SetDumpOption(DumpOption::SLAVE_PDIS); }
                 ;
 
 encrDumpOptions : /* empty */                       { options.SetEncryptionDump(true,"aes_log.txt"); }

@@ -35,11 +35,7 @@
 #include "encryptutils.h"
 #include "fileutils.h"
 #include "stringutils.h"
-#include "bootgenexception.h"
 #include "systemutils.h"
-#include "encryption.h"
-#include "options.h"
-#include "bifoptions.h"
 
 
 static const uint8_t reverse8BitValueTable[256] =

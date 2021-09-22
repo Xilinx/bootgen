@@ -124,3 +124,43 @@ void cdoseq_extract_writes(CdoSequence * seq) {
         }
     }
 }
+
+/******************************************************************************/
+CdoSequence* cdoseq_extract_cdo_till_ssit_sync_slaves(CdoSequence * seq, uint32_t sync_index)
+{
+    CdoSequence* temp_seq = seq;
+
+    LINK * l = temp_seq->cmds.next;
+    uint32_t num_sync_slave_cmds = 0;
+    uint8_t stop = 0;
+    uint8_t start = 0;
+    if (num_sync_slave_cmds == sync_index - 1)
+    {
+        start = 1;
+    }
+    while (l != &temp_seq->cmds)
+    {
+        CdoCommand * cmd = all2cmds(l);
+        l = l->next;
+        if ((cmd->type == CdoCmdSsitSyncSlaves) && (stop == 0))
+        {
+            num_sync_slave_cmds++;
+            if ((num_sync_slave_cmds == sync_index - 1) && (start == 0))
+            {
+                start = 1;
+                cdocmd_free(cmd);
+                continue;
+            }
+            if (num_sync_slave_cmds == sync_index)
+            {
+                stop = 1;
+                continue;
+            }
+        }
+        if ((start == 0) || (stop == 1))
+        {
+            cdocmd_free(cmd);
+        }
+    }
+    return temp_seq;
+}
