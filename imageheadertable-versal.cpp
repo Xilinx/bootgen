@@ -3419,6 +3419,12 @@ void VersalImageHeader::ParseSlrConfigFiles(size_t* slr_total_file_size)
             memcpy((*slr_info)->data, cdoCmd, CDO_CMD_NOP_SIZE);
             memset((*slr_info)->data + CDO_CMD_NOP_SIZE, 0, sizeof(VersalCdoHeader) - CDO_CMD_NOP_SIZE);
             delete syncpt_offsets;
+
+            /* Add the size to accomodate the NOPs added at the start of each master chunk
+               Since the master chunks are read using the cdoseq_to_binary, each chunk comes with a CDO header
+               This CDO header is replaced with NOPs to not disturb the alignments of the rest of the commands in CDO
+               No. of CDO headers replaced is equal to the number of master chunks which is equal to the number of sync points */
+            (*slr_info)->size += ((num_of_sync_points) * sizeof(VersalCdoHeader));
         }
         else
         {
