@@ -15,7 +15,7 @@
 ******************************************************************************/
 
 #ifndef RDI_VERSION
-#define RDI_VERSION "2021.2"
+#define RDI_VERSION "2022.1"
 #endif
 
 #define PROGRAMNAME     "Xilinx Bootgen"
