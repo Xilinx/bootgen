@@ -29,7 +29,7 @@
 
 #undef yyFlexLexer
 #define yyFlexLexer reginitFlexLexer
-#include <FlexLexer.h>
+#include "FlexLexer.h"
 #endif
 
 // Override the interface for yylex since we namespaced it
