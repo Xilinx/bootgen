@@ -1,6 +1,6 @@
 // 67d7842dbbe25473c3c32b93c0da8047785f30d78e8a024de1b57352245f9689
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -53,6 +53,7 @@
 #define KDF_CAVP_KI_LENGTH_IMPROPER     0x00010003
 #define KDF_CAVP_HEXKEY_IMPROPER        0x00010004
 #define KDF_CAVP_VERIFY_KO_FAILED       0x00010005
+#define KDF_CAVP_FID_LENGTH_IMPROPER    0x00010006
 
 /********************************************************************************/
 class Kdf

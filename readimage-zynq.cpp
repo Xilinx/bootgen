@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -84,6 +84,10 @@ void ZynqReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
         if (result != sizeof(ZynqImageHeaderTableStructure))
         {
             LOG_ERROR("Error reading Image header table");
+        }
+        if (!((iHT->partitionTotalCount > 0) && (iHT->partitionTotalCount < 0xFF)))
+        {
+            LOG_ERROR("Number of partitions read is more than number of supported partiiton count.");
         }
     }
     else

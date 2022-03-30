@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -350,7 +350,7 @@ void ZynqMpBootHeader::AddAcSizeToTotalFsblSize(BootImage & bi)
         {
             /* The AC should be appended to a 64-byte aligned FSBL + PMU partition
             So find the pad length required for alignment and then add AC size */
-            uint32_t padLength = (64 - (((bHTable->totalFsblLength + bHTable->totalPmuFwLength) & 63) & 63));
+            uint32_t padLength = ((64 - ((bHTable->totalFsblLength + bHTable->totalPmuFwLength) & 63)) & 63);
             bHTable->totalFsblLength += (bi.headerAC->section->Length + padLength);
             SetHeaderChecksum();
         }

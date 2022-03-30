@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -405,7 +405,10 @@ struct PartitionType
         REG_INIT,
         BOOTLOADER,
         SLR_BOOT,
-        SLR_CONFIG
+        SLR_CONFIG,
+        SLR_SLAVE,
+        SLR_SLAVE_BOOT,
+        SLR_SLAVE_CONFIG
     } Type;
 };
 
@@ -414,6 +417,7 @@ struct ReadImageOption
 {
     typedef enum
     {
+        NONE,
         ALL,
         BH,
         IHT,

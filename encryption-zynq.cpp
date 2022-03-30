@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -897,7 +897,7 @@ void ZynqEncryptionContext::ReadEncryptionKeyFile(const std::string& inputFileNa
             break;
         }
 
-        char c;
+        char c = ' ';
         if (word == "Key")
         {
             // First Word is "Key"

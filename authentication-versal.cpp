@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -1437,7 +1437,7 @@ void static SetDeviceDNA(const uint8_t* dnaValue, uint32_t* deviceDNA)
 {
     for (uint32_t index = 0; index < WORDS_PER_DEVICE_DNA; index++)
     {
-        deviceDNA[index] = ReadBigEndian32(dnaValue);
+        deviceDNA[WORDS_PER_DEVICE_DNA - (index+1)] = ReadBigEndian32(dnaValue);
         dnaValue += sizeof(uint32_t);
     }
 }

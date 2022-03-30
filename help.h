@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -503,6 +503,30 @@ o
  EXPLANATION | The output image is generated with name boot.mcs               |\n\
              | The format of the output image is decided based on the file    |\n\
              | extension of the file given with '-o' option                   |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+ overlay_cdo
+******************************************************************************/
+#define OVERLAYCDO "\
+-------------+----------------------------------------------------------------+\n\
+ OPTION      | overlay_cdo                                                    |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | versal                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION |  CDO overlay option provides a way to modify CDO files         |\n\
+             |  after they are generated.                                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ SYNOPSIS    | -overlay_cdo <filename>                                        |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | bootgen -arch versal -image test.bif                           |\n\
+             |   -o test.bin -overlay_cdo ovl.cdo                             |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | The input file used with overlay_cdo command would have markers|\n\
+             | and content which needs to be overlayed.                       |\n\
+             | Bootgen searches for similar markers in all the cdo files      |\n\
+             | present inside BIF, when found the content in that cdo will be |\n\
+             | replaced with the content from overlay cdo.                    |\n\
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************

@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -28,12 +28,6 @@
 #include "authentication-zynq.h"
 #include "authentication-zynqmp.h"
 
-/* TCM address for R5 */
-#define R5_TCM_START_ADDRESS      0x0000
-#define R5_BTCM_START_ADDRESS     0x20000
-#define R5_TCM_BANK_LENGTH        0x10000
-#define PMU_RAM_END_ADDRESS       0xFFDDFFFF
-
 /*
 -------------------------------------------------------------------------------
 *****************************************************   F U N C T I O N S   ***
@@ -49,7 +43,7 @@ Partition::Partition(PartitionHeader* header0, Section* section0)
 }
 
 /******************************************************************************/
-Partition::Partition(PartitionHeader* header0, const uint8_t* data, Binary::Length_t length) 
+Partition::Partition(PartitionHeader* header0, const uint8_t* data, Binary::Length_t length)
 : header(header0)
 {
     std::string partName = header->imageHeader->GetName() + StringUtils::Format(".%d",header->index);

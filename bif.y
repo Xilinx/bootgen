@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -262,6 +262,7 @@ new_pdi_spec            :   ID EQUAL expression                                 
                         |   EXT_ID_CODE EQUAL expression                        { currentBifOptions->SetExtendedIdCode($3); }
                         |   other_file_attr EQUAL filename                      { currentBifOptions->AddFiles($1, $3); }
                         |   KEYSRC_ENCRYPTION EQUAL key_src                     { currentBifOptions->SetEncryptionKeySource($3); }
+                        |   PARTITION_TYPE EQUAL ptypevalue                     { currentBifOptions->SetPdiType($3); }
                         ;
 
 image_spec              :   image_list

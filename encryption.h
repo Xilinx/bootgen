@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -97,7 +97,6 @@ public:
         , fixedInputDataExits(false)
     {
         kdf = new Kdf();
-        LOG_TRACE("KDF Version : 0x%X", kdf->GetVersion());
     };
 
     virtual ~EncryptionContext()
@@ -113,7 +112,6 @@ public:
         return Encryption::None;
     }
     virtual void Process(BootImage& bi, PartitionHeader* partition) {};
-    virtual void Process(BootImage & bi, PartitionHeader * partHdr, bool chunkbootloader) {};
     virtual void Process(BootImage& bi) {};
     virtual void WriteEncryptionKeyFile(const std::string& baseFileName, bool useOptionalKey, uint32_t blocks) {};
     virtual void ReadEncryptionKeyFile(const std::string& keyFileName) {};

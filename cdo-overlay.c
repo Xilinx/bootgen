@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2019-2021 Xilinx, Inc.
+* Copyright 2019-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -120,7 +120,6 @@ int cdooverlay_apply(CdoSequence * seq, CdoOverlayInfo * ovl) {
             CdoCommand * ovlcmd = NULL;
             if (dstentry->level != level) continue;
             more = 1;
-            fprintf(stdout, "check overlay \"%s\"\n", (char *)dstentry->start->buf);
             ovlentry = find_last_entry(ovl, dstentry->start->buf, 0);
             if (ovlentry == NULL) continue;
 

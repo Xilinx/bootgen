@@ -1,6 +1,6 @@
 // 67d7842dbbe25473c3c32b93c0da8047785f30d78e8a024de1b57352245f9689
 /******************************************************************************
-* Copyright 2019-2021 Xilinx, Inc.
+* Copyright 2019-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -18,11 +18,9 @@
 #ifndef D_cdo_alloc
 #define D_cdo_alloc
 
-#include "dyn_link.h"
-
-CDOUTIL_EXPORT void * myalloc(size_t len);
-CDOUTIL_EXPORT void * myalloc_zero(size_t len);
-CDOUTIL_EXPORT void * myrealloc(void * p, size_t len);
-CDOUTIL_EXPORT void myfree(void * p);
+void * myalloc(size_t len);
+void * myalloc_zero(size_t len);
+void * myrealloc(void * p, size_t len);
+void myfree(void * p);
 
 #endif /* D_cdo_alloc */

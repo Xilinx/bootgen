@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -502,6 +502,41 @@ ElfFormat64::ElfFormat64(uint8_t* start)
 
             stringTableSectionSize = sectionHdrTbl[header.e_shstrndx].sh_size;
         }
+
+        uint64_t dataSecAddr = 0;
+        uint64_t dataSecOff = 0;
+
+        for(unsigned int index = 0; index < sectionHdrEntryCount; index++)
+        {
+            stringTableSection = (StringTableSectionTbl *)(start + sectionHdrTbl[header.e_shstrndx].sh_offset);
+            char* name = (char*) stringTableSection;
+            std::string sectn = name + sectionHdrTbl[index].sh_name;
+
+            if(sectn == ".data")
+            {
+               dataSecAddr = sectionHdrTbl[index].sh_addr;
+               dataSecOff = sectionHdrTbl[index].sh_offset;
+            }
+            if(sectionHdrTbl[index].sh_type == SHT_SYMTAB)
+            {
+                symbolTableSection = (Elf64Symbol_t *)((char *)start + sectionHdrTbl[index].sh_offset);
+                int count = sectionHdrTbl[index].sh_size / sectionHdrTbl[index].sh_entsize;
+                char *symbol_names = (char *)(start + sectionHdrTbl[sectionHdrTbl[index].sh_link].sh_offset);
+
+                for (int symb = 0; symb < count; symb++)
+                {
+                   std::string name = symbol_names + symbolTableSection[symb].st_name;
+
+                   if(name == "bif_atf_handoff_params")
+                   {
+                       atf_handoff_params_found = true;
+                       uint64_t symbValue = symbolTableSection[symb].st_value;
+                       uint64_t offset = symbValue - dataSecAddr;
+                       atf_handoff_params_offset = dataSecOff + offset;
+                   }
+                }
+            }
+        }
     }
 
     /* If a Program header is defined, get its pointer and its record size
@@ -535,6 +570,11 @@ ElfFormat64::ElfFormat64(uint8_t* start)
             prgHdr.data = new uint8_t[prgHdr.p_filesz];
 
             memcpy( prgHdr.data,( start +  prgHdr.p_offset ),prgHdr.p_filesz);
+            if((atf_handoff_params_offset >= prgHdr.p_offset) && (atf_handoff_params_offset <= (prgHdr.p_offset + prgHdr.p_filesz)))
+            {
+                atf_handoff_params_offset -= prgHdr.p_offset;
+                atf_handoff_params_prg_hdr_count = index;
+            }
 
             if( index == 0 )
             {

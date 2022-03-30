@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -167,6 +167,7 @@ authenticatedjtag           return tok::HSECUREDEBUG;
 read                        return tok::HREAD;
 dump                        return tok::HDUMP;
 dump_dir                    return tok::HDUMPDIR;
+overlay_cdo                 return tok::HOVLCDO;
 
 aarch32_mode                return tok::H_BIF_AARCH32;
 big_endian                  return tok::H_BIF_BIGENDIAN;

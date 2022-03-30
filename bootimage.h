@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -34,6 +34,11 @@
 #include "authkeys.h"
 #include "partitionheadertable.h"
 #include "bifoptions.h"
+
+#define R5_TCM_START_ADDRESS      0x0000
+#define R5_BTCM_START_ADDRESS     0x20000
+#define R5_TCM_BANK_LENGTH        0x10000
+#define PMU_RAM_END_ADDRESS       0xFFDDFFFF
 
 /* Forward class declarations */
 class Options;

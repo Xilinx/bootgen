@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -36,6 +36,7 @@
 extern "C" {
 #include "cdo-npi.h"
 #include "cdo-source.h"
+#include "cdo-command.h"
 #include "cdo-binary.h"
 #include "cdo-load.h"
 #include "cdo-overlay.h"
@@ -55,6 +56,18 @@ uint64_t slr_sbi_base_array[4] = { PMC_SBI_BUF_ADDR, SLR1_SBI_BUF_BASE_ADDR, SLR
 *****************************************************   F U N C T I O N S   ***
 -------------------------------------------------------------------------------
 */
+
+/******************************************************************************/
+CdoSsitSyncMaster* CdoCmdWriteSsitSyncMaster()
+{
+    CdoSsitSyncMaster* cdoCmd = new CdoSsitSyncMaster;
+    cdoCmd->header.reserved = 0x00;
+    cdoCmd->header.length = 0x0;
+    cdoCmd->header.handler_id = 1;
+    cdoCmd->header.cmd_id = CdoCmds::SSIT_SYNC_MASTER;
+    LOG_TRACE("CDO_CMD_SSIT_SYNC_MASTER");
+    return cdoCmd;
+}
 
 /******************************************************************************/
 VersalImageHeaderTable::VersalImageHeaderTable()
@@ -124,7 +137,7 @@ void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
         SetHeaderTablesSize();
         SetTotalMetaHdrLength(0);
         SetIdentificationString(bi.IsBootloaderFound());
-        SetIds();
+        SetIds(bi.imageList.size() != 0);
         metaHdrKeySrc = bi.options.bifOptions->metaHdrAttributes.encrKeySource;
         SetMetaHdrSecureHdrIv(metaHdrSecHdrIv);
         dpacm = bi.bifOptions->metaHdrAttributes.dpaCM;
@@ -160,7 +173,7 @@ void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
         }
 
         SetIdentificationString(bi.IsBootloaderFound());
-        SetIds();
+        SetIds(bi.imageList.size() != 0);
 
         if (bi.bifOptions->metaHdrAttributes.encrKeySource != KeySource::None)
         {
@@ -384,9 +397,9 @@ void VersalImageHeaderTable::SetBootDeviceAddress(uint32_t address)
 }
 
 /******************************************************************************/
-void VersalImageHeaderTable::SetIds()
+void VersalImageHeaderTable::SetIds(bool warnIdCode)
 {
-    if (idCode == 0)
+    if (idCode == 0 && warnIdCode)
     {
         LOG_WARNING("id_code is not specified in BIF, default id code is 0x04ca8093 (s80 device)");
         idCode = DEFAULT_ID_CODE_S80;
@@ -1398,7 +1411,7 @@ void VersalImageHeader::ImportCdo(BootImage& bi)
 
     if (filelist.size() > 0)
     {
-        ParseCdos(bi, filelist, &buffer, &size);
+        ParseCdos(bi, filelist, &buffer, &size, false);
     }
     SetPartitionType(PartitionType::CONFIG_DATA_OBJ);
     PartitionHeader* hdr = new VersalPartitionHeader(this, 0);
@@ -1700,7 +1713,8 @@ void VersalImageHeader::ImportElf(BootImage& bi)
                     LOG_INFO("File for merging - %s ", bi.bifOptions->GetPmcCdoFileList().at(0).c_str());
                 }
 
-                ParseCdos(bi, bi.bifOptions->GetPmcCdoFileList(), &cdo_partition, &cdo_length);
+                bool add_ssit_sync_master_cmd = (bi.bifOptions->pdiType == PartitionType::SLR_SLAVE_BOOT);
+                ParseCdos(bi, bi.bifOptions->GetPmcCdoFileList(), &cdo_partition, &cdo_length, add_ssit_sync_master_cmd);
                 /* Calculate pad bytes for aligning PMC CDO for 16 byte-alignment */
                 uint32_t total_cdo_pad_bytes = 0;
                 if (cdo_length % 16 != 0)
@@ -1772,6 +1786,11 @@ void VersalImageHeader::ImportElf(BootImage& bi)
             partHdr->execAddress = exec_addr;
             partHdr->loadAddress = load_addr;
             partHdr->execState = proc_state;
+            if (elf->atf_handoff_params_prg_hdr_count == iprog && elf->atf_handoff_params_found)
+            {
+                partHdr->atf_handoff_params_offset = elf->atf_handoff_params_offset;
+                partHdr->update_atf_handoff_params = true;
+            }
 
             partHdr->partition = new VersalPartition(partHdr, partition_data, total_size);
 
@@ -1787,7 +1806,7 @@ void VersalImageHeader::ImportElf(BootImage& bi)
 }
 
 /******************************************************************************/
-void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> filelist, uint8_t** cdo_data, size_t* cdo_size)
+void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> filelist, uint8_t** cdo_data, size_t* cdo_size, bool add_ssit_sync_master)
 {
     uint8_t* total_cdo_data = NULL;
     uint64_t total_cdo_length = 0;
@@ -1807,10 +1826,28 @@ void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> fileli
             uint64_t actual_cdo_size = 0;
             const char* cdo_filename = filelist.at(idx).c_str();
             CdoSequence * cdo_seq;
-            cdo_seq = cdoseq_load_cdo(cdo_filename);
-            if (cdo_seq == NULL)
+            CdoSequence * cdo_seq1;
+
+            if (add_ssit_sync_master)
             {
-                LOG_ERROR("Error parsing CDO file");
+                /* Add SSIT Sync Master command */
+                cdo_seq1 = cdoseq_load_cdo(cdo_filename);
+                if (cdo_seq1 == NULL)
+                {
+                    LOG_ERROR("Error parsing CDO file");
+                }
+                cdo_seq = cdocmd_create_sequence();
+                cdocmd_add_ssit_sync_master(cdo_seq);
+                cdocmd_concat_seq(cdo_seq, cdo_seq1);
+                add_ssit_sync_master = false;
+            }
+            else
+            {
+                cdo_seq = cdoseq_load_cdo(cdo_filename);
+                if (cdo_seq == NULL)
+                {
+                    LOG_ERROR("Error parsing CDO file");
+                }
             }
             if (bi.overlayCDO && cdooverlay_apply(cdo_seq, (CdoOverlayInfo *)(bi.overlayCDO)))
             {
@@ -2470,14 +2507,14 @@ CdoCommandHeader* CdoCmdCdoEnd(void)
 }
 
 /******************************************************************************/
-CdoSsitSlaves* CdoCmdWriteSsitSyncSlaves(uint8_t num_slrs)
+CdoSsitSlaves* CdoCmdWriteSsitSyncSlaves(uint8_t mask)
 {
     CdoSsitSlaves* cdoCmd = new CdoSsitSlaves;
     cdoCmd->header.reserved = 0x00;
     cdoCmd->header.length = 0x2;
     cdoCmd->header.handler_id = 1;
     cdoCmd->header.cmd_id = CdoCmds::SSIT_SYNC_SLAVES;
-    cdoCmd->mask = 0x7 >> (MAX_SLAVE_SLRS - num_slrs);
+    cdoCmd->mask = mask;
     cdoCmd->timeout_ms = 0xFFFF;
     LOG_TRACE("CDO_CMD_SSIT_SYNC_SLAVES - %d, %x", cdoCmd->mask, cdoCmd->timeout_ms);
     return cdoCmd;
@@ -2738,6 +2775,10 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
         {
             LOG_ERROR("Error parsing CDO file");
         }
+        if (bi.overlayCDO && cdooverlay_apply(cdo_seq, (CdoOverlayInfo *)(bi.overlayCDO)))
+        {
+            LOG_ERROR("Error applying overlay CDO file : %s", cdo_filename);
+        }
         cdo_buffer = (uint8_t*)cdoseq_to_binary(cdo_seq, &size, 0);
         partHdr->partitionSize = size;
         partHdr->partition = new VersalPartition(partHdr, cdo_buffer, size);
@@ -2768,18 +2809,22 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
 
         slrBootPdiInfo.sort(SortByIndex);
         num_of_slrs = GetTotalSlrCount(slrBootPdiInfo);
+        char * do_ssit_check = getenv("BOOTGEN_DO_SSIT_NOC_CHECK");
+        bool master_cdo_verified = 0;
         std::string device_name = "";
-        switch (bi.bifOptions->idCode) {
-        case 0x04d14093: /* h50 */
-            device_name = "xcvp1802";
-            break;
-        default:
-            LOG_WARNING("Unknown SSIT device IDCODE 0x%08x, skipping verification of NoC configuration", bi.bifOptions->idCode);
+
+        if (do_ssit_check != NULL)
+        {
+            switch (bi.bifOptions->idCode) {
+            case 0x04d14093: /* h50 */
+                device_name = "xcvp1802";
+                break;
+            default:
+                LOG_WARNING("Skipping NoC configuration verification for the SSIT device. Device IDCODE 0x%08x, ", bi.bifOptions->idCode);
+            }
         }
 
         /* Add CDO Write Keyhole commands */
-        char * do_ssit_check = getenv("BOOTGEN_DO_SSIT_NOC_CHECK");
-        bool master_cdo_verified = 0;
         for (std::list<SlrPdiInfo*>::iterator slr_id = slrBootPdiInfo.begin(); slr_id != slrBootPdiInfo.end(); slr_id++)
         {
             uint32_t file_size;
@@ -2797,6 +2842,7 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                 file_size = slr_boot_data.len;
                 pad_size = file_size + ((4 - (file_size & 3)) & 3);
                 uint32_t bh_offset = 0;
+                uint32_t ih_offset = *((uint32_t *)(slr_boot_data.bytes + bh_offset + 0xc4));
                 /* Remove the 16-bytes of SMAP bus width from start of PDI */
                 uint32_t smap_data = (slr_boot_data.bytes[0]) + (slr_boot_data.bytes[1] << 8) + (slr_boot_data.bytes[2] << 16) + (slr_boot_data.bytes[3] << 24);
                 if ((smap_data == 0xDD000000) || (smap_data == 0x00DD0000) || (smap_data == 0x000000DD))
@@ -2804,6 +2850,13 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                     bh_offset = (SMAP_BUS_WIDTH * 4);
                     file_size -= (SMAP_BUS_WIDTH * 4);
                     pad_size -= (SMAP_BUS_WIDTH * 4);
+                    ih_offset -= (SMAP_BUS_WIDTH * 4);
+                }
+
+                uint32_t p1_size = ih_offset, p2_size = file_size - p1_size;
+                //if (getenv("BOOTGEN_SPLIT_SSIT_SLAVE_BOOT_PDI") != NULL)
+                {
+                    pad_size = p1_size + ((4 - (p1_size & 3)) & 3);
                 }
 
                 if ((device_name != "") && (do_ssit_check != NULL))
@@ -2870,14 +2923,53 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                 CdoCommandWriteKeyhole* cdoCmd = CdoCmdWriteKeyHole(pad_size, (*slr_id)->index);
                 memcpy(p_buffer + p_offset, cdoCmd, CDO_CMD_WRITE_KEYHOLE_SIZE);
                 p_offset += CDO_CMD_WRITE_KEYHOLE_SIZE;
-                delete cdoCmd;
-                memcpy(p_buffer + p_offset, slr_boot_data.bytes + bh_offset, file_size);
-                p_offset += file_size;
-                if ((pad_size - file_size) != 0)
+
                 {
-                    memset(p_buffer + p_offset, 0, pad_size - file_size);
-                    p_offset += pad_size;
+                    memcpy(p_buffer + p_offset, slr_boot_data.bytes + bh_offset, p1_size);
+                    p_offset += p1_size;
+                    if ((pad_size - p1_size) != 0)
+                    {
+                        memset(p_buffer + p_offset, 0, pad_size - p1_size);
+                        p_offset += pad_size - p1_size;
+                    }
+
+                    /* Add SSIT Sync Slave command */
+                    size += sizeof(CdoSsitSlaves);
+                    p_buffer = (uint8_t*)realloc(p_buffer, size);
+                    CdoSsitSlaves *ssit_sync_slaves_cmd = CdoCmdWriteSsitSyncSlaves(1 << ((*slr_id)->index - 1) & 0xFF);
+                    memcpy(p_buffer + p_offset, ssit_sync_slaves_cmd, sizeof(CdoSsitSlaves));
+                    p_offset += sizeof(CdoSsitSlaves);
+                    delete ssit_sync_slaves_cmd;
+                    /* Add part 2 write keyhole*/
+                    pad_size = p2_size + ((4 - (p2_size & 3)) & 3);
+                    pad_bytes = ((16 - ((p_offset + CDO_CMD_WRITE_KEYHOLE_SIZE) & 15)) & 15);
+                    size += (CDO_CMD_WRITE_KEYHOLE_SIZE + pad_size + pad_bytes);
+                    p_buffer = (uint8_t*)realloc(p_buffer, size);
+                    if (pad_bytes != 0)
+                    {
+                        CdoCommandNop* cdoCmd = CdoCmdNoOperation(pad_bytes);
+                        LOG_TRACE("NOP - 0x%x", p_offset);
+                        memcpy(p_buffer + p_offset, cdoCmd, CDO_CMD_NOP_SIZE);
+                        p_offset += CDO_CMD_NOP_SIZE;
+                        if (cdoCmd->header.length > 0)
+                        {
+                            memset(p_buffer + p_offset, 0, cdoCmd->header.length * sizeof(uint32_t));
+                            p_offset += (cdoCmd->header.length * sizeof(uint32_t));
+                        }
+                    }
+                    CdoCommandWriteKeyhole* cdoCmd2 = CdoCmdWriteKeyHole(pad_size, (*slr_id)->index);
+                    memcpy(p_buffer + p_offset, cdoCmd2, CDO_CMD_WRITE_KEYHOLE_SIZE);
+                    p_offset += CDO_CMD_WRITE_KEYHOLE_SIZE;
+                    memcpy(p_buffer + p_offset, slr_boot_data.bytes + ih_offset + (SMAP_BUS_WIDTH * 4), p2_size);
+                    p_offset += p2_size;
+                    if ((pad_size - p2_size) != 0)
+                    {
+                        memset(p_buffer + p_offset, 0, pad_size - p2_size);
+                        p_offset += pad_size - p2_size;
+                    }
+                    delete cdoCmd2;
                 }
+                delete cdoCmd;
 
                 /* Add SSIT Wait Slave command */
                 size += sizeof(CdoSsitSlaves);
@@ -2893,7 +2985,7 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                     /* Add SSIT Sync Slave command */
                     size += sizeof(CdoSsitSlaves);
                     p_buffer = (uint8_t*)realloc(p_buffer, size);
-                    CdoSsitSlaves *ssit_sync_slaves_cmd = CdoCmdWriteSsitSyncSlaves(num_of_slrs);
+                    CdoSsitSlaves *ssit_sync_slaves_cmd = CdoCmdWriteSsitSyncSlaves(((1 << num_of_slrs) - 1) & 0xFF);
                     memcpy(p_buffer + p_offset, ssit_sync_slaves_cmd, sizeof(CdoSsitSlaves));
                     p_offset += sizeof(CdoSsitSlaves);
                     delete ssit_sync_slaves_cmd;
@@ -2913,6 +3005,10 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                     LOG_ERROR("Error parsing CDO file : %s", cdo_filename);
                 }
 
+                if (bi.overlayCDO && cdooverlay_apply(cdo_seq, (CdoOverlayInfo *)(bi.overlayCDO)))
+                {
+                    LOG_ERROR("Error applying overlay CDO file : %s", cdo_filename);
+                }
                 if ((master_cdo_verified == 0) && (device_name != "") && (do_ssit_check != NULL))
                 {
                     std::string golden_cdo_filename = device_name + "_boot_0.rnpi";
@@ -2958,7 +3054,7 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                     p_buffer = (uint8_t*)realloc(p_buffer, size);
 
                     /* Add SSIT Sync Slave command */
-                    CdoSsitSlaves *ssit_sync_slaves_cmd = CdoCmdWriteSsitSyncSlaves(num_of_slrs);
+                    CdoSsitSlaves *ssit_sync_slaves_cmd = CdoCmdWriteSsitSyncSlaves(((1 << num_of_slrs) - 1) & 0xFF);
                     memcpy(p_buffer + p_offset, ssit_sync_slaves_cmd, sizeof(CdoSsitSlaves));
                     p_offset += sizeof(CdoSsitSlaves);
                     delete ssit_sync_slaves_cmd;
@@ -3222,9 +3318,14 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
                         const char* cdo_filename = (*slr_info)->file.c_str();
                         CdoSequence * master_cdo_seq;
                         master_cdo_seq = cdoseq_load_cdo(cdo_filename);
+                        CheckIdsInCdo(master_cdo_seq);
                         if (master_cdo_seq == NULL)
                         {
                             LOG_ERROR("Error parsing CDO file");
+                        }
+                        if (bi.overlayCDO && cdooverlay_apply(master_cdo_seq, (CdoOverlayInfo *)(bi.overlayCDO)))
+                        {
+                            LOG_ERROR("Error applying overlay CDO file : %s", cdo_filename);
                         }
                         size_t part_size = 0;
 
@@ -3506,7 +3607,7 @@ void VersalImageHeader::CheckSyncPointInChunk(SsitConfigSlrInfo* slr_info, size_
     */
     for (uint32_t ix = 0; ix < slr_info->sync_addresses.size(); ix++)
     {
-        if ((slr_info->sync_addresses[ix] > slr_info->offset) && (slr_info->sync_addresses[ix] < (slr_info->offset + size)))
+        if ((slr_info->sync_addresses[ix] >= slr_info->offset) && (slr_info->sync_addresses[ix] < (slr_info->offset + size)))
         {
             slr_info->sync_points++;
             LOG_TRACE("        sync point - %d",slr_info->sync_points);

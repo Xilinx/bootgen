@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -36,6 +36,12 @@
 /******************************************************************************/
 void EncryptionContext::GenerateEncryptionKeyFile(const std::string & baseFileName, Options & options)
 {
+    static bool kdfVersion = false;
+    if (!kdfVersion)
+    {
+        LOG_TRACE("KDF Version : 0x%X", kdf->GetVersion());
+		kdfVersion = true;
+    }
     LOG_TRACE("Generating the AES key file");
     std::string devicePartName = options.GetDevicePartName();
     if (devicePartName != "")
@@ -292,13 +298,26 @@ void EncryptionContext::SetRandomSeed()
 }
 
 /******************************************************************************/
+static int myrand(void)
+{
+    static unsigned long next;
+    static int firsttime = 1;
+    if (firsttime) {
+        firsttime = 0;
+        next = time(NULL);
+    }
+    next = next * 1103515245 + 12345;
+    return((unsigned)(next / 65536) % 32768);
+}
+
+/******************************************************************************/
 static uint32_t GetRandomValue(uint32_t	maxValue)
 {
     uint32_t returnValue;
 
     do
     {
-        returnValue = (rand() / (int)(((unsigned)RAND_MAX + 1) / maxValue));
+        returnValue = (myrand() / (int)(((unsigned)RAND_MAX + 1) / maxValue));
     } while (returnValue > maxValue);
 
     return returnValue;

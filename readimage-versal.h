@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -59,6 +59,7 @@ public:
         bH = NULL;
         iHT = NULL;
         dumpType = DumpOption::NONE;
+        readType = ReadImageOption::NONE;
         iHs.clear();
         pHTs.clear();
         partitionBuffers.clear();
@@ -68,7 +69,10 @@ public:
     ~VersalReadImage();
 
     void ReadBinaryFile(DumpOption::Type dump=DumpOption::NONE, std::string path="");
+    void ReadHeaderTableDetails();
+    void ReadPartitions();
     void DisplayImageDetails(ReadImageOption::Type type, DumpOption::Type dump, std::string path="");
+    void DisplayHeaderTableDetails(ReadImageOption::Type type);
     void DisplayBootHeader(void);
     void DisplayImageHeaderTable(void);
     void DisplayImageHeaders(void);
@@ -97,6 +101,7 @@ public:
 protected:
     std::string binFilename;
     DumpOption::Type dumpType;
+    ReadImageOption::Type readType;
     std::string dumpPath;
     VersalBootHeaderStructure* bH;
     VersalImageHeaderTableStructure* iHT;

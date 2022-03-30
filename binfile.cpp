@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -86,7 +86,7 @@ void BinFile::Fill(Binary::Address_t start, Binary::Address_t end, bool doFill, 
 {
     /* ignore "doFill". Always fill! */
     size_t length = end - start;
-    if (qspiDualMode == QspiMode::PARALLEL_GQSPI)
+    if (qspiDualMode == QspiMode::PARALLEL_GQSPI || qspiDualMode == QspiMode::PARALLEL_LQSPI)
     {
         for (size_t i = 0; i < length/2; i++)
         {
@@ -131,7 +131,7 @@ void BinFile::Fill(Binary::Address_t start, Binary::Address_t end, bool doFill, 
     }
     totalByteOutputCount += length;
 }
-	 
+
 /******************************************************************************/
 void BinFile::Write(Binary::Address_t start, Binary::Length_t length, const uint8_t *buffer)
 {
@@ -147,6 +147,32 @@ void BinFile::Write(Binary::Address_t start, Binary::Length_t length, const uint
         {
             buffer1[j] = (writedata[i]);
             buffer2[j] = (writedata[i + 1]);
+        }
+        ofs.write((const char*)buffer1, length / 2);
+        ofs1.write((const char*)buffer2, length / 2);
+    }
+    else if (qspiDualMode == QspiMode::PARALLEL_LQSPI)
+    {
+        uint8_t* buffer1 = new uint8_t[length / 2];
+        uint8_t* buffer2 = new uint8_t[length / 2];
+        int k = 0;
+        for (uint64_t i = 0; i < length; i += 2, k++)
+        {
+            uint8_t lsb = 0, lsbNxt = 0;
+            uint8_t msb = 0, msbNxt = 0;
+            uint8_t tempData = writedata[i];
+            uint8_t tempDataNxt = writedata[i + 1];
+            for (int j = 0; j < 4; j++)
+            {
+                lsb = lsb | ((tempData & 0x1) << j);
+                msb = msb | (((tempData & 0x2) >> 1) << j);
+                tempData = tempData >> 2;
+                lsbNxt = lsbNxt | ((tempDataNxt & 0x1) << j);
+                msbNxt = msbNxt | (((tempDataNxt & 0x2) >> 1) << j);
+                tempDataNxt = tempDataNxt >> 2;
+            }
+            buffer1[k] = (lsb << 4) | lsbNxt;
+            buffer2[k] = (msb << 4) | msbNxt;
         }
         ofs.write((const char*)buffer1, length / 2);
         ofs1.write((const char*)buffer2, length / 2);

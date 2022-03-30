@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -38,6 +38,7 @@
 /* Forward Class Declarations */
 class Elf32SectionHdr_t;
 class Elf64SectionHdr_t;
+class Elf64Symbol_t;
 
 /*
 -------------------------------------------------------------------------------
@@ -231,6 +232,9 @@ public:
     , lowestProgramAddress(0xFFFFFFFF)
     , highestProgramAddress(0)
     , endian(Endianness::NotEndian)
+    , atf_handoff_params_offset(0)
+    , atf_handoff_params_prg_hdr_count(0)
+    , atf_handoff_params_found(false)
     { };
 
     ~ElfFormat() {};
@@ -255,6 +259,10 @@ public:
     uint64_t stringTableSectionSize;
     uint64_t lowestProgramAddress;
     uint64_t highestProgramAddress;
+
+    uint64_t atf_handoff_params_offset;
+    uint64_t atf_handoff_params_prg_hdr_count;
+    bool atf_handoff_params_found;
 };
 
 /******************************************************************************/
@@ -298,6 +306,7 @@ public:
     Elf64_Ehdr header;
     std::vector<Elf64ProgramHeader*> programHeaders;
     Elf64SectionHdr_t* sectionHdrTbl;
+    Elf64Symbol_t* symbolTableSection;
 private:
     void TrimUnwantedELFHeaders( Elf64ProgramHeader& prgHeader, uint8_t* elfStart );
     void DeendianELFHdr(uint8_t*);
@@ -399,5 +408,27 @@ public:
         sh_addralign = DeendianUInt64(endian, sh_addralign);
         sh_entsize= DeendianUInt64(endian, sh_entsize);
     }
+};
+
+/*************************************************************************************/
+class Elf64Symbol_t
+{
+ public:
+    Elf64Symbol_t() {}
+    Elf64Symbol_t(Elf64Symbol_t* sym_t)
+    {
+        st_name  = sym_t->st_name;
+        st_info  = sym_t->st_info;
+        st_other = sym_t->st_other;
+        st_shndx = sym_t->st_shndx;
+        st_value = sym_t->st_value;
+        st_size  = sym_t->st_size;
+    }
+    Elf64_Word st_name;
+    unsigned char st_info;
+    unsigned char st_other;
+    Elf64_Half st_shndx;
+    Elf64_Addr st_value;
+    Elf64_Xword st_size;
 };
 #endif

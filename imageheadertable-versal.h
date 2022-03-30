@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -26,7 +26,10 @@
 
 #include "imageheadertable.h"
 #include "bootheader.h"
+extern "C" {
 #include "cdo-command.h"
+}
+
 class ImageBifOptions;
 class SubSysImageHeader;
 class BifOptions;
@@ -311,7 +314,7 @@ public:
     void SetFirstPartitionHeaderOffset(uint32_t offset);
     void SetPartitionCount(uint32_t count);
     void SetBootDeviceAddress(uint32_t address);
-    void SetIds(void);
+    void SetIds(bool warnIdCode);
     void SetIdentificationString(bool bootloader);
     void SetImageHeaderTableAttributes();
     void SetTotalMetaHdrLength(uint32_t size);
@@ -384,7 +387,7 @@ public:
     uint32_t CheckAieEngineDataMemoryBoundary(Binary::Address_t globalAddr, Binary::Length_t pSize);
     void CreateSlrBootPartition(BootImage& bi);
     void CreateSlrConfigPartition(BootImage& bi);
-    void ParseCdos(BootImage& bi, std::vector<std::string> filelist, uint8_t**, size_t*);
+    void ParseCdos(BootImage& bi, std::vector<std::string> filelist, uint8_t**, size_t*, bool);
     //post-processing
     bool PostProcessCdo(const uint8_t* cdo_data, Binary::Length_t cdo_size);
     bool PostProcessCfi(const uint8_t* cdo_data, Binary::Length_t cdo_size);

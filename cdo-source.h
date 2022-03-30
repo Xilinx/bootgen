@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2019-2020 Xilinx, Inc.
+* Copyright 2019-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
 #include <stdio.h>
 #include "cdo-command.h"
 
-CDOUTIL_EXPORT CdoSequence * cdoseq_from_source(FILE * f);
-CDOUTIL_EXPORT void cdoseq_to_source(FILE * f, CdoSequence * seq);
+CdoSequence * cdoseq_from_source(FILE * f);
+void cdoseq_to_source(FILE * f, CdoSequence * seq);
 
 #endif /* D_cdo_source */

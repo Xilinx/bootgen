@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -68,26 +68,117 @@ VersalReadImage::~VersalReadImage()
     }
 }
 
+/**********************************************************************************************/
+void VersalReadImage::ReadPartitions()
+{
+    size_t result;
+    uint64_t offset = 0;
+    uint32_t cnt_index = 0;
+    FILE *binFile = fopen(binFilename.c_str(), "rb");
+
+    if (!binFile)
+    {
+        fclose(binFile);
+        LOG_ERROR("Cannot read file %s", binFilename.c_str());
+    }
+    std::list<VersalPartitionHeaderTableStructure*>::iterator pHT = pHTs.begin();
+    for (std::list<VersalImageHeaderStructure*>::iterator iH = iHs.begin(); iH != iHs.end(); iH++)
+    {
+        uint32_t prev_id = 0xffffffff;
+        uint32_t section_count = 0;
+
+        for (cnt_index = 0; cnt_index < (*iH)->dataSectionCount; cnt_index++)
+        {
+            uint32_t length = (*pHT)->encryptedPartitionLength * 4;
+            uint8_t* buffer = new uint8_t[length];
+            uint32_t id = (*pHT)->puid & 0xFFFF;
+            offset = (*pHT)->partitionWordOffset * 4;
+            if (!(fseek(binFile, offset, SEEK_SET)))
+            {
+                result = fread(buffer, 1, length, binFile);
+                if (result != length)
+                {
+                    LOG_ERROR("Error parsing partitions from PDI file");
+                }
+                if (dumpType == DumpOption::PARTITIONS)
+                {
+                    if (bH && bH->sourceOffset == offset)
+                    {
+                        length = bH->totalPlmLength;
+                    }
+                    if (prev_id == id)
+                    {
+                        section_count++;
+                    }
+                    DumpPartitions(buffer, length, (*iH)->imageName, id, section_count);
+                }
+                else
+                {
+                    /* Bootloader - compare address offset from BH and PHT */
+                    if (bH && bH->sourceOffset == offset)
+                    {
+                        length = bH->totalPlmLength;
+                    }
+                    if ((dumpType == DumpOption::PLM) || (dumpType == DumpOption::BOOT_FILES))
+                    {
+                        DumpPartitions(buffer, length, "plm", id, section_count);
+                        if (dumpType == DumpOption::PLM)
+                        {
+                            delete[] buffer;
+                            fclose(binFile);
+                            return;
+                        }
+                    }
+                }
+                /* For extracting PMC DATA, Bootloader - compare address offset from BH and PHT */
+                if (bH && bH->sourceOffset == offset)
+                {
+                    if (bH && bH->totalPmcCdoLength != 0)
+                    {
+                        if ((dumpType == DumpOption::PARTITIONS) || (dumpType == DumpOption::PMC_CDO) || (dumpType == DumpOption::BOOT_FILES))
+                        {
+                            DumpPartitions(buffer + bH->plmLength, bH->totalPmcCdoLength, "pmc_cdo");
+                            if ((dumpType == DumpOption::PMC_CDO) || (dumpType == DumpOption::BOOT_FILES))
+                            {
+                                // if dump boot files, the return from here
+                                delete[] buffer;
+                                fclose(binFile);
+                                return;
+                            }
+                        }
+                    }
+                    if (bH && bH->totalPmcCdoLength == 0 && dumpType == DumpOption::PMC_CDO)
+                    {
+                        LOG_ERROR("PMC_CDO partition is not available in the PDI");
+                    }
+                }
+            }
+            else
+            {
+                LOG_ERROR("Error parsing Partition Headers from bin file");
+            }
+            pHT++;
+            prev_id = id;
+            delete[] buffer;
+        }
+    }
+    fclose(binFile);
+}
+
 /******************************************************************************/
-void VersalReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
+void VersalReadImage::ReadHeaderTableDetails()
 {
     size_t result;
     uint64_t offset = 0;
     uint32_t index = 0;
     bool smap_header_found = false;
-    dumpType = dump;
-    dumpPath = path;
-
-    if (StringUtils::GetExtension(binFilename) == ".mcs")
-    {
-        LOG_ERROR("The option '-read' is not supported on mcs format file : %s", binFilename.c_str());
-    }
 
     FILE *binFile;
     binFile = fopen(binFilename.c_str(), "rb");
 
     if (!binFile)
     {
+        fclose(binFile);
         LOG_ERROR("Cannot read file %s", binFilename.c_str());
     }
 
@@ -104,7 +195,7 @@ void VersalReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
         bH = NULL;
     }
 
-    if ((dump == DumpOption::BH) || (dump == DumpOption::BOOT_FILES))
+    if ((dumpType == DumpOption::BH) || (dumpType == DumpOption::BOOT_FILES))
     {
         if (bH == NULL)
         {
@@ -158,6 +249,10 @@ void VersalReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
         if (result != sizeof(VersalImageHeaderTableStructure))
         {
             LOG_ERROR("Error parsing Image Header Table from PDI file");
+        }
+        if (!((iHT->partitionTotalCount > 0) && (iHT->partitionTotalCount < 0xFF)))
+        {
+            LOG_ERROR("Number of partitions read from PDI is more than number of supported partiiton count.");
         }
     }
     else
@@ -242,96 +337,27 @@ void VersalReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
             aCs.push_back(aC);
         }
     }
-    else
-    {
-        fclose(binFile);
-        return;
-    }
 
-    uint32_t cnt_index = 0;
-    std::list<VersalPartitionHeaderTableStructure*>::iterator pHT = pHTs.begin();
-    for (std::list<VersalImageHeaderStructure*>::iterator iH = iHs.begin(); iH != iHs.end(); iH++)
-    {
-        uint32_t prev_id = 0xffffffff;
-        uint32_t section_count = 0;
-
-        for (cnt_index = 0; cnt_index < (*iH)->dataSectionCount; cnt_index++)
-        {
-            uint32_t length = (*pHT)->encryptedPartitionLength * 4;
-            uint8_t* buffer = new uint8_t[length];
-            uint32_t id = (*pHT)->puid & 0xFFFF;
-            offset = (*pHT)->partitionWordOffset * 4;
-            if (!(fseek(binFile, offset, SEEK_SET)))
-            {
-                result = fread(buffer, 1, length, binFile);
-                if (result != length)
-                {
-                    LOG_ERROR("Error parsing partitions from PDI file");
-                }
-                if (dump == DumpOption::PARTITIONS)
-                {
-                    if (bH && bH->sourceOffset == offset)
-                    {
-                        length = bH->totalPlmLength;
-                    }
-                    if (prev_id == id)
-                    {
-                        section_count++;
-                    }
-                    DumpPartitions(buffer, length, (*iH)->imageName, id, section_count);
-                }
-                else
-                {
-                    /* Bootloader - compare address offset from BH and PHT */
-                    if (bH && bH->sourceOffset == offset)
-                    {
-                        length = bH->totalPlmLength;
-                    }
-                    if ((dump == DumpOption::PLM) || (dump == DumpOption::BOOT_FILES))
-                    {
-                        DumpPartitions(buffer, length, "plm", id, section_count);
-                        if (dump == DumpOption::PLM)
-                        {
-                            delete[] buffer;
-                            fclose(binFile);
-                            return;
-                        }
-                    }
-                }
-                /* For extracting PMC DATA
-                Bootloader - compare address offset from BH and PHT */
-                if (bH && bH->sourceOffset == offset)
-                {
-                    if (bH && bH->totalPmcCdoLength != 0)
-                    {
-                        if ((dump == DumpOption::PARTITIONS) || (dump == DumpOption::PMC_CDO) || (dump == DumpOption::BOOT_FILES))
-                        {
-                            DumpPartitions(buffer + bH->plmLength, bH->totalPmcCdoLength, "pmc_cdo");
-                            if ((dump == DumpOption::PMC_CDO) || (dump == DumpOption::BOOT_FILES))
-                            {
-                                // if dump boot files, the return from here
-                                delete[] buffer;
-                                fclose(binFile);
-                                return;
-                            }
-                        }
-                    }
-                    if (bH && bH->totalPmcCdoLength == 0 && dump == DumpOption::PMC_CDO)
-                    {
-                        LOG_ERROR("PMC_CDO partition is not available in the PDI");
-                    }
-                }
-            }
-            else
-            {
-                LOG_ERROR("Error parsing Partition Headers from bin file");
-            }
-            pHT++;
-            prev_id = id;
-            delete[] buffer;
-        }
-    }
     fclose(binFile);
+    return;
+}
+
+/******************************************************************************/
+void VersalReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
+{
+    if (StringUtils::GetExtension(binFilename) == ".mcs")
+    {
+        LOG_ERROR("The option '-read/-dump' is not supported on mcs format file : %s", binFilename.c_str());
+    }
+    dumpType = dump;
+    dumpPath = path;
+
+    ReadHeaderTableDetails();
+    if (readType != ReadImageOption::NONE)
+    {
+        DisplayHeaderTableDetails(readType);
+    }
+    ReadPartitions();
 }
 
 /******************************************************************************/
@@ -353,41 +379,8 @@ uint8_t VersalReadImage::GetCreatorId(void)
 }
 
 /******************************************************************************/
-void VersalReadImage::DisplayImageDetails(ReadImageOption::Type type, DumpOption::Type dump, std::string dump_dir)
+void VersalReadImage::DisplayHeaderTableDetails(ReadImageOption::Type type)
 {
-    ReadBinaryFile(dump, dump_dir);
-    if (dump != DumpOption::NONE)
-    {
-        if (iHT->metaHdrKeySource != KeySource::None)
-        {
-            switch (dump)
-            {
-            case DumpOption::BH:
-                break;
-
-            case DumpOption::PLM:
-                LOG_ERROR("Cannot dump PLM from an encrypted PDI.");
-                break;
-
-            case DumpOption::PMC_CDO:
-                LOG_ERROR("Cannot dump PMC_CDO from an encrypted PDI.");
-                break;
-
-            case DumpOption::PARTITIONS:
-                LOG_ERROR("Cannot dump partitions from an encrypted PDI.");
-                break;
-
-            case DumpOption::BOOT_FILES:
-                LOG_MSG("\n[INFO]   : Cannot dump PLM/ PMC_CDO/ partitions from an encrypted PDI.");
-                break;
-
-            default:
-                break;
-            }
-        }
-        return;
-    }
-
     switch (type)
     {
     case ReadImageOption::BH:
@@ -435,6 +428,46 @@ void VersalReadImage::DisplayImageDetails(ReadImageOption::Type type, DumpOption
         break;
     }
     Separator();
+}
+
+/******************************************************************************/
+void VersalReadImage::DisplayImageDetails(ReadImageOption::Type type, DumpOption::Type dump, std::string dump_dir)
+{
+    readType = type;
+
+    ReadBinaryFile(dump, dump_dir);
+
+    if (dump != DumpOption::NONE)
+    {
+        if (iHT->metaHdrKeySource != KeySource::None)
+        {
+            switch (dump)
+            {
+            case DumpOption::BH:
+                break;
+
+            case DumpOption::PLM:
+                LOG_ERROR("Cannot dump PLM from an encrypted PDI.");
+                break;
+
+            case DumpOption::PMC_CDO:
+                LOG_ERROR("Cannot dump PMC_CDO from an encrypted PDI.");
+                break;
+
+            case DumpOption::PARTITIONS:
+                LOG_ERROR("Cannot dump partitions from an encrypted PDI.");
+                break;
+
+            case DumpOption::BOOT_FILES:
+                LOG_MSG("\n[INFO]   : Cannot dump PLM/ PMC_CDO/ partitions from an encrypted PDI.");
+                break;
+
+            default:
+                break;
+            }
+        }
+        return;
+    }
 }
 
 /******************************************************************************/
@@ -880,7 +913,7 @@ void VersalReadImage::DisplayPhtAttributes(uint32_t value)
 {
     uint32_t core = (value >> vphtDestCpuShift) & vphtDestCpuMask;
     uint32_t arch = (value >> vphtExecStateShift) & vphtExecStateMask;
-    uint32_t is_a72 = (core == 1 || core == 2 || core == 3 || core == 4);
+    uint32_t is_a72 = (core == 1 || core == 2);
     bool is_armv8 = (arch == 0 && is_a72 == 1);
     bool is_armv7 = ((arch == 1 && is_a72 == 1) || core == 5 || core == 6 || core == 7);
     bool is_elf = (((value >> vphtPartitionTypeShift) & vphtPartitionTypeMask) == 1);
@@ -926,13 +959,11 @@ void VersalReadImage::DisplayPhtAttributes(uint32_t value)
         case 0: val = "[none]";           break;
         case 1: val = "[a72-0]";          break;
         case 2: val = "[a72-1]";          break;
-        case 3: val = "[a72-2]";          break;
-        case 4: val = "[a72-3]";          break;
         case 5: val = "[r5-0]";           break;
         case 6: val = "[r5-1]";           break;
         case 7: val = "[r5-lockstep]";    break;
         case 8: val = "[psm]";            break;
-        case 9: val = "[me]";             break;
+        case 9: val = "[aie]";            break;
         default: val = "[invalid]";       break;
     }
     if (!is_elf)

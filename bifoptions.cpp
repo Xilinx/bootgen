@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -390,7 +390,7 @@ void BifOptions::SetRegInitFileName(std::string filename)
     std::ifstream f(filename.c_str());
     if (!f) 
     {
-        LOG_ERROR("Cannot read file - %s", regInitFile.c_str());
+        LOG_ERROR("Cannot read file - %s", filename.c_str());
     }
     regInitFile = filename;
     LOG_TRACE("Setting Register initialization file as %s", regInitFile.c_str());
@@ -420,7 +420,7 @@ void BifOptions::SetUdfBHFileName(std::string filename)
     std::ifstream f(filename.c_str());
     if (!f)
     {
-        LOG_ERROR("Cannot read file - %s", regInitFile.c_str());
+        LOG_ERROR("Cannot read file - %s", filename.c_str());
     }
     udfBhFile = filename;
     LOG_TRACE("Setting UDF of BH as %s", udfBhFile.c_str());
@@ -1375,7 +1375,7 @@ void PartitionBifOptions::SetHivec(bool flag)
 /******************************************************************************/
 void PartitionBifOptions::SetRevokeId(uint32_t id)
 {
-    if (revokeId > 0xFF)
+    if (id > 0xFF)
     {
         LOG_ERROR("revoke_id can only take values from 0x0 to 0xFF.");
     }
@@ -1801,6 +1801,12 @@ std::string BifOptions::GetEfuseUserKek1IVFile(void)
 }
 
 /******************************************************************************/
+std::string BifOptions::GetUserKeysFileName(void)
+{
+    return userKeyFile;
+}
+
+/******************************************************************************/
 std::string BifOptions::GetUdfBhFile(void)
 {
     return udfBhFile;
@@ -1862,6 +1868,12 @@ void BifOptions::SetExtendedIdCode(uint32_t id)
         LOG_ERROR("Invalid extended ID code. Maximum length of extended_id_code is 6-bits");
     }
     extendedIdCode = id;
+}
+
+/******************************************************************************/
+void BifOptions::SetPdiType(PartitionType::Type type)
+{
+    pdiType = type;
 }
 
 /******************************************************************************/

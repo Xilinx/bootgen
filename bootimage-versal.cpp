@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -60,34 +60,6 @@ VersalBootImage::VersalBootImage(Options& options, uint8_t index) : BootImage(op
 /******************************************************************************/
 VersalBootImage::~VersalBootImage()
 {
-    if (bootHeader)
-    {
-        delete bootHeader;
-    }
-    if (imageHeaderTable)
-    {
-        delete imageHeaderTable;
-    }
-    if (partitionHeaderTable)
-    {
-        delete partitionHeaderTable;
-    }
-    if (currentEncryptCtx)
-    {
-        delete currentEncryptCtx;
-    }
-    if (currentAuthCtx)
-    {
-        delete currentAuthCtx;
-    }
-    if (partitionOutput)
-    {
-        delete partitionOutput;
-    }
-    if (hash)
-    {
-        delete hash;
-    }
 }
 
 /******************************************************************************/
@@ -306,7 +278,8 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
     std::string baseFile = StringUtils::BaseName(it->filename);
     bool full_pdi = true;
     bool smap_exists = true;
-
+    bool this_bootimage = false;
+    static uint32_t prev_image_block = 0;
     if (StringUtils::GetExtension(baseFile) == ".mcs")
     {
         LOG_ERROR("Parsing mcs format file is not supported : %s", baseFile.c_str());
@@ -528,7 +501,28 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
                 }
             }
             offset += sizeof(VersalImageHeaderStructure);
-            subSysImageList.push_back(subsys);
+            if ((getenv("BOOTGEN_MERGE_IMAGES_WITH_SAME_ID") == NULL))
+            {
+                if ((prev_image_block != current_image_block) || (this_bootimage == true))
+                {
+                    subSysImageList.push_back(subsys);
+                    prev_image_block = current_image_block;
+                }
+                else
+                {
+                    for (std::list<SubSysImageHeader*>::iterator subSysHdr = subSysImageList.begin(); subSysHdr != subSysImageList.end(); subSysHdr++)
+                    {
+                        if ((*subSysHdr)->GetSubSystemId() == subsys->GetSubSystemId())
+                        {
+                            (*subSysHdr)->imgList.merge(subsys->imgList);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                subSysImageList.push_back(subsys);
+            }
         }
         else
         {
@@ -635,6 +629,7 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
             }
             offset += sizeof(VersalImageHeaderStructure);
         }
+        this_bootimage = true;
     } while (imageCount != 0);
 }
 
@@ -1346,6 +1341,8 @@ void VersalBootImage::Add(BifOptions* bifoptions)
         {
             SubSysImageHeader *subSysImage = new SubSysImageHeader(*imgitr);
             bool bootimage_partition = false;
+            current_image_block++;
+            bool break_outer_loop = false;
             for (std::list<PartitionBifOptions*>::iterator partitr = (*imgitr)->partitionBifOptionsList.begin(); partitr != (*imgitr)->partitionBifOptionsList.end(); partitr++)
             {
                 if ((*partitr)->bootImage)
@@ -1385,6 +1382,20 @@ void VersalBootImage::Add(BifOptions* bifoptions)
                         {
                             subSysImage->SetSubSystemId(0x0);
                         }
+                        if ((getenv("BOOTGEN_MERGE_IMAGES_WITH_SAME_ID") == NULL))
+                        {
+                            if (bootimage_partition == true)
+                            {
+                                for (std::list<SubSysImageHeader*>::iterator ssitr = subSysImageList.begin(); ssitr != subSysImageList.end(); ssitr++)
+                                {
+                                    if (((*ssitr)->GetSubSystemId() == subSysImage->GetSubSystemId()) && !(img->IsBootloader() || img->GetDestCpu() == DestinationCPU::PMU))
+                                    {
+                                        (*ssitr)->imgList.push_back(img);
+                                        break_outer_loop = true;
+                                    }
+                                }
+                            }
+                        }
                         if (subSysImage->GetDelayHandoffMode() || subSysImage->GetDelayLoadMode())
                         {
                             if (img->IsBootloader())
@@ -1419,7 +1430,8 @@ void VersalBootImage::Add(BifOptions* bifoptions)
                         }
                         else
                         {
-                            subSysImage->imgList.push_back(img);
+                            if (!break_outer_loop)                            
+                                subSysImage->imgList.push_back(img);
                         }
                     }
                 }
@@ -1769,7 +1781,7 @@ void VersalBootImage::AppendImagesInSubsystems(void)
 /******************************************************************************/
 void VersalBootImage::BuildAndLink(Binary* cache)
 {
-    if (imageList.size() == 0)
+    if (imageList.size() == 0 && options.GetSecureDebugAuthType() == Authentication::None)
     {
         LOG_WARNING("No partition images given");
     }
@@ -1817,7 +1829,6 @@ void VersalBootImage::BuildAndLink(Binary* cache)
     partitionHeaderList.clear();
     if (createSubSystemPdis == true)
     {
-        AppendImagesInSubsystems();
         ReplaceImages();
     }
     else

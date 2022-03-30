@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2019-2020 Xilinx, Inc.
+* Copyright 2019-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -17,8 +17,6 @@
 #ifndef D_cdo_raw
 #define D_cdo_raw
 
-#include "dyn_link.h"
-
 typedef struct CdoRawInfo CdoRawInfo;
 
 typedef enum {
@@ -33,7 +31,7 @@ struct CdoRawInfo {
     uint32_t data[1];                   /* Must be last */
 };
 
-CDOUTIL_EXPORT CdoRawInfo * decode_raw(void * data, size_t size);
-CDOUTIL_EXPORT void encode_raw(FILE * f, void * data, size_t size);
+CdoRawInfo * decode_raw(void * data, size_t size);
+void encode_raw(FILE * f, void * data, size_t size);
 
 #endif /* D_cdo_raw */

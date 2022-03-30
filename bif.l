@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -132,6 +132,8 @@ owner                                                               return tok::
     uboot           yylval->number = PartitionOwner::UBOOT;         return tok::POWNERVALUE ;
     pmc             yylval->number = PartitionOwner::FSBL;          return tok::POWNERVALUE ;
     non-pmc         yylval->number = PartitionOwner::UBOOT;         return tok::POWNERVALUE ;
+    plm             yylval->number = PartitionOwner::FSBL;          return tok::POWNERVALUE ;
+    non-plm         yylval->number = PartitionOwner::UBOOT;         return tok::POWNERVALUE ;
 
 partition_type                                                      return tok::PARTITION_TYPE;
 type                                                                return tok::PARTITION_TYPE;
@@ -141,6 +143,7 @@ type                                                                return tok::
     cfi-gsc         yylval->number = PartitionType::CFI_GSC;        return tok::PTYPEVALUE;
     slr-boot        yylval->number = PartitionType::SLR_BOOT;       return tok::PTYPEVALUE;
     slr-config      yylval->number = PartitionType::SLR_CONFIG;     return tok::PTYPEVALUE;
+    slr-slave       yylval->number = PartitionType::SLR_SLAVE;      return tok::PTYPEVALUE;
 
 keysrc_encryption           yylval->number = tok::KEYSRC_ENCRYPTION;        return tok::KEYSRC_ENCRYPTION;
 keysrc                      yylval->number = tok::KEYSRC_ENCRYPTION;        return tok::KEYSRC_ENCRYPTION;

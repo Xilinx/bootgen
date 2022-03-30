@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -79,8 +79,23 @@ void BIF_File::Process(Options& options)
     bifOptionList = options.bifOptionsList;
     BootImage* currentbi = NULL;
     uint8_t index = 0;
+    bool ssit_bif = false;
+    for (std::vector<BifOptions*>::iterator bifoptions = bifOptionList.begin(); bifoptions != bifOptionList.end(); bifoptions++)
+    {
+        if ((*bifoptions)->slrBootCnt != 0 || (*bifoptions)->slrConfigCnt != 0)
+        {
+            ssit_bif = true;
+            break;
+        }
+    }
+
     for (std::vector<BifOptions*>::iterator bifoptions = bifOptionList.begin(); bifoptions != bifOptionList.end();bifoptions++)
     {
+        if (((*bifoptions)->slrBootCnt == 0 || (*bifoptions)->slrConfigCnt == 0) && ssit_bif)
+        {
+            (*bifoptions)->pdiType = PartitionType::SLR_SLAVE;
+        }
+
         if (options.archType == Arch::ZYNQMP)
         {
             currentbi = new ZynqMpBootImage(options, index);
@@ -97,6 +112,14 @@ void BIF_File::Process(Options& options)
         if (currentbi != NULL)
         {
             currentbi->Add(*bifoptions);
+            if (currentbi->bootloaderFound && (*bifoptions)->pdiType == PartitionType::SLR_SLAVE)
+            {
+                (*bifoptions)->pdiType = PartitionType::SLR_SLAVE_BOOT;
+            }
+            else
+            {
+                (*bifoptions)->pdiType = PartitionType::SLR_SLAVE_CONFIG;
+            }
             bootImages.push_back(currentbi);
         }
         Output(options, index);

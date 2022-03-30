@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2019-2021 Xilinx, Inc.
+* Copyright 2019-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -71,6 +71,8 @@ struct command_info {
     { "begin", CdoCmdBegin },
     { "end", CdoCmdEnd },
     { "break", CdoCmdBreak },
+    { "ot_check", CdoCmdOtCheck },
+    { "psm_sequence", CdoCmdPsmSequence },
     { "npi_seq", CdoCmdNpiSeq },
     { "npi_precfg", CdoCmdNpiPreCfg },
     { "npi_write", CdoCmdNpiWrite },
@@ -123,6 +125,8 @@ struct command_info {
     { "pm_init_node", CdoCmdPmInitNode },
     { "pm_feature_check", CdoCmdPmFeatureCheck },
     { "pm_iso_control", CdoCmdPmIsoControl },
+    { "pm_activate_subsystem", CdoCmdPmActivateSubsystem },
+    { "pm_set_node_access", CdoCmdPmSetNodeAccess },
     { "cfu_set_crc32", CdoCmdCfuSetCrc32 },
     { "cfu_decompress", CdoCmdCfuDecompress },
     { "cfu_cram_rw", CdoCmdCfuCramRW },
@@ -277,7 +281,7 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             if (*s == '#') {
                 s++;
                 skipsp(s);
-                cdocmd_add_comment(seq, s);
+                cdocmd_add_comment(seq, "%s", s);
             }
             continue;
         }
@@ -557,6 +561,17 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             cdocmd_add_break(seq, value);
             break;
         }
+        case CdoCmdOtCheck: {
+            uint32_t value;
+            skipsp(s);
+            if (parse_u32(&s, &value)) goto syntax_error;
+            cdocmd_add_ot_check(seq, value);
+            break;
+        }
+        case CdoCmdPsmSequence:
+            cdocmd_add_psm_sequence(seq);
+            level++;
+            break;
         case CdoCmdNpiSeq:
         case CdoCmdNpiPreCfg:
         case CdoCmdNpiShutdown: {
@@ -981,6 +996,22 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             cdocmd_add_pm_iso_control(seq, nodeid, value);
             break;
         }
+        case CdoCmdPmActivateSubsystem: {
+            uint32_t id;
+            if (parse_u32(&s, &id)) goto syntax_error;
+            cdocmd_add_pm_activate_subsystem(seq, id);
+            break;
+        }
+        case CdoCmdPmSetNodeAccess: {
+            uint32_t id;
+            uint32_t count;
+            uint32_t * buf;
+            if (parse_u32(&s, &id)) goto syntax_error;
+            if (parse_buf(&s, &buf, &count)) goto syntax_error;
+            cdocmd_add_pm_set_node_access(seq, id, count, buf, is_be_host());
+            free(buf);
+            break;
+        }
         case CdoCmdCfuSetCrc32: {
             uint32_t flags;
             uint32_t value;
@@ -1307,6 +1338,16 @@ void cdoseq_to_source(FILE * f, CdoSequence * seq) {
                 print_x64(f, cmd->value);
             }
             fprintf(f, "\n");
+            break;
+        case CdoCmdOtCheck:
+            fprintf(f, "ot_check");
+            fprintf(f, " ");
+            print_x64(f, cmd->value);
+            fprintf(f, "\n");
+            break;
+        case CdoCmdPsmSequence:
+            fprintf(f, "psm_sequence\n");
+            level++;
             break;
         case CdoCmdNpiSeq:
             fprintf(f, "npi_seq ");
@@ -1662,6 +1703,17 @@ void cdoseq_to_source(FILE * f, CdoSequence * seq) {
             print_x64(f, cmd->id);
             fprintf(f, " ");
             print_x64(f, cmd->value);
+            fprintf(f, "\n");
+            break;
+        case CdoCmdPmActivateSubsystem:
+            fprintf(f, "pm_activate_subsystem ");
+            print_x64(f, cmd->id);
+            fprintf(f, "\n");
+            break;
+        case CdoCmdPmSetNodeAccess:
+            fprintf(f, "pm_set_node_access ");
+            print_x64(f, cmd->id);
+            print_buf(f, cmd->buf, cmd->count);
             fprintf(f, "\n");
             break;
         case CdoCmdCfuSetCrc32:

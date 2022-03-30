@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2019-2021 Xilinx, Inc.
+* Copyright 2019-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -99,6 +99,8 @@ enum {
     CMD2_BLOCK_BEGIN	 = 0x11bU,
     CMD2_BLOCK_END	 = 0x11cU,
     CMD2_BREAK		 = 0x11dU,
+    CMD2_OT_CHECK	 = 0x11eU,
+    CMD2_PSM_SEQUENCE	 = 0x11fU,
 
     /* PM Commands */
     CMD2_PM_GET_API_VERSION	= 0x201U,
@@ -150,6 +152,8 @@ enum {
     CMD2_PM_INIT_NODE		= 0x23eU,
     CMD2_PM_FEATURE_CHECK	= 0x23fU,
     CMD2_PM_ISO_CONTROL		= 0x240U,
+    CMD2_PM_ACTIVATE_SUBSYSTEM	= 0x241U,
+    CMD2_PM_SET_NODE_ACCESS	= 0x242U,
 
     /* NPI Commands */
     CMD2_NPI_SEQ	 = 0x301U,
@@ -563,6 +567,19 @@ static uint32_t decode_v2_cmd(CdoSequence * seq, uint32_t * p, uint32_t * ip, ui
             cdocmd_add_break(seq, args > 0 ? u32xe(p[i+0]) : 1);
             break;
         }
+        case CMD2_OT_CHECK:
+            if (args != 1) goto unexpected;
+            cdocmd_add_ot_check(seq, u32xe(p[i+0]));
+            break;
+        case CMD2_PSM_SEQUENCE: {
+            uint32_t i2 = i;
+            cdocmd_add_psm_sequence(seq);
+            if (decode_v2_cmd(seq, p, &i2, i2 + args, be)) {
+                goto error;
+            }
+            cdocmd_add_end(seq);
+            break;
+        }
         case CMD2_NPI_SEQ:
             if (args != 2) goto unexpected;
             cdocmd_add_npi_seq(seq, u32xe(p[i+0]), u32xe(p[i+1]));
@@ -776,6 +793,14 @@ static uint32_t decode_v2_cmd(CdoSequence * seq, uint32_t * p, uint32_t * ip, ui
         case CMD2_PM_ISO_CONTROL:
             if (args != 2) goto unexpected;
             cdocmd_add_pm_iso_control(seq, u32xe(p[i+0]), u32xe(p[i+1]));
+            break;
+        case CMD2_PM_ACTIVATE_SUBSYSTEM:
+            if (args != 1) goto unexpected;
+            cdocmd_add_pm_activate_subsystem(seq, u32xe(p[i+0]));
+            break;
+        case CMD2_PM_SET_NODE_ACCESS:
+            if (args < 1) goto unexpected;
+            cdocmd_add_pm_set_node_access(seq, u32xe(p[i+0]), args - 1, &p[i+1], be);
             break;
         case CMD2_CFU_SET_CRC32:
             if (args < 1) goto unexpected;
@@ -1233,6 +1258,7 @@ static LINK * find_block_end(LINK * l, LINK * lh) {
         CdoCommand * cmd = all2cmds(l);
         switch (cmd->type) {
         case CdoCmdProc:
+        case CdoCmdPsmSequence:
         case CdoCmdBegin:
             level++;
             break;
@@ -1593,6 +1619,27 @@ static void * encode_v2_cmd(LINK * l, LINK * lh, uint32_t * posp, uint32_t be) {
                 p[pos++] = u32xe(cmd->value);
             }
             break;
+        case CdoCmdOtCheck:
+            hdr2(&p, &pos, CMD2_OT_CHECK, 1, be);
+            p[pos++] = u32xe(cmd->value);
+            break;
+        case CdoCmdPsmSequence: {
+            uint32_t pos_save = pos;
+            uint32_t payload_start;
+            LINK * blockend = find_block_end(l, lh);
+            hdr2(&p, &pos, CMD2_PSM_SEQUENCE, 0, be);
+            payload_start = pos;
+            p = encode_v2_cmd(l, blockend, &pos, be);
+            hdr2(&p, &pos_save, CMD2_PSM_SEQUENCE, pos - payload_start, be);
+            if (pos_save != payload_start) {
+                /* Header grew, regenerate payload */
+                pos = pos_save;
+                p = encode_v2_cmd(l, blockend, &pos, be);
+            }
+            l = blockend;
+            if (l != lh) l = l->next;
+            break;
+        }
 
         case CdoCmdNpiSeq:
             hdr2(&p, &pos, CMD2_NPI_SEQ, 2, be);
@@ -1882,6 +1929,17 @@ static void * encode_v2_cmd(LINK * l, LINK * lh, uint32_t * posp, uint32_t be) {
             p[pos++] = u32xe(cmd->id);
             p[pos++] = u32xe(cmd->value);
             break;
+        case CdoCmdPmActivateSubsystem:
+            hdr2(&p, &pos, CMD2_PM_ACTIVATE_SUBSYSTEM, 1, be);
+            p[pos++] = u32xe(cmd->id);
+            break;
+        case CdoCmdPmSetNodeAccess:
+            hdr2(&p, &pos, CMD2_PM_SET_NODE_ACCESS, 1 + cmd->count, be);
+            p[pos++] = u32xe(cmd->id);
+            memcpy(p + pos, cmd->buf, cmd->count * sizeof(uint32_t));
+            byte_swap_buffer(p + pos, cmd->count, be);
+            pos += cmd->count;
+            break;
         case CdoCmdCfuSetCrc32:
             if (cmd->flags != 0) {
                 hdr2(&p, &pos, CMD2_CFU_SET_CRC32, 2, be);
@@ -1975,6 +2033,7 @@ void * cdoseq_to_binary(CdoSequence * seq, size_t * sizep, uint32_t be) {
     }
     return encode(seq, sizep, be);
 }
+
 void search_for_sync_points(void)
 {
     num_of_sync_points = 0;

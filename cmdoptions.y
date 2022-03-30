@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -89,7 +89,7 @@ void ShowCommonHelp(int,bool);
 
 %token HBIFHELP HARCH HIMAGE HFILL HO HP HW HEFUSEPPKBITS HGENHASHES HLEGACY HPADHDR H_SPKSIGN
 %token HPACKAGE HENCRYPT HGENKEYS HDQSPI HLOG HZYNQMPES1 HPROCESSBIT HNONBOOTING HENCRDUMP HPOSTPROCESS
-%token HVERIFY HSECUREDEBUG HREAD HVERIFYKDF HDUMP HDUMPDIR
+%token HVERIFY HSECUREDEBUG HREAD HVERIFYKDF HDUMP HDUMPDIR HOVLCDO
 
 %token H_BIF_INIT H_BIF_UDFBH H_BIF_AES H_BIF_PPK H_BIF_PSK H_BIF_SPK H_BIF_SSK H_BIF_SPKSIGN H_BIF_HIVEC
 %token H_BIF_HDRSIGN H_BIF_BOOTIMAGE H_BIF_BL H_BIF_PID H_BIF_ENCR H_BIF_AUTH H_BIF_CHKSM H_BIF_ELYHNDOFF H_BIF_BHSIGN 
@@ -192,6 +192,7 @@ helpoption      : /* empty */                       { ShowHelp(); exit(0); }
                 | HSECUREDEBUG                      { ShowCmdHelp(CO::BisonParser::token::HSECUREDEBUG); exit(0); }
                 | HDUMP                             { ShowCmdHelp(CO::BisonParser::token::HDUMP); exit(0); }
                 | HDUMPDIR                          { ShowCmdHelp(CO::BisonParser::token::HDUMPDIR); exit(0); }
+                | HOVLCDO                           { ShowCmdHelp(CO::BisonParser::token::HOVLCDO); exit(0); }
                 ;
 
 bifhelpoption	: /* empty */                       { ShowBifHelp(0); exit(0); }
@@ -514,6 +515,10 @@ void ShowCmdHelp(int a)
      
     case CO::BisonParser::token::HDUMPDIR:
         std::cout << DUMPDIRHELP << std::endl;
+        break;
+
+    case CO::BisonParser::token::HOVLCDO:
+        std::cout << OVERLAYCDO << std::endl;
         break;
 
     case 0:

@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -56,7 +56,7 @@ static void DisplayBanner()
     LOG_MSG("\n");
     LOG_MSG("****** %s v%s", PROGRAMNAME, RDI_VERSION);
     LOG_MSG("  **** Build date : %s-%s", date_stamp, time_stamp);
-    LOG_MSG("    ** Copyright 1986-%s Xilinx, Inc. All Rights Reserved.\n", year ? year : "2018");
+    LOG_MSG("    ** Copyright 1986-%s Xilinx, Inc. All Rights Reserved.\n", year ? year : "2022");
 }
 
 /******************************************************************************/

@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -395,6 +395,7 @@ public:
     OptKey::Type GetOptKey(void);
     void SetIdCode(uint32_t id);
     void SetExtendedIdCode(uint32_t id);
+    void SetPdiType(PartitionType::Type type);
     void SetBypassIdcodeFlag(bool flag);
     void SetAHwRoTFlag(bool flag);
     void SetSHwRoTFlag(bool flag);
@@ -421,6 +422,7 @@ public:
     std::string GetEfuseKekIVFile(void);
     std::string GetEfuseUserKek0IVFile(void);
     std::string GetEfuseUserKek1IVFile(void);
+    std::string GetUserKeysFileName(void);
     std::string GetUdfBhFile(void);
     SplitMode::Type GetSplitMode(void);
     uint32_t GetIdCode(void);
@@ -455,6 +457,7 @@ public:
     std::string pmcDataAesFile;
     uint32_t idCode;
     uint32_t extendedIdCode;
+    PartitionType::Type pdiType;
     bool bypassIdCode;
     bool aHwrot;
     bool sHwrot;
@@ -467,6 +470,7 @@ public:
     uint32_t slrBootCnt;
     uint32_t slrConfigCnt;
     PartitionBifOptions* lastPartitionBifOption;
+    BootDevice::Type bootDevice;
 private:
     std::string regInitFile;
     std::string udfBhFile;
@@ -492,7 +496,6 @@ private:
     std::string aesKeyFile;
     std::string userKeyFile;
     KeySource::Type keySourceEncryption;
-    BootDevice::Type bootDevice;
     uint32_t bootDeviceAddress;
     std::vector<uint32_t> bootvectors;
     BhRsa::Type bhAuthEnable;

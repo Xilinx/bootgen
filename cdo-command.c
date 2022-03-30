@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2019-2021 Xilinx, Inc.
+* Copyright 2019-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <inttypes.h>
+#include <time.h>
 #include "cdo-alloc.h"
 #include "cdo-command.h"
 UserKeys user_keys;
@@ -104,27 +105,39 @@ void cdocmd_insert_command(CdoCommand * cmd, CdoCommand * newcmd) {
     list_add_last(&newcmd->link_all, &cmd->link_all);
 }
 
+static int myrand(void)
+{
+    static unsigned long next;
+    static int firsttime = 1;
+    if (firsttime) {
+        firsttime = 0;
+        next = time(NULL);
+    }
+    next = next * 1103515245 + 12345;
+    return((unsigned)(next/65536) % 32768);
+}
+
 static uint8_t randchar() {
     static char chrs[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    return chrs[rand() % (sizeof chrs - 1)];
+    return chrs[myrand() % (sizeof chrs - 1)];
 }
 
 static uint32_t randu32() {
-    uint32_t width = rand() & 3;
-    uint32_t value = rand() & 255;
+    uint32_t width = myrand() & 3;
+    uint32_t value = myrand() & 255;
     while (width-- > 0) {
         value <<= 8;
-        value |= rand() & 255;
+        value |= myrand() & 255;
     }
     return value;
 }
 
 static uint64_t randu64() {
-    uint64_t width = rand() & 7;
-    uint64_t value = rand() & 255;
+    uint64_t width = myrand() & 7;
+    uint64_t value = myrand() & 255;
     while (width-- > 0) {
         value <<= 8;
-        value |= rand() & 255;
+        value |= myrand() & 255;
     }
     return value;
 }
@@ -141,6 +154,7 @@ void cdocmd_add_random_command(CdoSequence * seq, uint32_t * levelp) {
              type == CdoCmdComment ||
              type == CdoCmdSetBaseAddress ||
              (type == CdoCmdProc && level != 0) ||
+             (type == CdoCmdPsmSequence && level != 0) ||
              (type == CdoCmdBegin && level >= (randu32() & 3)) ||
              (type == CdoCmdEnd && level == 0) ||
              (type == CdoCmdBreak && level == 0));
@@ -174,7 +188,8 @@ void cdocmd_add_random_command(CdoSequence * seq, uint32_t * levelp) {
         cmd->type == CdoCmdPmAddNode ||
         cmd->type == CdoCmdPmAddNodeParent ||
         cmd->type == CdoCmdPmAddRequirement ||
-        cmd->type == CdoCmdPmInitNode) {
+        cmd->type == CdoCmdPmInitNode ||
+        cmd->type == CdoCmdPmSetNodeAccess) {
         uint32_t * p;
         uint32_t i;
         cmd->count = (cmd->count & 15) + 1;
@@ -183,7 +198,7 @@ void cdocmd_add_random_command(CdoSequence * seq, uint32_t * levelp) {
             p[i] = randu32();
         }
         if (cmd->type == CdoCmdDmaXfer) {
-            if (rand() & 1) cmd->srcaddr = 0;
+            if (myrand() & 1) cmd->srcaddr = 0;
             if (cmd->srcaddr != 0) {
                 free(cmd->buf);
                 cmd->buf = NULL;
@@ -208,6 +223,7 @@ void cdocmd_add_random_command(CdoSequence * seq, uint32_t * levelp) {
         cmd->value = (cmd->value % level) + 1;
     }
     if (cmd->type == CdoCmdProc) level++;
+    if (cmd->type == CdoCmdPsmSequence) level++;
     if (cmd->type == CdoCmdBegin) level++;
     if (cmd->type == CdoCmdEnd) level--;
     add_command(seq, cmd);
@@ -277,7 +293,6 @@ static CdoCommand * build_block_write(uint64_t addr, void * buf, uint32_t count,
             }
         }
     }
-
     cmd->buf = copy_buf(buf, count, be);
     return cmd;
 }
@@ -710,6 +725,20 @@ void cdocmd_add_pm_iso_control(CdoSequence * seq, uint32_t nodeid, uint32_t valu
     add_command(seq, cmd);
 }
 
+void cdocmd_add_pm_activate_subsystem(CdoSequence * seq, uint32_t ssid) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdPmActivateSubsystem);
+    cmd->id = ssid;
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_pm_set_node_access(CdoSequence * seq, uint32_t nodeid, uint32_t count, void * buf, uint32_t be) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdPmSetNodeAccess);
+    cmd->id = nodeid;
+    cmd->count = count;
+    cmd->buf = copy_buf(buf, count, be);
+    add_command(seq, cmd);
+}
+
 void cdocmd_add_cfu_set_crc32(CdoSequence * seq, uint32_t type, uint32_t value) {
     CdoCommand * cmd = cdocmd_alloc(CdoCmdCfuSetCrc32);
     cmd->flags = type;
@@ -865,6 +894,17 @@ void cdocmd_add_end(CdoSequence * seq) {
 void cdocmd_add_break(CdoSequence * seq, uint32_t value) {
     CdoCommand * cmd = cdocmd_alloc(CdoCmdBreak);
     cmd->value = value;
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_ot_check(CdoSequence * seq, uint32_t value) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdOtCheck);
+    cmd->value = value;
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_psm_sequence(CdoSequence * seq) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdPsmSequence);
     add_command(seq, cmd);
 }
 

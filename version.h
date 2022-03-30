@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 #endif
 
 #define PROGRAMNAME     "Xilinx Bootgen"
-#define COPYRIGHT       "Copyright (c) 1995-2021 Xilinx, Inc. All rights reserved.\n"
+#define COPYRIGHT       "Copyright (c) 1986-2022 Xilinx, Inc. All rights reserved.\n"
 
 
 /******************************************************************************
@@ -46,6 +46,7 @@
  log               - Generate log file                                        |\n\
  nonbooting        - Generate an intermediate boot image                      |\n\
  o                 - Output filename in MCS/BIN format                        |\n\
+ overlay_cdo       - Overlay CDO files of Boot Image File                     |\n\
  p                 - Part name for generating nky file                        |\n\
  padimageheader    - Pad header tables                                        |\n\
  process_bitstream - Outputs bitstream in bin/mcs format                      |\n\

@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -222,6 +222,7 @@ class VersalPartitionHeaderTable : public PartitionHeaderTable
 public:
     void Build(BootImage& bi, Binary& cache);
     void ConfigureMetaHdrAuthenticationContext(BootImage& bi);
+    void UpdateAtfHandoffParams(BootImage& bi);
     void Link(BootImage& bi);
     Section* firstSection;
 };

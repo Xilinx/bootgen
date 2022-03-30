@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -166,6 +166,8 @@ public:
     uint8_t authBlock;
     uint64_t firstChunkSize;
     
+    uint64_t atf_handoff_params_offset;
+    bool update_atf_handoff_params;
 protected:
     bool slaveBootSplitMode;
     uint32_t fullBhSize;
@@ -186,6 +188,7 @@ public:
     virtual void BuildPartitions(BootImage& bi, Binary& cache);
     virtual void Link(BootImage& bi);
     virtual void LinkPartitions(BootImage& bi);
+    bool IsTcmMemoryRange(bool isR5LockStep, uint64_t strtAddr, uint64_t endAddr);
     Section* firstSection;
 };
 

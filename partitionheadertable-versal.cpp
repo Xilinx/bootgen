@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -22,6 +22,29 @@
 #include "bootheader-versal.h"
 #include "authentication-versal.h"
 
+typedef enum
+{
+    atfHandoffExecStateShift = 0,
+    atfHandoffEndiannessShift = 1,
+    atfHandoffTrustzoneShift = 2,
+    atfHandoffExceptionLevelShift = 3,
+    atfHandoffDestCpuShift = 5,
+} atf_handoff_partition_attributes;
+
+#define FSBL_MAX_PARTITIONS 6
+
+/* Structure corresponding to each partition entry */
+struct atf_handoff_partition {
+    uint64_t entry_point;
+    uint64_t flags;
+};
+
+/* Structure for hand off parameters to ARM Trusted Firmware (ATF) */
+struct atf_handoff_params_struct {
+    uint8_t magic[4];
+    uint32_t num_entries;
+    struct atf_handoff_partition handoff_partition[FSBL_MAX_PARTITIONS];
+} atf_handoff_params ;
 
 /*
 -------------------------------------------------------------------------------
@@ -376,7 +399,7 @@ void VersalPartitionHeader::SetPartitionKeySrc(KeySource::Type keyType, BifOptio
             break;
 
         case KeySource::EfuseUserGryKey1:
-            pHTable->partitionKeySource = EFUSE_USER_BLK_KEY1;
+            pHTable->partitionKeySource = EFUSE_USER_GRY_KEY1;
             kekIvFile = bifOptions->GetEfuseUserKek1IVFile();
             if (kekIvFile == "")
             {
@@ -887,6 +910,8 @@ void VersalPartitionHeaderTable::Build(BootImage & bi, Binary & cache)
         (*partHdr)->Build(bi, cache);
     }
 
+    UpdateAtfHandoffParams(bi);
+
     if (bi.partitionHeaderList.size() > 0)
     {
         bi.partitionHeaderTable->firstSection = bi.partitionHeaderList.front()->section;
@@ -1164,6 +1189,51 @@ void VersalPartitionHeaderTable::ConfigureMetaHdrAuthenticationContext(BootImage
     if (bi.bifOptions->metaHdrAttributes.presign != "")
     {
         bi.metaHdrAuthCtx->SetPresignFile(bi.bifOptions->metaHdrAttributes.presign);
+    }
+}
+
+/******************************************************************************/
+void VersalPartitionHeaderTable::UpdateAtfHandoffParams(BootImage & bi)
+{
+    memset(&atf_handoff_params, 0, sizeof(atf_handoff_params_struct));
+    strncpy((char*)atf_handoff_params.magic, "XLNX",4);
+    atf_handoff_params.num_entries = 0;
+
+    for (std::list<PartitionHeader*>::iterator partHdr = bi.partitionHeaderList.begin(); partHdr != bi.partitionHeaderList.end(); partHdr++)
+    {
+        DestinationCPU::Type core = (*partHdr)->imageHeader->GetDestCpu();
+        ExceptionLevel::Type exceptionLevel = (*partHdr)->imageHeader->GetExceptionLevel();
+        TrustZone::Type trustzone = (*partHdr)->imageHeader->GetTrustZone();
+
+        //if((core = a72 - 0 or a72 - 1) && ((EL = EL2 && trustzone = non - secure) || (EL = EL1 && trustzone = secure) || (EL = EL1 && trustzone = non - secure)))
+        bool valid_core = ((core == DestinationCPU::A53_0) || (core == DestinationCPU::A53_1));
+        bool valid_entry1 = ((exceptionLevel == ExceptionLevel::EL2) && (trustzone == TrustZone::NonSecure));
+        bool valid_entry2 = (exceptionLevel == ExceptionLevel::EL1);
+
+        if (valid_core && (valid_entry1 || valid_entry2))
+        {
+            atf_handoff_params.handoff_partition[atf_handoff_params.num_entries].entry_point = (*partHdr)->execAddress;
+
+            uint8_t execState = (*partHdr)->execState;
+            uint8_t endian = ((*partHdr)->elfEndianess == Endianness::BigEndian) ? 1 : 0;
+            uint8_t destCpu = (core == DestinationCPU::A53_0) ? 0 : 1;
+
+            atf_handoff_params.handoff_partition[atf_handoff_params.num_entries].flags = (execState << atfHandoffExecStateShift) |
+                (endian << atfHandoffEndiannessShift) |
+                (trustzone << atfHandoffTrustzoneShift) |
+                (exceptionLevel << atfHandoffExceptionLevelShift) |
+                (destCpu << atfHandoffDestCpuShift);
+
+            atf_handoff_params.num_entries++;
+        }
+    }
+
+    for (std::list<PartitionHeader*>::iterator partHdr = bi.partitionHeaderList.begin(); partHdr != bi.partitionHeaderList.end(); partHdr++)
+    {
+        if ((*partHdr)->update_atf_handoff_params)
+        {
+            memcpy((*partHdr)->partition->section->Data + (*partHdr)->atf_handoff_params_offset, &atf_handoff_params, sizeof(atf_handoff_params_struct));
+        }
     }
 }
 

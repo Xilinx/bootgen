@@ -1,6 +1,6 @@
 // 67d7842dbbe25473c3c32b93c0da8047785f30d78e8a024de1b57352245f9689
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -704,8 +704,16 @@ uint32_t Kdf::ParseKDFTestVectorFile(std::string filename)
             if (word == "=")
             {
                 testFile >> word;
-                fixed_input_data = new uint8_t[fixed_input_data_byte_length];
-                pack_hex(word, fixed_input_data);
+                if (fixed_input_data_byte_length > 0)
+                {
+                    fixed_input_data = new uint8_t[fixed_input_data_byte_length];
+                    pack_hex(word, fixed_input_data);
+                }
+                else
+                {
+                    std::cout << "FixedInputDataByteLen is expected prior to FixedInputData" << std::endl;
+                    exit(KDF_CAVP_KI_LENGTH_IMPROPER);
+                }
             }
             else
             {
