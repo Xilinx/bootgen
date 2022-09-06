@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@ void ImageHeaderTable::Build(BootImage& bi, Binary& cache)
         cache.Sections.push_back(section);
     }
 
-    SetImageHeaderTableVersion(0x01020000);
+    SetImageHeaderTableVersion(VERSION_ZYNQ_ZYNQMP);
 
     for(std::list<ImageHeader*>::iterator image = bi.imageList.begin();
         image != bi.imageList.end();  image++) 
@@ -216,6 +216,9 @@ ImageHeader::ImageHeader(std::string& filename)
     , isIhLowPowerDomain(false)
     , isIhPLPowerDomain(false)
     , isIhSystemPowerDomain(false)
+    , lockstep(false)
+    , cluster(0)
+    , delayAuth(false)
 { }
 
 /******************************************************************************/
@@ -284,6 +287,9 @@ ImageHeader::ImageHeader(std::ifstream& ifs)
     , isIhLowPowerDomain(false)
     , isIhPLPowerDomain(false)
     , isIhSystemPowerDomain(false)
+    , lockstep(false)
+    , cluster(0)
+    , delayAuth(false)
 { }
 
 /******************************************************************************/
@@ -352,6 +358,9 @@ ImageHeader::ImageHeader(uint8_t* data, uint64_t len)
     , isIhLowPowerDomain(false)
     , isIhPLPowerDomain(false)
     , isIhSystemPowerDomain(false)
+    , lockstep(false)
+    , cluster(0)
+    , delayAuth(false)
 {
 }
 

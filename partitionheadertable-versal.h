@@ -55,6 +55,12 @@ typedef enum
     vphtExecStateShift = 3,
     vphtExecStateMask = 0x1,
 
+    vNetphtlockStepShift = 4,
+    vNetphtlockStepMask = 0x3,
+
+    vNetphtClusterShift = 6,
+    vNetphtClusterMask = 0x3,
+
     vphtDestCpuShift = 8,
     vphtDestCpuMask = 0xF,
 
@@ -99,6 +105,7 @@ typedef enum
 #define EFUSE_USER_BLK_KEY1             0xC3A5C5A5
 #define EFUSE_USER_GRY_KEY1             0xC3A5C5A7
 
+#define SECURE_16K_CHUNK             0x4000
 #define SECURE_32K_CHUNK             0x8000   /* 32 KB = 32*1024 B */
 #define SECURE_64K_CHUNK             0x10000  /* 64 KB = 64*1024 B */
 
@@ -207,6 +214,8 @@ public:
 private:
     uint8_t partitionEncrypted;
     uint8_t slr;
+    uint8_t cluster;
+    Lockstep::Type lockstep;
     uint32_t partitionUid;
     KeySource::Type partitionKeySrc;
     bool kekIvMust;
@@ -234,13 +243,15 @@ public:
     VersalPartition(PartitionHeader* hdr, Section* section0);
     VersalPartition(PartitionHeader* hdr, const uint8_t* data, Binary::Length_t length);
     size_t GetTotalDataChunks(Binary::Length_t partitionSize, std::vector<uint32_t>& dataChunks, bool encryptionFlag);
+    size_t GetBootloaderTotalDataChunks(Binary::Length_t partitionSize, std::vector<uint32_t>& dataChunks, bool encryptionFlag);
     void ChunkifyAndHash(Section * section, bool encryptionFlag);
     void Build(BootImage& bi, Binary& cache);
     void Link(BootImage& bi);
-    static uint64_t GetSecureChunkSize(void);
 
 private:
     PartitionHeader* header;
     uint64_t firstChunkSize;
+    bool versalNetSeries;
+    uint64_t secureChunkSize;
 };
 #endif

@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -77,16 +77,21 @@ void VersalChecksumTable::Build(BootImage& bi, Binary& cache)
         for (std::list<PartitionHeader*>::iterator j = pHList.begin(); j != pHList.end(); j++)
         {
             PartitionHeader& partHdr(**j);
+            /* Do not calculate checksum on entire partition for VersalNet bootloader - hashing is calculated on the first chunk + hash of previous chunk in VersalNet
+            This is handled while doing the chunking of the partition. So need need to calculate again */
             if (partHdr.IsBootloader())
             {
-                // For FSBL, checksum should be like Bootimage Integrity, the checksum should be attached right at the end of the FSBL
-                partHdr.partition->section->IncreaseLengthAndPadTo(partHdr.partition->section->Length + hdr.GetChecksumContext()->Size(), 0);
+                if (!bi.options.IsVersalNetSeries())
+                {
+                    // For FSBL, checksum should be like Bootimage Integrity, the checksum should be attached right at the end of the FSBL
+                    partHdr.partition->section->IncreaseLengthAndPadTo(partHdr.partition->section->Length + hdr.GetChecksumContext()->Size(), 0);
+                }
             }
             else
             {
-                // For other partitions, a new checksum section is created and added at the end of image.
-                Section* s = hdr.GetChecksumContext()->Build(partHdr.partition->section->Name);
-                partHdr.checksumSection = s;
+                    // For other partitions, a new checksum section is created and added at the end of image.
+                    Section* s = hdr.GetChecksumContext()->Build(partHdr.partition->section->Name);
+                    partHdr.checksumSection = s;
             }
         }
     }
@@ -103,9 +108,14 @@ void VersalChecksumTable::Link(BootImage& bi)
         for (std::list<PartitionHeader*>::iterator j = pHList.begin(); j != pHList.end(); j++)
         {
             PartitionHeader& partHdr(**j);
+            /* Do not calculate checksum on entire partition for VersalNet bootloader - hashing is calculated on the first chunk + hash of previous chunk in VersalNet
+               This is handled while doing the chunking of the partition. So need need to calculate again */
             if (partHdr.IsBootloader())
             {
-                hdr.GetChecksumContext()->Link(partHdr.IsBootloader(), partHdr.partition->section->Data, partHdr.partition->section->Length - hdr.GetChecksumContext()->Size(), partHdr.partition->section);
+                if (!bi.options.IsVersalNetSeries())
+                {
+                    hdr.GetChecksumContext()->Link(partHdr.IsBootloader(), partHdr.partition->section->Data, partHdr.partition->section->Length - hdr.GetChecksumContext()->Size(), partHdr.partition->section);
+                }
             }
             else
             {

@@ -54,6 +54,7 @@ VersalBootImage::VersalBootImage(Options& options, uint8_t index) : BootImage(op
     currentAuthCtx->hash = hash;
     partitionHeaderTable->firstSection = NULL;
     convertAieElfToCdo = true;
+    current_image_block = 0;
     createSubSystemPdis = true;
 }
 
@@ -465,6 +466,8 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
                         }
 
                         uint8_t* aC = new uint8_t[sizeof(AuthCertificate4096Sha3PaddingStructure)];
+                        memset(aC, 0, sizeof(AuthCertificate4096Sha3PaddingStructure));
+
                         if (!(fseek(binFile, ph->GetAuthCertificateOffset(), SEEK_SET)))
                         {
                             size_t result = fread(aC, 1, sizeof(AuthCertificate4096Sha3PaddingStructure), binFile);
@@ -594,6 +597,8 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
                         LOG_ERROR("Cannot read file %s", it->filename.c_str());
                     }
                     uint8_t* aC = new uint8_t[sizeof(AuthCertificate4096Sha3PaddingStructure)];
+                    memset(aC, 0, sizeof(AuthCertificate4096Sha3PaddingStructure));
+
                     if (!(fseek(binFile, ph->GetAuthCertificateOffset(), SEEK_SET)))
                     {
                         size_t result = fread(aC, 1, sizeof(AuthCertificate4096Sha3PaddingStructure), binFile);
@@ -800,6 +805,9 @@ ImageHeader* VersalBootImage::ParsePartitionDataToImage(BifOptions * bifoptions,
     image->SetPartitionRevocationId(partitionBifOptions->GetRevokeId());
     image->SetDpacm(partitionBifOptions->dpaCM);
     image->SetPufHdLocation(partitionBifOptions->pufHdLoc);
+    image->SetClusterNum(partitionBifOptions->clusterNum);
+    image->SetLockStepFlag(partitionBifOptions->lockstep);
+    image->SetDelayAuthFlag(partitionBifOptions->delayAuth);
 
     if ((bifoptions->GetDpaCM() == DpaCM::DpaCMEnable) && (image->IsBootloader()))
     {
@@ -1047,7 +1055,7 @@ void VersalBootImage::ConfigureEncryptionBlocks(ImageHeader * image, PartitionBi
         uint32_t defaultEncrBlockSize = partitionBifOptions->GetDefaultEncryptionBlockSize();
         image->SetDefaultEncrBlockSize(defaultEncrBlockSize);
 
-        if (image->IsBootloader())
+        if (image->IsBootloader() && !(options.IsVersalNetSeries()))
         {
             for (uint32_t itr = 0; itr < encrBlocks.size(); itr++)
             {
@@ -1058,8 +1066,8 @@ void VersalBootImage::ConfigureEncryptionBlocks(ImageHeader * image, PartitionBi
         {
             Binary::Length_t encrBlocksSize = 0;
             Binary::Length_t encrOverhead = 0;
-            Binary::Length_t secureChunkSize = VersalPartition::GetSecureChunkSize();
-            if (partitionBifOptions->authType == Authentication::None)
+            Binary::Length_t secureChunkSize = GetSecureChunkSize(image->IsBootloader());
+            if (partitionBifOptions->authType == Authentication::None && !partitionBifOptions->delayAuth)
             {
                 secureChunkSize += SHA3_LENGTH_BYTES;
             }
@@ -1865,4 +1873,17 @@ void VersalBootImage::BuildAndLink(Binary* cache)
 
     LOG_INFO("After Link ");
     LOG_DUMP_IMAGE(*cache);
+}
+
+/******************************************************************************/
+uint64_t VersalBootImage::GetSecureChunkSize(bool isBootloader)
+{
+    if (options.IsVersalNetSeries() && isBootloader == true)
+    {
+        return (SECURE_16K_CHUNK - SHA3_LENGTH_BYTES);
+    }
+    else
+    {
+        return (SECURE_32K_CHUNK - SHA3_LENGTH_BYTES);
+    }
 }

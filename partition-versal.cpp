@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -41,6 +41,8 @@ VersalPartition::VersalPartition(PartitionHeader* header0, Section* section0)
     : Partition(header0, section0)
     , header(header0)
     , firstChunkSize(0)
+    , versalNetSeries(false)
+    , secureChunkSize(SECURE_32K_CHUNK)
 {
     section = section0;
 
@@ -54,6 +56,8 @@ VersalPartition::VersalPartition(PartitionHeader* header0, const uint8_t* data, 
     : Partition(header0, data, length)
     , header(header0)
     , firstChunkSize(0)
+    , versalNetSeries(false)
+    , secureChunkSize(SECURE_32K_CHUNK)
 {
     std::string partition_name = "";
     for (size_t i = 0; i < header->imageHeader->GetFileList().size(); i++)
@@ -95,15 +99,15 @@ size_t VersalPartition::GetTotalDataChunks(Binary::Length_t partitionSize, std::
     {
         chunkOnlength -= (SECURE_HDR_SZ + AES_GCM_TAG_SZ);
     }
-    dataChunksCount = (chunkOnlength / GetSecureChunkSize()) + (((chunkOnlength % GetSecureChunkSize()) == 0 ? 0 : 1));
+    dataChunksCount = (chunkOnlength / secureChunkSize) + (((chunkOnlength % secureChunkSize) == 0 ? 0 : 1));
 
-    if (chunkOnlength % GetSecureChunkSize() != 0)
+    if (chunkOnlength % secureChunkSize != 0)
     {
-        dataChunks.push_back(((chunkOnlength)-((dataChunksCount - 1) * GetSecureChunkSize())));
+        dataChunks.push_back(((chunkOnlength)-((dataChunksCount - 1) * secureChunkSize)));
     }
     else
     {
-        dataChunks.push_back(GetSecureChunkSize());
+        dataChunks.push_back(secureChunkSize);
     }
 
     for (uint32_t itr = 0; itr < dataChunksCount - 1; itr++)
@@ -114,21 +118,209 @@ size_t VersalPartition::GetTotalDataChunks(Binary::Length_t partitionSize, std::
         {
             if (encryptionFlag)
             {
-                dataChunks.push_back(GetSecureChunkSize() + SECURE_HDR_SZ + AES_GCM_TAG_SZ);
-                firstChunkSize = GetSecureChunkSize() + SECURE_HDR_SZ + AES_GCM_TAG_SZ;
+                dataChunks.push_back(secureChunkSize + SECURE_HDR_SZ + AES_GCM_TAG_SZ);
+                firstChunkSize = secureChunkSize + SECURE_HDR_SZ + AES_GCM_TAG_SZ;
             }
             else
             {
-                dataChunks.push_back(GetSecureChunkSize());
-                firstChunkSize = GetSecureChunkSize();
+                dataChunks.push_back(secureChunkSize);
+                firstChunkSize = secureChunkSize;
             }
         }
         else
         {
-            dataChunks.push_back(GetSecureChunkSize());
+            dataChunks.push_back(secureChunkSize);
+        }
+    }
+    return newSectionLength;
+}
+
+/******************************************************************************/
+size_t VersalPartition::GetBootloaderTotalDataChunks(Binary::Length_t partitionSize, std::vector<uint32_t>& dataChunks, bool encryptionFlag)
+{
+    size_t newSectionLength = partitionSize;
+    size_t chunkOnlength = 0;
+    Binary::Length_t dataChunksCount = 0;
+
+    //PMC DATA
+    if (header->imageHeader->GetTotalPmcFwSizeIh() != 0)
+    {
+        chunkOnlength = header->imageHeader->GetTotalPmcFwSizeIh();
+        if (encryptionFlag)
+        {
+            chunkOnlength -= (SECURE_HDR_SZ + AES_GCM_TAG_SZ);
+        }
+        dataChunksCount = (chunkOnlength / secureChunkSize) + (((chunkOnlength % secureChunkSize) == 0 ? 0 : 1));
+        if (dataChunksCount == 1)
+        {
+            if (chunkOnlength % secureChunkSize != 0)
+            {
+                size_t singleChunklength = (chunkOnlength)-((dataChunksCount - 1) * secureChunkSize);
+                if (encryptionFlag)
+                {
+                    dataChunks.push_back(singleChunklength + SECURE_HDR_SZ + AES_GCM_TAG_SZ);
+                    firstChunkSize = singleChunklength + SECURE_HDR_SZ + AES_GCM_TAG_SZ;
+                    LOG_TRACE("length of pmc data remaining length 0x%X:", singleChunklength + SECURE_HDR_SZ + AES_GCM_TAG_SZ);
+                }
+                else
+                {
+                    dataChunks.push_back(singleChunklength);
+                    firstChunkSize = singleChunklength;
+                    LOG_TRACE("length of pmc data remaining length 0x%X:", singleChunklength);
+                }
+            }
+            else
+            {
+                if (encryptionFlag)
+                {
+                    dataChunks.push_back(secureChunkSize + SECURE_HDR_SZ + AES_GCM_TAG_SZ);
+                    firstChunkSize = secureChunkSize + SECURE_HDR_SZ + AES_GCM_TAG_SZ;
+                    LOG_TRACE("length of pmc data remaining length 0x%X:", secureChunkSize + SECURE_HDR_SZ + AES_GCM_TAG_SZ);
+                }
+                else
+                {
+                    dataChunks.push_back(secureChunkSize);
+                    firstChunkSize = secureChunkSize;
+                    LOG_TRACE("length of pmc data remaining length 0x%X:", secureChunkSize);
+                }
+            }
+        }
+        else
+        {
+            if (chunkOnlength % secureChunkSize != 0)
+            {
+                dataChunks.push_back(((chunkOnlength)-((dataChunksCount - 1) * secureChunkSize)));
+                LOG_TRACE("length of pmc data remaining length %d:", ((chunkOnlength)-((dataChunksCount - 1) * secureChunkSize)));
+            }
+            else
+            {
+                dataChunks.push_back(secureChunkSize);
+                LOG_TRACE("length of pmc data remaining length %d:", secureChunkSize);
+            }
+
+            for (uint32_t itr = 0; itr < dataChunksCount - 1; itr++)
+            {
+                dataChunks.push_back(SHA3_LENGTH_BYTES);
+                newSectionLength += SHA3_LENGTH_BYTES;
+                header->imageHeader->SetTotalPmcFwSizeIh(header->imageHeader->GetTotalPmcFwSizeIh() + SHA3_LENGTH_BYTES);
+                if (itr == dataChunksCount - 2)
+                {
+                    if (encryptionFlag)
+                    {
+                        dataChunks.push_back(secureChunkSize + SECURE_HDR_SZ + AES_GCM_TAG_SZ);
+                        firstChunkSize = secureChunkSize + SECURE_HDR_SZ + AES_GCM_TAG_SZ;
+                    }
+                    else
+                    {
+                        dataChunks.push_back(secureChunkSize);
+                        firstChunkSize = secureChunkSize;
+                    }
+                }
+                else
+                {
+                    dataChunks.push_back(secureChunkSize);
+                }
+            }
         }
     }
 
+    //PLM
+    chunkOnlength = header->imageHeader->GetTotalFsblFwSizeIh();
+    if (encryptionFlag)
+    {
+        chunkOnlength -= (SECURE_HDR_SZ + AES_GCM_TAG_SZ);
+    }
+    dataChunksCount = (chunkOnlength / secureChunkSize) + (((chunkOnlength % secureChunkSize) == 0 ? 0 : 1));
+    if (dataChunksCount == 1)
+    {
+        // If PMC CDO present, need to calculate the hash, so include hash
+        if (header->imageHeader->GetTotalPmcFwSizeIh())
+        {
+            dataChunks.push_back(SHA3_LENGTH_BYTES);
+            newSectionLength += SHA3_LENGTH_BYTES;
+            header->imageHeader->SetTotalFsblFwSizeIh(header->imageHeader->GetTotalFsblFwSizeIh() + SHA3_LENGTH_BYTES);
+        }
+        if (chunkOnlength % secureChunkSize != 0)
+        {
+            size_t singleChunklength = (chunkOnlength) - ((dataChunksCount - 1) * secureChunkSize);
+            if (encryptionFlag)
+            {
+                dataChunks.push_back(singleChunklength + SECURE_HDR_SZ + AES_GCM_TAG_SZ);
+                firstChunkSize = singleChunklength + SECURE_HDR_SZ + AES_GCM_TAG_SZ;
+                LOG_TRACE("length of plm data remaining length 0x%X:", singleChunklength + SECURE_HDR_SZ + AES_GCM_TAG_SZ);
+            }
+            else
+            {
+                dataChunks.push_back(singleChunklength);
+                firstChunkSize = singleChunklength;
+                LOG_TRACE("length of plm data remaining length 0x%X:", singleChunklength);
+            }
+        }
+        else
+        {
+            if (encryptionFlag)
+            {
+                dataChunks.push_back(secureChunkSize + SECURE_HDR_SZ + AES_GCM_TAG_SZ);
+                firstChunkSize = secureChunkSize + SECURE_HDR_SZ + AES_GCM_TAG_SZ;
+                LOG_TRACE("length of plm data remaining length 0x%X:", secureChunkSize + SECURE_HDR_SZ + AES_GCM_TAG_SZ);
+            }
+            else
+            {
+                dataChunks.push_back(secureChunkSize);
+                firstChunkSize = secureChunkSize;
+                LOG_TRACE("length of plm data remaining length 0x%X:", secureChunkSize);
+            }
+        }
+    }
+    else
+    {
+        // If PMC CDO present, need to calculate the hash, so include hash
+        if (header->imageHeader->GetTotalPmcFwSizeIh())
+        {
+            dataChunks.push_back(SHA3_LENGTH_BYTES);
+            newSectionLength += SHA3_LENGTH_BYTES;
+            header->imageHeader->SetTotalFsblFwSizeIh(header->imageHeader->GetTotalFsblFwSizeIh() + SHA3_LENGTH_BYTES);
+        }
+        if (chunkOnlength % secureChunkSize != 0)
+        {
+            dataChunks.push_back(((chunkOnlength)-((dataChunksCount - 1) * secureChunkSize)));
+            LOG_TRACE("length of plm data remaining length 0x%X:", ((chunkOnlength)-((dataChunksCount - 1) * secureChunkSize)));
+        }
+        else
+        {
+            dataChunks.push_back(secureChunkSize);
+            LOG_TRACE("length of plm data remaining length 0x%X:", secureChunkSize);
+        }
+
+        for (uint32_t itr = 0; itr < dataChunksCount - 1; itr++)
+        {
+            dataChunks.push_back(SHA3_LENGTH_BYTES);
+            newSectionLength += SHA3_LENGTH_BYTES;
+            header->imageHeader->SetTotalFsblFwSizeIh(header->imageHeader->GetTotalFsblFwSizeIh() + SHA3_LENGTH_BYTES);
+            if (itr == dataChunksCount - 2)
+            {
+                if (encryptionFlag)
+                {
+                    dataChunks.push_back(secureChunkSize + SECURE_HDR_SZ + AES_GCM_TAG_SZ);
+                    firstChunkSize = secureChunkSize + SECURE_HDR_SZ + AES_GCM_TAG_SZ;
+                }
+                else
+                {
+                    dataChunks.push_back(secureChunkSize);
+                    firstChunkSize = secureChunkSize;
+                }
+            }
+            else
+            {
+                dataChunks.push_back(secureChunkSize);
+            }
+        }
+    }
+    if ((header->imageHeader->GetChecksumContext()->Type() != Checksum::None))
+    {
+        newSectionLength += SHA3_LENGTH_BYTES;
+        header->imageHeader->SetTotalFsblFwSizeIh(header->imageHeader->GetTotalFsblFwSizeIh() + SHA3_LENGTH_BYTES);
+    }
     return newSectionLength;
 }
 
@@ -141,7 +333,23 @@ void VersalPartition::ChunkifyAndHash(Section* section, bool encryptionFlag)
     int tempBufferSize = 0;
     /* Get the number/size data chunks and claculate the new section length*/
     size_t length = section->Length;
-    size_t newLength = GetTotalDataChunks(length, dataChunks, encryptionFlag);
+    size_t newLength = 0;
+    bool checksum_bootloader = false;
+
+    if (section->isBootloader && versalNetSeries)
+    {
+        if (header->imageHeader->GetChecksumContext()->Type() != Checksum::None)
+        {
+            /* If checksum is enabled for VersalNet bootloader, then add the final checksum here only.
+            VersalChecksumTable::Build & VersalChecksumTable::Link will not process anything for bootloader checksum */
+            checksum_bootloader = true;
+        }
+        newLength = GetBootloaderTotalDataChunks(length, dataChunks, encryptionFlag);
+    }
+    else
+    {
+        newLength = GetTotalDataChunks(length, dataChunks, encryptionFlag);
+    }
 
     int itr = (dataChunks.size() - 3);
 
@@ -225,6 +433,18 @@ void VersalPartition::ChunkifyAndHash(Section* section, bool encryptionFlag)
     delete[] tempBuffer;
     /*-------------------------------CHUNK 1------------------------------------*/
 
+    if (checksum_bootloader)
+    {
+        /* Calculate hash of top chunk and previous hash */
+        shaHash = new uint8_t[SHA3_LENGTH_BYTES];
+        Versalcrypto_hash(shaHash, newDataPtr, tempBufferSize + SHA3_LENGTH_BYTES, true);
+
+        /* Place the final hash at the start of PLM partition */
+        newDataPtr -= SHA3_LENGTH_BYTES;
+        memcpy(newDataPtr, shaHash, SHA3_LENGTH_BYTES);
+        delete[] shaHash;
+    }
+
     delete[] dataPtr;
 
     delete[] section->Data;
@@ -237,6 +457,8 @@ void VersalPartition::ChunkifyAndHash(Section* section, bool encryptionFlag)
 /******************************************************************************/
 void VersalPartition::Build(BootImage& bi, Binary& cache)
 {
+    versalNetSeries = bi.options.IsVersalNetSeries();
+    secureChunkSize = bi.GetSecureChunkSize(this->header->imageHeader->IsBootloader());
     /* Get the image header from this partition header */
     ImageHeader& imageHeader(*this->header->imageHeader);
     /* Get the contexts for Authentication & Encryption */
@@ -304,7 +526,14 @@ void VersalPartition::Build(BootImage& bi, Binary& cache)
     {
         LOG_ERROR("Cannot reencrypt a partition that is already encrypted for %s", section->Name.c_str());
     }
-    encryptCtx->Process(bi, header);
+    if (versalNetSeries)
+    {
+        encryptCtx->ChunkifyAndProcess(bi, header);
+    }
+    else
+    {
+        encryptCtx->Process(bi, header);
+    }
     
     uint32_t padLength = 0;
 
@@ -323,7 +552,7 @@ void VersalPartition::Build(BootImage& bi, Binary& cache)
         if ((imageHeader.GetChecksumContext()->Type() == Checksum::SHA3) || (currentAuthCtx->authAlgorithm->Type() != Authentication::None))
         {
             /* No chunking on bootloader for versal - Data should be alligned to 104 bytes before calculating the hash */
-            if (imageHeader.IsBootloader())
+            if (imageHeader.IsBootloader() && !(versalNetSeries))
             {
                 Binary::Length_t shaPadOnLength = header->partition->section->Length;
                 if (currentAuthCtx->authAlgorithm->Type() != Authentication::None)
@@ -353,7 +582,73 @@ void VersalPartition::Build(BootImage& bi, Binary& cache)
                 header->transferSize = section->Length - imageHeader.GetChecksumContext()->Size();
                 /* Checksum length is added to the partition length, in case of bootloader.
                    Partiton length should not include checksum length, so substarct*/
-                
+            }
+            else if (imageHeader.IsBootloader() && versalNetSeries)
+            {
+                if (header->imageHeader->GetTotalPmcFwSizeIh() != 0)
+                {
+                    ChunkifyAndHash(section, (encryptCtx->Type() != Encryption::None || header->preencrypted));
+                    currentAuthCtx->SetFirstChunkSize(firstChunkSize);
+                    header->firstChunkSize = currentAuthCtx->GetFirstChunkSize();
+                    header->partition->section->firstChunkSize = header->firstChunkSize;
+                }
+                else
+                {
+                    Binary::Length_t chunkOnLength = header->partition->section->Length;
+                    if (encryptCtx->Type() != Encryption::None || header->preencrypted)
+                    {
+                        chunkOnLength -= (SECURE_HDR_SZ + AES_GCM_TAG_SZ);
+                    }
+                    else if (imageHeader.GetChecksumContext()->Type() != Checksum::None)
+                    {
+                        /* Checksum length is not added to the partition length, in case of bootloader for VersalNet.
+                        Hence don't substract the checksum length, since it should not be included in hash calculation */
+                        //chunkOnLength -= imageHeader.GetChecksumContext()->Size();
+                    }
+                    Binary::Length_t dataChunksCount = (chunkOnLength / secureChunkSize) + ((((chunkOnLength) % secureChunkSize) == 0 ? 0 : 1));
+                    if (dataChunksCount != 1)
+                    {
+                        ChunkifyAndHash(section, (encryptCtx->Type() != Encryption::None || header->preencrypted));
+                        currentAuthCtx->SetFirstChunkSize(firstChunkSize);
+                        header->firstChunkSize = currentAuthCtx->GetFirstChunkSize();
+                        header->partition->section->firstChunkSize = header->firstChunkSize;
+                    }
+                    else if (dataChunksCount == 1 && imageHeader.GetChecksumContext()->Type() != Checksum::None)
+                    {
+                        size_t newLength = section->Length + SHA3_LENGTH_BYTES;
+                        uint8_t* newDataPtr = new uint8_t[newLength];
+                        memset(newDataPtr, 0, newLength);
+                        newDataPtr += SHA3_LENGTH_BYTES;
+                        memcpy(newDataPtr, section->Data, section->Length);
+
+                        /* Calculate hash */
+                        uint8_t* shaHash;
+                        shaHash = new uint8_t[SHA3_LENGTH_BYTES];
+                        Versalcrypto_hash(shaHash, newDataPtr, section->Length, true);
+
+                        /* Place the final hash at the start of PLM partition */
+                        newDataPtr -= SHA3_LENGTH_BYTES;
+                        memcpy(newDataPtr, shaHash, SHA3_LENGTH_BYTES);
+                        header->imageHeader->SetTotalFsblFwSizeIh(header->imageHeader->GetTotalFsblFwSizeIh() + SHA3_LENGTH_BYTES);
+
+                        delete[] shaHash;
+                        delete[] section->Data;
+                        section->Data = newDataPtr;
+                        section->Length = newLength;
+                    }
+                }
+
+                if (bi.bifOptions->GetPmcdataFile() == "")
+                {
+                    //imageHeader.SetTotalFsblFwSizeIh(section->Length);
+                }
+                else
+                {
+                    //imageHeader.SetTotalPmcFwSizeIh(imageHeader.GetTotalPmcFwSizeIh() + shaPadLength);
+                }
+                header->transferSize = section->Length - imageHeader.GetChecksumContext()->Size();
+                /* Checksum length is added to the partition length, in case of bootloader.
+                Partiton length should not include checksum length, so substarct*/
             }
             /* Chunk the data into fixed 64KB/32KB */
             else
@@ -363,7 +658,7 @@ void VersalPartition::Build(BootImage& bi, Binary& cache)
                 {
                     chunkOnLength -= (SECURE_HDR_SZ + AES_GCM_TAG_SZ);
                 }
-                Binary::Length_t dataChunksCount = (chunkOnLength / GetSecureChunkSize()) + ((((chunkOnLength) % GetSecureChunkSize()) == 0 ? 0 : 1));
+                Binary::Length_t dataChunksCount = (chunkOnLength / secureChunkSize) + ((((chunkOnLength) % secureChunkSize) == 0 ? 0 : 1));
                 if (dataChunksCount != 1)
                 {
                     ChunkifyAndHash(section, (encryptCtx->Type() != Encryption::None || header->preencrypted));
@@ -376,7 +671,11 @@ void VersalPartition::Build(BootImage& bi, Binary& cache)
 
         if((imageHeader.IsBootloader() && imageHeader.GetChecksumContext()->Type() != Checksum::None))
         {
-            padLength = imageHeader.GetChecksumContext()->Size();
+            if (!versalNetSeries)
+            {
+                padLength = imageHeader.GetChecksumContext()->Size();
+            }
+            /* Don't add checksum length here, as the checksum calculation and insertion happen in ChunkifyAndHash() for VersalNet */
         }
         else
         {
@@ -459,8 +758,3 @@ void VersalPartition::Link(BootImage &bi)
     }
 }
 
-/******************************************************************************/
-uint64_t VersalPartition::GetSecureChunkSize()
-{
-    return SECURE_32K_CHUNK - SHA3_LENGTH_BYTES;
-}

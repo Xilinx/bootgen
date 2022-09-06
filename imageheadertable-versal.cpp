@@ -42,6 +42,7 @@ extern "C" {
 #include "cdo-overlay.h"
 };
 
+char globalSlrId;
 static uint8_t bufferIndex = 0;
 std::list<CdoCommandDmaWrite*> VersalImageHeader::cdoSections;
 uint64_t slr_sbi_base_array[4] = { PMC_SBI_BUF_ADDR, SLR1_SBI_BUF_BASE_ADDR, SLR2_SBI_BUF_BASE_ADDR, SLR3_SBI_BUF_BASE_ADDR };
@@ -66,6 +67,20 @@ CdoSsitSyncMaster* CdoCmdWriteSsitSyncMaster()
     cdoCmd->header.handler_id = 1;
     cdoCmd->header.cmd_id = CdoCmds::SSIT_SYNC_MASTER;
     LOG_TRACE("CDO_CMD_SSIT_SYNC_MASTER");
+    return cdoCmd;
+}
+
+/******************************************************************************/
+CdoCommandNop* CdoCmdNoOperation2(size_t size)
+{
+    CdoCommandNop* cdoCmd = new CdoCommandNop;
+    uint32_t length = size - CDO_CMD_NOP_SIZE - 4;  /* consider the NOP command header and length as 2 NOPs */
+    cdoCmd->header.reserved = 0x00;
+    cdoCmd->header.length = 0xff;
+    cdoCmd->header.handler_id = 1;
+    cdoCmd->header.cmd_id = CdoCmds::NOP;
+    cdoCmd->length = (length / CDO_CMD_NOP_SIZE);
+    LOG_TRACE("   CDO_CMD_NOP - %d", cdoCmd->length + 2);
     return cdoCmd;
 }
 
@@ -337,6 +352,7 @@ void VersalImageHeaderTable::Link(BootImage &bi)
     SetMetaHdrGreyOrBlackIv(kekIvFile);
     SetImageHeaderTableAttributes();
     SetReservedFields();
+    SetOptionalDataSize();
     SetChecksum();
 }
 
@@ -594,6 +610,40 @@ void VersalImageHeaderTable::SetChecksum(void)
 }
 
 /******************************************************************************/
+void VersalImageHeaderTable::SetOptionalDataSize()
+{
+    iHTable->optionalDataSize = iht_optional_data_length / 4;
+}
+
+/******************************************************************************/
+void VersalImageHeaderTable::SetXplmModulesData(BootImage& bi, uint32_t * data, uint32_t size)
+{
+    if (size != 0)
+    {
+        bi.xplm_modules_data_length = size;
+        bi.xplm_modules_data = (uint32_t*)malloc(bi.xplm_modules_data_length);
+        memcpy(bi.xplm_modules_data, data, bi.xplm_modules_data_length);
+    }
+}
+
+/******************************************************************************/
+void VersalImageHeaderTable::SetOptionalData(uint32_t * data, uint32_t size)
+{
+    iht_optional_data_length = size;
+    if (size != 0)
+    {
+        iht_optional_data = (uint32_t*)malloc(iht_optional_data_length);
+        memcpy(iht_optional_data, data, iht_optional_data_length);
+
+        section->IncreaseLengthAndPadTo(sizeof(VersalImageHeaderTableStructure) + iht_optional_data_length, 0);
+        memcpy(section->Data + sizeof(VersalImageHeaderTableStructure), iht_optional_data, iht_optional_data_length);
+
+        iHTable = (VersalImageHeaderTableStructure*)section->Data;
+    }
+    iHTable->optionalDataSize = iht_optional_data_length / 4;
+}
+
+/******************************************************************************/
 void VersalImageHeaderTable::RealignSectionDataPtr(void)
 {
     iHTable = (VersalImageHeaderTableStructure*)section->Data;
@@ -732,10 +782,10 @@ VersalImageHeader::VersalImageHeader(std::ifstream& ifs, bool IsBootloader)
     section = new Section("ImageHeader " + Name, size);
     imageHeader = (VersalImageHeaderStructure*)section->Data;
     ifs.read((char*)imageHeader, size);
-    long count = imageHeader->dataSectionCount;
-    long offset = imageHeader->partitionHeaderWordOffset * sizeof(uint32_t);
+    uint32_t count = imageHeader->dataSectionCount;
+    uint32_t offset = imageHeader->partitionHeaderWordOffset * sizeof(uint32_t);
 
-    for (uint8_t index = 0; index<count; index++)
+    for (uint8_t index = 0; index < count; index++)
     {
         Bootloader = IsBootloader;
 
@@ -791,7 +841,7 @@ VersalImageHeader::VersalImageHeader(std::ifstream& ifs, VersalImageHeaderStruct
     imageHeader = (VersalImageHeaderStructure*)section->Data;
     memcpy(imageHeader, importedIH, size);
     
-    long offset =  (imageHeader->partitionHeaderWordOffset * sizeof(uint32_t)) + (img_index * sizeof(VersalPartitionHeaderTableStructure));
+    uint32_t offset =  (imageHeader->partitionHeaderWordOffset * sizeof(uint32_t)) + (img_index * sizeof(VersalPartitionHeaderTableStructure));
 
     VersalPartitionHeaderTableStructure* tempPHT = new VersalPartitionHeaderTableStructure;
     ifs.seekg(offset);
@@ -1411,7 +1461,14 @@ void VersalImageHeader::ImportCdo(BootImage& bi)
 
     if (filelist.size() > 0)
     {
-        ParseCdos(bi, filelist, &buffer, &size, false);
+        if ((bi.bifOptions->pdiType == PartitionType::SLR_SLAVE_CONFIG) && (getenv("BOOTGEN_PROCESS_NOC_MARKERS") != NULL))
+        {
+            ParseSlaveSlrConfigCdos(bi, filelist, &buffer, &size, false);
+        }
+        else
+        {
+            ParseCdos(bi, filelist, &buffer, &size, false);
+        }
     }
     SetPartitionType(PartitionType::CONFIG_DATA_OBJ);
     PartitionHeader* hdr = new VersalPartitionHeader(this, 0);
@@ -1646,6 +1703,9 @@ void VersalImageHeader::ImportElf(BootImage& bi)
         /* For bootloader, all the sections are combined by padding the gaps to create only partition */
         if (Bootloader)
         {
+            bi.imageHeaderTable->SetOptionalData(elf->iht_optional_data, elf->iht_optional_data_size);
+            bi.imageHeaderTable->SetXplmModulesData(bi, elf->xplm_modules_data, elf->xplm_modules_data_size);
+
             /* Only loadable sections with non-size are considered */
             if ((elf->GetProgramHeaderType(iprog) == xPT_LOAD) && (size > 0))
             {
@@ -1806,12 +1866,178 @@ void VersalImageHeader::ImportElf(BootImage& bi)
 }
 
 /******************************************************************************/
+void VersalImageHeader::ParseSlaveSlrConfigCdos(BootImage& bi, std::vector<std::string> filelist, uint8_t** cdo_data, size_t* cdo_size, bool add_ssit_sync_master)
+{
+    uint8_t* total_cdo_data = NULL;
+    uint8_t* cdo_padded_buffer = NULL;
+    size_t cdo_padded_buffer_length = 0;
+    uint64_t total_cdo_length = 0;
+
+    uint32_t* start_marker_offsets = NULL;
+    uint8_t num_start_markers = 0;
+    uint32_t* end_marker_offsets = NULL;
+    uint8_t num_end_markers = 0;
+
+    if (filelist.size() > 0)
+    {
+        /* Offset and length are set to CDO header size, to take into account the addition of
+        merged CDO header which will be added at the end */
+        uint64_t offset = sizeof(VersalCdoHeader);
+        total_cdo_length = sizeof(VersalCdoHeader);
+
+        for (uint8_t idx = 0; idx != filelist.size(); idx++)
+        {
+            void* cdo_data = NULL;
+            size_t cdo_length = 0;
+            uint64_t actual_cdo_size = 0;
+            const char* cdo_filename = filelist.at(idx).c_str();
+            CdoSequence * cdo_seq;
+            CdoSequence * cdo_seq1;
+            if (add_ssit_sync_master)
+            {
+                /* Add SSIT Sync Master command */
+                cdo_seq1 = cdoseq_load_cdo(cdo_filename);
+                if (cdo_seq1 == NULL)
+                {
+                    LOG_ERROR("Error parsing CDO file");
+                }
+                cdo_seq = cdocmd_create_sequence();
+                cdocmd_add_ssit_sync_master(cdo_seq);
+                cdocmd_concat_seq(cdo_seq, cdo_seq1);
+                add_ssit_sync_master = false;
+            }
+            else
+            {
+                cdo_seq = cdoseq_load_cdo(cdo_filename);
+                if (cdo_seq == NULL)
+                {
+                    LOG_ERROR("Error parsing CDO file");
+                }
+            }
+
+            if (bi.overlayCDO && cdooverlay_apply(cdo_seq, (CdoOverlayInfo *)(bi.overlayCDO)))
+            {
+                LOG_ERROR("Error applying overlay CDO file");
+            }
+
+            /* Enable the search for sync points - only needs to be done for SSIT devices */
+            search_for_sync_points();
+            cdo_data = cdoseq_to_binary(cdo_seq, &cdo_length, 0);
+            CheckIdsInCdo(cdo_seq);
+
+            if (cdo_length != 0)
+            {
+                actual_cdo_size = cdo_length - sizeof(VersalCdoHeader);
+            }
+            else
+            {
+                LOG_ERROR("Incorrect CDO length read from : %s", cdo_filename);
+            }
+
+            total_cdo_length += (actual_cdo_size);
+            total_cdo_data = (uint8_t*)realloc(total_cdo_data, total_cdo_length);
+            memcpy(total_cdo_data + offset, (uint8_t*)cdo_data + sizeof(VersalCdoHeader), actual_cdo_size);
+            offset += actual_cdo_size;
+            //delete cdo_data;
+        }
+
+        num_start_markers = get_num_start_markers();
+        start_marker_offsets = get_slr_start_marker_offsets();
+        num_end_markers = get_num_end_markers();
+        end_marker_offsets = get_slr_end_marker_offsets();
+
+        if (num_start_markers != num_end_markers)
+        {
+            LOG_ERROR("Number of start and end markers for NoC startup sequence is not same.");
+        }
+
+        if (num_start_markers > 0)
+        {
+            size_t size = 0, prev_start = 0;
+            size_t start = 0, end = 0;
+            uint32_t p_offset = 0;
+            size_t copied_offset = 0;
+            size_t pad_bytes = 0;
+            LOG_TRACE("       markers found at offsets -");
+            for (int i = 0; i < num_start_markers; i++)
+            {
+                start = *(start_marker_offsets + i) * 4;
+                end = *(end_marker_offsets + i) * 4;
+                /* Create a new chunk at start only if start and end are not in same 32K data */
+                if (start  / SSIT_CHUNK_SIZE != end / SSIT_CHUNK_SIZE)
+                {
+                    size = start - prev_start;
+
+                    pad_bytes = SSIT_CHUNK_SIZE - (size % SSIT_CHUNK_SIZE);
+                    cdo_padded_buffer_length += (size + pad_bytes);
+
+                    cdo_padded_buffer = (uint8_t*)realloc(cdo_padded_buffer, cdo_padded_buffer_length);
+                    memcpy(cdo_padded_buffer + p_offset, total_cdo_data + copied_offset, size);
+                    p_offset += size;
+                    copied_offset += size;
+
+                    if (pad_bytes != 0)
+                    {
+                        CdoCommandNop* cdoCmd = CdoCmdNoOperation2(pad_bytes);
+                        memcpy(cdo_padded_buffer + p_offset, cdoCmd, CDO_CMD_NOP_SIZE + 4);
+                        p_offset += (CDO_CMD_NOP_SIZE + 4);
+                        if (cdoCmd->length > 0)
+                        {
+                            memset(cdo_padded_buffer + p_offset, 0, cdoCmd->length * sizeof(uint32_t));
+                            p_offset += (cdoCmd->length * sizeof(uint32_t));
+                        }
+                    }
+
+                    prev_start = start;
+                    LOG_TRACE("           offset = 0x%lx, end = 0x%lx", start, end);
+                }
+                else
+                {
+                    LOG_TRACE("           skipping marker at 0x%lx since end marker (0x%lx) is in same chunk", start, end);
+                }
+            }
+            /* Remaining data after last marker */
+            size = total_cdo_length - prev_start;
+            cdo_padded_buffer_length += size;
+            cdo_padded_buffer = (uint8_t*)realloc(cdo_padded_buffer, cdo_padded_buffer_length);
+            memcpy(cdo_padded_buffer + p_offset, total_cdo_data + copied_offset, size);
+
+            delete start_marker_offsets;
+            if (end_marker_offsets) delete end_marker_offsets;
+
+            total_cdo_length = (cdo_padded_buffer_length);
+            total_cdo_data = (uint8_t*)realloc(total_cdo_data, total_cdo_length);
+            memcpy(total_cdo_data, cdo_padded_buffer, total_cdo_length);
+            delete cdo_padded_buffer;
+        }
+
+        VersalCdoHeader* cdo_header = new VersalCdoHeader;
+        cdo_header->remaining_words = 0x04;
+        cdo_header->id_word = 0x004f4443; /* CDO */
+        cdo_header->version = 0x00000200; /* Version - 2.0 */
+        cdo_header->length = (total_cdo_length - sizeof(VersalCdoHeader)) / 4;
+        cdo_header->checksum = ~(cdo_header->remaining_words + cdo_header->id_word + cdo_header->version + cdo_header->length);
+        memcpy(total_cdo_data, cdo_header, sizeof(VersalCdoHeader));
+        delete cdo_header;
+    }
+
+    *cdo_size = total_cdo_length;
+    *cdo_data = total_cdo_data;
+}
+
+/******************************************************************************/
 void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> filelist, uint8_t** cdo_data, size_t* cdo_size, bool add_ssit_sync_master)
 {
     uint8_t* total_cdo_data = NULL;
     uint64_t total_cdo_length = 0;
     void *cdo_data_pp = NULL;
     size_t cdo_data_pp_length = 0;
+    char slrid_from_source = 0;
+    char slrid_from_binary = 0;
+    char input_ch_souce = 0;
+    char input_ch_binary = 0;
+    bool isSourceCDO = false;
+    bool isBinaryCDO = false;
 
     if (filelist.size() > 0)
     {
@@ -1849,19 +2075,60 @@ void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> fileli
                     LOG_ERROR("Error parsing CDO file");
                 }
             }
+
+            slrid_from_source = SlrIdFromSource(input_ch_souce);
+            if (slrid_from_source != 0)
+            {
+                if (globalSlrId != 0)
+                {
+                    isSourceCDO = (globalSlrId == slrid_from_source);
+                    if (isSourceCDO == false)
+                    {
+                        LOG_WARNING("Mismatch between SLR ID of %s and rest of the CDOs. This may cause runtime issues. Please ensure that all the CDOs used for creating the pdi are for the same SLR/device", cdo_filename);
+                    }
+                    globalSlrId = 0;
+                }
+                globalSlrId = slrid_from_source;
+            }
+            else
+            {
+                slrid_from_binary = SlrIdFromBinary(input_ch_binary);
+                if (slrid_from_binary != 0)
+                {
+                   if (globalSlrId != 0)
+                   {
+                       isBinaryCDO = (globalSlrId == slrid_from_binary);
+                       if (isBinaryCDO == false)
+                       {
+                          LOG_WARNING("Mismatch between SLR ID of %s and rest of the CDOs. This may cause runtime issues. Please ensure that all the CDOs used for creating the pdi are for the same SLR/device", cdo_filename);
+                       }
+                       globalSlrId = 0;
+                   }
+                   else
+                   {
+                       globalSlrId = slrid_from_binary;
+                   }
+                }
+            }
             if (bi.overlayCDO && cdooverlay_apply(cdo_seq, (CdoOverlayInfo *)(bi.overlayCDO)))
             {
                 LOG_ERROR("Error applying overlay CDO file");
             }
             cdo_data = cdoseq_to_binary(cdo_seq, &cdo_length, 0);
             CheckIdsInCdo(cdo_seq);
+            // TODO: Call this only for v2
+            const char * env = getenv("BOOTGEN_CHECK_CDO_COMMANDS");
+            if (env && *env != '\0') {
+                if (check_cdo_commands(cdo_data, cdo_length, bi.xplm_modules_data, bi.xplm_modules_data_length) < 0) {
+                    LOG_WARNING("Invalid PLM cdo command is found in input cdo file");
+                }
+            }
             //cdocmd_delete_sequence(cdo_seq);
 
             if (cdocmd_post_process_cdo(cdo_data, cdo_length, &cdo_data_pp, &cdo_data_pp_length))
             {
                 LOG_ERROR("PMC CDO post process error");
             }
-
             if (cdo_data_pp != NULL)
             {
                 //delete cdo_data;
@@ -1869,7 +2136,15 @@ void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> fileli
                 cdo_length = cdo_data_pp_length;
             }
 
-            actual_cdo_size = cdo_length - sizeof(VersalCdoHeader);
+            if (cdo_length > sizeof(VersalCdoHeader))
+            {
+                actual_cdo_size = cdo_length - sizeof(VersalCdoHeader);
+            }
+            else
+            {
+                LOG_ERROR("Incorrect cdo length read from : %s", cdo_filename);
+            }
+
             total_cdo_length += (actual_cdo_size);
             total_cdo_data = (uint8_t*)realloc(total_cdo_data, total_cdo_length);
             memcpy(total_cdo_data + offset, (uint8_t*)cdo_data + sizeof(VersalCdoHeader), actual_cdo_size);
@@ -2643,9 +2918,16 @@ static bool CompareCDOSequences(CdoSequence * user_cdo_seq, std::string golden_c
     //cdocmd_delete_sequence(golden_cdo_seq);
 
     const size_t header_size = 20;
-    if (user_cdo_size == golden_cdo_size && memcmp(user_cdo_buffer + header_size, golden_cdo_buffer + header_size, golden_cdo_size - header_size) == 0)
+    if (golden_cdo_size != 0)
     {
-        return true;
+        if (user_cdo_size == golden_cdo_size && memcmp(user_cdo_buffer + header_size, golden_cdo_buffer + header_size, golden_cdo_size - header_size) == 0)
+        {
+            return true;
+        }
+    }
+    else
+    {
+        LOG_ERROR("Incorrect length read from : %s", golden_cdo_filename.c_str());
     }
 
     return false;
@@ -2816,7 +3098,7 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
         if (do_ssit_check != NULL)
         {
             switch (bi.bifOptions->idCode) {
-            case 0x04d14093: /* h50 */
+            case 0x04d14093:
                 device_name = "xcvp1802";
                 break;
             default:
@@ -3093,7 +3375,7 @@ size_t GetActualChunkSize(SsitConfigSlrInfo* slr_info)
     size_t num_bytes = 0;
     static bool chunk_size_info_printed = false;
     /* Default chunk size - 32KB */
-    uint64_t chunk_size = 0x8000;
+    uint64_t chunk_size = SSIT_CHUNK_SIZE;
     char * ssit_chunk_size = getenv("BOOTGEN_SSIT_CHUNK_SIZE");
     if (ssit_chunk_size != NULL)
     {
@@ -3365,8 +3647,14 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
                         CdoCommandNop* cdoCmd = CdoCmdNoOperation(sizeof(VersalCdoHeader));
                         memcpy(p_buffer + p_offset, cdoCmd, CDO_CMD_NOP_SIZE);
                         memset(p_buffer + p_offset + CDO_CMD_NOP_SIZE, 0, sizeof(VersalCdoHeader) - CDO_CMD_NOP_SIZE);
-                        memcpy(p_buffer + p_offset + sizeof(VersalCdoHeader), part_data + sizeof(VersalCdoHeader), part_size - sizeof(VersalCdoHeader));
-
+                        if (part_size > sizeof(VersalCdoHeader))
+                        {
+                            memcpy(p_buffer + p_offset + sizeof(VersalCdoHeader), part_data + sizeof(VersalCdoHeader), part_size - sizeof(VersalCdoHeader));
+                        }
+                        else
+                        {
+                            LOG_ERROR("Incorrect CDO length read from : %s", cdo_filename);
+                        }
                         p_offset += (master_chunk_size);
                         (*slr_info)->offset += (master_chunk_size);
                         master_file_size += master_chunk_size;

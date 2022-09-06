@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -90,7 +90,7 @@ void VersalBinary::StackAndAlign(Options& options)
             if (runningAddress > sec.Address)
             {
                 LOG_DUMP_IMAGE(*this);
-                LOG_ERROR("Section %s offset of 0x%X overlaps with prior section end address of %X", sec.Name.c_str(), sec.Address, runningAddress);
+                LOG_ERROR("Section %s offset of 0x%X overlaps with prior section end address of 0x%X", sec.Name.c_str(), sec.Address, runningAddress);
             }
         }
         else

@@ -101,7 +101,7 @@ ImageBifOptions* currentImageBifOptions;
 %token                  OBRACE EBRACE
 %token                  COMMA EQUAL COLON QUOTE SEMICOLON
 %token                  OBRACKET EBRACKET
-%token                  BOOTLOADER XIP_MODE EARLY_HANDOFF HIVEC
+%token                  BOOTLOADER XIP_MODE EARLY_HANDOFF HIVEC LOCKSTEP
 %token                  AUTHENTICATION ENCRYPTION CHECKSUM
 %token                  PARTITION_OWNER PARTITION_TYPE PARTITION_NUM
 %token                  BOOT_DEVICE DEST_DEVICE DEST_CPU ADDRESS
@@ -114,9 +114,9 @@ ImageBifOptions* currentImageBifOptions;
 %token                  PRESIGN BIF_SECTION
 %token                  UDF_DATA
 %token                  MCS BIN
-%token                  SLR_NUM
+%token                  SLR_NUM CLUSTER_NUM DICE
 %token                  PARENT_ID ID_CODE EXT_ID_CODE BYPASS_IDCODE_CHECK A_HWROT S_HWROT UNIQUE_ID PARENT_UNIQUE_ID FUNCTION_ID
-%token                  IMAGE ID NAME DELAY_HANDOFF DELAY_LOAD COPY
+%token                  IMAGE ID NAME DELAY_HANDOFF DELAY_LOAD COPY INCLUDE DELAY_AUTH
 %token                  PARTITION PFILE
 %token                  METAHEADER
 %token <string>         WORD HEXWORD
@@ -125,7 +125,7 @@ ImageBifOptions* currentImageBifOptions;
 %token <number>         DECVALUE HEXVALUE
 %token <number>         KEYSRC_ENCRYPTION FSBL_CONFIG AUTH_PARAMS
 %token <number>         AUTHJTAG_CONFIG DEVICE_DNA JTAG_TIMEOUT
-%token <number>         PUF4KMODE SHUTTER SPLIT SMAP_WIDTH
+%token <number>         PUF4KMODE PUFROSWAP SHUTTER SPLIT SMAP_WIDTH
 %token <number>         PUF_HELPER_FILE BH_KEY_FILE BH_KEY_IV
 %token <number>         BH_KEK_IV BBRAM_KEK_IV EFUSE_KEK_IV EFUSE_USER_KEK0_IV EFUSE_USER_KEK1_IV USER_KEYS
 %token <number>         PMCDATA BOOTIMAGE UDF_BH INIT PMUFW_IMAGE
@@ -199,7 +199,8 @@ group_list              :   /* empty */
                         |   group_list bifoptions
                         ;
                
-bifoptions              :   WORD                                                { currentBifOptions = new BifOptions(options.GetArchType(),$1); }
+bifoptions              :   INCLUDE COLON filename                              { options.includeBifOptionsList.push_back($3); }
+                        |   WORD                                                { currentBifOptions = new BifOptions(options.GetArchType(),$1); }
                             COLON 
                             OBRACE file_list EBRACE                             { options.bifOptions = currentBifOptions;
                                                                                   options.bifOptionsList.push_back(currentBifOptions); }
@@ -216,7 +217,7 @@ file_list               :   /* empty */
                         ;
 
 metahdr_spec            :   METAHEADER OBRACE                                    { currentPartitionBifOptions = new PartitionBifOptions();
-                                                                                   currentPartitionBifOptions->SetArchType(options.GetArchType()); }
+                                                                                   currentPartitionBifOptions->SetArchType(options.GetArchType(), options.IsVersalNetSeries()); }
                             metahdr_attr_list EBRACE
                         ;
 
@@ -227,7 +228,7 @@ metahdr_attr_list       :  metahdr_attr
 
 metahdr_attr            :   /* empty */
                         |   ENCRYPTION EQUAL encrvalue                          { currentBifOptions->SetMetaHeaderEncryptType($3); }
-                        |   KEYSRC_ENCRYPTION EQUAL key_src                     { currentBifOptions->SetMetaHeaderEncryptionKeySource($3); }
+                        |   KEYSRC_ENCRYPTION EQUAL key_src                     { currentBifOptions->SetMetaHeaderEncryptionKeySource($3, options.IsVersalNetSeries()); }
                         |   AES_KEY_FILE EQUAL filename                         { currentBifOptions->metaHdrAttributes.encrKeyFile = $3; }
                         |   AUTHENTICATION EQUAL authvalue                      { currentBifOptions->SetMetaHeaderAuthType($3); }
                         |   PPK_FILE EQUAL filename                             { currentBifOptions->metaHdrAttributes.ppk = $3; }
@@ -293,7 +294,6 @@ image_attributes        :   ID EQUAL expression                                 
                         |   UNIQUE_ID EQUAL expression                          { currentImageBifOptions->SetUniqueId($3); }
                         |   PARENT_UNIQUE_ID EQUAL expression                   { currentImageBifOptions->SetParentUniqueId($3); }
                         |   FUNCTION_ID EQUAL expression                        { currentImageBifOptions->SetFunctionId($3); }
-
                         ;
 
 partition_spec          :   PARTITION partition_content
@@ -379,23 +379,33 @@ fsbl_attr               :   core                                                
                         |   BYPASS_IDCODE_CHECK                                 { currentBifOptions->SetBypassIdcodeFlag(true); }
                         |   A_HWROT                                             { currentBifOptions->SetAHwRoTFlag(true); }
                         |   S_HWROT                                             { currentBifOptions->SetSHwRoTFlag(true); }
+                        |   PUFROSWAP EQUAL expression                          { if(options.GetArchType() == Arch::VERSAL && options.IsVersalNetSeries())
+                                                                                     currentBifOptions->SetPufRingOscilltorSwapConfigValue($3);
+                                                                                  else
+                                                                                     LOG_ERROR("BIF attribute error !!!\n\t  'puf_ro_swap' is supported only in VersalNet architecture");
+                                                                                 }
+                        |   DICE                                                { if(options.GetArchType() == Arch::VERSAL && options.IsVersalNetSeries())
+                                                                                     currentBifOptions->SetDiceEnable();
+                                                                                  else
+                                                                                     LOG_ERROR("BIF attribute error !!!\n\t  'dice_enable' is supported only in VersalNet architecture");
+                                                                                 }
                         ;
 
 file_spec               :   OBRACKET                                            { currentPartitionBifOptions = new PartitionBifOptions();
-                                                                                  currentPartitionBifOptions->SetArchType(options.GetArchType()); }
+                                                                                  currentPartitionBifOptions->SetArchType(options.GetArchType(),options.IsVersalNetSeries()); }
                             attribute_list EBRACKET 
                             filename                                            { currentPartitionBifOptions->filename = $5;
                                                                                   currentPartitionBifOptions->filelist.push_back($5);
                                                                                   currentBifOptions->Add(currentPartitionBifOptions, currentImageBifOptions);
                                                                                 }
                         |   filename                                            { currentPartitionBifOptions = new PartitionBifOptions();
-                                                                                  currentPartitionBifOptions->SetArchType(options.GetArchType());
+                                                                                  currentPartitionBifOptions->SetArchType(options.GetArchType(), options.IsVersalNetSeries());
                                                                                   currentPartitionBifOptions->filename = $1; 
                                                                                   currentPartitionBifOptions->filelist.push_back($1);
                                                                                   currentBifOptions->Add(currentPartitionBifOptions, currentImageBifOptions);
                                                                                 };
 new_file_spec           :   OBRACE                                              { currentPartitionBifOptions = new PartitionBifOptions();
-                                                                                  currentPartitionBifOptions->SetArchType(options.GetArchType()); }
+                                                                                  currentPartitionBifOptions->SetArchType(options.GetArchType(), options.IsVersalNetSeries()); }
                             new_attribute_list EBRACE
                         ;
 
@@ -414,8 +424,8 @@ new_attribute           :   PFILE EQUAL filename                                
                         |   ID EQUAL expression                                 { currentPartitionBifOptions->partitionId = $3; }
                         |   PARTITION_TYPE EQUAL boolattr
                         |   PARTITION_TYPE EQUAL PMCDATA                        { currentPartitionBifOptions->fileType = $3; }
-                        |   BIF_SECTION EQUAL WORD                                { currentPartitionBifOptions->bifSection = $3;
-                                                                                  currentPartitionBifOptions->filename = currentPartitionBifOptions->GetOutputFileFromBifSection(options.GetOutputFileNames().front(), $3);
+                        |   BIF_SECTION EQUAL WORD                              { currentPartitionBifOptions->bifSection = $3;
+                                                                                  currentPartitionBifOptions->filename = currentPartitionBifOptions->GetOutputFileFromBifSection(options.GetOutputFileNames().front(), $3, currentImageBifOptions->GetImageType());
                                                                                   currentBifOptions->Add(currentPartitionBifOptions, currentImageBifOptions); }
                         ;
 
@@ -466,6 +476,7 @@ boolattr                :   BOOTLOADER                                          
                         |   key_file                                            { currentPartitionBifOptions->fileType = $1; }
                         |   other_files                                         { currentPartitionBifOptions->fileType = $1; }
                         |   ptypevalue                                          { currentPartitionBifOptions->SetPartitionType($1); }
+                        |   LOCKSTEP                                            { currentPartitionBifOptions->SetLockStepFlag();}
                         ;
 
 trustzone_type          :   TRUSTZONE                                           { currentPartitionBifOptions->SetTrustZone(::TrustZone::Secure); }
@@ -497,7 +508,9 @@ optattr                 :   AUTHENTICATION EQUAL authvalue                      
                         |   REVOKE_ID EQUAL expression                          { currentPartitionBifOptions->SetRevokeId($3); }
                         |   DPA_CM                                              { currentPartitionBifOptions->SetDpaCM(DpaCM::DpaCMEnable); }
                         |   SLR_NUM EQUAL expression                            { currentPartitionBifOptions->SetSlrNum($3); }
+                        |   CLUSTER_NUM EQUAL expression                        { currentPartitionBifOptions->SetClusterNum($3); }
                         |   PUFHD_LOC                                           { currentPartitionBifOptions->SetPufHdLocation(PufHdLoc::PUFinBH); }
+                        |   DELAY_AUTH                                          { currentPartitionBifOptions->SetDelayAuth(true); }
                         ;
 
 other_file_attr         :   INIT

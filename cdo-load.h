@@ -19,10 +19,14 @@
 
 #include <stdlib.h>
 #include "cdo-command.h"
+#define MARKER_DEVICE      0x1
+#define MARKER_SLRID       0x5
+#define MARKER_DATE        0x6
 
 void * file_to_buf(const char * path, size_t * sizep);
 CdoSequence * cdoseq_load_cdo(const char * path);
 
+char SlrIdFromBinary(char ch);
 void cdoseq_extract_writes(CdoSequence * seq);
 CdoSequence* cdoseq_extract_cdo_till_ssit_sync_slaves(CdoSequence * seq, uint32_t sync_index);
 #endif /* D_cdo_load */

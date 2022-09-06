@@ -22,6 +22,24 @@
 #include "cdo-load.h"
 #include "cdo-source.h"
 
+static char* slr_id_ptr;
+static char slr_id;
+int MhCdoCount = 0;
+int PmcCdoCount = 0;
+int LpdCdoCount = 0;
+int FpdCdoCount = 0;
+int slavePmcCdoCount = 0;
+int slaveLpdCdoCount = 0;
+int slaveFpdCdoCount = 0;
+
+char fin[] = "PMC_DATA";
+char fin2[] = "LPD_DATA";
+char fin3[] = "FPD_DATA";
+char fin4[] = "AIE_DATA";
+char slaveFin[] = "PMC_DATA_SLR_1";
+char slaveFin2[] = "PMC_DATA_SLR_2";
+char slaveFin3[] = "PMC_DATA_SLR_3";
+
 #if defined(_WIN32)
 #define strcasecmp(x,y) stricmp(x,y)
 #define strncasecmp(x,y,z) strnicmp(x,y,z)
@@ -73,6 +91,8 @@ struct command_info {
     { "break", CdoCmdBreak },
     { "ot_check", CdoCmdOtCheck },
     { "psm_sequence", CdoCmdPsmSequence },
+    { "scatter_write", CdoCmdScatterWrite },
+    { "scatter_write2", CdoCmdScatterWrite2 },
     { "npi_seq", CdoCmdNpiSeq },
     { "npi_precfg", CdoCmdNpiPreCfg },
     { "npi_write", CdoCmdNpiWrite },
@@ -125,6 +145,10 @@ struct command_info {
     { "pm_init_node", CdoCmdPmInitNode },
     { "pm_feature_check", CdoCmdPmFeatureCheck },
     { "pm_iso_control", CdoCmdPmIsoControl },
+    { "pm_bisr", CdoCmdPmBisr },
+    { "pm_apply_trim", CdoCmdPmApplyTrim },
+    { "pm_noc_clock_enable", CdoCmdPmNocClockEnable },
+    { "pm_if_noc_clock_enable", CdoCmdPmIfNocClockEnable },
     { "pm_activate_subsystem", CdoCmdPmActivateSubsystem },
     { "pm_set_node_access", CdoCmdPmSetNodeAccess },
     { "cfu_set_crc32", CdoCmdCfuSetCrc32 },
@@ -138,6 +162,7 @@ struct command_info {
     { "cfu_cfi_type", CdoCmdCfuCfiType },
     { "em_set_action", CdoCmdEmSetAction },
     { "ldr_set_image_info", CdoCmdLdrSetImageInfo },
+    { "cframe_clear_check", CdoCmdLdrCframeClearCheck },
     { NULL, 0 }
 };
 
@@ -250,6 +275,16 @@ error:
     free(str);
     *strp = NULL;
     return 1;
+}
+
+char SlrIdFromSource(char ch)
+{
+    if (slr_id != 0)
+    {
+        ch = slr_id;
+        slr_id = 0;
+    }
+    return ch;
 }
 
 CdoSequence * cdoseq_from_source(FILE * f) {
@@ -526,6 +561,82 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             if (parse_u32(&s, &value)) goto syntax_error;
             if (iseol(&s)) goto syntax_error;
             if (parse_string(&s, &name)) goto syntax_error;
+            int pmcCdoPtr; int lpdCdoPtr; int fpdCdoPtr; int mHCdoptr;
+            int pmcSlr1Ptr; int pmcSlr2Ptr; int pmcSlr3Ptr;
+            pmcSlr1Ptr = strcmp(name,slaveFin);
+            pmcSlr2Ptr = strcmp(name,slaveFin2);
+            pmcSlr3Ptr = strcmp(name,slaveFin3);
+            pmcCdoPtr = strcmp(name,fin);
+            lpdCdoPtr = strcmp(name,fin2);
+            fpdCdoPtr = strcmp(name,fin3);
+            mHCdoptr = strcmp(name,fin4);
+            if (mHCdoptr == 0)
+            {
+                MhCdoCount++;
+                if (MhCdoCount > 3)
+                {
+                    printf("[WARNING]: Metadata CDO is used more than once.");
+                }
+            }
+            if (pmcCdoPtr == 0)
+            {
+                PmcCdoCount++;
+                if (PmcCdoCount > 3)
+                {
+                    printf("[WARNING]: PMC CDO is used more than once.");
+                }
+            }
+            if (lpdCdoPtr == 0)
+            {
+                LpdCdoCount++;
+                if (LpdCdoCount > 3)
+                {
+                    printf("[WARNING]: LPD CDO is used more than once.");
+                }
+            }
+            if (fpdCdoPtr == 0)
+            {
+                FpdCdoCount++;
+                if (FpdCdoCount > 3)
+                {
+                    printf("[WARNING]: FPD CDO is used more than once.");
+                }
+            }
+
+            if (pmcSlr1Ptr == 0)
+            {
+                slavePmcCdoCount++;
+                if (slavePmcCdoCount > 3)
+                {
+                    printf("[WARNING]: SLR1 PMC CDO is used more than once.");
+                }
+            }
+            if (pmcSlr2Ptr == 0)
+            {
+                slaveLpdCdoCount++;
+                if (slaveLpdCdoCount > 3)
+                {
+                    printf("[WARNING]: SLR2 PMC CDO is used more than once.");
+                }
+            }
+            if (pmcSlr3Ptr == 0)
+            {
+                slaveFpdCdoCount++;
+                if (slaveFpdCdoCount > 3)
+                {
+                    printf("[WARNING]: SLR3 PMC CDO is used more than once.");
+                }
+            }
+
+            if (value == MARKER_DEVICE || value == MARKER_DATE)
+            {
+                break;
+            }
+            if (value == MARKER_SLRID)
+            {
+                slr_id_ptr = name;
+                slr_id = *slr_id_ptr;
+            }
             cdocmd_add_marker(seq, value, name);
             free(name);
             break;
@@ -572,6 +683,29 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             cdocmd_add_psm_sequence(seq);
             level++;
             break;
+        case CdoCmdScatterWrite: {
+            uint32_t * buf;
+            uint32_t count;
+            uint32_t value;
+            if (parse_u32(&s, &value)) goto syntax_error;
+            if (parse_buf(&s, &buf, &count)) goto syntax_error;
+            cdocmd_add_scatter_write(seq, value, count, buf, is_be_host());
+            free(buf);
+            break;
+        }
+        case CdoCmdScatterWrite2: {
+            uint32_t * buf;
+            uint32_t count;
+            uint32_t value1;
+            uint32_t value2;
+            if (parse_u32(&s, &value1)) goto syntax_error;
+            if (parse_u32(&s, &value2)) goto syntax_error;
+            if (parse_buf(&s, &buf, &count)) goto syntax_error;
+            cdocmd_add_scatter_write2(seq, value1, value2, count, buf, is_be_host());
+            free(buf);
+            break;
+        }
+
         case CdoCmdNpiSeq:
         case CdoCmdNpiPreCfg:
         case CdoCmdNpiShutdown: {
@@ -996,6 +1130,43 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             cdocmd_add_pm_iso_control(seq, nodeid, value);
             break;
         }
+        case CdoCmdPmBisr: {
+            uint32_t tagid;
+            if (parse_u32(&s, &tagid)) goto syntax_error;
+            cdocmd_add_pm_bisr(seq, tagid);
+            break;
+        }
+
+        case CdoCmdPmApplyTrim: {
+            uint32_t trimtype;
+            if (parse_u32(&s, &trimtype)) goto syntax_error;
+            cdocmd_add_pm_apply_trim(seq, trimtype);
+            break;
+        }
+
+        case CdoCmdPmNocClockEnable: {
+            uint32_t nodeid;
+            uint32_t count;
+            uint32_t * buf;
+            if (parse_u32(&s, &nodeid)) goto syntax_error;
+            if (parse_buf(&s, &buf, &count)) goto syntax_error;
+            cdocmd_add_pm_noc_clock_enable(seq, nodeid, count, buf, is_be_host());
+            free(buf);
+            break;
+        }
+
+        case CdoCmdPmIfNocClockEnable: {
+            uint32_t index;
+            uint32_t state;
+            uint32_t level = 1;
+            if (parse_u32(&s, &index)) goto syntax_error;
+            if (parse_u32(&s, &state)) goto syntax_error;
+            skipsp(s);
+            if (istok(*s) && parse_u32(&s, &level)) goto syntax_error;
+            cdocmd_add_pm_if_noc_clock_enable(seq, index, state, level);
+            break;
+        }
+
         case CdoCmdPmActivateSubsystem: {
             uint32_t id;
             if (parse_u32(&s, &id)) goto syntax_error;
@@ -1092,6 +1263,12 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             if (parse_u32(&s, &puid)) goto syntax_error;
             if (parse_u32(&s, &funcid)) goto syntax_error;
             cdocmd_add_ldr_set_image_info(seq, nodeid, uid, puid, funcid);
+            break;
+        }
+        case CdoCmdLdrCframeClearCheck: {
+            uint32_t id;
+            if (parse_u32(&s, &id)) goto syntax_error;
+            cdocmd_add_ldr_cframe_clear_check(seq, id);
             break;
         }
         default:
@@ -1349,6 +1526,21 @@ void cdoseq_to_source(FILE * f, CdoSequence * seq) {
             fprintf(f, "psm_sequence\n");
             level++;
             break;
+        case CdoCmdScatterWrite:
+            fprintf(f, "scatter_write ");
+            print_x64(f, cmd->value);
+            print_buf(f, cmd->buf, cmd->count);
+            fprintf(f, "\n");
+            break;
+        case CdoCmdScatterWrite2:
+            fprintf(f, "scatter_write2 ");
+            print_x64(f, cmd->value);
+            fprintf(f, " ");
+            print_x64(f, cmd->mask);
+            print_buf(f, cmd->buf, cmd->count);
+            fprintf(f, "\n");
+            break;
+
         case CdoCmdNpiSeq:
             fprintf(f, "npi_seq ");
             print_x64(f, cmd->dstaddr);
@@ -1705,6 +1897,33 @@ void cdoseq_to_source(FILE * f, CdoSequence * seq) {
             print_x64(f, cmd->value);
             fprintf(f, "\n");
             break;
+        case CdoCmdPmBisr:
+            fprintf(f, "pm_bisr ");
+            print_x64(f, cmd->id);
+            fprintf(f, "\n");
+            break;
+        case CdoCmdPmApplyTrim:
+            fprintf(f, "pm_apply_trim ");
+            print_x64(f, cmd->id);
+            fprintf(f, "\n");
+            break;
+        case CdoCmdPmNocClockEnable:
+            fprintf(f, "pm_noc_clock_enable ");
+            print_x64(f, cmd->id);
+            print_buf(f, cmd->buf, cmd->count);
+            fprintf(f, "\n");
+            break;
+        case CdoCmdPmIfNocClockEnable:
+            fprintf(f, "pm_if_noc_clock_enable ");
+            print_x64(f, cmd->id);
+            fprintf(f, " ");
+            print_x64(f, cmd->value);
+	    if (cmd->flags != 1) {
+                fprintf(f, " ");
+                print_x64(f, cmd->flags);
+	    }
+            fprintf(f, "\n");
+            break;
         case CdoCmdPmActivateSubsystem:
             fprintf(f, "pm_activate_subsystem ");
             print_x64(f, cmd->id);
@@ -1783,6 +2002,11 @@ void cdoseq_to_source(FILE * f, CdoSequence * seq) {
             print_x64(f, cmd->mask);
             fprintf(f, " ");
             print_x64(f, cmd->count);
+            fprintf(f, "\n");
+            break;
+	case CdoCmdLdrCframeClearCheck:
+            fprintf(f, "cframe_clear_check ");
+            print_x64(f, cmd->id);
             fprintf(f, "\n");
             break;
         default:

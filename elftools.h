@@ -40,6 +40,9 @@ class Elf32SectionHdr_t;
 class Elf64SectionHdr_t;
 class Elf64Symbol_t;
 
+#define DATA_ID_STRUCT_INFO 2
+#define DATA_ID_XPLM_MODULES 1
+
 /*
 -------------------------------------------------------------------------------
 ***************************************************   S T R U C T U R E S   ***
@@ -235,6 +238,10 @@ public:
     , atf_handoff_params_offset(0)
     , atf_handoff_params_prg_hdr_count(0)
     , atf_handoff_params_found(false)
+    , iht_optional_data_size(0)
+    , iht_optional_data(NULL)
+    , xplm_modules_data(NULL)
+    , xplm_modules_data_size(0)
     { };
 
     ~ElfFormat() {};
@@ -260,9 +267,36 @@ public:
     uint64_t lowestProgramAddress;
     uint64_t highestProgramAddress;
 
+    uint32_t* iht_optional_data;
+    uint32_t* xplm_modules_data;
+    uint32_t xplm_modules_data_size;
+    uint16_t iht_optional_data_size;
+
     uint64_t atf_handoff_params_offset;
     uint64_t atf_handoff_params_prg_hdr_count;
     bool atf_handoff_params_found;
+};
+
+/*************************************************************************************/
+class Elf32Symbol_t
+{
+public:
+	Elf32Symbol_t() {}
+	Elf32Symbol_t(Elf32Symbol_t* sym_t)
+	{
+		st_name = sym_t->st_name;
+		st_info = sym_t->st_info;
+		st_other = sym_t->st_other;
+		st_shndx = sym_t->st_shndx;
+		st_value = sym_t->st_value;
+		st_size = sym_t->st_size;
+	}
+	Elf32_Word st_name;
+	unsigned char st_info;
+	unsigned char st_other;
+	Elf32_Half st_shndx;
+	Elf32_Addr st_value;
+	Elf32_Xword st_size;
 };
 
 /******************************************************************************/
@@ -280,9 +314,10 @@ public:
     uint8_t* GetProgramHeaderData(uint8_t index);
     uint32_t ELFHdrEntrySize() { return   header.e_ehsize;}
 
+    Elf32_Ehdr header;
     std::vector<Elf32ProgramHeader*> programHeaders;
     Elf32SectionHdr_t* sectionHdrTbl;
-    Elf32_Ehdr header;
+    Elf32Symbol_t* symbolTableSection;
 private:
     void TrimUnwantedELFHeaders( Elf32ProgramHeader& prgHeader, uint8_t* elfStart );
     void DeendianELFHdr(uint8_t*);

@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -54,6 +54,11 @@ public:
 
     void Process(BootImage& bi, PartitionHeader* partition);
     void Process(BootImage& bi);
+
+    //VersalNet defines
+    uint32_t ConfigureEncryptionBlocksforPmcData(BootImage& bi, PartitionHeader * partHdr);
+    uint32_t ConfigureEncryptionBlocksforPartition(BootImage & bi, PartitionHeader * partHdr);
+    void ChunkifyAndProcess(BootImage & bi, PartitionHeader * partHdr);
 
     void SetAesSeedString(const std::string & key);
     void SetAesSeed(const uint8_t * key);

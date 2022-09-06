@@ -23,8 +23,8 @@
 #include <time.h>
 #include "cdo-alloc.h"
 #include "cdo-command.h"
-UserKeys user_keys;
 
+UserKeys user_keys;
 static CdoSequence * default_seq;
 
 #define USER_KEYS_BASE_ADDR 0xF11E0110
@@ -181,6 +181,8 @@ void cdocmd_add_random_command(CdoSequence * seq, uint32_t * levelp) {
         cmd->type == CdoCmdCframeRead ||
         cmd->type == CdoCmdNop ||
         cmd->type == CdoCmdEventLogging ||
+        cmd->type == CdoCmdScatterWrite ||
+        cmd->type == CdoCmdScatterWrite2 ||
         cmd->type == CdoCmdNpiWrite ||
         cmd->type == CdoCmdPmIoctl ||
         cmd->type == CdoCmdPmQueryData ||
@@ -189,7 +191,8 @@ void cdocmd_add_random_command(CdoSequence * seq, uint32_t * levelp) {
         cmd->type == CdoCmdPmAddNodeParent ||
         cmd->type == CdoCmdPmAddRequirement ||
         cmd->type == CdoCmdPmInitNode ||
-        cmd->type == CdoCmdPmSetNodeAccess) {
+        cmd->type == CdoCmdPmSetNodeAccess ||
+        cmd->type == CdoCmdPmNocClockEnable) {
         uint32_t * p;
         uint32_t i;
         cmd->count = (cmd->count & 15) + 1;
@@ -739,6 +742,34 @@ void cdocmd_add_pm_set_node_access(CdoSequence * seq, uint32_t nodeid, uint32_t 
     add_command(seq, cmd);
 }
 
+void cdocmd_add_pm_bisr(CdoSequence * seq, uint32_t tagid) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdPmBisr);
+    cmd->id = tagid;
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_pm_apply_trim(CdoSequence * seq, uint32_t trimtype) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdPmApplyTrim);
+    cmd->id = trimtype;
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_pm_noc_clock_enable(CdoSequence * seq, uint32_t nodeid, uint32_t count, void * buf, uint32_t be) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdPmNocClockEnable);
+    cmd->id = nodeid;
+    cmd->count = count;
+    cmd->buf = copy_buf(buf, count, be);
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_pm_if_noc_clock_enable(CdoSequence * seq, uint32_t index, uint32_t state, uint32_t level) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdPmIfNocClockEnable);
+    cmd->id = index;
+    cmd->value = state;
+    cmd->flags = level;
+    add_command(seq, cmd);
+}
+
 void cdocmd_add_cfu_set_crc32(CdoSequence * seq, uint32_t type, uint32_t value) {
     CdoCommand * cmd = cdocmd_alloc(CdoCmdCfuSetCrc32);
     cmd->flags = type;
@@ -908,6 +939,23 @@ void cdocmd_add_psm_sequence(CdoSequence * seq) {
     add_command(seq, cmd);
 }
 
+void cdocmd_add_scatter_write(CdoSequence * seq, uint32_t value, uint32_t count, void * buf, uint32_t be) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdScatterWrite);
+    cmd->value = value;
+    cmd->count = count;
+    cmd->buf = copy_buf(buf, count, be);
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_scatter_write2(CdoSequence * seq, uint32_t value1, uint32_t value2, uint32_t count, void * buf, uint32_t be) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdScatterWrite2);
+    cmd->value = value1;
+    cmd->mask = value2;
+    cmd->count = count;
+    cmd->buf = copy_buf(buf, count, be);
+    add_command(seq, cmd);
+}
+
 void cdocmd_add_pm_register_notifier(CdoSequence * seq, uint32_t nodeid, uint32_t mask, uint32_t arg1, uint32_t arg2) {
     CdoCommand * cmd = cdocmd_alloc(CdoCmdPmRegisterNotifier);
     cmd->id = nodeid;
@@ -931,6 +979,12 @@ void cdocmd_add_ldr_set_image_info(CdoSequence * seq, uint32_t nodeid, uint32_t 
     cmd->value = uid;
     cmd->mask = puid;
     cmd->count = funcid;
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_ldr_cframe_clear_check(CdoSequence * seq, uint32_t block_type) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdLdrCframeClearCheck);
+    cmd->id = block_type;
     add_command(seq, cmd);
 }
 

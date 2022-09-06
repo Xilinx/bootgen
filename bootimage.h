@@ -71,10 +71,13 @@ class BIF_File
 public:
     BIF_File(std::string& filename0) : biffilename(filename0) {} 
     void Process(Options& options);
+    void ParseBifFile(Options& options);
+    void ReplaceFiles();
 private:
     std::string biffilename;
     void Output(Options& options, uint8_t index);
     std::vector<BifOptions*> bifOptionList;
+    std::vector<BifOptions*> includeBifOptionList;
     std::vector<BootImage*> bootImages;
 };
 
@@ -157,6 +160,7 @@ public:
     std::string bitFilename;    
     void * overlayCDO;
 
+    virtual uint64_t GetSecureChunkSize(bool isBootloader) { return 0; }
 //private:
     bool assumeEncryption;
     uint32_t* deviceKey;
@@ -174,5 +178,7 @@ public:
     bool bootloaderEncrypt;
     KeySource::Type bootloaderKeySource;
     bool bootloaderAuthenticate;
+    uint32_t xplm_modules_data_length;
+    uint32_t* xplm_modules_data;
 };
 #endif

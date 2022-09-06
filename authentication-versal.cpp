@@ -245,7 +245,6 @@ AuthenticationAlgorithm* VersalAuthenticationContext::GetAuthenticationAlgorithm
 }
 
 /******************************************************************************/
-
 uint32_t VersalAuthenticationContext::GetCertificateSize(void)
 { 
     return certSize; 
@@ -902,7 +901,7 @@ void VersalAuthenticationContext::CopyPartitionSignature(BootImage& bi, std::lis
     size_t hashSecLen = (*section)->Length;
 
     //If !bootloader AND !headers
-    if ((*section)->firstChunkSize != 0 && !(*section)->isBootloader && (*section)->isPartitionData)
+    if ((*section)->firstChunkSize != 0 && !((*section)->isBootloader && !bi.options.IsVersalNetSeries()) && (*section)->isPartitionData)
     {
         hashSecLen = (*section)->firstChunkSize + hashLength;
     }
@@ -917,7 +916,7 @@ void VersalAuthenticationContext::CopyPartitionSignature(BootImage& bi, std::lis
     memcpy(partitionAc + acSection->Length - signatureLength, (*section)->Data, hashSecLen);
 
     /* Calculate the final hash */
-    Versalcrypto_hash(shaHash, partitionAc, hashSecLen + (acSection->Length - signatureLength), !(*section)->isBootloader);
+    Versalcrypto_hash(shaHash, partitionAc, hashSecLen + (acSection->Length - signatureLength), !((*section)->isBootloader && !bi.options.IsVersalNetSeries()));
     LOG_TRACE("Hash of %s (LE):", acSection->Name.c_str());
     LOG_DUMP_BYTES(shaHash, hashLength);
     /* Create the PKCS padding for the hash */

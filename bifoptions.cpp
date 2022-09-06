@@ -64,6 +64,7 @@ BifOptions::BifOptions(Arch::Type architecture, const char* name)
     , pufMode(PufMode::PUF12K)
     , optKey(OptKey::None)
     , shutterVal(SHUTTER_VAL)
+    , pufRoSwapConfigVal(0)
     , dpaCM(DpaCM::DpaCMDisable)
     , ppkSelect(0)
     , spkSelect(1)
@@ -92,6 +93,9 @@ BifOptions::BifOptions(Arch::Type architecture, const char* name)
     , slrConfigCnt(0)
     , aHwrot(false)
     , sHwrot(false)
+    , pmcdataBlocks(0)
+    , dice(DICE::DiceDisable)
+    , slrNum(0xFF)
 {
     arch = architecture;
     SetGroupName(name);
@@ -166,7 +170,12 @@ PartitionBifOptions::PartitionBifOptions()
     , revokeId(0x00000000)
     , slrNum(0xFF)
     , pufHdLoc(PufHdLoc::PUFinEFuse)
+    , versalNetSeries(false)
+    , clusterNum(0)
+    , lockstep(false)
     , updateReserveInPh(false)
+    , bifSection("")
+    , delayAuth(false)
 { }
 
 /******************************************************************************/
@@ -264,6 +273,9 @@ void BifOptions::Add(PartitionBifOptions* currentPartitionBifOptions, ImageBifOp
         {
             pmcDataAesFile = StringUtils::RemoveExtension(StringUtils::BaseName((currentPartitionBifOptions)->filename)) + ".nky";
         }
+
+        if(!(currentPartitionBifOptions->pmcData))
+            partitionBifOptionList.push_back(currentPartitionBifOptions);
         currentPartitionBifOptions->pmcData = true;
         break;
 
@@ -472,6 +484,12 @@ void BifOptions::SetPmcdataFile(const std::string& filename)
 }
 
 /******************************************************************************/
+void BifOptions::ClearPmcCdoFileList()
+{
+    pmcCdoFileList.clear();
+}
+
+/******************************************************************************/
 void BifOptions::SetPmcCdoFileList(const std::string& filename)
 {
     pmcCdoFileList.push_back(filename);
@@ -591,6 +609,18 @@ void BifOptions::SetShutterValue(uint32_t value)
             LOG_ERROR("The PUF shutter value specified in the BIF file indicates that the Global Variation Filter was not enabled during PUF registration/provisioning.\n\t   The Global Variation Filter must be used during PUF registration/provisioning to avoid PUF key encryption keys with lower than expected entropy ");
         }
     }
+}
+
+/******************************************************************************/
+void BifOptions::SetPufRingOscilltorSwapConfigValue(uint32_t value)
+{
+    pufRoSwapConfigVal = value;
+}
+
+/******************************************************************************/
+void BifOptions::SetDiceEnable()
+{
+    dice = DICE::DiceEnable;
 }
 
 /******************************************************************************/
@@ -1007,12 +1037,15 @@ void BifOptions::CheckForBadKeyandKeySrcPair(std::vector<std::pair<KeySource::Ty
 }
 
 /******************************************************************************/
-static void ValidateEncryptionKeySource(KeySource::Type type)
+static void ValidateEncryptionKeySource(KeySource::Type type, bool versalNetSeries)
 {
-    if ((type == KeySource::EfuseGryKey) || (type == KeySource::BhGryKey) || (type == KeySource::BbramGryKey)
-        || (type == KeySource::EfuseUserGryKey0) || (type == KeySource::EfuseUserGryKey1))
+    if (!versalNetSeries)
     {
-        LOG_ERROR("The usage of obfuscated keys is deprecated in Versal.\n\t   Refer 'bootgen -arch versal -bif_help keysrc' for valid key sources.");
+        if ((type == KeySource::EfuseGryKey) || (type == KeySource::BhGryKey) || (type == KeySource::BbramGryKey)
+            || (type == KeySource::EfuseUserGryKey0) || (type == KeySource::EfuseUserGryKey1))
+        {
+            LOG_ERROR("The usage of obfuscated keys is deprecated in Versal.\n\t   Refer 'bootgen -arch versal -bif_help keysrc' for valid key sources.");
+        }
     }
 
     static bool bhBlkKek = false;
@@ -1091,9 +1124,9 @@ static void ValidateEncryptionKeySource(KeySource::Type type)
 }
 
 /******************************************************************************/
-void BifOptions::SetMetaHeaderEncryptionKeySource(KeySource::Type type)
+void BifOptions::SetMetaHeaderEncryptionKeySource(KeySource::Type type, bool versalNetSeries)
 {
-    ValidateEncryptionKeySource(type);
+    ValidateEncryptionKeySource(type, versalNetSeries);
     metaHdrAttributes.encrKeySource = type;
 }
 
@@ -1162,14 +1195,15 @@ void BifOptions::SetAuthJtagTimeOut(uint32_t value)
 /******************************************************************************/
 void PartitionBifOptions::SetEncryptionKeySource(KeySource::Type type)
 {
-    ValidateEncryptionKeySource(type);
+    ValidateEncryptionKeySource(type, versalNetSeries);
     keySrc = type;
 }
 
 /******************************************************************************/
-void PartitionBifOptions::SetArchType(Arch::Type type)
+void PartitionBifOptions::SetArchType(Arch::Type type, bool flag)
 {
     arch = type;
+    versalNetSeries = flag;
 }
 
 /******************************************************************************/
@@ -1389,6 +1423,36 @@ void PartitionBifOptions::SetSlrNum(uint8_t id)
 }
 
 /******************************************************************************/
+void PartitionBifOptions::SetClusterNum(uint8_t id)
+{
+    if (arch == Arch::VERSAL && versalNetSeries)
+    {
+        if (id != 0 && id != 1 && id != 2 && id != 3)
+        {
+            LOG_ERROR("cluster can only take values from 0 to 3.");
+        }
+        clusterNum = id;
+    }
+    else
+    {
+        LOG_ERROR("BIF attribute error !!!\n\t  'cluster' is supported only in VersalNet architecture");
+    }
+}
+
+/******************************************************************************/
+void PartitionBifOptions::SetLockStepFlag()
+{
+    if (arch == Arch::VERSAL && versalNetSeries)
+    {
+        lockstep = true;
+    }
+    else
+    {
+        LOG_ERROR("BIF attribute error !!!\n\t  'lockstep' is supported only in VersalNet architecture");
+    }
+}
+
+/******************************************************************************/
 std::vector<uint32_t>& PartitionBifOptions::GetEncryptionBlocks(void)
 {
     return blocks;
@@ -1437,6 +1501,12 @@ void PartitionBifOptions::SetReserveLength(uint64_t length, bool flag)
 }
 
 /******************************************************************************/
+void PartitionBifOptions::SetDelayAuth(bool flag)
+{
+    delayAuth = flag;
+}
+
+/******************************************************************************/
 uint32_t PartitionBifOptions::GetDefaultEncryptionBlockSize(void)
 {
     return defBlockSize;
@@ -1467,9 +1537,13 @@ PufHdLoc::Type PartitionBifOptions::GetPufHdLocation(void)
 }
 
 /******************************************************************************/
-std::string PartitionBifOptions::GetOutputFileFromBifSection(std::string out_file, std::string bif_section)
+std::string PartitionBifOptions::GetOutputFileFromBifSection(std::string out_file, std::string bif_section, PartitionType::Type part_type)
 {
     std::string filename = StringUtils::RemoveExtension(out_file) + "_" + bif_section + StringUtils::GetExtension(out_file);
+    if (part_type == PartitionType::SLR_BOOT || part_type == PartitionType::SLR_CONFIG)
+    {
+        filename = StringUtils::RemoveExtension(out_file) + "_" + bif_section + ".bin";
+    }
     return filename;
 }
 
@@ -1744,6 +1818,18 @@ std::string BifOptions::GetBhKeyFile(void)
 uint32_t BifOptions::GetShutterValue(void)
 {
     return shutterVal;
+}
+
+/******************************************************************************/
+uint32_t BifOptions::GetPufRingOscilltorSwapConfigValue(void)
+{
+    return pufRoSwapConfigVal;
+}
+
+/******************************************************************************/
+DICE::Type BifOptions::GetDice(void)
+{
+    return dice;
 }
 
 /******************************************************************************/

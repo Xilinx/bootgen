@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -94,6 +94,12 @@ typedef struct
     RegisterInitPair registerInitialization [MAX_REGISTER_INITS];
 } RegisterInitTable;
 
+typedef struct
+{
+    uint64_t baseaddr;
+    uint64_t size;
+} RegisterInitAddressRange;
+
 /*
 -------------------------------------------------------------------------------
 *********************************************************   C L A S S E S   ***
@@ -105,8 +111,9 @@ class RegisterTable
 public:
     RegisterTable()
         : regtab(NULL)
-        , count(0) 
+        , count(0)
     {
+        invalidAddr.clear();
     }
     
     void Build (Options& option,  RegisterInitTable* regTable0);
@@ -117,6 +124,7 @@ public:
 private:
     RegisterInitTable* regtab;
     uint32_t count;
+    std::vector <uint32_t> invalidAddr;
 };
 
 

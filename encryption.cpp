@@ -39,8 +39,8 @@ void EncryptionContext::GenerateEncryptionKeyFile(const std::string & baseFileNa
     static bool kdfVersion = false;
     if (!kdfVersion)
     {
-        LOG_TRACE("KDF Version : 0x%X", kdf->GetVersion());
-		kdfVersion = true;
+        LOG_INFO("KDF Version : %s", kdf->GetVersion().c_str());
+        kdfVersion = true;
     }
     LOG_TRACE("Generating the AES key file");
     std::string devicePartName = options.GetDevicePartName();
@@ -56,12 +56,14 @@ void EncryptionContext::GenerateEncryptionKeyFile(const std::string & baseFileNa
     if (GetAesSeed() == NULL)
     {
         aesSeed = new uint32_t[WORDS_PER_AES_KEY];
+        memset(aesSeed, 0, WORDS_PER_AES_KEY);
     }
     GenerateAesSeed();
 
     if (GetFixedInputData() == NULL)
     {
         fixedInputData = new uint32_t[WORDS_PER_FID];
+        memset(fixedInputData, 0, WORDS_PER_FID);
     }
     GenerateAesFixedInputData();
 

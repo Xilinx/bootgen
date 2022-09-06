@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -22,6 +22,8 @@
 */
 #include "bootheader-versal.h"
 #include "authentication-versal.h"
+
+#define PLM_MAX_SIZE            0x60000 //384KB
 
 /*
 -------------------------------------------------------------------------------
@@ -124,10 +126,25 @@ void VersalBootHeader::Build(BootImage& bi, Binary& cache)
     SetEncryptionKeySource(bi.options.GetEncryptedKeySource(), bi.bifOptions);
     SetPmcCdoLoadAddress(bi.bifOptions->GetPmcCdoLoadAddress());
     SetShutterValue(bi.bifOptions->GetShutterValue());
+    SetPufRingOscilltorSwapConfigValue(bi.bifOptions->GetPufRingOscilltorSwapConfigValue());
     SetGreyOrBlackKey(bi.bifOptions->GetBhKeyFile());
+
+    if (bi.options.IsVersalNetSeries() && bi.bifOptions->GetBHKekIVFile() != "")
+    {
+        kekIvFile = bi.bifOptions->GetBHKekIVFile();
+    }
+
     SetGreyOrBlackIv(kekIvFile);
     SetPlmSecureHdrIv(bi.options.secHdrIv);
     SetPmcDataSecureHdrIv(bi.options.secHdrIvPmcData);
+    if (bi.options.IsVersalNetSeries())
+    {
+        SetRevokeId(bi.imageList.front()->GetPartitionRevocationId());
+    }
+    else
+    {
+        SetRevokeId(0x00000000);
+    }
     SetRomReserved();
     SetPmcFwReserved();
     BuildRegInitTable(bi.options);
@@ -178,7 +195,14 @@ void VersalBootHeader::Link(BootImage& bi)
         PartitionHeader& bootloaderHdr(*(fsbl->GetPartitionHeaderList().front()));
         BootloaderAddressAndSizeCheck(bootloaderHdr);
 
-        SetSourceOffset((uint32_t)bootloaderHdr.partition->section->Address);
+        if (bootloaderHdr.imageHeader->GetChecksumContext()->Type() != Checksum::None && bi.options.IsVersalNetSeries())
+        {
+            SetSourceOffset((uint32_t)bootloaderHdr.partition->section->Address + SHA3_LENGTH_BYTES);
+        }
+        else
+        {
+            SetSourceOffset((uint32_t)bootloaderHdr.partition->section->Address);
+        }
         SetPlmLength((uint32_t)bootloaderHdr.GetPartitionSize());
 
         SetBHForXIP(bi);
@@ -216,6 +240,10 @@ void VersalBootHeader::Link(BootImage& bi)
     }
 
     SetHeaderChecksum();
+    if (bHTable->totalPlmLength > PLM_MAX_SIZE && !bi.options.IsVersalNetSeries())
+    {
+        LOG_ERROR("Total PLM size : %dKB > maximum allowable size (384KB)", bHTable->totalPlmLength / 1024);
+    }
 }
 
 /******************************************************************************/
@@ -491,6 +519,16 @@ void VersalBootHeader::SetBHAttributes(BootImage& bi)
         bHTable->bhAttributes |= bi.partitionHeaderList.front()->imageHeader->GetDpacm() << DPA_CM_BIT_SHIFT;
         bHTable->bhAttributes |= bi.bifOptions->GetBhRsa() << BH_RSA_BIT_SHIFT;
         bHTable->bhAttributes |= bi.bifOptions->GetPufMode() << BH_PUF_MODE_BIT_SHIFT;
+
+        if (bi.options.IsVersalNetSeries())
+        {
+            if (bi.partitionHeaderList.front()->imageHeader->GetAuthenticationType() != Authentication::None)
+            {
+                bHTable->bhAttributes |= BH_RSA_SINGED_BIT_MASK << BH_RSA_SINGED_BIT_SHIFT;
+            }
+
+            bHTable->bhAttributes |= bi.bifOptions->GetDice() << BH_DICE_BIT_SHIFT;
+        }
     }
 }
 
@@ -533,6 +571,18 @@ void VersalBootHeader::SetGreyOrBlackKey(std::string keyFile)
 void VersalBootHeader::SetShutterValue(uint32_t value)
 {
     bHTable->shutterValue = value;
+}
+
+/******************************************************************************/
+void VersalBootHeader::SetRevokeId(uint32_t id)
+{
+    bHTable->revokeId = id;
+}
+
+/******************************************************************************/
+void VersalBootHeader::SetPufRingOscilltorSwapConfigValue(uint32_t value)
+{
+    bHTable->pufRoSwapConfigVal = value;
 }
 
 /******************************************************************************/

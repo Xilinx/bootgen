@@ -1,3 +1,4 @@
+
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
 *
@@ -252,7 +253,7 @@ void VersalReadImage::ReadHeaderTableDetails()
         }
         if (!((iHT->partitionTotalCount > 0) && (iHT->partitionTotalCount < 0xFF)))
         {
-            LOG_ERROR("Number of partitions read from PDI is more than number of supported partiiton count.");
+            LOG_ERROR("Number of partitions read from PDI is more than number of supported partititon count.");
         }
     }
     else
@@ -498,6 +499,9 @@ void VersalReadImage::DisplayBootHeader(void)
     DisplayIV("plm_sec_hdr_iv (0x64) : ", bH->plmSecureHdrIv);
     DisplayValue("puf_shutter (0x70) : ", bH->shutterValue);
     DisplayIV("pmccdo_sec_hdr_iv (0x74) : ", bH->pmcCdoSecureHdrIv);
+    //VersalNet
+    DisplayValue("puf_ro_swap (0x80) : ", bH->pufRoSwapConfigVal);
+    DisplayValue("revoke_id (0x84) : ", bH->revokeId);
     DisplayValue("metahdr_offset (0xc4) : ", bH->imageHeaderByteOffset);
     DisplayKey("puf_data (0x928) : ", bH->puf);
     DisplayValue("checksum (0xf30) : ", bH->headerChecksum);
@@ -558,8 +562,9 @@ void VersalReadImage::DisplayImageHeaderTable(void)
     DisplayValue("hdr_sizes (0x2C) : ", iHT->headerSizes, "mhdr_total_length (0x30) : ", iHT->totalMetaHdrLength);
     DisplayIV("mhdr_sec_hdr_iv (0x34) : ", iHT->metaHdrSecureHdrIv);
     DisplayValue("mhdr_encrkey_store (0x40) : ", iHT->metaHdrKeySource, "extended_id_code (0x44) : ", iHT->extendedIdCode);
-    DisplayValue("hdr_ac (0x48) : ", iHT->headerAuthCertificateWordOffset, "checksum (0x7c) : ", iHT->ihtChecksum);
+    DisplayValue("hdr_ac (0x48) : ", iHT->headerAuthCertificateWordOffset);
     DisplayIV("grey/black_iv (0x4C) : ", iHT->metaHdrGreyOrBlackIV);
+    DisplayValue("optional_data_size (0x58) : ", iHT->optionalDataSize, "checksum(0x7c) : ", iHT->ihtChecksum);
     std::cout << " attribute list - " << std::endl;
     DisplayIhtAttributes(iHT->imageHeaderTableAttributes);
 }
@@ -786,6 +791,21 @@ void VersalReadImage::DisplayBhAttributes(uint32_t value)
         default: val = "[invalid]";     break;
     }
     DisplayAttributes("bh_auth ", val1, "puf_mode ", val);
+
+    //VersalNet
+    switch ((value >> BH_RSA_SINGED_BIT_SHIFT) & BH_RSA_SINGED_BIT_MASK)
+    {
+    case 3: val = "[yes]";      break;
+    default: val = "[no]";    break;
+    }
+    val1 = val;
+
+    switch ((value >> BH_DICE_BIT_SHIFT) & BH_DICE_BIT_MASK)
+    {
+    case 3: val = "[enabled]";      break;
+    default: val = "[disabled]";    break;
+    }
+    DisplayAttributes("rsa_signed ", val1, "dice ", val);
 }
 
 /*********************************************************************************/
@@ -972,6 +992,25 @@ void VersalReadImage::DisplayPhtAttributes(uint32_t value)
     }
 
     DisplayAttributes("exec_state ", val1, "core ", val);
+
+    //VersalNet
+    switch ((value >> vNetphtlockStepShift) & vNetphtlockStepMask)
+    {
+        case 0: val = "[disabled]";      break;
+        case 3: val = "[enabled]";       break;
+        default: val = "[invalid]";      break;
+    }
+    val1 = val;
+    switch ((value >> vNetphtClusterShift) & vNetphtClusterMask)
+    {
+        case 0: val = "[0]";            break;
+        case 1: val = "[1]";            break;
+        case 2: val = "[2]";            break;
+        case 3: val = "[3]";            break;
+        default: val = "[invalid]";     break;
+    }
+
+    DisplayAttributes("lockstep ", val1, "cluster", val);
 
     switch ((value >> vphtChecksumTypeShift) & vphtChecksumTypeMask)
     {

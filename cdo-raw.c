@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2019-2020 Xilinx, Inc.
+* Copyright 2019-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -94,7 +94,7 @@ static uint32_t parse_hex8(char ** sp, uint32_t * valuep) {
     return 0;
 }
 
-CdoRawInfo * decode_raw(void * data, size_t size) {
+CdoRawInfo * decode_raw(CdoSequence ** seq, void * data, size_t size) {
     CdoRawInfo * raw = NULL;
     CdoRawType type;
     size_t offset = 0;
@@ -147,10 +147,38 @@ CdoRawInfo * decode_raw(void * data, size_t size) {
         goto error;
     }
     skipnewline(s, e);
+    *seq = cdocmd_create_sequence();
     while (s < e) {
+        char buf[1024];
         p = s;
         skipline(s, e);
-        if (s-p >= 5 && memcmp(p, "Bits:", 5) == 0) {
+        if (s-p >= 10 && memcmp(p, "Created by", 10) == 0) {
+            p += 10;
+            /*strncpy(buf, p, s - p);
+            buf[s - p] = '\0';
+            cdocmd_add_marker(*seq, 1, buf);*/
+        } else if (s-p >= 12 && memcmp(p, "Design name:", 12) == 0) {
+            // TODO: Design name includes SLR, add it as a separate marker
+            p += 12;
+            strncpy(buf, p, s - p);
+            buf[s - p] = '\0';
+            cdocmd_add_marker(*seq, 2, buf);
+        } else if (s-p >= 13 && memcmp(p, "Architecture:", 13) == 0) {
+            p += 13;
+            strncpy(buf, p, s - p);
+            buf[s - p] = '\0';
+            cdocmd_add_marker(*seq, 3, buf);
+        } else if (s-p >= 5 && memcmp(p, "Part:", 5) == 0) {
+            p += 5;
+            strncpy(buf, p, s - p);
+            buf[s - p] = '\0';
+            cdocmd_add_marker(*seq, 4, buf);
+        } else if (s-p >= 5 && memcmp(p, "Date:", 5) == 0) {
+            p += 5;
+            /*strncpy(buf, p, s - p);
+            buf[s - p] = '\0';
+            cdocmd_add_marker(*seq, 6, buf);*/
+        } else if (s-p >= 5 && memcmp(p, "Bits:", 5) == 0) {
             uint64_t bytes;
             if (s >= e) goto error;
             p += 5;

@@ -1,3 +1,4 @@
+
 /******************************************************************************
 * Copyright 2015-2021 Xilinx, Inc.
 *
@@ -48,6 +49,8 @@ public:
     {
         bH = NULL;
         iHT = NULL;
+        iH = NULL;
+        pHT = NULL;
         iHs.clear();
         pHTs.clear();
         authenticationVerified = true;

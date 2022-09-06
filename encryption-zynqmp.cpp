@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -700,12 +700,14 @@ void ZynqMpEncryptionContext::GenerateRemainingKeys(Options& options, std::strin
     if (GetAesSeed() == NULL)
     {
         aesSeed = new uint32_t[WORDS_PER_AES_KEY];
+        memset(aesSeed, 0, WORDS_PER_AES_KEY);
         GenerateAesSeed();
     }
 
     if (GetFixedInputData() == NULL)
     {
         fixedInputData = new uint32_t[WORDS_PER_FID];
+        memset(fixedInputData, 0, WORDS_PER_FID);
         GenerateAesFixedInputData();
     }
 

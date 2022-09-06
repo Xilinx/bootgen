@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2019-2021 Xilinx, Inc.
+* Copyright 2019-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -18,10 +18,25 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <inttypes.h>
+#include <string.h>
+#include <stdbool.h>
 #include "cdo-binary.h"
 #include "cdo-source.h"
 #include "cdo-raw.h"
 #include "cdo-load.h"
+
+#define MAX_LINE_LENGTH 100
+static char slr_id_binary;
+
+char SlrIdFromBinary(char ch)
+{
+    if (slr_id_binary != 0)
+    {
+        ch = slr_id_binary;
+        slr_id_binary = 0;
+    }
+    return ch;
+ }
 
 void * file_to_buf(const char * path, size_t * sizep) {
     FILE * f = fopen(path, "rb");
@@ -66,11 +81,12 @@ error:
 
 CdoSequence * cdoseq_load_cdo(const char * path) {
     CdoSequence * seq = NULL;
+    CdoSequence * hdr_seq = NULL;
     CdoRawInfo * raw = NULL;
     size_t size;
     void * data = file_to_buf(path, &size);
     if (data == NULL) goto done;
-    raw = decode_raw(data, size);
+    raw = decode_raw(&hdr_seq, data, size);
     if (raw != NULL) {
         free(data);
         data = raw->data;
@@ -100,6 +116,10 @@ done:
         free(raw);
     } else {
         free(data);
+    }
+    if (hdr_seq && seq) {
+        cdocmd_concat_seq(hdr_seq, seq);
+        return hdr_seq;
     }
     return seq;
 }

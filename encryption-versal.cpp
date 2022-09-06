@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -527,12 +527,14 @@ void VersalEncryptionContext::GenerateRemainingKeys(Options& options)
     if (GetAesSeed() == NULL)
     {
         aesSeed = new uint32_t[WORDS_PER_AES_KEY];
+        memset(aesSeed, 0, WORDS_PER_AES_KEY);
         GenerateAesSeed();
     }
 
     if (GetFixedInputData() == NULL)
     {
         fixedInputData = new uint32_t[WORDS_PER_FID];
+        memset(fixedInputData, 0, WORDS_PER_FID);
         GenerateAesFixedInputData();
     }
 
@@ -822,8 +824,8 @@ void VersalEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr)
         /* Note that the last block will always be based on the partition length.*/
 
         std::vector<uint32_t> secureChunkEncrBlocks;
-        uint32_t actualSecureChunkSize = VersalPartition::GetSecureChunkSize() - overhead;
-        if (partHdr->imageHeader->GetAuthenticationType() == Authentication::None)
+        uint32_t actualSecureChunkSize = bi.GetSecureChunkSize(partHdr->IsBootloader()) - overhead;
+        if (partHdr->imageHeader->GetAuthenticationType() == Authentication::None && !partHdr->imageHeader->GetDelayAuthFlag())
         {
             actualSecureChunkSize += SHA3_LENGTH_BYTES;
         }
@@ -1053,6 +1055,8 @@ void VersalEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr)
         {
             aesKey = aesIv = aesSeed = NULL;
             fixedInputData = NULL;
+            aesSeedexits = false;
+            fixedInputDataExits = false;
             SetAesFileName(options.bifOptions->pmcDataAesFile);
             LOG_INFO("Key file - %s", aesFilename.c_str());
             std::ifstream keyFile(aesFilename);
@@ -1362,7 +1366,7 @@ void VersalEncryptionContext::Process(BootImage& bi)
         dataBuffer,
         (uint32_t)size,
         bi.imageHeaderTable->section->Data,
-        sizeof(VersalImageHeaderTableStructure),
+        sizeof(VersalImageHeaderTableStructure) + bi.imageHeaderTable->iht_optional_data_length,
         encryptedDataBuffer /* out*/,
         encryptedLength /* out */);
 

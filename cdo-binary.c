@@ -31,9 +31,13 @@ static uint32_t add_offset;
 #define u32pair(hi, lo) (((uint64_t)(hi) << 32) | (lo))
 #define HDR_IDN_WRD		(0x584C4E58U)
 
-uint32_t* slr_sync_points;
-uint8_t num_of_sync_points = 0;
-uint8_t search_sync_points = 0;
+static uint32_t* slr_sync_points;
+static uint32_t* noc_start_markers;
+static uint32_t* noc_end_markers;
+static uint8_t num_start_markers = 0;
+static uint8_t num_end_markers = 0;
+static uint8_t num_of_sync_points = 0;
+static uint8_t search_sync_points = 0;
 
 enum {
     /*General Commands */
@@ -101,6 +105,9 @@ enum {
     CMD2_BREAK		 = 0x11dU,
     CMD2_OT_CHECK	 = 0x11eU,
     CMD2_PSM_SEQUENCE	 = 0x11fU,
+    CMD2_PLM_UPDATE	 = 0x120U,
+    CMD2_SCATTER_WRITE	 = 0x121U,
+    CMD2_SCATTER_WRITE2	 = 0x122U,
 
     /* PM Commands */
     CMD2_PM_GET_API_VERSION	= 0x201U,
@@ -154,6 +161,10 @@ enum {
     CMD2_PM_ISO_CONTROL		= 0x240U,
     CMD2_PM_ACTIVATE_SUBSYSTEM	= 0x241U,
     CMD2_PM_SET_NODE_ACCESS	= 0x242U,
+    CMD2_PM_BISR = 0x243,
+    CMD2_PM_APPLY_TRIM = 0x244,
+    CMD2_PM_NOC_CLOCK_ENABLE	= 0x245,
+    CMD2_PM_IF_NOC_CLOCK_ENABLE	= 0x246,
 
     /* NPI Commands */
     CMD2_NPI_SEQ	 = 0x301U,
@@ -174,6 +185,7 @@ enum {
 
     /* Loader Commands */
     CMD2_LDR_SET_IMAGE_INFO	 = 0x704U,
+    CMD2_LDR_CFRAME_CLEAR_CHECK	 = 0x70cU,
 
     /* EM Commands */
     CMD2_EM_SET_ACTION		 = 0x801U,
@@ -580,6 +592,15 @@ static uint32_t decode_v2_cmd(CdoSequence * seq, uint32_t * p, uint32_t * ip, ui
             cdocmd_add_end(seq);
             break;
         }
+        case CMD2_SCATTER_WRITE:
+            if (args < 2) goto unexpected;
+            cdocmd_add_scatter_write(seq, u32xe(p[i+0]), args - 1, &p[i+1], be);
+            break;
+        case CMD2_SCATTER_WRITE2:
+            if (args < 3) goto unexpected;
+            cdocmd_add_scatter_write2(seq, u32xe(p[i+0]), u32xe(p[i+1]), args - 2, &p[i+2], be);
+            break;
+
         case CMD2_NPI_SEQ:
             if (args != 2) goto unexpected;
             cdocmd_add_npi_seq(seq, u32xe(p[i+0]), u32xe(p[i+1]));
@@ -802,6 +823,24 @@ static uint32_t decode_v2_cmd(CdoSequence * seq, uint32_t * p, uint32_t * ip, ui
             if (args < 1) goto unexpected;
             cdocmd_add_pm_set_node_access(seq, u32xe(p[i+0]), args - 1, &p[i+1], be);
             break;
+        case CMD2_PM_BISR:
+            if (args != 1) goto unexpected;
+            cdocmd_add_pm_bisr(seq, u32xe(p[i+0]));
+            break;
+        case CMD2_PM_APPLY_TRIM:
+            if (args != 1) goto unexpected;
+            cdocmd_add_pm_apply_trim(seq, u32xe(p[i+0]));
+            break;
+        case CMD2_PM_NOC_CLOCK_ENABLE:
+            if (args < 1) goto unexpected;
+            cdocmd_add_pm_noc_clock_enable(seq, u32xe(p[i+0]), args - 1, &p[i+1], be);
+            break;
+        case CMD2_PM_IF_NOC_CLOCK_ENABLE:
+            if (args != 2 && args != 3) goto unexpected;
+            cdocmd_add_pm_if_noc_clock_enable(seq, u32xe(p[i+0]), u32xe(p[i+1]),
+                                              args == 3 ? u32xe(p[i+2]) : 1);
+            break;
+
         case CMD2_CFU_SET_CRC32:
             if (args < 1) goto unexpected;
             if (u32xe(p[i+0]) == 0) {
@@ -851,6 +890,10 @@ static uint32_t decode_v2_cmd(CdoSequence * seq, uint32_t * p, uint32_t * ip, ui
             if (args != 4) goto unexpected;
             cdocmd_add_ldr_set_image_info(seq, u32xe(p[i+0]), u32xe(p[i+1]), u32xe(p[i+2]), u32xe(p[i+3]));
             break;
+        case CMD2_LDR_CFRAME_CLEAR_CHECK:
+            if (args != 1) goto unexpected;
+            cdocmd_add_ldr_cframe_clear_check(seq, u32xe(p[i+0]));
+            break;
         default:
             cdocmd_add_generic_command(seq, hdr & 0xffff, p + i, args, be);
             break;
@@ -866,6 +909,68 @@ unexpected:
 error:
     *ip = i;
     return 1;
+}
+
+uint32_t check_cdo_commands(void* data, uint32_t l, uint32_t * xplm_data, uint32_t xplm_length) {
+    uint32_t be = 0;
+    uint32_t * p = (uint32_t *)data;
+    uint32_t hdrlen = u32xe(p[0]);
+    uint32_t len = u32xe(p[3]);
+    uint32_t total_len = hdrlen + 1 + len;
+    uint32_t i = hdrlen + 1;
+    uint32_t cmdpos = 0;
+    uint32_t hdr;
+    uint8_t cmd_id;
+    uint8_t module_id;
+    size_t index;
+
+    if (l < total_len) {
+        fprintf(stderr, "warning: incomplete CDO buffer %"PRIu32", expected %"PRIu32"\n", l, total_len);
+        total_len = l;
+    } else if (l > total_len) {
+        l = total_len;
+    }
+    while (i < l) {
+        uint32_t args;
+        int cmd_found;
+        cmdpos = i;
+        hdr = u32xe(p[i++]);
+        if (verbose) {
+            fprintf(stderr, "info: decoding command %#"PRIx32" at %"PRIu32"\n", hdr, cmdpos);
+        }
+        args = (hdr >> 16) & 255;
+        if (args == 255) {
+            if (hdr == CMD2_END) goto found_end_marker;
+            if (i >= l) {
+                fprintf(stderr, "incomplete CDO command %#"PRIx32" at %"PRIu32"\n", hdr, cmdpos);
+                return -1;
+            }
+            args = u32xe(p[i++]);
+        }
+        if (l - i < args) {
+            fprintf(stderr, "incomplete CDO command %#"PRIx32" at %"PRIu32"\n", hdr, cmdpos);
+            return -1;
+        }
+        cmd_id = hdr & 0xff;
+        module_id = (hdr & 0xff00) >> 0x8;
+        // TODO: only PLM commands are supported for now
+        if (module_id != 0x1) continue;
+        cmd_found = 0;
+        size_t cmdInfo_size = sizeof(XPlmi_CmdInfo);
+        for (index = 0; index < (xplm_length/ cmdInfo_size); index++) {
+            uint8_t* cmdInfo = (uint8_t*)malloc(cmdInfo_size);
+            memset(cmdInfo, 0, cmdInfo_size);
+            memcpy(cmdInfo, xplm_data + (index * (cmdInfo_size/4)), cmdInfo_size);
+            XPlmi_CmdInfo* cmd_info = (XPlmi_CmdInfo*)(cmdInfo);
+            if (cmd_info->cmd_id == cmd_id && cmd_info->module_id == module_id && cmd_info->min_arg_cnt >= args && cmd_info->max_arg_cnt <= args) {
+                cmd_found = 1;
+                break;
+            }
+        }
+        if (cmd_found == 0) return -1;
+    }
+found_end_marker:
+return 0;
 }
 
 static uint32_t decode_v2(CdoSequence * seq, uint32_t * p, uint32_t l, uint32_t be) {
@@ -1565,6 +1670,19 @@ static void * encode_v2_cmd(LINK * l, LINK * lh, uint32_t * posp, uint32_t be) {
         case CdoCmdMarker: {
             uint32_t len = strlen((char *)cmd->buf);
             uint32_t count = (len + 3)/4;
+            /* Search for the START markers with string "NOC Start up", only for SSIT devices */
+            if (search_sync_points && (cmd->value == 0x64 || cmd->value == 0x65) && (strcmp((char*)cmd->buf, "NOC Startup") == 0)) {
+                /* Store the offset of each of the START and END marker with "NOC Start up" string */
+                if (cmd->value == 0x64) {
+                    num_start_markers++;
+                    noc_start_markers = (uint32_t *)realloc(noc_start_markers, num_start_markers * 2 * sizeof(uint32_t));
+                    memcpy(noc_start_markers + (num_start_markers - 1), &pos, 4);
+                } else {
+                    num_end_markers++;
+                    noc_end_markers = (uint32_t *)realloc(noc_end_markers, num_end_markers * 2 * sizeof(uint32_t));
+                    memcpy(noc_end_markers + (num_end_markers - 1), &pos, 4);
+                }
+            }
             hdr2(&p, &pos, CMD2_MARKER, 1 + count, be);
             p[pos++] = u32xe(cmd->value);
             memset(p + pos, 0, count*4);
@@ -1587,6 +1705,8 @@ static void * encode_v2_cmd(LINK * l, LINK * lh, uint32_t * posp, uint32_t be) {
                 pos = pos_save;
                 p[pos++] = u32xe(cmd->value);
                 p = encode_v2_cmd(l, blockend, &pos, be);
+                /* Update payload size incase it changed due to alignment */
+                p[pos_save - 1] = u32xe(pos - pos_save);
             }
             l = blockend;
             if (l != lh) l = l->next;
@@ -1640,6 +1760,21 @@ static void * encode_v2_cmd(LINK * l, LINK * lh, uint32_t * posp, uint32_t be) {
             if (l != lh) l = l->next;
             break;
         }
+        case CdoCmdScatterWrite:
+            hdr2(&p, &pos, CMD2_SCATTER_WRITE, 1 + cmd->count, be);
+            p[pos++] = u32xe(cmd->value);
+            memcpy(p + pos, cmd->buf, cmd->count * sizeof(uint32_t));
+            byte_swap_buffer(p + pos, cmd->count, be);
+            pos += cmd->count;
+            break;
+        case CdoCmdScatterWrite2:
+            hdr2(&p, &pos, CMD2_SCATTER_WRITE2, 2 + cmd->count, be);
+            p[pos++] = u32xe(cmd->value);
+            p[pos++] = u32xe(cmd->mask);
+            memcpy(p + pos, cmd->buf, cmd->count * sizeof(uint32_t));
+            byte_swap_buffer(p + pos, cmd->count, be);
+            pos += cmd->count;
+            break;
 
         case CdoCmdNpiSeq:
             hdr2(&p, &pos, CMD2_NPI_SEQ, 2, be);
@@ -1929,6 +2064,29 @@ static void * encode_v2_cmd(LINK * l, LINK * lh, uint32_t * posp, uint32_t be) {
             p[pos++] = u32xe(cmd->id);
             p[pos++] = u32xe(cmd->value);
             break;
+        case CdoCmdPmBisr:
+            hdr2(&p, &pos, CMD2_PM_BISR, 1, be);
+            p[pos++] = u32xe(cmd->id);
+            break;
+        case CdoCmdPmApplyTrim:
+            hdr2(&p, &pos, CMD2_PM_APPLY_TRIM, 1, be);
+            p[pos++] = u32xe(cmd->id);
+            break;
+        case CdoCmdPmNocClockEnable:
+            hdr2(&p, &pos, CMD2_PM_NOC_CLOCK_ENABLE, 1 + cmd->count, be);
+            p[pos++] = u32xe(cmd->id);
+            memcpy(p + pos, cmd->buf, cmd->count * sizeof(uint32_t));
+            byte_swap_buffer(p + pos, cmd->count, be);
+            pos += cmd->count;
+            break;
+        case CdoCmdPmIfNocClockEnable:
+            hdr2(&p, &pos, CMD2_PM_IF_NOC_CLOCK_ENABLE, cmd->flags != 1 ? 3 : 2, be);
+            p[pos++] = u32xe(cmd->id);
+            p[pos++] = u32xe(cmd->value);
+            if (cmd->flags != 1) {
+                p[pos++] = u32xe(cmd->flags);
+            }
+            break;
         case CdoCmdPmActivateSubsystem:
             hdr2(&p, &pos, CMD2_PM_ACTIVATE_SUBSYSTEM, 1, be);
             p[pos++] = u32xe(cmd->id);
@@ -1995,6 +2153,10 @@ static void * encode_v2_cmd(LINK * l, LINK * lh, uint32_t * posp, uint32_t be) {
             p[pos++] = u32xe(cmd->mask);
             p[pos++] = u32xe(cmd->count);
             break;
+        case CdoCmdLdrCframeClearCheck:
+            hdr2(&p, &pos, CMD2_LDR_CFRAME_CLEAR_CHECK, 1, be);
+            p[pos++] = u32xe(cmd->id);
+            break;
         default:
             fprintf(stderr, "unknown command (%u)\n", cmd->type);
             break;
@@ -2037,8 +2199,12 @@ void * cdoseq_to_binary(CdoSequence * seq, size_t * sizep, uint32_t be) {
 void search_for_sync_points(void)
 {
     num_of_sync_points = 0;
+    num_start_markers = 0;
+    num_end_markers = 0;
     search_sync_points = 1;
     slr_sync_points = NULL;
+    noc_start_markers = NULL;
+    noc_end_markers = NULL;
 }
 
 uint32_t* get_slr_sync_point_offsets(void)
@@ -2047,7 +2213,30 @@ uint32_t* get_slr_sync_point_offsets(void)
     return slr_sync_points;
 }
 
+uint32_t* get_slr_start_marker_offsets(void)
+{
+    search_sync_points = 0;
+    return noc_start_markers;
+}
+
+uint32_t* get_slr_end_marker_offsets(void)
+{
+    search_sync_points = 0;
+    return noc_end_markers;
+}
+
 size_t get_num_of_sync_points(void)
 {
     return num_of_sync_points;
 }
+
+size_t get_num_start_markers(void)
+{
+    return num_start_markers;
+}
+
+size_t get_num_end_markers(void)
+{
+    return num_end_markers;
+}
+

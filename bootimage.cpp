@@ -45,53 +45,56 @@
 */
 
 /******************************************************************************/
-void BIF_File::Process(Options& options) 
+void BIF_File::Process(Options& options)
 {
-    std::string basefile = StringUtils::BaseName(biffilename);
-    
-    LOG_TRACE("BIF file parsing started");
-    
-    BIF::FlexScanner scanner;
-    BIF::BisonParser parser(scanner, options);
-   
-    scanner.filename = biffilename;
-    std::ifstream s(biffilename.c_str());
-    
-    if (!s) 
-    {
-        LOG_ERROR("Cannot read BIF file - %s ", basefile.c_str());
-    }
-    if(s.peek() == EOF)
-    {
-        LOG_ERROR("BIF file is empty - %s ", basefile.c_str());
-    }
-    scanner.switch_streams(&s);
-    int res = parser.parse();
-    if (res)
-    {
-        LOG_ERROR("BIF file parsing failed with code %d", res);
-    }
-
-    LOG_INFO("BIF file parsing completed successfully");
-
-    //bifOptionList.push_back(options.bifOptions);
+    ParseBifFile(options);
 
     bifOptionList = options.bifOptionsList;
-    BootImage* currentbi = NULL;
-    uint8_t index = 0;
-    bool ssit_bif = false;
-    for (std::vector<BifOptions*>::iterator bifoptions = bifOptionList.begin(); bifoptions != bifOptionList.end(); bifoptions++)
+
+    /* Parse the include bif file */
+    if (options.includeBifOptionsList.size() > 1)
     {
-        if ((*bifoptions)->slrBootCnt != 0 || (*bifoptions)->slrConfigCnt != 0)
+        LOG_ERROR("Multiple include bif files is not supported.");
+    }
+    if (options.includeBifOptionsList.size() != 0)
+    {
+        options.bifOptionsList.clear();
+        biffilename = options.includeBifOptionsList.front();
+        ParseBifFile(options);
+
+        includeBifOptionList = options.bifOptionsList;
+
+        if (options.IsSsitBif())
         {
-            ssit_bif = true;
-            break;
+            includeBifOptionList.back()->slrNum = 0x00;
+
+            /* Back populate the slr number, based on the group name in master bif for SSIT use cases */
+            for (std::list<PartitionBifOptions*>::iterator itr = includeBifOptionList.back()->partitionBifOptionList.begin(); itr != includeBifOptionList.back()->partitionBifOptionList.end(); itr++)
+            {
+                if (((*itr)->slrNum != 0xFF) && ((strcmp((*itr)->bifSection.c_str(), "") != 0)))
+                {
+                    for (std::size_t j = 0; j < includeBifOptionList.size(); j++)
+                    {
+                        if (strcmp(includeBifOptionList[j]->GetGroupName().c_str(), (*itr)->bifSection.c_str()) == 0)
+                        {
+                            includeBifOptionList[j]->slrNum = (*itr)->slrNum;
+                            break;
+                        }
+                    }
+                }
+            }
         }
+
+        ReplaceFiles();
+        options.bifOptionsList = bifOptionList = includeBifOptionList;
     }
 
-    for (std::vector<BifOptions*>::iterator bifoptions = bifOptionList.begin(); bifoptions != bifOptionList.end();bifoptions++)
+    BootImage* currentbi = NULL;
+    uint8_t index = 0;
+
+    for (std::vector<BifOptions*>::iterator bifoptions = bifOptionList.begin(); bifoptions != bifOptionList.end(); bifoptions++)
     {
-        if (((*bifoptions)->slrBootCnt == 0 || (*bifoptions)->slrConfigCnt == 0) && ssit_bif)
+        if (((*bifoptions)->slrBootCnt == 0) && ((*bifoptions)->slrConfigCnt == 0) && options.IsSsitBif())
         {
             (*bifoptions)->pdiType = PartitionType::SLR_SLAVE;
         }
@@ -201,6 +204,10 @@ void BIF_File::Output(Options& options, uint8_t index)
             else
             {
                 out_filename = StringUtils::RemoveExtension(*filename) + "_" + bi->Name + StringUtils::GetExtension(*filename);
+                if (options.IsSsitBif())
+                {
+                    out_filename = StringUtils::RemoveExtension(*filename) + "_" + bi->Name + ".bin";
+                }
             }
             OutputFile* file = OutputFile::Factory(out_filename);
             file->Output(options, *bi->cache);
@@ -664,4 +671,110 @@ std::vector<std::string>& BootImage::GetEncryptionKeyFileVec()
 void BootImage::InsertEncryptionKeyFile(std::string filename)
 {
     encryptionKeyFileVec.push_back(filename); 
+}
+
+/******************************************************************************/
+void BIF_File::ParseBifFile(Options& options)
+{
+    std::string basefile = StringUtils::BaseName(biffilename);
+
+    LOG_TRACE("Parsing BIF file - %s", basefile.c_str());
+    BIF::FlexScanner scanner;
+    BIF::BisonParser parser(scanner, options);
+
+    scanner.filename = biffilename;
+    std::ifstream s(biffilename.c_str());
+
+    if (!s)
+    {
+        LOG_ERROR("Cannot read BIF file - %s ", basefile.c_str());
+    }
+    if (s.peek() == EOF)
+    {
+        LOG_ERROR("BIF file is empty - %s ", basefile.c_str());
+    }
+    scanner.switch_streams(&s);
+    int res = parser.parse();
+    if (res)
+    {
+        LOG_ERROR("BIF file - %s, parsing failed with code %d", basefile.c_str(), res);
+    }
+
+    LOG_INFO("BIF file parsed successfully - %s ", basefile.c_str());
+}
+
+/******************************************************************************/
+void BIF_File::ReplaceFiles()
+{
+    /* If slr number matches between partitions - replace the files */
+    for (size_t i = 0; i < includeBifOptionList.size(); i++)
+    {
+        for (size_t j = 0; j < bifOptionList.size(); j++)
+        {
+            for (std::list<PartitionBifOptions*>::iterator itr1 = bifOptionList[j]->partitionBifOptionList.begin(); itr1 != bifOptionList[j]->partitionBifOptionList.end(); itr1++)
+            {
+                if (includeBifOptionList[i]->slrNum == (*itr1)->slrNum)
+                {
+                    if ((*itr1)->bootloader)
+                    {
+                        for (std::list<PartitionBifOptions*>::iterator itr2 = includeBifOptionList[i]->partitionBifOptionList.begin(); itr2 != includeBifOptionList[i]->partitionBifOptionList.end(); itr2++)
+                        {
+                            if ((*itr2)->bootloader)
+                            {
+                                if((*itr1)->slrNum != 0xFF)
+                                    LOG_TRACE("Replacing '%s' with '%s' for SLR %d", (*itr2)->filename.c_str(), (*itr1)->filename.c_str(), (*itr1)->slrNum);
+                                else
+                                    LOG_TRACE("Replacing '%s' with '%s'", (*itr2)->filename.c_str(), (*itr1)->filename.c_str());
+
+                                (*itr2)->filename = (*itr1)->filename;
+                                (*itr2)->filelist = (*itr1)->filelist;
+                                break;
+                            }
+                        }
+                    }
+
+                    if ((*itr1)->pmcData)
+                    {
+                        for (std::list<PartitionBifOptions*>::iterator itr2 = includeBifOptionList[i]->partitionBifOptionList.begin(); itr2 != includeBifOptionList[i]->partitionBifOptionList.end(); itr2++)
+                        {
+                            if ((*itr2)->pmcData)
+                            {
+                                if ((*itr1)->slrNum != 0xFF)
+                                    LOG_TRACE("Replacing '%s' with '%s' for SLR %d", (*itr2)->filename.c_str(), (*itr1)->filename.c_str(), (*itr1)->slrNum);
+                                else
+                                    LOG_TRACE("Replacing '%s' with '%s'", (*itr2)->filename.c_str(), (*itr1)->filename.c_str());
+
+                                (*itr2)->filename = (*itr1)->filename;
+                                includeBifOptionList[i]->SetPmcdataFile((*itr1)->filename);
+                                (*itr2)->filelist = (*itr1)->filelist;
+
+                                includeBifOptionList[i]->ClearPmcCdoFileList();
+                                for (size_t listSize = 0; listSize < (*itr1)->filelist.size(); listSize++)
+                                    includeBifOptionList[i]->SetPmcCdoFileList((*itr1)->filelist[listSize]);
+                                break;
+                            }
+                        }
+                    }
+
+                    if ((*itr1)->destCPUType == DestinationCPU::PMU)
+                    {
+                        for (std::list<PartitionBifOptions*>::iterator itr2 = includeBifOptionList[i]->partitionBifOptionList.begin(); itr2 != includeBifOptionList[i]->partitionBifOptionList.end(); itr2++)
+                        {
+                            if ((*itr2)->destCPUType == DestinationCPU::PMU)
+                            {
+                                if ((*itr1)->slrNum != 0xFF)
+                                    LOG_TRACE("Replacing '%s' with '%s' for SLR %d", (*itr2)->filename.c_str(), (*itr1)->filename.c_str(), (*itr1)->slrNum);
+                                else
+                                    LOG_TRACE("Replacing '%s' with '%s'", (*itr2)->filename.c_str(), (*itr1)->filename.c_str());
+
+                                (*itr2)->filename = (*itr1)->filename;
+                                (*itr2)->filelist = (*itr1)->filelist;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

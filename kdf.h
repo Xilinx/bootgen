@@ -38,7 +38,7 @@
 #include <cmath>
 #include <iostream>
 
-#define VERSION                         0x00010000
+#define VERSION                         "v1.0"
 
 #define BYTES_PER_AES_SEED              32
 #define KDF_COUNTER_BYTES               4
@@ -94,7 +94,7 @@ public:
     void SetKdfLogFilename(std::string filename);
 
     std::string GetKdfLogFilename(void);
-    uint32_t GetVersion(void);
+    std::string GetVersion(void);
 
 private:
     uint8_t* key_out;

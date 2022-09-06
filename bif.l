@@ -58,6 +58,7 @@ alignment                                                           return tok::
 early_handoff                                                       return tok::EARLY_HANDOFF;
 delay_handoff                                                       return tok::DELAY_HANDOFF;
 delay_load                                                          return tok::DELAY_LOAD;
+delay_auth                                                          return tok::DELAY_AUTH;
 hivec                                                               return tok::HIVEC;
 blocks                                                              return tok::BLOCKS;
 authblocks                                                          return tok::AUTHBLOCKS;
@@ -67,6 +68,8 @@ partition                                                           return tok::
 image                                                               return tok::IMAGE;
 metaheader                                                          return tok::METAHEADER;
 section                                                             return tok::BIF_SECTION;
+lockstep                                                            return tok::LOCKSTEP;
+include                                                             return tok::INCLUDE;
 
 offset              yylval->number = tok::OFFSET;                   return tok::OFFSET;
 reserve_legacy      yylval->number = tok::RESERVE_LEGACY;           return tok::RESERVE_LEGACY;
@@ -135,15 +138,18 @@ owner                                                               return tok::
     plm             yylval->number = PartitionOwner::FSBL;          return tok::POWNERVALUE ;
     non-plm         yylval->number = PartitionOwner::UBOOT;         return tok::POWNERVALUE ;
 
-partition_type                                                      return tok::PARTITION_TYPE;
-type                                                                return tok::PARTITION_TYPE;
-    cdo             yylval->number = PartitionType::CONFIG_DATA_OBJ;return tok::PTYPEVALUE;
-    raw             yylval->number = PartitionType::RAW;            return tok::PTYPEVALUE;
-    cfi             yylval->number = PartitionType::CFI;            return tok::PTYPEVALUE;
-    cfi-gsc         yylval->number = PartitionType::CFI_GSC;        return tok::PTYPEVALUE;
-    slr-boot        yylval->number = PartitionType::SLR_BOOT;       return tok::PTYPEVALUE;
-    slr-config      yylval->number = PartitionType::SLR_CONFIG;     return tok::PTYPEVALUE;
-    slr-slave       yylval->number = PartitionType::SLR_SLAVE;      return tok::PTYPEVALUE;
+partition_type                                                                 return tok::PARTITION_TYPE;
+type                                                                           return tok::PARTITION_TYPE;
+    cdo                     yylval->number = PartitionType::CONFIG_DATA_OBJ;   return tok::PTYPEVALUE;
+    raw                     yylval->number = PartitionType::RAW;               return tok::PTYPEVALUE;
+    cfi                     yylval->number = PartitionType::CFI;               return tok::PTYPEVALUE;
+    cfi-gsc                 yylval->number = PartitionType::CFI_GSC;           return tok::PTYPEVALUE;
+    slr-boot                yylval->number = PartitionType::SLR_BOOT;          return tok::PTYPEVALUE;
+    slr-config              yylval->number = PartitionType::SLR_CONFIG;        return tok::PTYPEVALUE;
+    slr-slave               yylval->number = PartitionType::SLR_SLAVE;         return tok::PTYPEVALUE;
+    slr-slave-boot          yylval->number = PartitionType::SLR_SLAVE_BOOT;    return tok::PTYPEVALUE;
+    slr-slave-config        yylval->number = PartitionType::SLR_SLAVE_CONFIG;  return tok::PTYPEVALUE;
+    elf                     yylval->number = PartitionType::ELF;               return tok::PTYPEVALUE;
 
 keysrc_encryption           yylval->number = tok::KEYSRC_ENCRYPTION;        return tok::KEYSRC_ENCRYPTION;
 keysrc                      yylval->number = tok::KEYSRC_ENCRYPTION;        return tok::KEYSRC_ENCRYPTION;
@@ -189,7 +195,9 @@ image_config            yylval->number = tok::FSBL_CONFIG;              return t
     opt_key             yylval->number = OptKey::OptKeyinSecHdr;        return tok::OPT_KEY;
     puf4kmode           yylval->number = PufMode::PUF4K;                return tok::PUF4KMODE;
     shutter             yylval->number = tok::SHUTTER;                  return tok::SHUTTER;
+    puf_ro_swap         yylval->number = tok::PUFROSWAP;                return tok::PUFROSWAP;
     dpacm_enable        yylval->number = DpaCM::DpaCMEnable;            return tok::DPA_CM;
+    dice_enable         yylval->number = tok::DICE;                     return tok::DICE;
     smap_width          yylval->number = tok::SMAP_WIDTH;               return tok::SMAP_WIDTH;
     bypass_idcode_check yylval->number = tok::BYPASS_IDCODE_CHECK;      return tok::BYPASS_IDCODE_CHECK;
     a_hwrot             yylval->number = tok::A_HWROT;                  return tok::A_HWROT;
@@ -222,20 +230,27 @@ destination_cpu                                                     return tok::
 core                                                                return tok::DEST_CPU;
     a53-0           yylval->number = DestinationCPU::A53_0;         return tok::DEST_CPU_TYPE;
     a72-0           yylval->number = DestinationCPU::A53_0;         return tok::DEST_CPU_TYPE;
+    a78-0           yylval->number = DestinationCPU::A53_0;         return tok::DEST_CPU_TYPE;
     a5x-0           yylval->number = DestinationCPU::A53_0;         return tok::DEST_CPU_TYPE;
     a53-1           yylval->number = DestinationCPU::A53_1;         return tok::DEST_CPU_TYPE;
     a72-1           yylval->number = DestinationCPU::A53_1;         return tok::DEST_CPU_TYPE;
+    a78-1           yylval->number = DestinationCPU::A53_1;         return tok::DEST_CPU_TYPE;
     a5x-1           yylval->number = DestinationCPU::A53_1;         return tok::DEST_CPU_TYPE;
     a53-2           yylval->number = DestinationCPU::A53_2;         return tok::DEST_CPU_TYPE;
+    a78-2           yylval->number = DestinationCPU::A53_2;         return tok::DEST_CPU_TYPE;
     a5x-2           yylval->number = DestinationCPU::A53_2;         return tok::DEST_CPU_TYPE;
     a53-3           yylval->number = DestinationCPU::A53_3;         return tok::DEST_CPU_TYPE;
+    a78-3           yylval->number = DestinationCPU::A53_3;         return tok::DEST_CPU_TYPE;
     a5x-3           yylval->number = DestinationCPU::A53_3;         return tok::DEST_CPU_TYPE;
     r5-0            yylval->number = DestinationCPU::R5_0;          return tok::DEST_CPU_TYPE;
+    r52-0           yylval->number = DestinationCPU::R5_0;          return tok::DEST_CPU_TYPE;
     r5-1            yylval->number = DestinationCPU::R5_1;          return tok::DEST_CPU_TYPE;
+    r52-1           yylval->number = DestinationCPU::R5_1;          return tok::DEST_CPU_TYPE;
     r5-lockstep     yylval->number = DestinationCPU::R5_lockstep;   return tok::DEST_CPU_TYPE;
     pmu             yylval->number = DestinationCPU::PMU;           return tok::DEST_CPU_TYPE;
     psm             yylval->number = DestinationCPU::PMU;           return tok::DEST_CPU_TYPE;
     aie             yylval->number = DestinationCPU::AIE;           return tok::DEST_CPU_TYPE;
+    cluster         yylval->number = tok::CLUSTER_NUM;              return tok::CLUSTER_NUM;
 
 destination_device                                                      return tok::DEST_DEVICE;
     ps              yylval->number = DestinationDevice::DEST_DEV_PS;    return tok::DEST_DEVICE_TYPE;

@@ -29,12 +29,25 @@
 
 static bool gEndianessInitialized = false;
 
-
 /*
 -------------------------------------------------------------------------------
 *****************************************************   F U N C T I O N S   ***
 -------------------------------------------------------------------------------
 */
+
+uint32_t ComputeWordChecksum(void* firstWordPtr, size_t length)
+{
+    uint32_t checksum = 0;
+    size_t numChecksumedWords = length / sizeof(uint32_t);
+    for (size_t i = 0; i< numChecksumedWords; i++)
+    {
+        checksum += ((uint32_t*)firstWordPtr)[i];
+    }
+    /* Invert the Checksum value */
+    checksum ^= 0xFFFFFFFF;
+    return checksum;
+}
+
 /******************************************************************************/
 Endianness::Type EndianMachine( void )
 {
@@ -166,8 +179,48 @@ ElfFormat32::ElfFormat32(uint8_t* start)
             /* Index from the beginning of the ELF file with the offset index
                in the String Table Section. */
             stringTableSection = (StringTableSectionTbl *)(start+ sectionHdrTbl[header.e_shstrndx].sh_offset);
-
             stringTableSectionSize = sectionHdrTbl[header.e_shstrndx].sh_size;
+        }
+
+        for (unsigned int index = 0; index < sectionHdrEntryCount; index++)
+        {
+            stringTableSection = (StringTableSectionTbl *)(start + sectionHdrTbl[header.e_shstrndx].sh_offset);
+            std::string sectn_name = (char*)stringTableSection + sectionHdrTbl[index].sh_name;
+            if (sectn_name == ".struct_info" || sectn_name == ".xplm_modules")
+            {
+                uint32_t sectn_size_id = 0;
+                /* Optional Data Header + Optional Data Actual size + Checksum */
+                uint16_t sectn_length = sizeof(uint32_t) + sectionHdrTbl[index].sh_size + sizeof(uint32_t);
+
+                if (sectn_name == ".xplm_modules")
+                {
+                    sectn_size_id = (uint32_t)((sectn_length / 4) << 16) | DATA_ID_XPLM_MODULES;
+
+                    xplm_modules_data_size = sectionHdrTbl[index].sh_size;
+                    xplm_modules_data = (uint32_t*)malloc(xplm_modules_data_size);
+                    memcpy(xplm_modules_data, start + sectionHdrTbl[index].sh_offset, xplm_modules_data_size);
+                }
+                if (sectn_name == ".struct_info")
+                {
+                    sectn_size_id = (uint32_t)((sectn_length / 4) << 16) | DATA_ID_STRUCT_INFO;
+                }
+
+                iht_optional_data = (uint32_t*) realloc(iht_optional_data, iht_optional_data_size + sectn_length);
+                memcpy(iht_optional_data + (iht_optional_data_size / 4), &sectn_size_id, sizeof(uint32_t));
+                memcpy(iht_optional_data + (iht_optional_data_size / 4) + sizeof(uint32_t)/4, (start + sectionHdrTbl[index].sh_offset), (sectionHdrTbl[index].sh_size));
+
+                uint32_t checksum = ComputeWordChecksum(iht_optional_data + (iht_optional_data_size / 4), sectn_length - sizeof(uint32_t));
+                memcpy(iht_optional_data + (iht_optional_data_size / 4) + (sectn_length - sizeof(uint32_t)) / 4, &checksum, sizeof(uint32_t));
+
+                iht_optional_data_size += sectn_length;
+            }
+        }
+        if (iht_optional_data_size != 0)
+        {
+            uint32_t padLength = (iht_optional_data_size % 64 != 0) ? 64 - (iht_optional_data_size % 64) : 0;
+            iht_optional_data = (uint32_t*)realloc(iht_optional_data, iht_optional_data_size + padLength);
+            memset(iht_optional_data + (iht_optional_data_size / 4), 0xFF, padLength);
+            iht_optional_data_size += padLength;
         }
     }
 

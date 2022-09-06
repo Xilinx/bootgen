@@ -70,7 +70,7 @@ void ShowCommonHelp(int,bool);
 %token _LOG ERROR WARNING INFO DEBUG TRACE
 %token _SPLIT _PROCESS_BITSTREAM MCS BIN
 %token _DUMP DUMP_PLM DUMP_PMC_CDO DUMP_BOOT_FILES _DUMP_DIR DUMP_SLAVE_PDIS
-%token _ARCH ZYNQ ZYNQMP VERSAL _R FPGA
+%token _ARCH ZYNQ ZYNQMP VERSAL _R FPGA VERSALNET
 %token _DUAL_QSPI_MODE _DUAL_OSPI_MODE PARALLEL STACKED
 %token _W ON OFF
 %token _NOAUTHBLOCKS _ZYNQMPES1 _OVERLAYCDO
@@ -142,7 +142,7 @@ option          : _IMAGE filename                   { options.SetBifFilename($2)
                 | _READ readImageOptions
                 | _VERIFY verifyImageOptions
                 | _DUMP dumpOptions
-                | _DUMP_DIR FILENAME                { options.SetDumpDirectory($2); }
+                | _DUMP_DIR filename                { options.SetDumpDirectory($2); }
                 | _VERIFYKDF filename               { options.SetKDFTestVectorFile($2); }
                 | _OVERLAYCDO filename              { options.SetOverlayCDOFileName($2); }
                 ;
@@ -309,6 +309,7 @@ archOptions     : ZYNQ                              { options.SetArchType(Arch::
                 | ZYNQMP                            { options.SetArchType(Arch::ZYNQMP); }
                 | VERSAL                            { options.SetArchType(Arch::VERSAL); }
                 | FPGA                              { options.SetArchType(Arch::FPGA); }
+                | VERSALNET                         { options.SetArchType(Arch::VERSALNET); }
                 ;
 
 key_type        : AUTH  auth_key_options

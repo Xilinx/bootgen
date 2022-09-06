@@ -1,3 +1,4 @@
+
 /******************************************************************************
 * Copyright 2015-2020 Xilinx, Inc.
 *
@@ -45,6 +46,8 @@ public:
     {
         bH = NULL;
         iHT = NULL;
+        iH = NULL;
+        pHT = NULL;
         iHs.clear();
         pHTs.clear();
     }

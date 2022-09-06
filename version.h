@@ -1,3 +1,4 @@
+
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
 *
@@ -15,7 +16,7 @@
 ******************************************************************************/
 
 #ifndef RDI_VERSION
-#define RDI_VERSION "2022.1"
+#define RDI_VERSION "2022.2"
 #endif
 
 #define PROGRAMNAME     "Xilinx Bootgen"

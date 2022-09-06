@@ -112,6 +112,7 @@ public:
         return Encryption::None;
     }
     virtual void Process(BootImage& bi, PartitionHeader* partition) {};
+    virtual void ChunkifyAndProcess(BootImage & bi, PartitionHeader * partHdr) {};
     virtual void Process(BootImage& bi) {};
     virtual void WriteEncryptionKeyFile(const std::string& baseFileName, bool useOptionalKey, uint32_t blocks) {};
     virtual void ReadEncryptionKeyFile(const std::string& keyFileName) {};

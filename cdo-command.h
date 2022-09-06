@@ -77,6 +77,8 @@ typedef enum CdoCmdType {
     CdoCmdBreak,
     CdoCmdOtCheck,
     CdoCmdPsmSequence,
+    CdoCmdScatterWrite,
+    CdoCmdScatterWrite2,
     CdoCmdNpiSeq,
     CdoCmdNpiPreCfg,
     CdoCmdNpiWrite,
@@ -130,6 +132,10 @@ typedef enum CdoCmdType {
     CdoCmdPmFeatureCheck,
     CdoCmdPmIsoControl,
     CdoCmdPmActivateSubsystem,
+    CdoCmdPmBisr,
+    CdoCmdPmApplyTrim,
+    CdoCmdPmNocClockEnable,
+    CdoCmdPmIfNocClockEnable,
     CdoCmdPmSetNodeAccess,
     CdoCmdCfuSetCrc32,
     CdoCmdCfuDecompress,
@@ -142,6 +148,7 @@ typedef enum CdoCmdType {
     CdoCmdCfuCfiType,
     CdoCmdEmSetAction,
     CdoCmdLdrSetImageInfo,
+    CdoCmdLdrCframeClearCheck,
 
     /* The following line must be last */
     CdoCmdLast
@@ -186,6 +193,11 @@ void cdocmd_add_npi_seq(CdoSequence * seq, uint32_t addr, uint32_t flags);
 void cdocmd_add_npi_precfg(CdoSequence * seq, uint32_t addr, uint32_t flags);
 void cdocmd_add_npi_write(CdoSequence * seq, uint32_t addr, uint32_t flags, uint32_t count, void * buf, uint32_t be);
 void cdocmd_add_npi_shutdown(CdoSequence * seq, uint32_t addr, uint32_t flags);
+
+void cdocmd_add_scatter_write(CdoSequence * seq, uint32_t value, uint32_t count, void * buf, uint32_t be);
+void cdocmd_add_scatter_write2(CdoSequence * seq, uint32_t value1, uint32_t value2, uint32_t count, void * buf, uint32_t be);
+void cdocmd_add_pm_bisr(CdoSequence * seq, uint32_t tagid);
+void cdocmd_add_pm_apply_trim(CdoSequence * seq, uint32_t trimtype);
 
 void cdocmd_add_pm_get_api_version(CdoSequence * seq);
 void cdocmd_add_pm_get_device_status(CdoSequence * seq, uint32_t nodeid);
@@ -237,6 +249,8 @@ void cdocmd_add_pm_feature_check(CdoSequence * seq, uint32_t id);
 void cdocmd_add_pm_iso_control(CdoSequence * seq, uint32_t nodeid, uint32_t value);
 void cdocmd_add_pm_activate_subsystem(CdoSequence * seq, uint32_t ssid);
 void cdocmd_add_pm_set_node_access(CdoSequence * seq, uint32_t nodeid, uint32_t count, void * buf, uint32_t be);
+void cdocmd_add_pm_noc_clock_enable(CdoSequence * seq, uint32_t nodeid, uint32_t count, void * buf, uint32_t be);
+void cdocmd_add_pm_if_noc_clock_enable(CdoSequence * seq, uint32_t index, uint32_t state, uint32_t break_level);
 
 void cdocmd_add_cfu_set_crc32(CdoSequence * seq, uint32_t type, uint32_t value);
 void cdocmd_add_cfu_decompress(CdoSequence * seq, uint32_t type);
@@ -265,6 +279,7 @@ void cdocmd_add_break(CdoSequence * seq, uint32_t value);
 void cdocmd_add_ot_check(CdoSequence * seq, uint32_t value);
 void cdocmd_add_psm_sequence(CdoSequence * seq);
 void cdocmd_add_ldr_set_image_info(CdoSequence * seq, uint32_t nodeid, uint32_t uid, uint32_t puid, uint32_t funcid);
+void cdocmd_add_ldr_cframe_clear_check(CdoSequence * seq, uint32_t block_type);
 void cdocmd_add_em_set_action(CdoSequence * seq, uint32_t nodeid, uint32_t action, uint32_t mask);
 void cdocmd_insert_seq(CdoCommand * cmd, CdoSequence * seq);
 void cdocmd_concat_seq(CdoSequence * seq, CdoSequence * seq2);

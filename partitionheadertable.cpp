@@ -243,6 +243,10 @@ void PartitionHeaderTable::Link(BootImage &bi)
         uint8_t currCpu = (*partHdr)->GetDestinationCpu();
         uint64_t currStrtAddr = (*partHdr)->GetLoadAddress();
         uint64_t currEndAddr = currStrtAddr + (*partHdr)->GetPartitionSize();
+        if((*partHdr)->imageHeader->IsBootloader())
+        {
+            currEndAddr = currStrtAddr + (*partHdr)->imageHeader->GetTotalFsblFwSizeIh();
+        }
         bool currCpuR5 = (currCpu == DestinationCPU :: R5_0 || currCpu == DestinationCPU :: R5_1 || currCpu == DestinationCPU :: R5_lockstep);
         bool isCurrPartitionOnTcm = false;
 
@@ -253,6 +257,10 @@ void PartitionHeaderTable::Link(BootImage &bi)
             uint8_t nxtCpu = (*nextPartHdr)->GetDestinationCpu();
             uint64_t nxtStrtAddr = (*nextPartHdr)->GetLoadAddress();
             uint64_t nxtEndAddr = nxtStrtAddr + (*nextPartHdr)->GetPartitionSize();
+            if((*nextPartHdr)->imageHeader->IsBootloader())
+            {
+                nxtEndAddr = nxtStrtAddr + (*nextPartHdr)->imageHeader->GetTotalFsblFwSizeIh();
+            }
             bool nxtCpuR5 = (nxtCpu == DestinationCPU :: R5_0 || nxtCpu == DestinationCPU :: R5_1 || nxtCpu == DestinationCPU :: R5_lockstep);
             bool isNxtPartitionOnTcm = false;
 
@@ -267,7 +275,7 @@ void PartitionHeaderTable::Link(BootImage &bi)
                 }
             }
 
-            if ((nxtEndAddr >= currStrtAddr) && (nxtStrtAddr <= currEndAddr))
+            if ((nxtEndAddr >= currStrtAddr) && (nxtStrtAddr < currEndAddr))
             {
                 LOG_WARNING("Partition %s range is overlapped with partition %s memory range", (*partHdr)->partition->section->Name.c_str(), (*nextPartHdr)->partition->section->Name.c_str());
                 LOG_TRACE("Current Partition %s Start Address is %X and End Address is %X ,Next Partition %s Start Address is %X and End Address %X",(*partHdr)->partition->section->Name.c_str(), currStrtAddr, currEndAddr, (*nextPartHdr)->partition->section->Name.c_str(),nxtStrtAddr, nxtEndAddr);

@@ -65,6 +65,7 @@ public:
     void ConfigureEncryptionBlocks(ImageHeader * image, PartitionBifOptions* partitionBifOptions);
     void SetPmcdataFile(const std::string & filename);
     void SetPmcDataLoadAddress(Binary::Address_t addr);
+    uint64_t GetSecureChunkSize(bool isBootloader);
     uint32_t current_image_block;
 };
 #endif

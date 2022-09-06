@@ -579,7 +579,7 @@ std::string Kdf::GetKdfLogFilename(void)
 }
 
 /******************************************************************************/
-uint32_t Kdf::GetVersion(void)
+std::string Kdf::GetVersion(void)
 {
     return VERSION;
 }
@@ -753,7 +753,6 @@ uint32_t Kdf::CAVPonCounterModeKDF(std::string filename)
         return ret_value;
     }
 
-    bool verified = false;
     std::cout << "Generating Ko using Counter-Mode KDF..." << std::endl;
     std::cout << "KO = ";
     uint32_t number_of_Ko_bytes = key_out_length / 8;
@@ -771,23 +770,17 @@ uint32_t Kdf::CAVPonCounterModeKDF(std::string filename)
         if (memcmp(key_out, verify_ko, number_of_Ko_bytes) == 0)
         {
             std::cout << "Verified with given Ko" << std::endl;
-            verified = true;
+            return 0;
         }
         else
         {
             std::cout << "Failed to verify with given Ko" << std::endl;
+            return KDF_CAVP_VERIFY_KO_FAILED;
         }
     }
 
     std::cout << std::endl;
-    if (verified)
-    {
-        return 0;
-    }
-    else
-    {
-        return KDF_CAVP_VERIFY_KO_FAILED;
-    }
+    return 0;
 }
 
 /******************************************************************************/

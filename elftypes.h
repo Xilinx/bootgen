@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@ typedef uint32_t    Elf32_Addr;
 typedef uint16_t    Elf32_Half;
 typedef uint32_t    Elf32_Off;
 typedef int32_t     Elf32_Sword;
+typedef uint32_t    Elf32_Xword;
 typedef uint32_t    Elf32_Word;
 
 /* ELF 64-bit */

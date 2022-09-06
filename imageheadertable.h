@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -18,6 +18,9 @@
 
 #ifndef _IMAGEHEADERTABLE_H_
 #define _IMAGEHEADERTABLE_H_
+
+/* Zynq/ZynqMp Version Updates */
+#define VERSION_ZYNQ_ZYNQMP    0x01020000
 
 /*
 -------------------------------------------------------------------------------
@@ -143,6 +146,9 @@ public:
     virtual void SetA32ExecMode(bool) { };
     virtual void SetDpacm(DpaCM::Type) { };
     virtual void SetPufHdLocation(PufHdLoc::Type type) { };
+    virtual void SetClusterNum(uint8_t num) { cluster = num; }
+    virtual void SetLockStepFlag(bool flag) { lockstep = flag; }
+    virtual void SetDelayAuthFlag (bool flag) { delayAuth = flag; }
 
     virtual void SetEncryptionKeySrc(KeySource::Type type) { };
     virtual void SetPartitionRevocationId(uint32_t id) { };
@@ -200,6 +206,9 @@ public:
     virtual std::string GetKekIV() { return ""; }
     virtual PufHdLoc::Type GetPufHdLocation(void) { return PufHdLoc::PUFinEFuse; }
     std::vector<std::string> GetFileList(void) { return filelist; }
+    virtual uint8_t GetClusterNum(void) { return cluster; }
+    virtual bool GetLockStepFlag(void) { return lockstep; }
+    virtual bool GetDelayAuthFlag(void) { return delayAuth; }
 
     // For multiple key files and auth parameters
     void SetAesKeyFile(std::string filename) { aesKeyFile = filename; }
@@ -274,6 +283,8 @@ protected:
     bool xipMode;
     bool early_handoff;
     bool hivec;
+    bool lockstep;
+    uint32_t cluster;
     uint32_t pmuFwSize;
     uint32_t pmcdataSize;
     uint32_t fsblFwSize;
@@ -304,6 +315,7 @@ protected:
     uint32_t spkSelect;
     uint32_t spkId;
 
+    bool delayAuth;
     Authentication::Type authType;
     AuthenticationContext* Auth;
     EncryptionContext* Encrypt;
@@ -371,6 +383,8 @@ public:
         , metaHdrSecHdrIv(NULL)
         , metaHdrKeySrc(KeySource::None)
         , encrypt(NULL)
+        , iht_optional_data(NULL)
+        , iht_optional_data_length(0)
     { }
 
     virtual ~ImageHeaderTable() {}
@@ -396,6 +410,8 @@ public:
     virtual void SetBootDevice(BootDevice::Type type) {};
     virtual void SetBootDeviceAddress(uint32_t address) {};
     virtual void ValidateSecurityCombinations(Authentication::Type, Encryption::Type, Checksum::Type) = 0;
+    virtual void SetOptionalData(uint32_t*, uint32_t) {};
+    virtual void SetXplmModulesData(BootImage& bi, uint32_t*, uint32_t) {};
 
     virtual uint32_t GetImageHeaderTableVersion(void) { return 0; }
     virtual uint32_t GetPartitionCount(void) { return 0; }
@@ -412,6 +428,8 @@ public:
     uint32_t metaHeaderLength;
     KeySource::Type metaHdrKeySrc;
     uint8_t* metaHdrSecHdrIv;
+    uint32_t* iht_optional_data;
+    uint32_t iht_optional_data_length;
 
 protected:
     bool slaveBootSplitMode;

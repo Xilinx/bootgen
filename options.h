@@ -50,6 +50,7 @@ struct Arch
         ZYNQMP,
         FPGA,
         VERSAL,
+        VERSALNET
     } Type;
 };
 
@@ -114,6 +115,7 @@ public:
         , dumpOption(DumpOption::NONE)
         , dumpPath("")
         , deviceKeyStored(false)
+        , versalNetSeries(false)
     {
         cmdEncryptOptions = new CommndLineEncryptOptions();
     };
@@ -230,6 +232,8 @@ public:
     Authentication::Type GetSecureDebugAuthType(void);
     std::string GetSecureDebugImageFile(void);
     std::string GetOverlayCDOFileName (void);
+    bool IsSsitBif(void);
+    bool IsVersalNetSeries(void) { return versalNetSeries; }
 
     uint32_t totalHeadersSize;
     uint32_t bootheaderSize;
@@ -280,10 +284,13 @@ public:
     CommndLineEncryptOptions *cmdEncryptOptions;
     BifOptions* bifOptions;
     std::vector<BifOptions*> bifOptionsList;
+    std::list<std::string> includeBifOptionsList;
     std::string fsblFilename;
     Authentication::Type secureDebugAuthType;
     std::string secureDebugImageFilename;
     std::string overlayCDOFile;
+private:
+    bool versalNetSeries;
 };
 
 #endif

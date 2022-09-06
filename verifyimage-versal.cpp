@@ -1,5 +1,6 @@
+
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -256,6 +257,7 @@ void VersalReadImage::VerifyHeaderTableSignature()
     /* Verifying IHT Signature */
     uint32_t iHTLength = sizeof(VersalImageHeaderTableStructure);
     uint8_t* tempIHBuffer = new uint8_t[iHTLength];
+    memset(tempIHBuffer, 0, iHTLength);
     bool signatureVerified = false;
     bH = new VersalBootHeaderStructure;
     result = fread(bH, 1, sizeof(VersalBootHeaderStructure), binFile);
@@ -293,6 +295,10 @@ void VersalReadImage::VerifyHeaderTableSignature()
             LOG_ERROR("Error reading signature");
         }
     }
+    else
+    {
+        LOG_ERROR("Error parsing Headers from BootImage file %s", binFilename.c_str());
+    }
 
     if ((*(*auth_cert) & 0xF3) == 0x02)
     {
@@ -326,7 +332,7 @@ void VersalReadImage::VerifyHeaderTableSignature()
     size_t headersSize = (iHT->totalMetaHdrLength * 4) - SIGN_LENGTH_VERSAL;
     size_t headersAcDataSize = sizeof(AuthCertificate4096Sha3PaddingStructure) - SIGN_LENGTH_VERSAL;
     uint8_t* tempBuffer = new uint8_t[headersSize];
-
+    memset(tempBuffer, 0, headersSize);
     if(bH != NULL)
     {
         offset = bH->imageHeaderByteOffset + sizeof(VersalImageHeaderTableStructure);
@@ -350,6 +356,10 @@ void VersalReadImage::VerifyHeaderTableSignature()
             LOG_ERROR("Error reading signature");
         }
     }
+    else
+    {
+        LOG_ERROR("Error parsing Headers from BootImage file %s", binFilename.c_str());
+    }
 
     offset = iHT->firstImageHeaderWordOffset * 4;
     if (!(fseek(binFile, offset, SEEK_SET)))
@@ -360,10 +370,14 @@ void VersalReadImage::VerifyHeaderTableSignature()
             LOG_ERROR("Error reading signature");
         }
     }
+    else
+    {
+        LOG_ERROR("Error parsing Headers from BootImage file %s", binFilename.c_str());
+    }
 
     if ((*(*auth_cert) & 0xF3) == 0x02)
     {
-        signatureVerified = VerifyECDSASignature(true,tempBuffer,headersSize,  (ACKeyECDSA *)(*auth_cert +  AC_SPK_KEY_OFFSET), *auth_cert +  AC_PARTITION_SIGN_OFFSET);
+        signatureVerified = VerifyECDSASignature(true, tempBuffer, headersSize, (ACKeyECDSA *)(*auth_cert +  AC_SPK_KEY_OFFSET), *auth_cert +  AC_PARTITION_SIGN_OFFSET);
     }
     else if((*(*auth_cert) & 0xF3) == 0x22)
     {
@@ -477,6 +491,10 @@ void VersalReadImage::VerifyPartitionSignature(void)
                             LOG_ERROR("Error reading boot header while verifying ");
                         }
                     }
+                    else
+                    {
+                        LOG_ERROR("Error parsing Boot Header from BootImage file %s", binFilename.c_str());
+                    }
 
                     if ((*(*auth_cert) & 0xF3) == 0x02)
                     {
@@ -517,6 +535,7 @@ void VersalReadImage::VerifyPartitionSignature(void)
                 uint32_t dataBufferLength = ((*partitionHdr)->totalPartitionLength * 4) - SIGN_LENGTH_VERSAL;
                 uint32_t acBufferLength = sizeof(AuthCertificate4096Sha3PaddingStructure) - SIGN_LENGTH_VERSAL;
                 uint8_t* tempBuffer = new uint8_t[dataBufferLength];
+                memset(tempBuffer, 0, dataBufferLength);
 
                 offset = (*partitionHdr)->authCertificateOffset * 4;
                 if (!(fseek(binFile, offset, SEEK_SET)))

@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -91,7 +91,7 @@ void Options::ProcessVerifyKDF()
         else
         {
             Kdf* kdfCtx = new Kdf;
-            LOG_TRACE("KDF Version : 0x%X", kdfCtx->GetVersion());
+            LOG_INFO("KDF Version : %s", kdfCtx->GetVersion().c_str());
             uint32_t ret_value = kdfCtx->CAVPonCounterModeKDF(GetKDFTestVectorFile());
             delete kdfCtx;
             if (ret_value != 0)
@@ -322,6 +322,11 @@ void Options::SetLogLevel(LogLevel::Type level)
 void Options::SetArchType(Arch::Type type)
 {
     archType = type;
+    if (archType == Arch::VERSALNET)
+    {
+        archType = Arch::VERSAL;
+        versalNetSeries = true;
+    }
 }
 
 /******************************************************************************/
@@ -714,4 +719,19 @@ std::string Options::GetDumpDirectory(void)
 std::string Options::GetOverlayCDOFileName(void)
 {
     return overlayCDOFile;
+}
+
+/******************************************************************************/
+bool Options::IsSsitBif()
+{
+    bool ssit_bif = false;
+    for (std::vector<BifOptions*>::iterator bifoptions = bifOptionsList.begin(); bifoptions != bifOptionsList.end(); bifoptions++)
+    {
+        if ((*bifoptions)->slrBootCnt != 0 || (*bifoptions)->slrConfigCnt != 0)
+        {
+            ssit_bif = true;
+            break;
+        }
+    }
+    return ssit_bif;
 }

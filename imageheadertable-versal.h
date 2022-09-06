@@ -45,7 +45,7 @@ class BifOptions;
 #define LQSPI_SIZE_VERSAL           (0x8000000) 
 #define LQSPI_RANGE_MASK_VERSAL     (0x7FFFFFF)
 
-#define MAX_IHT_RESERVED_VERSAL     9
+#define MAX_IHT_RESERVED_VERSAL     8
 
 #define MAX_SLAVE_SLRS              3
 #define CDO_COMMAND_SIZE            16
@@ -62,6 +62,8 @@ class BifOptions;
 #define SLR3_SBI_BUF_BASE_ADDR      (SLR3_PMC_BASE_ADDR + (PMC_SBI_BUF_ADDR - MASTER_PMC_BASE_ADDR))
 #define SBI_KEYHOLE_SIZE            0x10000
 #define AIE_BASE_ADDR               0x20000000000
+
+#define SSIT_CHUNK_SIZE             0x8000
 
 typedef enum
 {
@@ -148,9 +150,10 @@ typedef struct
     uint32_t    extendedIdCode;                     // 0x44
     uint32_t    headerAuthCertificateWordOffset;    // 0x48
     uint32_t    metaHdrGreyOrBlackIV[IV_LENGTH];    // 0x4C
-    uint32_t    reserved[MAX_IHT_RESERVED_VERSAL];  // Reserved
+    uint32_t    optionalDataSize;                   // 0x58
+    uint32_t    reserved[MAX_IHT_RESERVED_VERSAL];  // 0x5C - 0x78
     uint32_t    ihtChecksum;                        // 0x7C
-}VersalImageHeaderTableStructure;
+} VersalImageHeaderTableStructure;
 
 typedef struct
 {
@@ -228,6 +231,7 @@ typedef struct
 typedef struct
 {
     CdoCommandHeader header;
+    uint32_t length;
 } CdoCommandNop;
 #define CDO_CMD_NOP_SIZE 4
 
@@ -324,6 +328,9 @@ public:
     void SetHeaderAuthCertificateOffset(uint32_t offset);
     void SetReservedFields(void);
     void SetChecksum(void);
+    void SetOptionalDataSize(void);
+    void SetOptionalData(uint32_t*, uint32_t);
+    void SetXplmModulesData(BootImage& bi, uint32_t*, uint32_t);
 
     uint32_t GetImageHeaderTableVersion(void);
     uint32_t GetPartitionCount(void);
@@ -388,6 +395,7 @@ public:
     void CreateSlrBootPartition(BootImage& bi);
     void CreateSlrConfigPartition(BootImage& bi);
     void ParseCdos(BootImage& bi, std::vector<std::string> filelist, uint8_t**, size_t*, bool);
+    void ParseSlaveSlrConfigCdos(BootImage & bi, std::vector<std::string> filelist, uint8_t **, size_t *, bool);
     //post-processing
     bool PostProcessCdo(const uint8_t* cdo_data, Binary::Length_t cdo_size);
     bool PostProcessCfi(const uint8_t* cdo_data, Binary::Length_t cdo_size);

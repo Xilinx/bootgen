@@ -1,5 +1,6 @@
+
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -25,6 +26,7 @@
 #include "reginitscanner.h"
 #include "options.h"
 #include "bifoptions.h"
+#include "regdefs.h"
 
 
 /*
@@ -48,7 +50,7 @@ void RegisterTable::Build(Options& options, RegisterInitTable* regtab0)
         std::ifstream s(filename.c_str());
         if (!s) 
         {
-            LOG_ERROR("Cannot read file - %s", filename.c_str());;
+            LOG_ERROR("Cannot read file - %s", filename.c_str());
         }
         scanner.switch_streams(&s);
         parser.parse();
@@ -56,12 +58,20 @@ void RegisterTable::Build(Options& options, RegisterInitTable* regtab0)
         LOG_INFO("Done RE parsing : %s. Added %d regiter pairs", filename.c_str(), count);
     }
 
+    if (invalidAddr.size() != 0)
+    {
+        LOG_MSG("[WARNING]: Given ini file has the below invalid Addresses : %s", filename.c_str());
+        for (size_t itr = 0; itr < invalidAddr.size(); itr++)
+        {
+            LOG_MSG("\t   0x%x", invalidAddr[itr]);
+        }
+    }
+
     /* Fill the remainder of the area with NOPs. */
     while(count < MAX_REGISTER_INITS) 
     {
-        Add(options, INVALID_REGISTER_ADDRESS,0);
+        Add(options, INVALID_REGISTER_ADDRESS, 0);
     }
-
 }
 
 /******************************************************************************/
@@ -71,9 +81,24 @@ void RegisterTable::Add(Options& options, uint32_t address, uint32_t value)
     {
         LOG_ERROR("Too many register init pairs in %s", filename.c_str());
     }
-    if (address != 0xFFFFFFFF) 
+
+    bool isvalidAddress = false;
+    for (int j = 0; j < MAX_REG_GROUPS; j++)
     {
-        LOG_INFO("count [0x%8x], value = %d", address, value);
+        if ((address <= (VersalAddressRanges[j].baseaddr + VersalAddressRanges[j].size)) &&
+            (address >= (VersalAddressRanges[j].baseaddr)))
+        {
+            isvalidAddress = true;
+            break;
+        }
+    }
+    if (address != 0xFFFFFFFF)
+    {
+        LOG_INFO("\t address [0x%8x], value = 0x%x", address, value);
+        if (!isvalidAddress)
+        {
+            invalidAddr.push_back(address);
+        }
     }
 
     regtab->registerInitialization[count ].address = address;

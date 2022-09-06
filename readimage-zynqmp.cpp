@@ -1,3 +1,4 @@
+
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
 *
@@ -86,6 +87,10 @@ void ZynqMpReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
         if (result != sizeof(ZynqMpImageHeaderTableStructure))
         {
             LOG_ERROR("Error reading Image header table");
+        }
+        if ((iHT->version != VERSION_ZYNQ_ZYNQMP))
+        {
+            LOG_ERROR("Improper version (0x%.8x) read from Image Header Table of the boot image file.", iHT->version);
         }
         if (!((iHT->partitionTotalCount > 0) && (iHT->partitionTotalCount < 0xFF)))
         {
@@ -291,7 +296,6 @@ void ZynqMpReadImage::DisplayImageHeaders(void)
         Separator();
         DisplayValue("next_ih(W) (0x00) : ", (*iH)->nextImageHeaderWordOffset);
         DisplayValue("next_pht(W) (0x04) : ", (*iH)->partitionHeaderWordOffset);
-        DisplayValue("total_partitions (0x08) : ", (*iH)->dataSectionCount);
         DisplayValue("total_partitions (0x0c) : ", (*iH)->imageNameLength);
         DisplayAscii("name (0x10) : ", *name);
     }

@@ -1,3 +1,4 @@
+
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
 *
@@ -60,6 +61,8 @@ VersalPartitionHeader::VersalPartitionHeader(ImageHeader* imageheader, int index
     , dpaCM(DpaCM::DpaCMDisable)
     , pufHdLoc(PufHdLoc::PUFinEFuse)
     , kekIvFile("")
+    , lockstep(Lockstep::LockstepDisable)
+    , cluster(0)
 {
     std::string name;
     slr = 0;
@@ -534,6 +537,11 @@ void VersalPartitionHeader::SetPartitionAttributes(void)
     authBlock = imageHeader->GetAuthBlock();
     dpaCM = imageHeader->GetDpacm();
     pufHdLoc = imageHeader->GetPufHdLocation();
+    cluster = imageHeader->GetClusterNum();
+    if (imageHeader->GetLockStepFlag() == true)
+    {
+        lockstep = Lockstep::LockstepEnable;
+    }
 
     if (hivec) 
     {
@@ -600,7 +608,9 @@ void VersalPartitionHeader::SetPartitionAttributes(void)
                                    (endian << vphtEndiannessShift) |
                                    (partitionType << vphtPartitionTypeShift) |
                                    (hivec << vphtHivecShift) |
-                                   (dpaCM << vphtDpaCMShift) ;
+                                   (dpaCM << vphtDpaCMShift) |
+                                   (cluster << vNetphtClusterShift) |
+                                   (lockstep << vNetphtlockStepShift);
 }
 
 /******************************************************************************/
@@ -962,7 +972,7 @@ void VersalPartitionHeaderTable::Build(BootImage & bi, Binary & cache)
         int32_t defaultEncrBlockSize = bi.options.bifOptions->metaHdrAttributes.defEncrBlockSize;
         Binary::Length_t encrBlocksSize = 0;
         Binary::Length_t encrOverhead = 0;
-        Binary::Length_t secureChunkSize = VersalPartition::GetSecureChunkSize();
+        Binary::Length_t secureChunkSize = bi.GetSecureChunkSize(true);
 
         bi.options.bifOptions->metaHdrAttributes.encrBlocks.clear();
 
@@ -1042,7 +1052,7 @@ void VersalPartitionHeaderTable::Build(BootImage & bi, Binary & cache)
         /* Note that the last block will always be based on the partition length.*/
 
         std::vector<uint32_t> secureChunkEncrBlocks;
-        uint32_t actualSecureChunkSize = VersalPartition::GetSecureChunkSize() - overhead;
+        uint32_t actualSecureChunkSize = bi.GetSecureChunkSize(true) - overhead;
         uint32_t totalKeyRollencrBlocks = EncryptionContext::GetTotalEncryptionBlocks(bi.imageHeaderTable->metaHeaderLength, secureChunkEncrBlocks, actualSecureChunkSize, &lastBlock);
         secureChunkEncrBlocks.clear();
 
@@ -1196,7 +1206,11 @@ void VersalPartitionHeaderTable::ConfigureMetaHdrAuthenticationContext(BootImage
 void VersalPartitionHeaderTable::UpdateAtfHandoffParams(BootImage & bi)
 {
     memset(&atf_handoff_params, 0, sizeof(atf_handoff_params_struct));
-    strncpy((char*)atf_handoff_params.magic, "XLNX",4);
+    atf_handoff_params.magic[0] = 'X';
+    atf_handoff_params.magic[1] = 'L';
+    atf_handoff_params.magic[2] = 'N';
+    atf_handoff_params.magic[3] = 'X';
+
     atf_handoff_params.num_entries = 0;
 
     for (std::list<PartitionHeader*>::iterator partHdr = bi.partitionHeaderList.begin(); partHdr != bi.partitionHeaderList.end(); partHdr++)

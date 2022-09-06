@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -43,7 +43,8 @@
 
 #define DEFAULT_RESERVED_VERSAL 0
 #define SMAP_BUS_WIDTH          4
-#define ROM_BH_RESERVED         17
+
+#define ROM_BH_RESERVED         15
 #define PLM_BH_RESERVED         24
 #define SHA3_PAD_SIZE_VERSAL    19
 #define MAX_REG_INIT_VERSAL     512
@@ -51,6 +52,12 @@
 #define DPA_CM_BIT_SHIFT        10
 #define DPA_CM_BIT_MASK         3
 
+//VersalNet
+#define BH_RSA_SINGED_BIT_SHIFT   18
+#define BH_RSA_SINGED_BIT_MASK   3
+
+#define BH_DICE_BIT_SHIFT   20
+#define BH_DICE_BIT_MASK   3
 
 /*
 -------------------------------------------------------------------------------
@@ -80,7 +87,9 @@ typedef struct
     uint32_t plmSecureHdrIv[IV_LENGTH];          //  (0x64)
     uint32_t shutterValue;                       //  (0x70)
     uint32_t pmcCdoSecureHdrIv[IV_LENGTH];       //  (0x74)
-    uint32_t romReserved[ROM_BH_RESERVED];       //  (0x80)
+    uint32_t pufRoSwapConfigVal;                 //  (0x80) - Valid only for VersalNet
+    uint32_t revokeId;                           //  (0x84)
+    uint32_t romReserved[ROM_BH_RESERVED];       //  (0x88)
     uint32_t imageHeaderByteOffset;              //  (0xC4)
     uint32_t plmReserved[PLM_BH_RESERVED];       //  (0xC8)
     uint32_t reginit[MAX_REG_INIT_VERSAL];       //  (0x128)
@@ -118,6 +127,7 @@ public:
     void SetSourceOffset(uint32_t offset);
     void SetHeaderChecksum(void);
     void SetShutterValue(uint32_t value);
+    void SetPufRingOscilltorSwapConfigValue(uint32_t value);
     void SetImageHeaderByteOffset(uint32_t address);
     void SetEncryptionKeySource(KeySource::Type keyType, BifOptions* bifOptions);
     void SetGreyOrBlackKey(std::string keyFile);
@@ -133,6 +143,7 @@ public:
     void SetTotalPmcCdoLength(uint32_t size);
     void SetBHAttributes(BootImage& bi);
     void SetBHAttributes(uint32_t attributes);
+    void SetRevokeId(uint32_t id);
     void SetRomReserved();
     void SetPmcFwReserved();
     void SetSHA3Padding();

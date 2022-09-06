@@ -79,7 +79,7 @@ class PartitionBifOptions
 public:
     PartitionBifOptions();
 
-    void SetArchType(Arch::Type type);
+    void SetArchType(Arch::Type type, bool versalNetSeries);
     void SetEncryptionBlocks(uint32_t size, uint32_t num = 1);
     void SetDefaultEncryptionBlockSize(uint32_t blk);
     void SetDestCpu(DestinationCPU::Type);
@@ -97,12 +97,15 @@ public:
     void SetHivec(bool);
     void SetRevokeId(uint32_t);
     void SetSlrNum(uint8_t);
+    void SetClusterNum(uint8_t id);
+    void SetLockStepFlag();
     void SetAesKeyFile(std::string filename);
     void SetUdfDataFile(std::string filename);
     void SetEncryptionKeySource(KeySource::Type type);
     void SetAuthBlockAttr(size_t blocksizeattr);
     void SetPufHdLocation(PufHdLoc::Type);
     void SetReserveLength(uint64_t length, bool flag);
+    void SetDelayAuth(bool flag);
 
     std::string GetUdfDataFile(void);
     std::vector<uint32_t>& GetEncryptionBlocks(void);
@@ -111,7 +114,8 @@ public:
     DpaCM::Type GetDpaCM(void);
     uint32_t GetRevokeId(void);
     PufHdLoc::Type GetPufHdLocation(void);
-    std::string GetOutputFileFromBifSection(std::string out_file, std::string bif_section);
+    std::string GetOutputFileFromBifSection(std::string, std::string, PartitionType::Type);
+    bool IsVersalNetSeries(void) { return versalNetSeries; }
 
     void Dump(void)
     {
@@ -157,6 +161,7 @@ public:
     DpaCM::Type dpaCM;
     PufHdLoc::Type pufHdLoc;
     uint8_t slrNum;
+    uint8_t clusterNum;
 
     //no default declared
     Override<int> alignment;
@@ -178,6 +183,7 @@ public:
     bool early_handoff;
     bool bootloader;
     bool hivec;
+    bool lockstep;
     KeySource::Type keySrc;
     size_t authblockattr;
     size_t pid;
@@ -197,6 +203,10 @@ public:
     std::vector<std::string> filelist;
     bool updateReserveInPh;
     Arch::Type arch;
+    bool delayAuth;
+
+private:
+    bool versalNetSeries;
 };
 
 /******************************************************************************/
@@ -355,6 +365,7 @@ public:
     void SetSplitMode(SplitMode::Type type);
     void SetSplitFmt(File::Type type);
     void SetPmcdataFile(const std::string & filename);
+    void ClearPmcCdoFileList();
     void SetPmcCdoFileList(const std::string & filename);
     void SetPdiId(uint32_t id);
     void SetGroupName(std::string name);
@@ -369,9 +380,11 @@ public:
     void SetOptKey(OptKey::Type type);
     void SetPufMode(PufMode::Type type);
     void SetShutterValue(uint32_t value);
+    void SetPufRingOscilltorSwapConfigValue(uint32_t value);
+    void SetDiceEnable();
     void InsertEncryptionBlock(uint32_t size);
     void SetCore(Core::Type type);
-    void SetMetaHeaderEncryptionKeySource(KeySource::Type type);
+    void SetMetaHeaderEncryptionKeySource(KeySource::Type type, bool versalNetSeries);
     void SetMetaHeaderEncryptType(Encryption::Type type);
     void SetMetaHeaderAuthType(Authentication::Type type);
     void SetPufHdinBHFlag();
@@ -389,6 +402,8 @@ public:
     BootDevice::Type GetBootDevice(void);
     uint32_t GetBootDeviceAddress(void);
     uint32_t GetShutterValue(void);
+    uint32_t GetPufRingOscilltorSwapConfigValue(void);
+    DICE::Type GetDice(void);
     std::string GetHeaderSignatureFile(void);
     PufMode::Type GetPufMode(void);
     PufHdLoc::Type GetPufHdLoc(void);
@@ -451,7 +466,7 @@ public:
     std::list<ImageBifOptions*> imageBifOptionList;
     std::list<PartitionBifOptions*> partitionBifOptionList;
     Core::Type GetCore(void);
-    
+
     //Versal
     Binary::Address_t pmcCdoLoadAddress;
     std::string pmcDataAesFile;
@@ -471,6 +486,8 @@ public:
     uint32_t slrConfigCnt;
     PartitionBifOptions* lastPartitionBifOption;
     BootDevice::Type bootDevice;
+    std::vector<uint32_t> pmcdataBlocks;
+    uint8_t slrNum;
 private:
     std::string regInitFile;
     std::string udfBhFile;
@@ -505,7 +522,9 @@ private:
     PufMode::Type pufMode;
     OptKey::Type optKey;
     uint32_t shutterVal;
+    uint32_t pufRoSwapConfigVal;
     DpaCM::Type dpaCM;
+    DICE::Type dice;
     bool xipMode;
     uint32_t ppkSelect;
     bool isPPKSelectGlobal;

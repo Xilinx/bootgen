@@ -276,7 +276,7 @@ void ZynqMpImageHeader::CreateElfPartitions(BootImage& bi, ElfFormat* elf, uint8
 
         /* Override the exec and load address, if startup & load are set through BIF attributes */
         Startup.IsSet() ? (exec_addr = Startup.Value()) : (exec_addr = elf->GetStartUpAddress());
-        if (Load.IsSet())
+        if (Load.IsSet() && iprog == 0)
         {
             load_addr = Load.Value();
         }
@@ -459,20 +459,6 @@ void ZynqMpImageHeader::ImportBin(BootImage& bi)
     {
         hdr->execState = A53ExecState::AARCH32;
     }
-    if(updateReserveInPh == true)
-    {
-        if(Reserve.IsSet())
-        {
-            if(data.len > Reserve.Value())
-            {
-                LOG_WARNING("Total Partition length is more than Reserve Length. Hence reserve attribute is ignored.");
-            }
-            else
-            {
-                data.len = Reserve.Value();
-            }
-        }
-    }
 
     if (Bootloader)
     {
@@ -498,6 +484,20 @@ void ZynqMpImageHeader::ImportBin(BootImage& bi)
 		    hdr->execAddress = Load.Value();
     }
 
+    if (updateReserveInPh == true)
+    {
+        if(Reserve.IsSet())
+        {
+            if(data.len > Reserve.Value())
+            {
+                LOG_WARNING("Total Partition length is more than Reserve Length. Hence reserve attribute is ignored.");
+            }
+            else
+            {
+                data.len = Reserve.Value();
+            }
+        }
+    }
     hdr->partition = new Partition(hdr, data.bytes, data.len);
     hdr->partitionSize = data.len;
     partitionHeaderList.push_back(hdr);

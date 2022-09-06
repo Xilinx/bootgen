@@ -120,6 +120,7 @@
     zynqmp                  return tok::ZYNQMP;
     versal                  return tok::VERSAL;
     fpga                    return tok::FPGA;
+    versalnet               return tok::VERSALNET;
 
 \-r                         return tok::_R;
 

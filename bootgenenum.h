@@ -218,6 +218,26 @@ struct DpaCM
     } Type;
 };
 
+/* DICE */
+struct DICE
+{
+    typedef enum
+    {
+        DiceDisable = 0,
+        DiceEnable = 3,
+    } Type;
+};
+
+/* LockStep */
+struct Lockstep
+{
+    typedef enum
+    {
+        LockstepDisable = 0,
+        LockstepEnable = 3,
+    } Type;
+};
+
 /* Authentication Hash Selection */
 struct AuthHash
 {
