@@ -21,24 +21,10 @@
 #include <inttypes.h>
 #include "cdo-load.h"
 #include "cdo-source.h"
+#include <stdbool.h>
 
 static char* slr_id_ptr;
 static char slr_id;
-int MhCdoCount = 0;
-int PmcCdoCount = 0;
-int LpdCdoCount = 0;
-int FpdCdoCount = 0;
-int slavePmcCdoCount = 0;
-int slaveLpdCdoCount = 0;
-int slaveFpdCdoCount = 0;
-
-char fin[] = "PMC_DATA";
-char fin2[] = "LPD_DATA";
-char fin3[] = "FPD_DATA";
-char fin4[] = "AIE_DATA";
-char slaveFin[] = "PMC_DATA_SLR_1";
-char slaveFin2[] = "PMC_DATA_SLR_2";
-char slaveFin3[] = "PMC_DATA_SLR_3";
 
 #if defined(_WIN32)
 #define strcasecmp(x,y) stricmp(x,y)
@@ -166,6 +152,16 @@ struct command_info {
     { NULL, 0 }
 };
 
+char* marker_list[] = {
+    "PMC_DATA",
+    "LPD_DATA",
+    "FPD_DATA",
+    "PMC_DATA_SLR_1",
+    "PMC_DATA_SLR_2",
+    "PMC_DATA_SLR_3"
+};
+int marker_count[sizeof(marker_list) / sizeof(marker_list[0])];
+
 static uint32_t iseol(char ** sp) {
     char * s = *sp;
     skipsp(s);
@@ -277,7 +273,7 @@ error:
     return 1;
 }
 
-char SlrIdFromSource(char ch)
+char slr_id_from_source(char ch)
 {
     if (slr_id != 0)
     {
@@ -285,6 +281,26 @@ char SlrIdFromSource(char ch)
         slr_id = 0;
     }
     return ch;
+}
+
+static void check_redundant_markers(char * marker_string)
+{
+    bool same_marker_found = false;
+    int i = 0;
+    for (; i < (sizeof(marker_list) / sizeof(marker_list[0])); i++)
+    {
+        if (strcasecmp(marker_string, marker_list[i]) == 0)
+        {
+            if (marker_count[i]++ > 2)
+            {
+                same_marker_found = true;
+            }
+        }
+    }
+    if (same_marker_found == true)
+    {
+        printf("[WARNING]: The marker %s is found more than once.\n", marker_string);
+    }
 }
 
 CdoSequence * cdoseq_from_source(FILE * f) {
@@ -561,73 +577,7 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             if (parse_u32(&s, &value)) goto syntax_error;
             if (iseol(&s)) goto syntax_error;
             if (parse_string(&s, &name)) goto syntax_error;
-            int pmcCdoPtr; int lpdCdoPtr; int fpdCdoPtr; int mHCdoptr;
-            int pmcSlr1Ptr; int pmcSlr2Ptr; int pmcSlr3Ptr;
-            pmcSlr1Ptr = strcmp(name,slaveFin);
-            pmcSlr2Ptr = strcmp(name,slaveFin2);
-            pmcSlr3Ptr = strcmp(name,slaveFin3);
-            pmcCdoPtr = strcmp(name,fin);
-            lpdCdoPtr = strcmp(name,fin2);
-            fpdCdoPtr = strcmp(name,fin3);
-            mHCdoptr = strcmp(name,fin4);
-            if (mHCdoptr == 0)
-            {
-                MhCdoCount++;
-                if (MhCdoCount > 3)
-                {
-                    printf("[WARNING]: Metadata CDO is used more than once.");
-                }
-            }
-            if (pmcCdoPtr == 0)
-            {
-                PmcCdoCount++;
-                if (PmcCdoCount > 3)
-                {
-                    printf("[WARNING]: PMC CDO is used more than once.");
-                }
-            }
-            if (lpdCdoPtr == 0)
-            {
-                LpdCdoCount++;
-                if (LpdCdoCount > 3)
-                {
-                    printf("[WARNING]: LPD CDO is used more than once.");
-                }
-            }
-            if (fpdCdoPtr == 0)
-            {
-                FpdCdoCount++;
-                if (FpdCdoCount > 3)
-                {
-                    printf("[WARNING]: FPD CDO is used more than once.");
-                }
-            }
-
-            if (pmcSlr1Ptr == 0)
-            {
-                slavePmcCdoCount++;
-                if (slavePmcCdoCount > 3)
-                {
-                    printf("[WARNING]: SLR1 PMC CDO is used more than once.");
-                }
-            }
-            if (pmcSlr2Ptr == 0)
-            {
-                slaveLpdCdoCount++;
-                if (slaveLpdCdoCount > 3)
-                {
-                    printf("[WARNING]: SLR2 PMC CDO is used more than once.");
-                }
-            }
-            if (pmcSlr3Ptr == 0)
-            {
-                slaveFpdCdoCount++;
-                if (slaveFpdCdoCount > 3)
-                {
-                    printf("[WARNING]: SLR3 PMC CDO is used more than once.");
-                }
-            }
-
+            check_redundant_markers(name);
             if (value == MARKER_DEVICE || value == MARKER_DATE)
             {
                 break;

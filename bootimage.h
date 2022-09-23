@@ -180,5 +180,6 @@ public:
     bool bootloaderAuthenticate;
     uint32_t xplm_modules_data_length;
     uint32_t* xplm_modules_data;
+    char globalSlrId;
 };
 #endif

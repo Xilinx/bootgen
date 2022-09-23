@@ -915,6 +915,25 @@ void VersalPartitionHeaderTable::Build(BootImage & bi, Binary & cache)
 {
     LOG_INFO("Building the Partition Header Table");
 
+    if (!bi.options.IsVersalNetSeries())
+    {
+        if (getenv("BOOTGEN_SKIP_MAX_PARTITIONS_CHECK") == NULL)
+        {
+            if (bi.imageList.size() > MAX_NUM_IMAGES_VERSAL)
+            {
+                LOG_ERROR("The maximum number of images supported for Versal is %d.\n           No. of images found : %d", MAX_NUM_IMAGES_VERSAL, bi.imageList.size());
+            }
+            if (bi.partitionHeaderList.size() > MAX_NUM_PARTITIONS_VERSAL)
+            {
+                LOG_ERROR("The maximum number of partitions supported for Versal is %d.\n           No. of partitions found : %d", MAX_NUM_PARTITIONS_VERSAL, bi.partitionHeaderList.size());
+            }
+        }
+        else
+        {
+            LOG_WARNING("The ENV BOOTGEN_SKIP_MAX_PARTITIONS_CHECK is set. Skipping check for maximum number of partitions/images.");
+        }
+    }
+
     for (std::list<PartitionHeader*>::iterator partHdr = bi.partitionHeaderList.begin(); partHdr != bi.partitionHeaderList.end(); partHdr++)
     {
         (*partHdr)->Build(bi, cache);

@@ -42,7 +42,6 @@ extern "C" {
 #include "cdo-overlay.h"
 };
 
-char globalSlrId;
 static uint8_t bufferIndex = 0;
 std::list<CdoCommandDmaWrite*> VersalImageHeader::cdoSections;
 uint64_t slr_sbi_base_array[4] = { PMC_SBI_BUF_ADDR, SLR1_SBI_BUF_BASE_ADDR, SLR2_SBI_BUF_BASE_ADDR, SLR3_SBI_BUF_BASE_ADDR };
@@ -782,7 +781,13 @@ VersalImageHeader::VersalImageHeader(std::ifstream& ifs, bool IsBootloader)
     section = new Section("ImageHeader " + Name, size);
     imageHeader = (VersalImageHeaderStructure*)section->Data;
     ifs.read((char*)imageHeader, size);
-    uint32_t count = imageHeader->dataSectionCount;
+
+    uint32_t count = 0;
+    if (imageHeader->dataSectionCount < 32)
+    {
+        count = imageHeader->dataSectionCount;
+    }
+
     uint32_t offset = imageHeader->partitionHeaderWordOffset * sizeof(uint32_t);
 
     for (uint8_t index = 0; index < count; index++)
@@ -846,10 +851,16 @@ VersalImageHeader::VersalImageHeader(std::ifstream& ifs, VersalImageHeaderStruct
     VersalPartitionHeaderTableStructure* tempPHT = new VersalPartitionHeaderTableStructure;
     ifs.seekg(offset);
     ifs.read((char*)tempPHT, sizeof(VersalPartitionHeaderTableStructure));
-    uint32_t count = tempPHT->dataSectionCount;
+
+    uint32_t count = 0;
+    if (imageHeader->dataSectionCount < 32)
+    {
+        count = tempPHT->dataSectionCount;
+    }
+
     delete tempPHT;
 
-    for (uint8_t index = 0; index<count; index++)
+    for (uint8_t index = 0; index < count; index++)
     {
         Bootloader = IsBootloader;
 
@@ -2036,8 +2047,8 @@ void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> fileli
     char slrid_from_binary = 0;
     char input_ch_souce = 0;
     char input_ch_binary = 0;
-    bool isSourceCDO = false;
-    bool isBinaryCDO = false;
+    bool is_source_cdo = false;
+    bool is_binary_cdo = false;
 
     if (filelist.size() > 0)
     {
@@ -2076,37 +2087,37 @@ void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> fileli
                 }
             }
 
-            slrid_from_source = SlrIdFromSource(input_ch_souce);
+            slrid_from_source = slr_id_from_source(input_ch_souce);
             if (slrid_from_source != 0)
             {
-                if (globalSlrId != 0)
+                if (bi.globalSlrId != 0)
                 {
-                    isSourceCDO = (globalSlrId == slrid_from_source);
-                    if (isSourceCDO == false)
+                    is_source_cdo = (bi.globalSlrId == slrid_from_source);
+                    if (is_source_cdo == false)
                     {
-                        LOG_WARNING("Mismatch between SLR ID of %s and rest of the CDOs. This may cause runtime issues. Please ensure that all the CDOs used for creating the pdi are for the same SLR/device", cdo_filename);
+                        LOG_WARNING("Mismatch between SLR ID of %s and rest of the CDOs. This may cause runtime issues. \n           Please ensure that all the CDOs used for creating the pdi are for the same SLR/device", cdo_filename);
                     }
-                    globalSlrId = 0;
+                    bi.globalSlrId = 0;
                 }
-                globalSlrId = slrid_from_source;
+                bi.globalSlrId = slrid_from_source;
             }
             else
             {
-                slrid_from_binary = SlrIdFromBinary(input_ch_binary);
+                slrid_from_binary = slr_id_from_binary(input_ch_binary);
                 if (slrid_from_binary != 0)
                 {
-                   if (globalSlrId != 0)
+                   if (bi.globalSlrId != 0)
                    {
-                       isBinaryCDO = (globalSlrId == slrid_from_binary);
-                       if (isBinaryCDO == false)
+                       is_binary_cdo = (bi.globalSlrId == slrid_from_binary);
+                       if (is_binary_cdo == false)
                        {
-                          LOG_WARNING("Mismatch between SLR ID of %s and rest of the CDOs. This may cause runtime issues. Please ensure that all the CDOs used for creating the pdi are for the same SLR/device", cdo_filename);
+                          LOG_WARNING("Mismatch between SLR ID of %s and rest of the CDOs. This may cause runtime issues. \n           Please ensure that all the CDOs used for creating the pdi are for the same SLR/device", cdo_filename);
                        }
-                       globalSlrId = 0;
+                       bi.globalSlrId = 0;
                    }
                    else
                    {
-                       globalSlrId = slrid_from_binary;
+                       bi.globalSlrId = slrid_from_binary;
                    }
                 }
             }
@@ -3109,8 +3120,8 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
         /* Add CDO Write Keyhole commands */
         for (std::list<SlrPdiInfo*>::iterator slr_id = slrBootPdiInfo.begin(); slr_id != slrBootPdiInfo.end(); slr_id++)
         {
-            uint32_t file_size;
-            uint32_t pad_size;
+            uint32_t file_size = 0;
+            uint32_t pad_size = 0;
             std::ifstream stream((*slr_id)->file.c_str(), std::ios_base::binary);
             if (!stream)
             {
@@ -3311,9 +3322,17 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                 uint8_t* cdo_buffer = (uint8_t*)cdoseq_to_binary(cdo_seq, &cdo_size, 0);
                 file_size = cdo_size;
 
-                pad_size = file_size + ((4 - (file_size & 3)) & 3);
-                file_size -= sizeof(VersalCdoHeader);
-                pad_size -= sizeof(VersalCdoHeader);
+                if (file_size > sizeof(VersalCdoHeader))
+                {
+                    pad_size = file_size + ((4 - (file_size & 3)) & 3);
+                    file_size -= sizeof(VersalCdoHeader);
+                    pad_size -= sizeof(VersalCdoHeader);
+                }
+                else
+                {
+                    LOG_ERROR("Incorrect CDO length read from : %s", cdo_filename);
+                }
+
                 if (IsCdoCmdEndFound(cdo_buffer, file_size))
                 {
                     file_size -= +sizeof(CdoCommandHeader);
@@ -3728,16 +3747,63 @@ void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size
     bool info_display = true;
     VersalImageHeaderTableStructure* iHT = (VersalImageHeaderTableStructure*)data;
     size_t offset = iHT->firstPartitionHeaderWordOffset * 4;
-    slr_info->partition_sizes.push_back(sizeof(VersalImageHeaderTableStructure) + (iHT->totalMetaHdrLength * 4));
+    slr_info->partition_sizes.push_back(sizeof(VersalImageHeaderTableStructure) + (iHT->optionalDataSize * 4) + (iHT->totalMetaHdrLength * 4));
+
     for (uint8_t index = 0; index < iHT->partitionTotalCount; index++)
     {
         VersalPartitionHeaderTableStructure* pHT = (VersalPartitionHeaderTableStructure*)(data + offset);
-        slr_info->partition_sizes.push_back(pHT->totalPartitionLength * 4);
+        /* TotalPartitionLength includes AC + partition + hashes if authenticated.*/
+        if (pHT->checksumWordOffset != 0)
+        {
+            slr_info->partition_sizes.push_back((pHT->totalPartitionLength * 4) + SHA3_LENGTH_BYTES);
+        }
+        else
+        {
+            slr_info->partition_sizes.push_back(pHT->totalPartitionLength * 4);
+        }
+
         offset += sizeof(VersalPartitionHeaderTableStructure);
         if (((pHT->partitionAttributes >> vphtPartitionTypeShift) & vphtPartitionTypeMask) == PartitionType::CONFIG_DATA_OBJ)
         {
             CdoSequence * cdo_seq;
-            cdo_seq = decode_cdo_binary(data + pHT->partitionWordOffset*4, pHT->totalPartitionLength*4);
+            if (pHT->checksumWordOffset != 0 || pHT->authCertificateOffset != 0)
+            {
+                uint8_t* partition_data = NULL;
+                uint32_t partition_length = pHT->encryptedPartitionLength * 4;
+                uint64_t data_chunk = SECURE_32K_CHUNK - SHA3_LENGTH_BYTES;
+                uint32_t partition_data_offset = (pHT->partitionWordOffset * 4);
+
+                partition_data = (uint8_t*)malloc(partition_length);
+                memset(partition_data, 0x00, partition_length);
+
+                if (partition_length <= data_chunk)
+                {
+                    memcpy(partition_data, data + partition_data_offset, partition_length);
+                }
+                else
+                {
+                    int num_secure_chunks = partition_length / data_chunk;
+                    if (partition_length % data_chunk != 0)
+                    {
+                        num_secure_chunks++;
+                    }
+                    uint32_t lastChunkSize = partition_length - ((num_secure_chunks - 1) * data_chunk);
+
+                    for (int i = 1; i < num_secure_chunks; i++)
+                    {
+                        memcpy(partition_data + ((i - 1) * data_chunk), data + partition_data_offset, data_chunk);
+                        partition_data_offset += (data_chunk + SHA3_LENGTH_BYTES);
+                    }
+
+                    memcpy(partition_data + ((num_secure_chunks - 1) * data_chunk), data + partition_data_offset, lastChunkSize);
+                }
+                cdo_seq = decode_cdo_binary(partition_data, partition_length);
+            }
+            else
+            {
+                cdo_seq = decode_cdo_binary(data + pHT->partitionWordOffset * 4, pHT->totalPartitionLength * 4);
+            }
+
             if (cdo_seq == NULL)
             {
                 LOG_ERROR("decode_cdo_binary failed - %s", slr_info->file.c_str());
@@ -4281,7 +4347,13 @@ SubSysImageHeader::SubSysImageHeader(std::ifstream& ifs)
     /* Find the no. of image headers to be created */
     num_of_images = 0;
     uint32_t num_of_sections = 0;
-    uint32_t p_count = subSysImageHeaderTable->dataSectionCount;
+
+    uint32_t p_count = 0;
+    if (subSysImageHeaderTable->dataSectionCount < 32)
+    {
+        p_count = subSysImageHeaderTable->dataSectionCount;
+    }
+
     uint32_t p_offset = subSysImageHeaderTable->partitionHeaderWordOffset * sizeof(uint32_t);
     p_offset += 0x28;
     for (uint32_t i = 0; i < p_count; i++)

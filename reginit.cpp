@@ -54,7 +54,7 @@ void RegisterTable::Build(Options& options, RegisterInitTable* regtab0)
         }
         scanner.switch_streams(&s);
         parser.parse();
-
+        fileParseEnd = true;
         LOG_INFO("Done RE parsing : %s. Added %d regiter pairs", filename.c_str(), count);
     }
 
@@ -82,23 +82,28 @@ void RegisterTable::Add(Options& options, uint32_t address, uint32_t value)
         LOG_ERROR("Too many register init pairs in %s", filename.c_str());
     }
 
-    bool isvalidAddress = false;
-    for (int j = 0; j < MAX_REG_GROUPS; j++)
+    if (fileParseEnd != true)
     {
-        if ((address <= (VersalAddressRanges[j].baseaddr + VersalAddressRanges[j].size)) &&
-            (address >= (VersalAddressRanges[j].baseaddr)))
+        bool isvalidAddress = false;
+        for (int j = 0; j < MAX_REG_GROUPS; j++)
         {
-            isvalidAddress = true;
-            break;
+            if ((address <= (VersalAddressRanges[j].baseaddr + VersalAddressRanges[j].size)) &&
+                (address >= (VersalAddressRanges[j].baseaddr)))
+            {
+                isvalidAddress = true;
+                break;
+            }
         }
-    }
-    if (address != 0xFFFFFFFF)
-    {
-        LOG_INFO("\t address [0x%8x], value = 0x%x", address, value);
+
         if (!isvalidAddress)
         {
             invalidAddr.push_back(address);
         }
+    }
+
+    if (address != 0xFFFFFFFF)
+    {
+        LOG_INFO("\t address [0x%8x], value = 0x%x", address, value);
     }
 
     regtab->registerInitialization[count ].address = address;
