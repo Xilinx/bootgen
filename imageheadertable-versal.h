@@ -38,7 +38,8 @@ class BifOptions;
 *********************************************   P R E P R O C E S S O R S   ***
 -------------------------------------------------------------------------------
 */
-#define MAX_NUM_PARTITIONS_VERSAL   32
+#define MAX_NUM_PARTITIONS_VERSAL   20
+#define MAX_NUM_IMAGES_VERSAL       10
 
 /* 128MB Linear QSPI range */
 #define LQSPI_BASE_ADDR_VERSAL      (0xC0000000)

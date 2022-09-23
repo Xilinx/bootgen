@@ -97,6 +97,11 @@ void BIF_File::Process(Options& options)
         if (((*bifoptions)->slrBootCnt == 0) && ((*bifoptions)->slrConfigCnt == 0) && options.IsSsitBif())
         {
             (*bifoptions)->pdiType = PartitionType::SLR_SLAVE;
+            if ((*bifoptions)->smapWidth != 0)
+            {
+                LOG_WARNING("smap_width for SSIT SLAVE PDIs is identified as %d. Setting it to the default value : 0.", (*bifoptions)->smapWidth);
+                (*bifoptions)->smapWidth = 0;
+            }
         }
 
         if (options.archType == Arch::ZYNQMP)
@@ -260,6 +265,7 @@ BootImage::BootImage(Options& options, uint8_t index)
     , firstIv(NULL)
     , firstOptKey(NULL)
     , overlayCDO(NULL)
+    , globalSlrId(0)
 {
     bifOptions = options.bifOptionsList.at(index);
     Name = bifOptions->GetGroupName();
@@ -353,13 +359,13 @@ void BootImage::OutputOptionalEfuseHash()
 }
 
 /******************************************************************************/
-void BootImage::BuildAndLink(Binary* cache) 
-{  
-    if( imageList.size() == 0 ) 
+void BootImage::BuildAndLink(Binary* cache)
+{
+    if( imageList.size() == 0 )
     {
         LOG_WARNING("No partition images given");
     }
-    
+
     currentAuthCtx->SetPpkSelect(bifOptions->GetPpkSelection());
     currentAuthCtx->SetSpkSelect(bifOptions->GetSpkSelection());
     currentAuthCtx->SetSpkIdentification(bifOptions->GetSpkId());

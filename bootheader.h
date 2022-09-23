@@ -112,6 +112,7 @@ public:
     RegisterTable()
         : regtab(NULL)
         , count(0)
+        , fileParseEnd(false)
     {
         invalidAddr.clear();
     }
@@ -124,6 +125,7 @@ public:
 private:
     RegisterInitTable* regtab;
     uint32_t count;
+    bool fileParseEnd;
     std::vector <uint32_t> invalidAddr;
 };
 

@@ -28,7 +28,7 @@
 #define MAX_LINE_LENGTH 100
 static char slr_id_binary;
 
-char SlrIdFromBinary(char ch)
+char slr_id_from_binary(char ch)
 {
     if (slr_id_binary != 0)
     {
@@ -36,7 +36,7 @@ char SlrIdFromBinary(char ch)
         slr_id_binary = 0;
     }
     return ch;
- }
+}
 
 void * file_to_buf(const char * path, size_t * sizep) {
     FILE * f = fopen(path, "rb");
@@ -119,7 +119,8 @@ done:
     }
     if (hdr_seq && seq) {
         cdocmd_concat_seq(hdr_seq, seq);
-        return hdr_seq;
+        cdocmd_delete_sequence(seq);
+        seq = hdr_seq;
     }
     return seq;
 }
