@@ -919,7 +919,7 @@ void VersalPartitionHeaderTable::Build(BootImage & bi, Binary & cache)
     {
         if (getenv("BOOTGEN_SKIP_MAX_PARTITIONS_CHECK") == NULL)
         {
-            if (bi.imageList.size() > MAX_NUM_IMAGES_VERSAL)
+            if (bi.subSysImageList.size() > MAX_NUM_IMAGES_VERSAL)
             {
                 LOG_ERROR("The maximum number of images supported for Versal is %d.\n           No. of images found : %d", MAX_NUM_IMAGES_VERSAL, bi.imageList.size());
             }
