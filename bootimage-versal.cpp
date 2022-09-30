@@ -278,7 +278,7 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
     LOG_INFO("Importing BootImage...");
     std::string baseFile = StringUtils::BaseName(it->filename);
     bool full_pdi = true;
-    bool smap_exists = true;
+    bool smap_exists = false;
     bool this_bootimage = false;
     static uint32_t prev_image_block = 0;
     if (StringUtils::GetExtension(baseFile) == ".mcs")
@@ -371,6 +371,13 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
 
     CheckForIhtAttributes(baseFile);
     imageHeaderTable = new VersalImageHeaderTable(src);
+    if (imageHeaderTable->iht_optional_data_length != 0)
+    {
+        src.seekg(importedBh->GetImageHeaderByteOffset() + sizeof(VersalImageHeaderTableStructure));
+        iht_optional_data_length = imageHeaderTable->iht_optional_data_length;
+        iht_optional_data = (uint32_t*)malloc(iht_optional_data_length);
+        src.read((char*)iht_optional_data, iht_optional_data_length);
+    }
     uint32_t offset = imageHeaderTable->GetFirstImageHeaderOffset() * sizeof(uint32_t);
     uint32_t imageCount = imageHeaderTable->GetImageCount();
 

@@ -114,6 +114,7 @@ VersalImageHeaderTable::VersalImageHeaderTable(std::ifstream& src)
     pdiId = iHTable->pdiId;
     idCode = iHTable->idCode;
     extendedIdCode = iHTable->extendedIdCode;
+    iht_optional_data_length = iHTable->optionalDataSize * 4;
     bypassIdCode = (iHTable->imageHeaderTableAttributes >> vihtIdCodeCheckShift) & vihtIdCodeCheckMask;
     bootDevice = (iHTable->imageHeaderTableAttributes >> vihtSecBootDeviceShift) & vihtSecBootDeviceMask;
     dpacm = ((iHTable->imageHeaderTableAttributes >> vihtDpacmEnableShift) & vihtDpacmEnableMask) == 3 ? DpaCM::DpaCMEnable : DpaCM::DpaCMDisable;
@@ -201,6 +202,8 @@ void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
         {
             pufHDLoc = bi.bifOptions->metaHdrAttributes.pufHdLoc;
         }
+
+        SetOptionalData(bi.iht_optional_data, bi.iht_optional_data_length);
     }
 
     /* Sub system Image Header creation */

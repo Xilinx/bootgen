@@ -181,5 +181,8 @@ public:
     uint32_t xplm_modules_data_length;
     uint32_t* xplm_modules_data;
     char globalSlrId;
+
+    uint32_t* iht_optional_data;
+    uint32_t iht_optional_data_length;
 };
 #endif

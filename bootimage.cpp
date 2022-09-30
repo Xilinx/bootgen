@@ -103,6 +103,10 @@ void BIF_File::Process(Options& options)
                 (*bifoptions)->smapWidth = 0;
             }
         }
+        else if ((*bifoptions)->pdiType == PartitionType::SLR_SLAVE_CONFIG)
+        {
+            (*bifoptions)->smapWidth = 0;
+        }
 
         if (options.archType == Arch::ZYNQMP)
         {
@@ -120,13 +124,16 @@ void BIF_File::Process(Options& options)
         if (currentbi != NULL)
         {
             currentbi->Add(*bifoptions);
-            if (currentbi->bootloaderFound && (*bifoptions)->pdiType == PartitionType::SLR_SLAVE)
+            if (((*bifoptions)->pdiType != PartitionType::SLR_SLAVE_BOOT) && ((*bifoptions)->pdiType != PartitionType::SLR_SLAVE_CONFIG))
             {
-                (*bifoptions)->pdiType = PartitionType::SLR_SLAVE_BOOT;
-            }
-            else
-            {
-                (*bifoptions)->pdiType = PartitionType::SLR_SLAVE_CONFIG;
+                if (currentbi->bootloaderFound && (*bifoptions)->pdiType == PartitionType::SLR_SLAVE)
+                {
+                    (*bifoptions)->pdiType = PartitionType::SLR_SLAVE_BOOT;
+                }
+                else
+                {
+                    (*bifoptions)->pdiType = PartitionType::SLR_SLAVE_CONFIG;
+                }
             }
             bootImages.push_back(currentbi);
         }
@@ -266,6 +273,8 @@ BootImage::BootImage(Options& options, uint8_t index)
     , firstOptKey(NULL)
     , overlayCDO(NULL)
     , globalSlrId(0)
+    , iht_optional_data(NULL)
+    , iht_optional_data_length(0)
 {
     bifOptions = options.bifOptionsList.at(index);
     Name = bifOptions->GetGroupName();
