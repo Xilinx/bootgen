@@ -33,15 +33,15 @@
 //
 // If you want to create multiple lexer classes, you use the -P flag
 // to rename each yyFlexLexer to some other xxFlexLexer.  You then
-// include <FlexLexer.h> in your other sources once per lexer class:
+// include "FlexLexer.h" in your other sources once per lexer class:
 //
 //	#undef yyFlexLexer
 //	#define yyFlexLexer xxFlexLexer
-//	#include <FlexLexer.h>
+//	#include "FlexLexer.h"
 //
 //	#undef yyFlexLexer
 //	#define yyFlexLexer zzFlexLexer
-//	#include <FlexLexer.h>
+//	#include "FlexLexer.h"
 //	...
 
 #ifndef __FLEX_LEXER_H
@@ -204,5 +204,3 @@ protected:
 
 #endif // yyFlexLexer || ! yyFlexLexerOnce
 
-
-// 67d7842dbbe25473c3c32b93c0da8047785f30d78e8a024de1b57352245f9689
