@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -677,4 +678,15 @@ uint32_t ImageHeader::GetFunctionId(void)
 bool ImageHeader::IsUidInfoFoundInCdo(void)
 {
     return uidInfoFoundInCdo;
+}
+
+/******************************************************************************/
+bool ImageHeader::IsElf(std::string line)
+{
+    bool status = false;
+    if ((line.at(0) == 0x7f) && (line.at(1) == 0x45) && (line.at(2) == 0x4C) && (line.at(3) == 0x46))
+    {
+        status = true;
+    }
+    return status;
 }

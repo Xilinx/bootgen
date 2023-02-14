@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -65,6 +66,7 @@ public:
         partitionBuffers.clear();
         aCs.clear();
         authenticationVerified = true;
+        versalNetSeries = false;
     }
     ~VersalReadImage();
 
@@ -92,7 +94,6 @@ public:
     bool VerifyECDSASignature(bool nist, uint8_t * data, size_t dataLength,  ACKeyECDSA *eckey, uint8_t* signature);
     bool VerifyECDSAP521Signature(bool nist, uint8_t * data, size_t dataLength, ACKeyECDSAP521 *eckey, uint8_t* signature);
     void Separator(void);
-    void DumpBootHeader(void);
     void DumpPartitions(uint8_t* buffer, uint32_t length, std::string name, uint32_t id = 0, uint32_t index = 0);
     uint32_t GetPdiId(void);
     uint32_t GetParentId(void);

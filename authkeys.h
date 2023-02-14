@@ -1,5 +1,6 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -129,7 +130,7 @@ protected:
     void Multiply_p_q(uint8_t p[], uint8_t q[], uint8_t n[]);
     void Hex2Byte(FILE* f, uint8_t* data, int count);
     virtual void Parse(const std::string& filename, bool isSecret0);
-    uint8_t ParseXilinxRsaKey(FILE* f);
+    uint8_t ParseAMDRsaKey(FILE* f);
     uint8_t ParseOpenSSLKey(FILE* f);
     static void WriteRsaFile(std::string file, const RSA* rsa, bool secret, uint16_t keyLength);
     static void WritePemFile(std::string file, RSA* rsa, EC_KEY* eckey, bool secret);

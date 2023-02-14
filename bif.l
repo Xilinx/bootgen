@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -104,6 +105,9 @@ bh_key_iv           yylval->number = tok::BH_KEY_IV;                return tok::
 uid                 yylval->number = tok::UNIQUE_ID;                return tok::UNIQUE_ID;
 parent_uid          yylval->number = tok::PARENT_UNIQUE_ID;         return tok::PARENT_UNIQUE_ID;
 function_id         yylval->number = tok::FUNCTION_ID;              return tok::FUNCTION_ID;
+pcr                 yylval->number = tok::PCR_NUMBER;               return tok::PCR_NUMBER;
+pcr_mindex          yylval->number = tok::PCR_MEASUREMENT_INDEX;    return tok::PCR_MEASUREMENT_INDEX;
+imagestore          yylval->number = tok::IMAGE_STORE;              return tok::IMAGE_STORE;
 
 bbram_kek_iv        yylval->number = tok::BBRAM_KEK_IV;             return tok::BBRAM_KEK_IV;
 bh_kek_iv           yylval->number = tok::BH_KEK_IV;                return tok::BH_KEK_IV;

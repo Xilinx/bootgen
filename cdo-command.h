@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2019-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -19,10 +20,23 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include "link.h"
 
 #define is_be_host() (0)
-#define DEFAULT_CDO_VERSION 0x200
+
+/* CDO Version 1.50 is using CDOv2 format, but allows CDOv1 commands
+ * for NPI and CFU  */
+#define CDO_VERSION_1_50 ((1 << 8) | 50)
+
+/* CDO Version 2.00 is using CDOv2 format, but replaces NPI and CFU
+ * commands with SEM */
+#define CDO_VERSION_2_00 ((2 << 8) | 0)
+
+/* CDO Version 3.00 is not defined and therefore the upper allowed boundary */
+#define CDO_VERSION_3_00 ((3 << 8) | 0)
+
+#define DEFAULT_CDO_VERSION CDO_VERSION_2_00
 
 typedef struct CdoSequence CdoSequence;
 
@@ -79,6 +93,7 @@ typedef enum CdoCmdType {
     CdoCmdPsmSequence,
     CdoCmdScatterWrite,
     CdoCmdScatterWrite2,
+    CdoCmdTamperTrigger,
     CdoCmdNpiSeq,
     CdoCmdNpiPreCfg,
     CdoCmdNpiWrite,
@@ -149,6 +164,7 @@ typedef enum CdoCmdType {
     CdoCmdEmSetAction,
     CdoCmdLdrSetImageInfo,
     CdoCmdLdrCframeClearCheck,
+    CdoCmdSemNpiTable,
 
     /* The following line must be last */
     CdoCmdLast
@@ -278,6 +294,8 @@ void cdocmd_add_end(CdoSequence * seq);
 void cdocmd_add_break(CdoSequence * seq, uint32_t value);
 void cdocmd_add_ot_check(CdoSequence * seq, uint32_t value);
 void cdocmd_add_psm_sequence(CdoSequence * seq);
+void cdocmd_add_tamper_trigger(CdoSequence * seq, uint32_t value);
+void cdocmd_add_sem_npi_table(CdoSequence * seq, uint32_t nodeid, uint32_t flags, uint32_t count, void * buf, uint32_t be);
 void cdocmd_add_ldr_set_image_info(CdoSequence * seq, uint32_t nodeid, uint32_t uid, uint32_t puid, uint32_t funcid);
 void cdocmd_add_ldr_cframe_clear_check(CdoSequence * seq, uint32_t block_type);
 void cdocmd_add_em_set_action(CdoSequence * seq, uint32_t nodeid, uint32_t action, uint32_t mask);

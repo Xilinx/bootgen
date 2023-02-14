@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -570,7 +571,19 @@ void ZynqMpImageHeader::Build(BootImage& bi, Binary& cache)
         std::string comparison = Filename;
         StringUtils::ToLower(comparison);
  
-        if (StringUtils::EndsWith(comparison, ".elf"))
+        std::ifstream stream(Filename.c_str(), std::ios_base::binary);
+        if (!stream)
+        {
+            LOG_ERROR("Cannot read file - %s ", Filename.c_str());
+        }
+
+        std::string line;
+        while(line == "")
+        {
+            getline(stream, line);
+        }
+
+        if (IsElf(line))
         {
             ImportElf(bi);
         }
@@ -584,6 +597,7 @@ void ZynqMpImageHeader::Build(BootImage& bi, Binary& cache)
         }
         SetDataSectionCount(0);
         SetImageNameLength((uint32_t)partitionHeaderList.size());
+        stream.close();
     }
     bi.partitionHeaderList.insert(bi.partitionHeaderList.end(),partitionHeaderList.begin(),partitionHeaderList.end());
 }

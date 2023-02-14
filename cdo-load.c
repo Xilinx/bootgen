@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2019-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -81,12 +82,11 @@ error:
 
 CdoSequence * cdoseq_load_cdo(const char * path) {
     CdoSequence * seq = NULL;
-    CdoSequence * hdr_seq = NULL;
     CdoRawInfo * raw = NULL;
     size_t size;
     void * data = file_to_buf(path, &size);
     if (data == NULL) goto done;
-    raw = decode_raw(&hdr_seq, data, size);
+    raw = cdoraw_decode(data, size);
     if (raw != NULL) {
         free(data);
         data = raw->data;
@@ -97,6 +97,9 @@ CdoSequence * cdoseq_load_cdo(const char * path) {
         if (seq == NULL) {
             fprintf(stderr, "cannot decode binary cdo file: %s\n", path);
             goto done;
+        }
+        if (raw != NULL) {
+            cdometa_add_markers(&raw->meta, seq);
         }
     } else {
         FILE * infile = fopen(path, "r");
@@ -113,14 +116,9 @@ CdoSequence * cdoseq_load_cdo(const char * path) {
     }
 done:
     if (raw != NULL) {
-        free(raw);
+        cdoraw_delete(raw);
     } else {
         free(data);
-    }
-    if (hdr_seq && seq) {
-        cdocmd_concat_seq(hdr_seq, seq);
-        cdocmd_delete_sequence(seq);
-        seq = hdr_seq;
     }
     return seq;
 }

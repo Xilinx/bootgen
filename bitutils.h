@@ -1,5 +1,6 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -434,16 +435,6 @@ public:
         , fieldSeparatorD()
         , fieldSeparatorE()
     {
-    }
-
-    void DumpBITHeader( std::ostream& s )
-    {
-        s << "Xilinx BIT Bitstream\n" ;
-        s << "Design name : " << designName << "\n";
-        s << "Part        : " << devicePackageName << "\n";
-        s << "Date        : " << designDateAndTime << "\n";
-        s << "Bits        : " << (dataByteLength * BITS_IN_BYTE ) << "\n";
-        s << std::endl;
     }
 } ;
 

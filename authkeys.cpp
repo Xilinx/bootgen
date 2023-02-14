@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -131,15 +132,15 @@ void Key::Parse(const std::string& filename, bool isSecret0)
         do 
         {
             name = getc(f); 
-        } while (name >= 0 && isspace(name));
+        } while (name >= 0 && isspace(name) && name != EOF);
         
         fseek(f,0,0);
     
-        /* If the file starts with 'N', then it is Xilinx Format
+        /* If the file starts with 'N', then it is AMD Format
            If it starts with '-', then it is OpenSSL format */
         if (name == 'N') 
         {
-            errCode = ParseXilinxRsaKey(f);
+            errCode = ParseAMDRsaKey(f);
         } 
         else if (name == '-')
         {
@@ -147,7 +148,7 @@ void Key::Parse(const std::string& filename, bool isSecret0)
         } 
         else
         {
-            LOG_ERROR("Unsupported key file - %s\n           Supported key formats: Xilinx Format & OpenSSL format", basefile.c_str());
+            LOG_ERROR("Unsupported key file - %s\n           Supported key formats: AMD Format & OpenSSL format", basefile.c_str());
         }
         fclose(f);
 
@@ -238,7 +239,7 @@ uint8_t Key::ParseOpenSSLKey(FILE* f)
 }
 
 /******************************************************************************/
-uint8_t Key::ParseXilinxRsaKey(FILE* f)
+uint8_t Key::ParseAMDRsaKey(FILE* f)
 {
     int name;
 
@@ -311,7 +312,7 @@ uint8_t Key::ParseXilinxRsaKey(FILE* f)
         do
         {
             name = getc(f); 
-        } while (name >= 0 && isspace(name));
+        } while (name >= 0 && isspace(name) && name != EOF);
         if (name != '=')
         {
             LOG_DEBUG(DEBUG_STAMP, "Bad Key file, expected =, got %c",name);

@@ -1,5 +1,6 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -153,7 +154,8 @@ typedef struct
     uint8_t        acPpk[VERSAL_ACKEY_STRUCT_SIZE];         //0x68
     uint8_t        ppkSHA3Padding[12];                      //0x46C
     uint8_t        authJtagSignature[SIGN_LENGTH_VERSAL];   //0x478
-} AuthenticatedJtagImageStructure;                          //0x678
+    uint8_t        padto2KB[392];                           //0x678 /*CR-1143787 : Workaround for ROM*/
+} AuthenticatedJtagImageStructure;                          //0x800
 
 typedef struct
 {

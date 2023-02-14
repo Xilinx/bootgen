@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -33,6 +34,7 @@
 #include "logger.h"
 #include "authkeys.h"
 #include "partitionheadertable.h"
+#include "imageheadertable-versal.h"
 #include "bifoptions.h"
 
 #define R5_TCM_START_ADDRESS      0x0000
@@ -184,5 +186,6 @@ public:
 
     uint32_t* iht_optional_data;
     uint32_t iht_optional_data_length;
+    std::string pmcDataAesFile;
 };
 #endif

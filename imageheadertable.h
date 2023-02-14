@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -57,6 +58,12 @@ typedef struct
     SlrId::Type index;
     SlrPdiType type;
 } SlrPdiInfo;
+
+typedef struct
+{
+    std::string file;
+    uint32_t id;
+} ImageStorePdiInfo;
 
 /* Forward Class References */
 class BaseThing;
@@ -155,6 +162,7 @@ public:
     virtual uint32_t GetPartitionRevocationId() { return 0; }
     virtual void SetSlrBootPartitions(std::list<SlrPdiInfo*>) { };
     virtual void SetSlrConfigPartitions(std::list<SlrPdiInfo*>) { };
+    virtual void SetWriteImageStorePartitions(ImageStorePdiInfo*) { };
     void SetMemCopyAddress(uint64_t addr) { ihMemCpyAddr = addr; }
     void SetDelayLoadHandOffFlags(bool load_flag, bool handoff_flag) { ihDelayLoad = load_flag; ihDelayHandoff = handoff_flag; }
 
@@ -354,6 +362,7 @@ protected:
     virtual void ImportElf(BootImage& bi);
     virtual void ImportBit(BootImage& bi) { };
     virtual void ImportBin(BootImage& bi) { };
+    virtual bool IsElf(std::string line);
     virtual void ImportFpgaDataFile(BootImage& bi) { };
     uint8_t* CombineElfSections(ElfFormat* elf, Binary::Length_t* size, Binary::Address_t* load_addr);
     uint8_t* GetElfSections(ElfFormat* elf, Binary::Length_t* size, Binary::Address_t* load_addr, uint32_t iprog);
@@ -364,6 +373,7 @@ protected:
     uint32_t allHdrSize;
     std::list<SlrPdiInfo*> slrBootPdiInfo;
     std::list<SlrPdiInfo*> slrConfigPdiInfo;
+    ImageStorePdiInfo* imageStorePdiInfo;
     uint32_t imageId;
     uint32_t uniqueId;
     uint32_t parentUniqueId;
@@ -385,6 +395,7 @@ public:
         , encrypt(NULL)
         , iht_optional_data(NULL)
         , iht_optional_data_length(0)
+        , idCodeCheck(0)
     { }
 
     virtual ~ImageHeaderTable() {}
@@ -430,6 +441,7 @@ public:
     uint8_t* metaHdrSecHdrIv;
     uint32_t* iht_optional_data;
     uint32_t iht_optional_data_length;
+    uint8_t idCodeCheck;
 
 protected:
     bool slaveBootSplitMode;

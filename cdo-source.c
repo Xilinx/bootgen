@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2019-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -21,7 +22,6 @@
 #include <inttypes.h>
 #include "cdo-load.h"
 #include "cdo-source.h"
-#include <stdbool.h>
 
 static char* slr_id_ptr;
 static char slr_id;
@@ -79,6 +79,7 @@ struct command_info {
     { "psm_sequence", CdoCmdPsmSequence },
     { "scatter_write", CdoCmdScatterWrite },
     { "scatter_write2", CdoCmdScatterWrite2 },
+    { "tamper_trigger", CdoCmdTamperTrigger },
     { "npi_seq", CdoCmdNpiSeq },
     { "npi_precfg", CdoCmdNpiPreCfg },
     { "npi_write", CdoCmdNpiWrite },
@@ -149,6 +150,7 @@ struct command_info {
     { "em_set_action", CdoCmdEmSetAction },
     { "ldr_set_image_info", CdoCmdLdrSetImageInfo },
     { "cframe_clear_check", CdoCmdLdrCframeClearCheck },
+    { "sem_npi_table", CdoCmdSemNpiTable },
     { NULL, 0 }
 };
 
@@ -366,7 +368,7 @@ CdoSequence * cdoseq_from_source(FILE * f) {
         switch(cmdinfo->id) {
         case CdoCmdSection: {
             uint32_t id;
-            if (seq->version >= 0x200) goto syntax_error;
+            if (seq->version >= CDO_VERSION_1_50) goto syntax_error;
             if (parse_u32(&s, &id)) goto syntax_error;
             cdocmd_add_section(seq, id);
             break;
@@ -476,7 +478,7 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             if (parse_u64(&s, &dstaddr)) goto syntax_error;
             if (parse_u32(&s, &count)) goto syntax_error;
             if (parse_u32(&s, &flags)) goto syntax_error;
-            if (seq->version < 0x200 && srcaddr == 0) {
+            if (seq->version < CDO_VERSION_2_00 && srcaddr == 0) {
                 uint32_t count2 = 0;
                 if (parse_buf(&s, &buf, &count2)) goto syntax_error;
                 if (count != count2) {
@@ -500,7 +502,7 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             if (parse_buf(&s, &buf, &count)) goto syntax_error;
             cdocmd_add_cframe_read(seq, param, addr, read_count, count, buf, is_be_host());
             free(buf);
-            if (seq->version < 0x200 && count != 16) goto syntax_error;
+            if (seq->version < CDO_VERSION_2_00 && count != 16) goto syntax_error;
             break;
         }
         case CdoCmdSsitSyncMaster: {
@@ -655,12 +657,19 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             free(buf);
             break;
         }
+        case CdoCmdTamperTrigger: {
+            uint32_t value;
+            if (parse_u32(&s, &value)) goto syntax_error;
+            cdocmd_add_tamper_trigger(seq, value);
+            break;
+        }
 
         case CdoCmdNpiSeq:
         case CdoCmdNpiPreCfg:
         case CdoCmdNpiShutdown: {
             uint32_t addr;
             uint32_t flags;
+            if (seq->version >= CDO_VERSION_2_00) goto syntax_error;
             if (parse_u32(&s, &addr)) goto syntax_error;
             if (parse_u32(&s, &flags)) goto syntax_error;
             if (cmdinfo->id == CdoCmdNpiSeq) {
@@ -677,6 +686,7 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             uint32_t flags;
             uint32_t count;
             uint32_t * buf;
+            if (seq->version >= CDO_VERSION_2_00) goto syntax_error;
             if (parse_u32(&s, &addr)) goto syntax_error;
             if (parse_u32(&s, &flags)) goto syntax_error;
             if (parse_buf(&s, &buf, &count)) goto syntax_error;
@@ -1136,6 +1146,7 @@ CdoSequence * cdoseq_from_source(FILE * f) {
         case CdoCmdCfuSetCrc32: {
             uint32_t flags;
             uint32_t value;
+            if (seq->version >= CDO_VERSION_2_00) goto syntax_error;
             if (parse_u32(&s, &flags)) goto syntax_error;
             if (flags != 0) {
                 if (parse_u32(&s, &value)) goto syntax_error;
@@ -1147,48 +1158,56 @@ CdoSequence * cdoseq_from_source(FILE * f) {
         }
         case CdoCmdCfuDecompress: {
             uint32_t flags;
+            if (seq->version >= CDO_VERSION_2_00) goto syntax_error;
             if (parse_u32(&s, &flags)) goto syntax_error;
             cdocmd_add_cfu_decompress(seq, flags);
             break;
         }
         case CdoCmdCfuCramRW: {
             uint32_t value;
+            if (seq->version >= CDO_VERSION_2_00) goto syntax_error;
             if (parse_u32(&s, &value)) goto syntax_error;
             cdocmd_add_cfu_cram_rw(seq, value);
             break;
         }
         case CdoCmdCfuSeuGo: {
             uint32_t value;
+            if (seq->version >= CDO_VERSION_2_00) goto syntax_error;
             if (parse_u32(&s, &value)) goto syntax_error;
             cdocmd_add_cfu_seu_go(seq, value);
             break;
         }
         case CdoCmdCfuCrc8Dis: {
             uint32_t flags;
+            if (seq->version >= CDO_VERSION_2_00) goto syntax_error;
             if (parse_u32(&s, &flags)) goto syntax_error;
             cdocmd_add_cfu_crc8_dis(seq, flags);
             break;
         }
         case CdoCmdCfuSsiPerSlrPr: {
             uint32_t value;
+            if (seq->version >= CDO_VERSION_2_00) goto syntax_error;
             if (parse_u32(&s, &value)) goto syntax_error;
             cdocmd_add_cfu_ssi_per_slr_pr(seq, value);
             break;
         }
         case CdoCmdCfuGsrGsc: {
             uint32_t value;
+            if (seq->version >= CDO_VERSION_2_00) goto syntax_error;
             if (parse_u32(&s, &value)) goto syntax_error;
             cdocmd_add_cfu_gsr_gsc(seq, value);
             break;
         }
         case CdoCmdCfuGcapClkEn: {
             uint32_t value;
+            if (seq->version >= CDO_VERSION_2_00) goto syntax_error;
             if (parse_u32(&s, &value)) goto syntax_error;
             cdocmd_add_cfu_gcap_clk_en(seq, value);
             break;
         }
         case CdoCmdCfuCfiType: {
             uint32_t value;
+            if (seq->version >= CDO_VERSION_2_00) goto syntax_error;
             if (parse_u32(&s, &value)) goto syntax_error;
             cdocmd_add_cfu_cfi_type(seq, value);
             break;
@@ -1219,6 +1238,18 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             uint32_t id;
             if (parse_u32(&s, &id)) goto syntax_error;
             cdocmd_add_ldr_cframe_clear_check(seq, id);
+            break;
+        }
+        case CdoCmdSemNpiTable: {
+            uint32_t id;
+            uint32_t flags;
+            uint32_t count;
+            uint32_t * buf;
+            if (parse_u32(&s, &id)) goto syntax_error;
+            if (parse_u32(&s, &flags)) goto syntax_error;
+            if (parse_buf(&s, &buf, &count)) goto syntax_error;
+            cdocmd_add_sem_npi_table(seq, id, flags, count, buf, is_be_host());
+            free(buf);
             break;
         }
         default:
@@ -1367,7 +1398,7 @@ void cdoseq_to_source(FILE * f, CdoSequence * seq) {
             print_x64(f, cmd->count);
             fprintf(f, " ");
             print_x64(f, cmd->flags);
-            if (seq->version < 0x200 && cmd->buf) {
+            if (seq->version < CDO_VERSION_2_00 && cmd->buf) {
                 print_buf(f, cmd->buf, cmd->count);
             }
             fprintf(f, "\n");
@@ -1488,6 +1519,11 @@ void cdoseq_to_source(FILE * f, CdoSequence * seq) {
             fprintf(f, " ");
             print_x64(f, cmd->mask);
             print_buf(f, cmd->buf, cmd->count);
+            fprintf(f, "\n");
+            break;
+        case CdoCmdTamperTrigger:
+            fprintf(f, "tamper_trigger ");
+            print_x64(f, cmd->value);
             fprintf(f, "\n");
             break;
 
@@ -1957,6 +1993,14 @@ void cdoseq_to_source(FILE * f, CdoSequence * seq) {
 	case CdoCmdLdrCframeClearCheck:
             fprintf(f, "cframe_clear_check ");
             print_x64(f, cmd->id);
+            fprintf(f, "\n");
+            break;
+        case CdoCmdSemNpiTable:
+            fprintf(f, "sem_npi_table ");
+            print_x64(f, cmd->id);
+            fprintf(f, " ");
+            print_x64(f, cmd->flags);
+            print_buf(f, cmd->buf, cmd->count);
             fprintf(f, "\n");
             break;
         default:

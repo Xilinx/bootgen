@@ -51,7 +51,7 @@
 # endif
 
 /* Line 36 of location.cc  */
-#line 23 "../s/bif.y"
+#line 24 "../s/bif.y"
 namespace BIF {
 /* Line 36 of location.cc  */
 #line 58 "../bisonflex/position.hh"
@@ -167,7 +167,7 @@ namespace BIF {
   }
 
 /* Line 148 of location.cc  */
-#line 23 "../s/bif.y"
+#line 24 "../s/bif.y"
 } // BIF
 /* Line 148 of location.cc  */
 #line 174 "../bisonflex/position.hh"

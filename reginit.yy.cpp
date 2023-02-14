@@ -519,9 +519,9 @@ static yyconst flex_int16_t yy_chk[103] =
 
 static yyconst flex_int16_t yy_rule_linenum[27] =
     {   0,
-       49,   50,   53,   54,   56,   57,   58,   59,   61,   62,
-       63,   64,   65,   66,   67,   68,   69,   70,   71,   72,
-       73,   74,   75,   78,   79,   80
+       50,   51,   54,   55,   57,   58,   59,   60,   62,   63,
+       64,   65,   66,   67,   68,   69,   70,   71,   72,   73,
+       74,   75,   76,   79,   80,   81
     } ;
 
 /* The intent behind this definition is that it'll catch
@@ -533,7 +533,8 @@ static yyconst flex_int16_t yy_rule_linenum[27] =
 #define YY_RESTORE_YY_MORE_OFFSET
 #line 1 "../s/reginit.l"
 /******************************************************************************
-* Copyright 2015-2019 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -550,7 +551,7 @@ static yyconst flex_int16_t yy_rule_linenum[27] =
 /* This is the lexer/flexer input file, that tokenizes the register initialization file */
 /* Run the regedit.y file first through bison to generate the regidit.tab.hpp file, which is included herein */
 /* Then run this file through flex to generate the reginit.yy.c source code */
-#line 22 "../s/reginit.l"
+#line 23 "../s/reginit.l"
  #include <stdio.h>
  #include "reginitscanner.h"
  #include "reginit.tab.hpp"
@@ -562,9 +563,9 @@ static yyconst flex_int16_t yy_rule_linenum[27] =
  \.boot\.      return tok::BOOT;
  \.user\.      return tok::USER;
  */
-#line 40 "../s/reginit.l"
+#line 41 "../s/reginit.l"
      # define YY_USER_ACTION  yylloc->columns (yyleng);
-#line 568 "../bisonflex/reginit.yy.cpp"
+#line 569 "../bisonflex/reginit.yy.cpp"
 
 #define INITIAL 0
 
@@ -721,14 +722,14 @@ YY_DECL
 	register int yy_act;
     
 /* %% [7.0] user's declarations go here */
-#line 43 "../s/reginit.l"
+#line 44 "../s/reginit.l"
 
 
 
    yylloc->step ();
 
 
-#line 732 "../bisonflex/reginit.yy.cpp"
+#line 733 "../bisonflex/reginit.yy.cpp"
 
 	if ( !(yy_init) )
 		{
@@ -839,142 +840,142 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 49 "../s/reginit.l"
+#line 50 "../s/reginit.l"
 { comment(); }
 	YY_BREAK
 case 2:
 /* rule 2 can match eol */
 YY_RULE_SETUP
-#line 50 "../s/reginit.l"
+#line 51 "../s/reginit.l"
 /* ignore */;
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 53 "../s/reginit.l"
+#line 54 "../s/reginit.l"
 yylval->number=atoi(yytext); return tok::DECVALUE;
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 54 "../s/reginit.l"
+#line 55 "../s/reginit.l"
 yylval->number=strtoul(yytext+2,NULL,16); return tok::HEXVALUE;
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 56 "../s/reginit.l"
+#line 57 "../s/reginit.l"
 return tok::SET;
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 57 "../s/reginit.l"
+#line 58 "../s/reginit.l"
 return tok::OR;
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 58 "../s/reginit.l"
+#line 59 "../s/reginit.l"
 return tok::XOR;
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 59 "../s/reginit.l"
+#line 60 "../s/reginit.l"
 return tok::AND;
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 61 "../s/reginit.l"
+#line 62 "../s/reginit.l"
 return tok::PLUS;
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 62 "../s/reginit.l"
+#line 63 "../s/reginit.l"
 return tok::MINUS;
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 63 "../s/reginit.l"
+#line 64 "../s/reginit.l"
 return tok::LSHIFT;
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 64 "../s/reginit.l"
+#line 65 "../s/reginit.l"
 return tok::RSHIFT;
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 65 "../s/reginit.l"
+#line 66 "../s/reginit.l"
 return tok::MULT;
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 66 "../s/reginit.l"
+#line 67 "../s/reginit.l"
 return tok::DIVIDE;
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 67 "../s/reginit.l"
+#line 68 "../s/reginit.l"
 return tok::MODULO;
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 68 "../s/reginit.l"
+#line 69 "../s/reginit.l"
 return tok::NEGATION;
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 69 "../s/reginit.l"
+#line 70 "../s/reginit.l"
 return tok::AND;
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 70 "../s/reginit.l"
+#line 71 "../s/reginit.l"
 return tok::OR;
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 71 "../s/reginit.l"
+#line 72 "../s/reginit.l"
 return tok::XOR;
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 72 "../s/reginit.l"
+#line 73 "../s/reginit.l"
 return tok::LPAREN;
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 73 "../s/reginit.l"
+#line 74 "../s/reginit.l"
 return tok::RPAREN;
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 74 "../s/reginit.l"
+#line 75 "../s/reginit.l"
 return tok::EQUAL;
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 75 "../s/reginit.l"
+#line 76 "../s/reginit.l"
 return tok::SEMICOLON;
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 78 "../s/reginit.l"
+#line 79 "../s/reginit.l"
 yylloc->step ();
 	YY_BREAK
 case 25:
 /* rule 25 can match eol */
 YY_RULE_SETUP
-#line 79 "../s/reginit.l"
+#line 80 "../s/reginit.l"
 yylloc->lines (yyleng); yylloc->step ();
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 80 "../s/reginit.l"
+#line 81 "../s/reginit.l"
 std::cerr << "WARNING: bad character '" << yytext << " at " << *yylloc << std::endl;
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 81 "../s/reginit.l"
+#line 82 "../s/reginit.l"
 YY_FATAL_ERROR( "flex scanner jammed" );
 	YY_BREAK
-#line 978 "../bisonflex/reginit.yy.cpp"
+#line 979 "../bisonflex/reginit.yy.cpp"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -2023,7 +2024,7 @@ void reginitfree (void * ptr )
 
 /* %ok-for-header */
 
-#line 81 "../s/reginit.l"
+#line 82 "../s/reginit.l"
 
 
 

@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -346,6 +347,10 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
         {
             attributes |= options.bifOptions->GetBhRsa() << BH_RSA_BIT_SHIFT;
         }
+        if (it->delayAuth || (it->authType != Authentication::None))
+        {
+            attributes |= BH_RSA_SINGED_BIT_MASK << BH_RSA_SINGED_BIT_SHIFT;
+        }
         if (authHash != AuthHash::Sha3)
         {
             attributes |= authHash << AUTH_HASH_BIT_SHIFT;
@@ -353,6 +358,10 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
         if (options.bifOptions->GetDpaCM() != DpaCM::DpaCMDisable)
         {
             attributes |= options.bifOptions->GetDpaCM() << DPA_CM_BIT_SHIFT;
+        }
+        if (options.bifOptions->GetDice() != DICE::DiceDisable)
+        {
+            attributes |= options.bifOptions->GetDice() << BH_DICE_BIT_SHIFT;
         }
 
         importedBh->SetBHAttributes(attributes);
@@ -988,6 +997,19 @@ ImageHeader* VersalBootImage::ParsePartitionDataToImage(BifOptions * bifoptions,
             return NULL;
         }
     }
+    else if (partitionBifOptions->partitionType == PartitionType::IMAGE_STORE_PDI)
+    {
+        ImageStorePdiInfo* imageStorePdi = new ImageStorePdiInfo;
+        imageStorePdi->file = partitionBifOptions->filename;
+        std::ifstream s(imageStorePdi->file.c_str());
+        if (!s)
+        {
+            LOG_ERROR("Cannot read file - %s ", imageStorePdi->file.c_str());
+        }
+        imageStorePdi->id = partitionBifOptions->imageStoreId;
+        image->SetWriteImageStorePartitions(imageStorePdi);
+        imageList.push_back(image);
+    }
     else
     {
         imageList.push_back(image);
@@ -1184,12 +1206,6 @@ void VersalBootImage::ConfigureProcessingStages(ImageHeader* image, PartitionBif
 }
 
 /******************************************************************************/
-void VersalBootImage::SetPmcDataLoadAddress(Binary::Address_t addr)
-{
-    options.bifOptions->pmcCdoLoadAddress = addr;
-}
-
-/******************************************************************************/
 void VersalBootImage::Add(BifOptions* bifoptions)
 {
     uint8_t slr_boot_cnt = 0;
@@ -1336,12 +1352,12 @@ void VersalBootImage::Add(BifOptions* bifoptions)
                 }
                 if ((*itr)->aesKeyFile != "")
                 {
-                    bifoptions->pmcDataAesFile = (*itr)->aesKeyFile;
+                    bifoptions->SetPmcDataAesFile((*itr)->aesKeyFile);
                 }
                 //If no key file found in partition specific attributes - Generate aeskeyfile with partition_name.nky
                 else
                 {
-                    bifoptions->pmcDataAesFile = StringUtils::RemoveExtension(StringUtils::BaseName((*itr)->filename)) + ".nky";
+                    bifoptions->SetPmcDataAesFile(StringUtils::RemoveExtension(StringUtils::BaseName((*itr)->filename)) + ".nky");
                 }
             }
             else
@@ -1374,12 +1390,12 @@ void VersalBootImage::Add(BifOptions* bifoptions)
                     }
                     if ((*partitr)->aesKeyFile != "")
                     {
-                        bifoptions->pmcDataAesFile = (*partitr)->aesKeyFile;
+                        bifoptions->SetPmcDataAesFile((*partitr)->aesKeyFile);
                     }
                     else
                     {
                         //If no key file found in partition specific attributes - Generate aeskeyfile with partition_name.nky
-                        bifoptions->pmcDataAesFile = StringUtils::RemoveExtension(StringUtils::BaseName((*partitr)->filename)) + ".nky";
+                        bifoptions->SetPmcDataAesFile(StringUtils::RemoveExtension(StringUtils::BaseName((*partitr)->filename)) + ".nky");
                     }
                 }
                 else

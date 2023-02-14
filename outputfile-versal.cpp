@@ -1,5 +1,6 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -65,10 +66,13 @@ void OutputFile::OutputVersal(Options& options, Binary& cache)
         /* Write to output file */
         if (!section.Name.compare("BootHeader"))
         {
-            if (options.bifOptions->GetSmapWidth() == 0)
+            if (options.bifOptions->pdiType != PartitionType::SLR_SLAVE_BOOT)
             {
-                // For SSIT slave devices, the PDI should not have the SMAP bus width
-                adjust_len = 16;
+                if (options.bifOptions->GetSmapWidth() == 0)
+                {
+                    // For SSIT slave devices, the PDI should not have the SMAP bus width
+                    adjust_len = 16;
+                }
             }
             Write(section.Address, section.Length - adjust_len, section.Data + adjust_len);
             if (options.GetDumpOption() == DumpOption::BH)

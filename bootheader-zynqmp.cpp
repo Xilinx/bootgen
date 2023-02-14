@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -140,6 +141,33 @@ void ZynqMpBootHeader::Link(BootImage& bi)
     if (prebuilt)
     {
         AddAcSizeToTotalFsblSize(bi);
+        ImageHeader* fsbl = bi.imageHeaderTable->GetFSBLImageHeader();
+        if (fsbl != NULL)
+        {
+            PartitionHeader& bootloaderHdr(*(fsbl->GetPartitionHeaderList().front()));
+            BootloaderAddressAndSizeCheck(bootloaderHdr);
+            SetSourceOffset((uint32_t)bootloaderHdr.partition->section->Address);
+
+            if (bi.imageHeaderTable->section != NULL)
+            {
+                if (!Binary::CheckAddress(bi.imageHeaderTable->section->Address))
+                {
+                    LOG_ERROR("Bootgen does not support addresses larger than 32 bits. Image Header Offset is %llX", bi.imageHeaderTable->section->Address);
+                }
+                SetImageHeaderByteOffset((uint32_t)bi.imageHeaderTable->section->Address);
+            }
+
+            if (bi.partitionHeaderTable->firstSection != NULL)
+            {
+                if (!Binary::CheckAddress(bi.partitionHeaderTable->firstSection->Address))
+                {
+                    LOG_ERROR("Bootgen does not support addresses larger than 32 bits. Partition Header Offset is %llX", bi.partitionHeaderList.front()->section->Address);
+                }
+                SetPartitionHeaderByteOffset((uint32_t)bi.partitionHeaderTable->firstSection->Address);
+            }
+
+            SetHeaderChecksum();
+        }
         return;
     }
 

@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -64,7 +65,6 @@ public:
     void OutputOptionalSecureDebugImage();
     void ConfigureEncryptionBlocks(ImageHeader * image, PartitionBifOptions* partitionBifOptions);
     void SetPmcdataFile(const std::string & filename);
-    void SetPmcDataLoadAddress(Binary::Address_t addr);
     uint64_t GetSecureChunkSize(bool isBootloader);
     uint32_t current_image_block;
 };

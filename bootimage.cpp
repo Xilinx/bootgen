@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -126,13 +127,16 @@ void BIF_File::Process(Options& options)
             currentbi->Add(*bifoptions);
             if (((*bifoptions)->pdiType != PartitionType::SLR_SLAVE_BOOT) && ((*bifoptions)->pdiType != PartitionType::SLR_SLAVE_CONFIG))
             {
-                if (currentbi->bootloaderFound && (*bifoptions)->pdiType == PartitionType::SLR_SLAVE)
+                if ((*bifoptions)->pdiType == PartitionType::SLR_SLAVE)
                 {
-                    (*bifoptions)->pdiType = PartitionType::SLR_SLAVE_BOOT;
-                }
-                else
-                {
-                    (*bifoptions)->pdiType = PartitionType::SLR_SLAVE_CONFIG;
+                    if (currentbi->bootloaderFound)
+                    {
+                        (*bifoptions)->pdiType = PartitionType::SLR_SLAVE_BOOT;
+                    }
+                    else
+                    {
+                        (*bifoptions)->pdiType = PartitionType::SLR_SLAVE_CONFIG;
+                    }
                 }
             }
             bootImages.push_back(currentbi);
@@ -147,6 +151,7 @@ void BIF_File::Output(Options& options, uint8_t index)
 {
     File::Type splitFileType = options.GetSplitType();
     std::list<std::string> outFilename = options.GetOutputFileNames();
+    std::string fName = "";
     BootImage* bi = bootImages.at(index);
     {
         if (options.GetAuthKeyGeneration() != GenAuthKeys::None)
@@ -175,17 +180,36 @@ void BIF_File::Output(Options& options, uint8_t index)
         OutputMode::Type outputMode = options.GetOutputMode();
         bi->ValidateOutputModes(splitFileType, outputMode);
 
+        if (options.GetOutType() != File::Unknown)
+        {
+            if (!outFilename.empty())
+            {
+                std::string outFile = outFilename.front();
+                fName = StringUtils::RemoveExtension(outFile);
+                outFilename.clear();
+            }
+            else
+            {
+                fName = StringUtils::RemoveExtension(biffilename);
+            }
+            fName += (options.GetOutType() == File::MCS) ? ".mcs" : ".bin";
+
+        }
+
         if (outputMode == OutputMode::OUT_SPLIT_NORMAL || outputMode == OutputMode::OUT_SPLIT_SLAVEBOOT || splitFileType != File::Unknown)
         {
             outFilename.clear();
-            std::string fName = StringUtils::RemoveExtension(biffilename);
+            if (options.GetOutType() != File::Unknown)
+            {
+                fName.clear();
+            }    
+            fName = StringUtils::RemoveExtension(biffilename);
             fName = fName.substr(fName.find_last_of("\\")+1, std::string::npos);
             if(splitFileType == File::Unknown)
             {
                 splitFileType = options.GetOutputFormat();
             }
             fName += (splitFileType == File::MCS) ? ".mcs" : ".bin";
-            outFilename.push_back(fName);
         }
 
         /* Process Bitstream Mode
@@ -193,13 +217,17 @@ void BIF_File::Output(Options& options, uint8_t index)
         if (outputMode == OutputMode::OUT_BITSTREAM) 
         {
             outFilename.clear();
-            std::string fName = bi->bitFilename;
+            fName = bi->bitFilename;
             if(bi->bitFilename.empty())
             {
                 LOG_ERROR("No bitstream in the BIF file - %s ",options.GetBifFilename().c_str());
             }
             fName += (options.GetProcessBitstreamType() == File::MCS) ? ".mcs" : ".bin";
-            outFilename.push_back(fName);
+        }
+
+        if (fName != "")
+        {
+           outFilename.push_back(fName);
         }
 
         bi->OutputPartitionFiles(options, *bi->cache);
@@ -275,6 +303,7 @@ BootImage::BootImage(Options& options, uint8_t index)
     , globalSlrId(0)
     , iht_optional_data(NULL)
     , iht_optional_data_length(0)
+    , pmcDataAesFile("")
 {
     bifOptions = options.bifOptionsList.at(index);
     Name = bifOptions->GetGroupName();
@@ -679,13 +708,13 @@ void BootImage::SetAssumeEncryptionFlag(bool flag)
 /******************************************************************************/
 std::vector<std::string>& BootImage::GetEncryptionKeyFileVec()
 { 
-    return encryptionKeyFileVec; 
+    return encryptionKeyFileVec;
 }
 
 /******************************************************************************/
 void BootImage::InsertEncryptionKeyFile(std::string filename)
 {
-    encryptionKeyFileVec.push_back(filename); 
+    encryptionKeyFileVec.push_back(filename);
 }
 
 /******************************************************************************/

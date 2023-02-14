@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2019-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -157,7 +158,21 @@ void cdocmd_add_random_command(CdoSequence * seq, uint32_t * levelp) {
              (type == CdoCmdPsmSequence && level != 0) ||
              (type == CdoCmdBegin && level >= (randu32() & 3)) ||
              (type == CdoCmdEnd && level == 0) ||
-             (type == CdoCmdBreak && level == 0));
+             (type == CdoCmdBreak && level == 0) ||
+	     (seq->version >= CDO_VERSION_2_00 && (
+                 type == CdoCmdNpiPreCfg ||
+                 type == CdoCmdNpiSeq ||
+                 type == CdoCmdNpiWrite ||
+                 type == CdoCmdNpiShutdown ||
+                 type == CdoCmdCfuSetCrc32 ||
+                 type == CdoCmdCfuDecompress ||
+                 type == CdoCmdCfuCramRW ||
+                 type == CdoCmdCfuSeuGo ||
+                 type == CdoCmdCfuCrc8Dis ||
+                 type == CdoCmdCfuSsiPerSlrPr ||
+                 type == CdoCmdCfuGsrGsc ||
+                 type == CdoCmdCfuGcapClkEn ||
+                 type == CdoCmdCfuCfiType)));
     cmd = cdocmd_alloc(type);
     cmd->id = randu32();
     cmd->dstaddr = randu64();
@@ -192,7 +207,8 @@ void cdocmd_add_random_command(CdoSequence * seq, uint32_t * levelp) {
         cmd->type == CdoCmdPmAddRequirement ||
         cmd->type == CdoCmdPmInitNode ||
         cmd->type == CdoCmdPmSetNodeAccess ||
-        cmd->type == CdoCmdPmNocClockEnable) {
+        cmd->type == CdoCmdPmNocClockEnable ||
+        cmd->type == CdoCmdSemNpiTable) {
         uint32_t * p;
         uint32_t i;
         cmd->count = (cmd->count & 15) + 1;
@@ -956,6 +972,12 @@ void cdocmd_add_scatter_write2(CdoSequence * seq, uint32_t value1, uint32_t valu
     add_command(seq, cmd);
 }
 
+void cdocmd_add_tamper_trigger(CdoSequence * seq, uint32_t value) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdTamperTrigger);
+    cmd->value = value;
+    add_command(seq, cmd);
+}
+
 void cdocmd_add_pm_register_notifier(CdoSequence * seq, uint32_t nodeid, uint32_t mask, uint32_t arg1, uint32_t arg2) {
     CdoCommand * cmd = cdocmd_alloc(CdoCmdPmRegisterNotifier);
     cmd->id = nodeid;
@@ -985,6 +1007,15 @@ void cdocmd_add_ldr_set_image_info(CdoSequence * seq, uint32_t nodeid, uint32_t 
 void cdocmd_add_ldr_cframe_clear_check(CdoSequence * seq, uint32_t block_type) {
     CdoCommand * cmd = cdocmd_alloc(CdoCmdLdrCframeClearCheck);
     cmd->id = block_type;
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_sem_npi_table(CdoSequence * seq, uint32_t nodeid, uint32_t flags, uint32_t count, void * buf, uint32_t be) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdSemNpiTable);
+    cmd->id = nodeid;
+    cmd->flags = flags;
+    cmd->count = count;
+    cmd->buf = copy_buf(buf, count, be);
     add_command(seq, cmd);
 }
 

@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -161,7 +162,8 @@ struct BootDevice
        SDLSRAW,
        MMCRAW,
        MMC0,
-       MMC0RAW
+       MMC0RAW,
+       IMAGESTORE
     } Type;
 };
 
@@ -428,7 +430,8 @@ struct PartitionType
         SLR_CONFIG,
         SLR_SLAVE,
         SLR_SLAVE_BOOT,
-        SLR_SLAVE_CONFIG
+        SLR_SLAVE_CONFIG,
+        IMAGE_STORE_PDI
     } Type;
 };
 

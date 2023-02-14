@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -1459,8 +1460,8 @@ void DataStreamEncryption::InitializeInputDataStream(const uint8_t* inputData,
 void DataStreamEncryption::InitializeHMAC_ioPadData(uint8_t padByte, uint8_t* padBuffer)
 {
     /* Setup the ioPad buffer with it's default value.
-    ioPad buffers are really 512 bits long, Xilinx HMAC keys are only 256 bits long.
-    So use the Xilinx byte length times 2 to initialize the entire buffer.
+    ioPad buffers are really 512 bits long, HMAC keys are only 256 bits long.
+    So use the byte length times 2 to initialize the entire buffer.
     This will set the second half of the HMAC key to the default iPad or oPad value. */
     memset(padBuffer, padByte, BYTES_PER_HMAC_KEY * 2);
 

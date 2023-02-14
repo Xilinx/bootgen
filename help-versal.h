@@ -1,5 +1,6 @@
 /******************************************************************************
-* Copyright 2015-2020 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -102,7 +103,8 @@
  ATTRIBUTE   | ppkfile, pskfile, spkfile, sskfile                             |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | These keys are used to authenticate partitions in the bootimage|\n\
-             | Xilinx SoCs use primary & secondary keys for authentication.   |\n\
+             | A pair of keys, Primary & Secondary are used in the            |\n\
+			 | authentication process.                                        |\n\
              | The primary keys authenticate the secondary keys and the       |\n\
              | secondary keys authenticate the partitions.                    |\n\
              |    PPK - Primary Public Key                                    |\n\

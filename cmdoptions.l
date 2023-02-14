@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -137,6 +138,7 @@
 \-noauthblocks              return tok::_NOAUTHBLOCKS;
 \-zynqmpes1                 return tok::_ZYNQMPES1;
 \-overlay_cdo               return tok::_OVERLAYCDO;
+\-out_type                  return tok::_OUT_TYPE;
 
 \-h                         return tok::_H;
 \-help                      return tok::_H;
@@ -169,6 +171,7 @@ read                        return tok::HREAD;
 dump                        return tok::HDUMP;
 dump_dir                    return tok::HDUMPDIR;
 overlay_cdo                 return tok::HOVLCDO;
+out_type                    return tok::HOUTTYPE;
 
 aarch32_mode                return tok::H_BIF_AARCH32;
 big_endian                  return tok::H_BIF_BIGENDIAN;
@@ -233,6 +236,9 @@ bootvectors                 return tok::H_BIF_BOOTVEC;
 puf_file                    return tok::H_BIF_PUFDATA;
 dpacm_enable                return tok::H_DPACM_ENABLE;
 userkeys                    return tok::H_BIF_USERKEYS;
+pcr                         return tok::HVN_BIF_PCR;
+pcr_mindex                  return tok::HVN_BIF_PCR_MINDEX;
+imagestore                  return tok::HV_BIF_IMAGESTORE;
 
 
 

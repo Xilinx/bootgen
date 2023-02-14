@@ -33,7 +33,7 @@
 
 /* First part of user declarations.  */
 /* Line 279 of lalr1.cc  */
-#line 52 "../../s/reginit.y"
+#line 53 "../../s/reginit.y"
 
 #include <stdio.h>
 #include "reginitscanner.h"
@@ -52,7 +52,7 @@
 #line 53 "reginit.tab.cpp"
 /* Unqualified %code blocks.  */
 /* Line 286 of lalr1.cc  */
-#line 48 "../../s/reginit.y"
+#line 49 "../../s/reginit.y"
 
     static int yylex(RE::BisonParser::semantic_type * yylval, RE::BisonParser::location_type* loc, RE::FlexScanner &scanner);
 
@@ -151,7 +151,7 @@ do {					\
 #define YYRECOVERING()  (!!yyerrstatus_)
 
 /* Line 353 of lalr1.cc  */
-#line 23 "../../s/reginit.y"
+#line 24 "../../s/reginit.y"
 namespace RE {
 /* Line 353 of lalr1.cc  */
 #line 158 "reginit.tab.cpp"
@@ -313,7 +313,7 @@ namespace RE {
 
 /* User initialization code.  */
 /* Line 545 of lalr1.cc  */
-#line 31 "../../s/reginit.y"
+#line 32 "../../s/reginit.y"
 {
        // Initialize the initial location.
        yylloc.begin.filename = yylloc.end.filename = &scanner.filename;
@@ -439,85 +439,85 @@ namespace RE {
       {
           case 5:
 /* Line 670 of lalr1.cc  */
-#line 90 "../../s/reginit.y"
+#line 91 "../../s/reginit.y"
     { regtab.Add(options,(yysemantic_stack_[(5) - (2)].number),(yysemantic_stack_[(5) - (4)].number)); }
     break;
 
   case 8:
 /* Line 670 of lalr1.cc  */
-#line 94 "../../s/reginit.y"
+#line 95 "../../s/reginit.y"
     { (yyval.number) = (yysemantic_stack_[(3) - (2)].number); }
     break;
 
   case 10:
 /* Line 670 of lalr1.cc  */
-#line 98 "../../s/reginit.y"
+#line 99 "../../s/reginit.y"
     {(yyval.number) =  (yysemantic_stack_[(2) - (2)].number);     *options.debugstr << (yyval.number) << "    + " << (yysemantic_stack_[(2) - (2)].number) << std::endl;}
     break;
 
   case 11:
 /* Line 670 of lalr1.cc  */
-#line 99 "../../s/reginit.y"
+#line 100 "../../s/reginit.y"
     {(yyval.number) = ~(yysemantic_stack_[(2) - (2)].number);     *options.debugstr << (yyval.number) << "    ~ " << (yysemantic_stack_[(2) - (2)].number) << std::endl;}
     break;
 
   case 13:
 /* Line 670 of lalr1.cc  */
-#line 104 "../../s/reginit.y"
+#line 105 "../../s/reginit.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) *  (yysemantic_stack_[(3) - (3)].number); *options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " + " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 14:
 /* Line 670 of lalr1.cc  */
-#line 105 "../../s/reginit.y"
+#line 106 "../../s/reginit.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) /  (yysemantic_stack_[(3) - (3)].number); *options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " / " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 15:
 /* Line 670 of lalr1.cc  */
-#line 106 "../../s/reginit.y"
+#line 107 "../../s/reginit.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) %  (yysemantic_stack_[(3) - (3)].number); *options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " % " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 17:
 /* Line 670 of lalr1.cc  */
-#line 111 "../../s/reginit.y"
+#line 112 "../../s/reginit.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) +  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " + " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 18:
 /* Line 670 of lalr1.cc  */
-#line 112 "../../s/reginit.y"
+#line 113 "../../s/reginit.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) -  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " - " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 20:
 /* Line 670 of lalr1.cc  */
-#line 117 "../../s/reginit.y"
+#line 118 "../../s/reginit.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) << (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " << " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 21:
 /* Line 670 of lalr1.cc  */
-#line 118 "../../s/reginit.y"
+#line 119 "../../s/reginit.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) >> (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " >> " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 23:
 /* Line 670 of lalr1.cc  */
-#line 123 "../../s/reginit.y"
+#line 124 "../../s/reginit.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) &  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " & " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 25:
 /* Line 670 of lalr1.cc  */
-#line 128 "../../s/reginit.y"
+#line 129 "../../s/reginit.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) ^  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " ^ " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 27:
 /* Line 670 of lalr1.cc  */
-#line 133 "../../s/reginit.y"
+#line 134 "../../s/reginit.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) |  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " | " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
@@ -884,9 +884,9 @@ namespace RE {
   const unsigned char
   BisonParser::yyrline_[] =
   {
-         0,    86,    86,    88,    88,    90,    92,    93,    94,    97,
-      98,    99,   103,   104,   105,   106,   110,   111,   112,   116,
-     117,   118,   122,   123,   127,   128,   132,   133
+         0,    87,    87,    89,    89,    91,    93,    94,    95,    98,
+      99,   100,   104,   105,   106,   107,   111,   112,   113,   117,
+     118,   119,   123,   124,   128,   129,   133,   134
   };
 
   // Print the state stack on the debug stream.
@@ -974,12 +974,12 @@ namespace RE {
   const BisonParser::token_number_type BisonParser::yyundef_token_ = 2;
 
 /* Line 1141 of lalr1.cc  */
-#line 23 "../../s/reginit.y"
+#line 24 "../../s/reginit.y"
 } // RE
 /* Line 1141 of lalr1.cc  */
 #line 981 "reginit.tab.cpp"
 /* Line 1142 of lalr1.cc  */
-#line 137 "../../s/reginit.y"
+#line 138 "../../s/reginit.y"
 
 
 

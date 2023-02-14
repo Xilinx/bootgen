@@ -1,6 +1,7 @@
 
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -157,6 +158,8 @@ void VersalPartitionHeader::ReadHeader(std::ifstream& ifs)
     early_handoff = GetEarlyHandoff();
     hivec = GetHivec();
     partitionUid = GetPartitionUid();
+    lockstep = GetLockStepFlag();
+    cluster = GetDestinationCluster();
 
     presigned = (authCertPresent != 0);
     if (presigned)
@@ -782,6 +785,12 @@ uint8_t VersalPartitionHeader::GetDestinationCpu(void)
 }
 
 /******************************************************************************/
+uint8_t VersalPartitionHeader::GetDestinationCluster(void)
+{
+    return ((pHTable->partitionAttributes >> vNetphtClusterShift) & vNetphtClusterMask);
+}
+
+/******************************************************************************/
 uint8_t VersalPartitionHeader::GetProcessorExecState(void)
 {
     return ((pHTable->partitionAttributes >> vphtExecStateShift) & vphtExecStateMask);
@@ -855,6 +864,12 @@ PufHdLoc::Type VersalPartitionHeader::GetPufHdLocation(void)
 }
 
 /******************************************************************************/
+Lockstep::Type VersalPartitionHeader::GetLockStepFlag (void)
+{
+    return (Lockstep::Type)((pHTable->partitionAttributes >> vNetphtlockStepShift) & vNetphtlockStepMask);
+}
+
+/******************************************************************************/
 uint64_t VersalPartitionHeader::GetLQspiExecAddrForXip(uint64_t execAddr)
 {
     //SH -Revisit these addresses needs to be modfied for versal
@@ -921,7 +936,7 @@ void VersalPartitionHeaderTable::Build(BootImage & bi, Binary & cache)
         {
             if (bi.subSysImageList.size() > MAX_NUM_IMAGES_VERSAL)
             {
-                LOG_ERROR("The maximum number of images supported for Versal is %d.\n           No. of images found : %d", MAX_NUM_IMAGES_VERSAL, bi.imageList.size());
+                LOG_ERROR("The maximum number of images supported for Versal is %d.\n           No. of images found : %d", MAX_NUM_IMAGES_VERSAL, bi.subSysImageList.size());
             }
             if (bi.partitionHeaderList.size() > MAX_NUM_PARTITIONS_VERSAL)
             {

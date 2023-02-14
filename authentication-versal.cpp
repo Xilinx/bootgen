@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -1486,7 +1487,7 @@ void VersalAuthenticationContext::CreateAuthJtagImage(uint8_t* buffer, AuthJtagI
 
         authAlgorithm->CreateSignature(shaHashPadded, (uint8_t*)primaryKey, authJtagImage->authJtagSignature);
         authAlgorithm->RearrangeEndianess(authJtagImage->authJtagSignature, signatureLength);
-
+        memset(authJtagImage->padto2KB, 0, sizeof(authJtagImage->padto2KB));
         delete[] shaHash;
         delete[] shaHashPadded;
     }

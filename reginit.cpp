@@ -1,6 +1,7 @@
 
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -58,13 +59,13 @@ void RegisterTable::Build(Options& options, RegisterInitTable* regtab0)
         LOG_INFO("Done RE parsing : %s. Added %d regiter pairs", filename.c_str(), count);
     }
 
-    if (invalidAddr.size() != 0)
+    if(invalidAddr.size() != 0)
     {
-        LOG_MSG("[WARNING]: Given ini file has the below invalid Addresses : %s", filename.c_str());
         for (size_t itr = 0; itr < invalidAddr.size(); itr++)
         {
             LOG_MSG("\t   0x%x", invalidAddr[itr]);
         }
+        LOG_ERROR("Given ini file has the above invalid Addresses : %s", filename.c_str());
     }
 
     /* Fill the remainder of the area with NOPs. */

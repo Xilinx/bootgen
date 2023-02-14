@@ -41,7 +41,7 @@
 # include "position.hh"
 
 /* Line 166 of location.cc  */
-#line 23 "../s/bif.y"
+#line 24 "../s/bif.y"
 namespace BIF {
 /* Line 166 of location.cc  */
 #line 48 "../bisonflex/location.hh"
@@ -175,7 +175,7 @@ namespace BIF {
   }
 
 /* Line 296 of location.cc  */
-#line 23 "../s/bif.y"
+#line 24 "../s/bif.y"
 } // BIF
 /* Line 296 of location.cc  */
 #line 182 "../bisonflex/location.hh"

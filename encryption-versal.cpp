@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -1051,13 +1052,13 @@ void VersalEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr)
         }
 
         // PMC Data Encryption
-        if (options.bifOptions->pmcDataAesFile != "")
+        if (bi.pmcDataAesFile != "")
         {
             aesKey = aesIv = aesSeed = NULL;
             fixedInputData = NULL;
             aesSeedexits = false;
             fixedInputDataExits = false;
-            SetAesFileName(options.bifOptions->pmcDataAesFile);
+            SetAesFileName(bi.pmcDataAesFile);
             LOG_INFO("Key file - %s", aesFilename.c_str());
             std::ifstream keyFile(aesFilename);
             bool fileExists = keyFile.good();

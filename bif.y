@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -114,7 +115,7 @@ ImageBifOptions* currentImageBifOptions;
 %token                  PRESIGN BIF_SECTION
 %token                  UDF_DATA
 %token                  MCS BIN
-%token                  SLR_NUM CLUSTER_NUM DICE
+%token                  SLR_NUM CLUSTER_NUM DICE PCR_NUMBER PCR_MEASUREMENT_INDEX IMAGE_STORE
 %token                  PARENT_ID ID_CODE EXT_ID_CODE BYPASS_IDCODE_CHECK A_HWROT S_HWROT UNIQUE_ID PARENT_UNIQUE_ID FUNCTION_ID
 %token                  IMAGE ID NAME DELAY_HANDOFF DELAY_LOAD COPY INCLUDE DELAY_AUTH
 %token                  PARTITION PFILE
@@ -229,7 +230,7 @@ metahdr_attr_list       :  metahdr_attr
 metahdr_attr            :   /* empty */
                         |   ENCRYPTION EQUAL encrvalue                          { currentBifOptions->SetMetaHeaderEncryptType($3); }
                         |   KEYSRC_ENCRYPTION EQUAL key_src                     { currentBifOptions->SetMetaHeaderEncryptionKeySource($3, options.IsVersalNetSeries()); }
-                        |   AES_KEY_FILE EQUAL filename                         { currentBifOptions->metaHdrAttributes.encrKeyFile = $3; }
+                        |   AES_KEY_FILE EQUAL filename                         { currentBifOptions->SetMetaHeaderEncryptionKeyFile($3); }
                         |   AUTHENTICATION EQUAL authvalue                      { currentBifOptions->SetMetaHeaderAuthType($3); }
                         |   PPK_FILE EQUAL filename                             { currentBifOptions->metaHdrAttributes.ppk = $3; }
                         |   PSK_FILE EQUAL filename                             { currentBifOptions->metaHdrAttributes.psk = $3; }
@@ -294,6 +295,12 @@ image_attributes        :   ID EQUAL expression                                 
                         |   UNIQUE_ID EQUAL expression                          { currentImageBifOptions->SetUniqueId($3); }
                         |   PARENT_UNIQUE_ID EQUAL expression                   { currentImageBifOptions->SetParentUniqueId($3); }
                         |   FUNCTION_ID EQUAL expression                        { currentImageBifOptions->SetFunctionId($3); }
+                        |   PCR_NUMBER EQUAL expression                         { if(!options.IsVersalNetSeries())
+                                                                                    LOG_ERROR("BIF attribute error !!!\n\t  'pcr' is supported only for VERSAL NET architecture");
+                                                                                  currentImageBifOptions->SetPcrNumber($3); }
+                        |   PCR_MEASUREMENT_INDEX EQUAL expression              { if(!options.IsVersalNetSeries())
+                                                                                    LOG_ERROR("BIF attribute error !!!\n\t  'pcr_mid' is supported only for VERSAL NET architecture");
+                                                                                  currentImageBifOptions->SetPcrMeasurementIndex($3); }
                         ;
 
 partition_spec          :   PARTITION partition_content
@@ -330,6 +337,7 @@ sec_boot_attr_list      :   sec_boot_attr
                         ;
 
 sec_boot_attr           :   boot_device_type                                    { currentBifOptions->SetBootDevice($1); }
+                        |   IMAGE_STORE                                         { currentBifOptions->SetBootDevice(BootDevice::IMAGESTORE); }
                         |   ADDRESS EQUAL expression                            { currentBifOptions->SetBootDeviceAddress($3); }
                         ;
 
@@ -350,7 +358,11 @@ authjtag_attr           :   REVOKE_ID EQUAL expression           { currentBifOpt
 fsbl_attr               :   core                                                { currentBifOptions->SetCore($1);
                                                                                   LOG_WARNING("[fsbl_config] a53_x64 | a53_x32 | r5_single | r5_dual is no more supported. Use 'destination_cpu' attribute for bootloader partition"); }
 
-                        |   bh_rsa                                              { currentBifOptions->SetBhRsa($1); }
+                        |   bh_rsa                                              { if(options.GetArchType() == Arch::VERSAL && options.IsVersalNetSeries())
+                                                                                     LOG_ERROR("BIF attribute error !!! 'bh_auth_enable' is not supported with '-arch versalnet'.\n\t   Bootheader or eFuse authentication will be chosen based on eFuse bits.");
+                                                                                  else
+                                                                                     currentBifOptions->SetBhRsa($1); 
+                                                                                }
 
                         |   auth_hash                                           { LOG_ERROR("Authentication using SHA2 is no more supported."); }
 
@@ -422,6 +434,8 @@ new_attribute           :   PFILE EQUAL filename                                
                                                                                   currentPartitionBifOptions->filelist.push_back($3);
                                                                                   currentBifOptions->Add(currentPartitionBifOptions, currentImageBifOptions); }
                         |   ID EQUAL expression                                 { currentPartitionBifOptions->partitionId = $3; }
+                        |   IMAGE_STORE EQUAL expression                        { currentPartitionBifOptions->imageStoreId = $3;
+                                                                                  currentPartitionBifOptions->SetPartitionType(PartitionType::IMAGE_STORE_PDI); }
                         |   PARTITION_TYPE EQUAL boolattr
                         |   PARTITION_TYPE EQUAL PMCDATA                        { currentPartitionBifOptions->fileType = $3; }
                         |   BIF_SECTION EQUAL WORD                              { currentPartitionBifOptions->bifSection = $3;

@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -95,8 +96,8 @@ typedef enum
 
 typedef enum
 {
-    vihtIdCodeCheckShift = 0,
-    vihtIdCodeCheckMask = 0x1,
+    vihtSiliconRevisionIdCodeCheckShift = 0,
+    vihtSiliconRevisionIdCodeCheckMask = 0x1,
 
     vihtImageCreatorIdShift = 1,
     vihtImageCreatorIdMask = 0x1F,
@@ -109,6 +110,9 @@ typedef enum
 
     vihtPufHDLocationShift = 14,
     vihtPufHDLocationMask = 0x3,
+
+    vihtIdCodeCheckShift = 16,
+    vihtIdCodeCheckMask = 0x3,
 } VersalIHTAttributes;
 
 
@@ -169,7 +173,8 @@ typedef struct
     uint32_t functionId;                        // 0x2C
     uint32_t memcpyAddressLo;                   // 0x30
     uint32_t memcpyAddressHi;                   // 0x34
-    uint32_t reserved;                          // 0x38
+    uint16_t pcrNumber;                         // 0x38
+    uint16_t pcrMeasurementIndex;               // 0x3A
     uint32_t ihChecksum;                        // 0x3C
 } VersalImageHeaderStructure;
 
@@ -181,6 +186,16 @@ typedef struct
     uint32_t lo_address;
     uint8_t* data;
 } CdoCommandDmaWrite;
+
+typedef struct
+{
+    uint32_t header;
+    uint32_t length;
+    uint32_t id;
+    uint8_t* data;
+} CdoCommandWriteImageStore;
+
+#define CDO_CMD_WRITE_IMAGE_STORE_SIZE 12
 
 typedef struct
 {
@@ -387,6 +402,7 @@ public:
     void CreateAieEnginePartition(BootImage& bi);
     uint64_t ImportAieEngineElfCdo(std::string);
     uint32_t CdoCmdDmaWrite(uint32_t pSize, uint64_t pAddr, uint8_t *databuffer);
+    uint32_t CdoCmdWriteImageStore(uint32_t pSize, uint64_t id, uint8_t *databuffer);
     void SetLoadAndExecAddress(PartitionHeader *partHdr);
     std::list<std::string> ParseAieJson(const char* filename);
     std::list <std::string> GetAieFilesPath(std::string);
@@ -410,11 +426,11 @@ public:
     void SetImageId();
     void SetPartitionRevocationId(uint32_t id);
     void SetMemCopyAddr();
-    void SetReservedFields(void);
     void SetChecksum(void);
     void SetAuthBlock(size_t blockSize, bool flag);
     void SetSlrBootPartitions(std::list<SlrPdiInfo*>);
     void SetSlrConfigPartitions(std::list<SlrPdiInfo*>);
+    void SetWriteImageStorePartitions(ImageStorePdiInfo*);
     void SetDpacm(DpaCM::Type);
     void SetPufHdLocation(PufHdLoc::Type type);
 
@@ -432,8 +448,9 @@ private:
     void ParseSlrConfigFiles(size_t* slr_total_file_size);
     void CheckSyncPointInChunk(SsitConfigSlrInfo* slr_info, size_t size);
     uint32_t FindCurrentSyncPoint(void);
-    void CheckIdsInCdo(CdoSequence * cdo_seq);
+    void CheckIdsInCdo(CdoSequence * cdo_seq, bool isVersalNetSeries, std::string cdo_filename);
     void SetPowerDomains(uint8_t* buf, uint32_t count);
+    void CreateWriteImageStorePartition();
     void LogConfigSlrDetails(size_t chunk_num, uint8_t slr_num, size_t offset, size_t chunk_size, size_t sync_points);
     void PrintConfigSlrSummary(void);
     uint64_t slr_total_file_size;
@@ -472,6 +489,8 @@ public:
 
     void Build(BootImage& bi, Binary& cache);
     void Link(BootImage &bi, SubSysImageHeader* nextheader);
+    void SetPCRMeasurementIndex(bool);
+    void SetPCRNumber(bool);
     void SetSubSystemName(std::string);
     void SetSubSystemId(uint32_t);
     void SetSubSystemType(PartitionType::Type);
@@ -485,7 +504,6 @@ public:
     void SetImageHeaderAttributes();
     void SetImageName(void);
     void SetImageHeaderIds();
-    void SetReservedFields(void);
     void SetChecksum(void);
 
     uint32_t GetPartitionHeaderOffset(void);
@@ -498,6 +516,8 @@ public:
     PartitionType::Type GetSubSystemType(void);
     std::string GetSubSystemName(void);
     uint32_t GetSubSystemId(void);
+    uint16_t GetPCRNumber() { return pcrNumber; }
+    uint16_t GetPCRMeasurementIndex() { return pcrMeasurementIndex; }
 
     uint32_t num_of_images;
     std::list<ImageHeader*> imgList;
@@ -517,6 +537,8 @@ protected:
     uint32_t uniqueId;
     uint32_t parentUniqueId;
     uint32_t functionId;
+    uint16_t pcrNumber;
+    uint16_t pcrMeasurementIndex;
 };
 
 #endif

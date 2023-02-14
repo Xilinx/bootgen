@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -116,6 +117,7 @@ public:
         , dumpPath("")
         , deviceKeyStored(false)
         , versalNetSeries(false)
+        , outType(File::Unknown)
     {
         cmdEncryptOptions = new CommndLineEncryptOptions();
     };
@@ -186,6 +188,7 @@ public:
     void SetSecureDebugAuthType(Authentication::Type type);
     void SetSecureDebugImageFile(std::string);
     void SetOverlayCDOFileName (std::string);
+    void SetOutType (File::Type);
     
     std::string GetBifFilename (void);
     KeySource::Type GetEncryptedKeySource (void);
@@ -234,6 +237,7 @@ public:
     std::string GetOverlayCDOFileName (void);
     bool IsSsitBif(void);
     bool IsVersalNetSeries(void) { return versalNetSeries; }
+	File::Type GetOutType (void);
 
     uint32_t totalHeadersSize;
     uint32_t bootheaderSize;
@@ -289,6 +293,7 @@ public:
     Authentication::Type secureDebugAuthType;
     std::string secureDebugImageFilename;
     std::string overlayCDOFile;
+	File::Type outType;
 private:
     bool versalNetSeries;
 };

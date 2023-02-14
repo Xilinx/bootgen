@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2019-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -19,6 +20,8 @@
 #include <errno.h>
 #include <string.h>
 #include <inttypes.h>
+#include "cdo-binary.h"
+#include "cdo-alloc.h"
 #include "cdo-raw.h"
 
 #define isspc(c) (c == ' ' || c == '\t')
@@ -94,30 +97,33 @@ static uint32_t parse_hex8(char ** sp, uint32_t * valuep) {
     return 0;
 }
 
-CdoRawInfo * decode_raw(CdoSequence ** seq, void * data, size_t size) {
+static void copy_metadata(char * dst, size_t dstmax, char * src, size_t srclen) {
+    size_t len = srclen;
+    if (srclen >= dstmax) len = dstmax - 1;
+    memcpy(dst, src, len);
+    dst[len] = '\0';
+}
+
+CdoRawInfo * cdoraw_decode(void * data, size_t size) {
     CdoRawInfo * raw = NULL;
-    CdoRawType type;
+    size_t capacity = 0;
     size_t offset = 0;
     char * s = data;
     char * e = s + size;
     char * p = s;
     uint32_t words = 0;
-    int invalid_size = 0;
     uint64_t bits = 0;
     skipline(s, e);
     if ((s-p == 28 && memcmp(p, "Xilinx ASCII NPI Deviceimage", s-p) == 0) ||
         (s-p == 32 && memcmp(p, "Xilinx ASCII PSAXIMM Deviceimage", s-p) == 0)) {
-        type = CdoRawCdo;
+        raw = cdoraw_create(CdoRawCdo);
         words = 1;
     } else if ((s-p == 22 && memcmp(p, "Xilinx ASCII Bitstream", s-p) == 0) ||
                (s-p == 28 && memcmp(p, "Xilinx ASCII CFI Deviceimage", s-p) == 0)) {
-        type = CdoRawCfi;
+        raw = cdoraw_create(CdoRawCfi);
         words = 4;
     } else if (s-p == 2) {
-        raw = (CdoRawInfo *)malloc(sizeof * raw);
-        if (raw == NULL) goto error;
-        raw->type = CdoRawUnknown;
-        raw->size = 4;
+        raw = cdoraw_create(CdoRawUnknown);
         s = p;
         while (s < e) {
             uint32_t value = 0;
@@ -133,9 +139,9 @@ CdoRawInfo * decode_raw(CdoSequence ** seq, void * data, size_t size) {
                 if (!isnewline(*s)) goto error;
                 skipnewline(s, e);
             }
-            if (offset >= raw->size/4) {
-                raw->size *= 2;
-                raw = (CdoRawInfo *)realloc(raw, sizeof * raw + raw->size);
+            if (offset >= capacity) {
+                capacity = capacity ? capacity * 2 : 1;
+                raw->data = (uint32_t *)myrealloc(raw->data, capacity * sizeof *raw->data);
             }
             raw->data[offset++] = value;
         }
@@ -147,73 +153,72 @@ CdoRawInfo * decode_raw(CdoSequence ** seq, void * data, size_t size) {
         goto error;
     }
     skipnewline(s, e);
-    *seq = cdocmd_create_sequence();
     while (s < e) {
-        char buf[1024];
         p = s;
         skipline(s, e);
+        if (s >= e) goto error;
         if (s-p >= 10 && memcmp(p, "Created by", 10) == 0) {
             p += 10;
-            /*strncpy(buf, p, s - p);
-            buf[s - p] = '\0';
-            cdocmd_add_marker(*seq, 1, buf);*/
+            skipsp(p);
+            while (p < s && isspc(s[-1])) s--;
+            /*copy_metadata(raw->meta.creator, sizeof raw->meta.creator, p, s-p);*/
         } else if (s-p >= 12 && memcmp(p, "Design name:", 12) == 0) {
-            // TODO: Design name includes SLR, add it as a separate marker
             p += 12;
-            strncpy(buf, p, s - p);
-            buf[s - p] = '\0';
-            cdocmd_add_marker(*seq, 2, buf);
+            skipsp(p);
+            while (p < s && isspc(s[-1])) s--;
+            copy_metadata(raw->meta.design, sizeof raw->meta.design, p, s-p);
         } else if (s-p >= 13 && memcmp(p, "Architecture:", 13) == 0) {
             p += 13;
-            strncpy(buf, p, s - p);
-            buf[s - p] = '\0';
-            cdocmd_add_marker(*seq, 3, buf);
+            skipsp(p);
+            while (p < s && isspc(s[-1])) s--;
+            copy_metadata(raw->meta.arch, sizeof raw->meta.arch, p, s-p);
         } else if (s-p >= 5 && memcmp(p, "Part:", 5) == 0) {
             p += 5;
-            strncpy(buf, p, s - p);
-            buf[s - p] = '\0';
-            cdocmd_add_marker(*seq, 4, buf);
+            skipsp(p);
+            while (p < s && isspc(s[-1])) s--;
+            copy_metadata(raw->meta.part, sizeof raw->meta.part, p, s-p);
         } else if (s-p >= 5 && memcmp(p, "Date:", 5) == 0) {
             p += 5;
-            /*strncpy(buf, p, s - p);
-            buf[s - p] = '\0';
-            cdocmd_add_marker(*seq, 6, buf);*/
+            skipsp(p);
+            while (p < s && isspc(s[-1])) s--;
+            /*copy_metadata(raw->meta.date, sizeof raw->meta.date, p, s-p);*/
         } else if (s-p >= 5 && memcmp(p, "Bits:", 5) == 0) {
-            uint64_t bytes;
-            if (s >= e) goto error;
             p += 5;
-            while (p < s && isspc(*p)) p++;
+            skipsp(p);
             if (parse_u64(&p, &bits)) goto error;
-            if ((bits & 7) != 0) goto error;
-            bytes = bits / 8;
-            if ((bytes/4 & (words - 1)) != 0) goto error;
-            raw = (CdoRawInfo *)malloc(sizeof * raw + bytes);
-            if (raw == NULL) goto error;
-            raw->type = type;
-            raw->size = bytes;
-            skipnewline(s, e);
-            break;
+            skipsp(p);
+            if (p != s) goto error;
+        } else {
+            char * q = p;
+            while (q < s && *q != ':') q++;
+            if (q == s) {
+                /* End of raw header */
+                s = p;
+                break;
+            }
+            fprintf(stderr, "warning: unexpected raw header: %.*s\n", (int)(s-p), p);
         }
         skipnewline(s, e);
     }
     while (s < e) {
         uint32_t value;
-        if (offset >= raw->size/4) {
-            raw->size *= 2;
-            raw = (CdoRawInfo *)realloc(raw, sizeof * raw + raw->size);
-            invalid_size = 1;
+        p = s;
+        skipline(s, e);
+        if (s >= e) goto error;
+        if (parse_hex32(&p, &value)) goto error;
+        if (offset >= capacity) {
+            capacity = capacity ? capacity * 2 : 1;
+            raw->data = (uint32_t *)myrealloc(raw->data, capacity * sizeof *raw->data);
         }
-        if (parse_hex32(&s, &value)) goto error;
         raw->data[offset++] = value;
         if ((offset % words) == 0) {
-            if (!isnewline(*s)) goto error;
+            if (p != s) goto error;
             skipnewline(s, e);
         }
     }
     if (s < e) goto error;
-    if (offset != raw->size/4) invalid_size = 1;
-    if (invalid_size) {
-        raw->size = offset * 4;
+    raw->size = offset * 4;
+    if ((uint64_t)raw->size * 8 != bits) {
         fprintf(stderr, "warning: invalid bits parameter in raw file %"PRIu64", expected %"PRIu64"\n", bits, (uint64_t)raw->size * 8);
     }
     return raw;
@@ -223,21 +228,65 @@ error:
     return NULL;
 }
 
-void encode_raw(FILE * f, void * data, size_t size) {
+void cdoraw_encode(CdoRawInfo * raw, FILE * f) {
     const char hexstr[] = "0123456789abcdef";
-    uint8_t * p = (uint8_t *)data;
+    uint8_t * p = (uint8_t *)raw->data;
+    size_t size = raw->size;
     size_t i;
     fprintf(f, "Xilinx ASCII NPI Deviceimage\n");
-    fprintf(f, "Created by CDO utility\n");
-    fprintf(f, "Design name:  \n");
-    fprintf(f, "Architecture: \n");
-    fprintf(f, "Part:         \n");
-    fprintf(f, "Date:         \n");
-    fprintf(f, "Bits:         %"PRIu64"\n", (uint64_t)size * 8);
+    fprintf(f, "Created by %s\n", raw->meta.creator ? raw->meta.creator : "CDO utility");
+    fprintf(f, "Design name: \t%s\n", raw->meta.design ? raw->meta.design : "");
+    fprintf(f, "Architecture:\t%s\n", raw->meta.arch ? raw->meta.arch : "");
+    fprintf(f, "Part:        \t%s\n", raw->meta.part ? raw->meta.part : "");
+    fprintf(f, "Date:        \t%s\n", raw->meta.date ? raw->meta.date : "");
+    fprintf(f, "Bits:        \t%"PRIu64"\n", (uint64_t)size * 8);
     for (i = 0; i < size; i++) {
         uint8_t b = p[i];
         putc(hexstr[(b >> 4) & 15], f);
         putc(hexstr[b & 15], f);
         if ((i & 3) == 3) putc('\n', f);
     }
+}
+
+void cdoraw_encode_seq(FILE * f, CdoSequence * seq, uint32_t be) {
+    CdoRawInfo * raw = cdoraw_create(CdoRawCdo);
+    cdometa_extract(&raw->meta, seq);
+    raw->data = cdoseq_to_binary(seq, &raw->size, be);
+    cdoraw_encode(raw, f);
+    cdoraw_delete(raw);
+}
+
+CdoRawInfo * cdoraw_create(CdoRawType type) {
+    CdoRawInfo * raw = (CdoRawInfo *)myalloc_zero(sizeof * raw);
+    raw->type = type;
+    return raw;
+}
+
+void cdoraw_delete(CdoRawInfo * raw) {
+    if (!raw->data_free_disable) {
+        myfree(raw->data);
+    }
+    myfree(raw);
+}
+
+CdoRawInfo * decode_raw(void * data, size_t size) {
+    CdoRawInfo * raw = cdoraw_decode(data, size);
+    CdoRawInfo * newraw = NULL;
+    if (raw == NULL) return NULL;
+    newraw = (CdoRawInfo *)myalloc(sizeof * newraw + raw->size);
+    *newraw = *raw;
+    newraw->data = (uint32_t *)(newraw + 1);
+    memcpy(newraw->data, raw->data, raw->size);
+    newraw->data_free_disable = 1;
+    cdoraw_delete(raw);
+    return newraw;
+}
+
+void encode_raw(FILE * f, void * data, size_t size) {
+    CdoRawInfo * raw = cdoraw_create(CdoRawCdo);
+    raw->data = data;
+    raw->size = size;
+    raw->data_free_disable = 1;
+    cdoraw_encode(raw, f);
+    cdoraw_delete(raw);
 }

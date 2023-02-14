@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -35,8 +36,7 @@
 -------------+----------------------------------------------------------------+\n\
  OPTION      | arch                                                           |\n\
 -------------+----------------------------------------------------------------+\n\
- DESCRIPTION | Xilinx family architecture for which the bootimage needs to    |\n\
-             | be created                                                     |\n\
+ DESCRIPTION | Device architecture for which the bootimage needs to be created|\n\
 -------------+----------------------------------------------------------------+\n\
  SYNOPSIS    | -arch [arguments]                                              |\n\
 -------------+----------------------------------------------------------------+\n\
@@ -536,7 +536,7 @@ p
 -------------+----------------------------------------------------------------+\n\
  OPTION      | p                                                              |\n\
 -------------+----------------------------------------------------------------+\n\
- DESCRIPTION | This option specifies the partname of the Xilinx chip.         |\n\
+ DESCRIPTION | This option specifies the partname of the Device.              |\n\
              | This is needed for generating a encryption key. It is copied   |\n\
              | verbatim to the *.nky file in the 'Device' line.               |\n\
              | This is applicable only with encryption is enabled.            |\n\
@@ -828,6 +828,31 @@ verify_kdf
  EXPLANATION | The authentication padding scheme will be as per ES1(1.0).     |\n\
              | The default padding scheme is for (2.0)ES2 and above.          |\n\
 -------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+ out_type
+******************************************************************************/
+#define OUTTYPEHELP "\
+-------------+----------------------------------------------------------------+\n\
+ OPTION      | out_type                                                       |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, zynqmp, versal                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This option create output file in MCS or BIN format            |\n\
+             | depending on input argument to option.                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ SYNOPSIS    | -out_type [arguments]                                          |\n\
+-------------+----------------------------------------------------------------+\n\
+ ARGUMENTS   | bin : Output file generated in bin format                      |\n\
+             | mcs : Output file generated in mcs format                      |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | bootgen -arch zynq -image test.bif -w on -o test.bin           |\n\
+             |  -out_type bin                                                 |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Output file can be generated using this option and             |\n\
+             | it can be of BIN or MCS format.                                |\n\
+-------------+----------------------------------------------------------------+\n"
+
 
 
 
@@ -1164,7 +1189,7 @@ boot_device
              | VERSAL:                                                        |\n\
              | qspi32, qspi24, nand, sd0, sd1, sd-ls, mmc, usb, ethernet,     |\n\
              | pcie, sata, ospi, smap, sbi, sd0-raw, sd1-raw, sd-ls-raw,      |\n\
-             | mmc-raw, mmc0, mmc0-raw                                        |\n\
+             | mmc-raw, mmc0, mmc0-raw, imagestore                            |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | Sample BIF - test.bif                                          |\n\
              +----------------------------------------------------------------+\n\
@@ -2542,6 +2567,9 @@ type
              | bootimage                                                      |\n\
              | slr-boot                                                       |\n\
              | slr-config                                                     |\n\
+             | slr-slave-boot                                                 |\n\
+             | slr-slave-config                                               |\n\
+             | elf                                                            |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | Sample BIF - test.bif                                          |\n\
              | all:                                                           |\n\
@@ -2574,7 +2602,7 @@ udf_bh
  DESCRIPTION | Imports a file of data to be copied to the User Defined Field  |\n\
              | of the Boot Header. The input user defined data is provided    |\n\
              | through a text file in the form of a hex string.               |\n\
-             | Total no. of bytes in UDF in Xilinx SoCs:                      |\n\
+             | Total no. of bytes in UDF:                                     |\n\
              |    Zynq   : 76 bytes                                           |\n\
              |    ZynqMP : 40 bytes                                           |\n\
 -------------+----------------------------------------------------------------+\n\
@@ -3288,7 +3316,8 @@ headersignature
  ATTRIBUTE   | ppkfile, pskfile, spkfile, sskfile                             |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | These keys are used to authenticate partitions in the bootimage|\n\
-             | Xilinx SoCs use primary & secondary keys for authentication.   |\n\
+             | A pair of keys, Primary & Secondary are used in the            |\n\
+             | authentication process.                                        |\n\
              | The primary keys authenticate the secondary keys and the       |\n\
              | secondary keys authenticate the partitions.                    |\n\
              |    PPK - Primary Public Key                                    |\n\
@@ -3444,4 +3473,106 @@ presign
              |     [destination_cpu=a53-0, authentication=rsa] hello.elf      |\n\
              | }                                                              |\n\
 -------------+----------------------------------------------------------------+\n"
+
+#define HVN_BIF_PCR_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | pcr                                                            |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | versalnet                                                      |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | To specify the PCR register number where PLM can store the     |\n\
+             | calculated hash of a given image                               |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | pcr = <value>                                                  |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             | test:                                                          |\n\
+             | {                                                              |\n\
+             |      id = 2                                                    |\n\
+             |      image                                                     |\n\
+             |      {                                                         |\n\
+             |          name = pmc_subsys, id = 0x1c000001                    |\n\
+             |          { type = bootloader, file = plm.elf }                 |\n\
+             |          { type = pmcdata, file = pmc_cdo.bin }                |\n\
+             |      }                                                         |\n\
+             |      image                                                     |\n\
+             |      {                                                         |\n\
+             |          name = subsys_1, id = 0x1c000000, pcr = 3             |\n\
+             |          { type = cdo, file = apu_cdo.cdo }                    |\n\
+             |          { core = a72-0, file = apu.elf }                      |\n\
+             |      }                                                         |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+#define HVN_BIF_PCR_MINDEX_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | pcr_mindex                                                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | versalnet                                                      |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | To specify the PCR measurement index where PLM can store the   |\n\
+             | extended hash of a given image.                                |\n\
+             | This must be specified along with pcr.                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | pcr_mindex = <value>                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             | test:                                                          |\n\
+             | {                                                              |\n\
+             |      id = 2                                                    |\n\
+             |      image                                                     |\n\
+             |      {                                                         |\n\
+             |          name = pmc_subsys, id = 0x1c000001                    |\n\
+             |          { type = bootloader, file = plm.elf }                 |\n\
+             |          { type = pmcdata, file = pmc_cdo.bin }                |\n\
+             |      }                                                         |\n\
+             |      image                                                     |\n\
+             |      {                                                         |\n\
+             |          name = subsys_1, id = 0x1c000000                      |\n\
+             |          pcr = 3, pcr_mindex = 10                              |\n\
+             |          { type = cdo, file = apu_cdo.cdo }                    |\n\
+             |          { core = a72-0, file = apu.elf }                      |\n\
+             |      }                                                         |\n\
+             | }                                                              |\n\
+-------------+----------------------------------------------------------------+\n"
+
+#define HV_BIF_IMAGESTORE_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | imagestore                                                     |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | To specify the ID of the PDI to add to Image Store             |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | imagestore = <id>                                              |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             |  write_imagestore_pdi:                                         |\n\
+             |  {                                                             |\n\
+             |    id_code = 0x04d14093                                        |\n\
+             |    extended_id_code = 0x01                                     |\n\
+             |    id = 0xb                                                    |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = pl_noc, id = 0x18700000                            |\n\
+             |      partition                                                 |\n\
+             |      {                                                         |\n\
+             |        id = 0xb05, type = cdo, file = imagestore.rnpi          |\n\
+             |      }                                                         |\n\
+             |    }                                                           |\n\
+             |  }                                                             |\n\
+             |  master:                                                       |\n\
+             |  {                                                             |\n\
+             |    id_code = 0x04d14093                                        |\n\
+             |    extended_id_code = 0x01                                     |\n\
+             |    id = 0x2                                                    |\n\
+             |    image                                                       |\n\
+             |    {                                                           |\n\
+             |      name = IMAGE_STORE, id = 0x18700000                       |\n\
+             |      partition                                                 |\n\
+             |      {                                                         |\n\
+             |        id = 0xb15, imagestore = 0x1                            |\n\
+             |        section = write_imagestore_pdi                          |\n\
+             |      }                                                         |\n\
+             |    }                                                           |\n\
+             |  }                                                             |\n\
+ ------------+----------------------------------------------------------------+\n"
 #endif

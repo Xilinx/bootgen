@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -124,6 +125,7 @@ void Options::ProcessReadImage()
         else if (archType == Arch::VERSAL)
         {
             readImage = new VersalReadImage(readFile);
+            readImage->versalNetSeries = versalNetSeries;
         }
 
         if (GetVerifyImageOption())
@@ -403,6 +405,11 @@ void Options::SetOverlayCDOFileName(std::string filename)
 }
 
 /******************************************************************************/
+void Options::SetOutType(File::Type type)
+{
+    outType = type;
+}
+/******************************************************************************/
 void Options::SetDumpDirectory(std::string path)
 {
     dumpPath = path;
@@ -640,6 +647,12 @@ bool Options::GetGreyKeyGeneration(void)
 bool Options::GetMetalKeyGeneration(void)
 {
     return generateMetalKey;
+}
+
+/******************************************************************************/
+File::Type Options::GetOutType(void)
+{
+    return outType;
 }
 
 /******************************************************************************/

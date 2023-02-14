@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -96,6 +97,7 @@ BifOptions::BifOptions(Arch::Type architecture, const char* name)
     , pmcdataBlocks(0)
     , dice(DICE::DiceDisable)
     , slrNum(0xFF)
+    , pdiType(PartitionType::RESERVED)
 {
     arch = architecture;
     SetGroupName(name);
@@ -176,6 +178,7 @@ PartitionBifOptions::PartitionBifOptions()
     , updateReserveInPh(false)
     , bifSection("")
     , delayAuth(false)
+    , imageStoreId(0xFF)
 { }
 
 /******************************************************************************/
@@ -266,12 +269,12 @@ void BifOptions::Add(PartitionBifOptions* currentPartitionBifOptions, ImageBifOp
         }
         if ((currentPartitionBifOptions)->aesKeyFile != "")
         {
-            pmcDataAesFile = (currentPartitionBifOptions)->aesKeyFile;
+            SetPmcDataAesFile((currentPartitionBifOptions)->aesKeyFile);
         }
         //If no key file found in partition specific attributes - Generate aeskeyfile with partition_name.nky
         else
         {
-            pmcDataAesFile = StringUtils::RemoveExtension(StringUtils::BaseName((currentPartitionBifOptions)->filename)) + ".nky";
+            SetPmcDataAesFile(StringUtils::RemoveExtension(StringUtils::BaseName((currentPartitionBifOptions)->filename)) + ".nky");
         }
 
         if(!(currentPartitionBifOptions->pmcData))
@@ -1137,6 +1140,12 @@ void BifOptions::SetMetaHeaderEncryptType(Encryption::Type type)
 }
 
 /******************************************************************************/
+void BifOptions::SetMetaHeaderEncryptionKeyFile(std::string file)
+{
+    metaHdrAttributes.encrKeyFile = file;
+}
+
+/******************************************************************************/
 void BifOptions::SetMetaHeaderAuthType(Authentication::Type type)
 {
     if (type == Authentication::ECDSAp521)
@@ -1693,6 +1702,12 @@ std::string BifOptions::GetPmcdataFile(void)
 std::vector<std::string> BifOptions::GetPmcCdoFileList(void)
 {
     return pmcCdoFileList;
+}
+
+/******************************************************************************/
+void BifOptions::SetPmcDataAesFile(std::string filename)
+{
+    pmcDataAesFile = filename;
 }
 
 /******************************************************************************/

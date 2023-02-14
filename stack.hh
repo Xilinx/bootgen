@@ -41,7 +41,7 @@
 # include <deque>
 
 /* Line 34 of stack.hh  */
-#line 23 "../s/bif.y"
+#line 24 "../s/bif.y"
 namespace BIF {
 /* Line 34 of stack.hh  */
 #line 48 "../bisonflex/stack.hh"
@@ -127,7 +127,7 @@ namespace BIF {
     unsigned int range_;
   };
 /* Line 116 of stack.hh  */
-#line 23 "../s/bif.y"
+#line 24 "../s/bif.y"
 } // BIF
 /* Line 116 of stack.hh  */
 #line 134 "../bisonflex/stack.hh"

@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -68,7 +69,7 @@ void ShowCommonHelp(int,bool);
 
 %token _IMAGE _FILL _O_TOK I _H _DEBUG_TOK _LEGACY _NONBOOTING _PACKAGENAME _BIF_HELP
 %token _LOG ERROR WARNING INFO DEBUG TRACE
-%token _SPLIT _PROCESS_BITSTREAM MCS BIN
+%token _SPLIT _PROCESS_BITSTREAM MCS BIN _OUT_TYPE
 %token _DUMP DUMP_PLM DUMP_PMC_CDO DUMP_BOOT_FILES _DUMP_DIR DUMP_SLAVE_PDIS
 %token _ARCH ZYNQ ZYNQMP VERSAL _R FPGA VERSALNET
 %token _DUAL_QSPI_MODE _DUAL_OSPI_MODE PARALLEL STACKED
@@ -89,7 +90,7 @@ void ShowCommonHelp(int,bool);
 
 %token HBIFHELP HARCH HIMAGE HFILL HO HP HW HEFUSEPPKBITS HGENHASHES HLEGACY HPADHDR H_SPKSIGN
 %token HPACKAGE HENCRYPT HGENKEYS HDQSPI HLOG HZYNQMPES1 HPROCESSBIT HNONBOOTING HENCRDUMP HPOSTPROCESS
-%token HVERIFY HSECUREDEBUG HREAD HVERIFYKDF HDUMP HDUMPDIR HOVLCDO
+%token HVERIFY HSECUREDEBUG HREAD HVERIFYKDF HDUMP HDUMPDIR HOVLCDO HOUTTYPE
 
 %token H_BIF_INIT H_BIF_UDFBH H_BIF_AES H_BIF_PPK H_BIF_PSK H_BIF_SPK H_BIF_SSK H_BIF_SPKSIGN H_BIF_HIVEC
 %token H_BIF_HDRSIGN H_BIF_BOOTIMAGE H_BIF_BL H_BIF_PID H_BIF_ENCR H_BIF_AUTH H_BIF_CHKSM H_BIF_ELYHNDOFF H_BIF_BHSIGN 
@@ -98,7 +99,7 @@ void ShowCommonHelp(int,bool);
 %token H_BIF_AUTHPARAM H_BIF_BHKEY H_BIF_PFW H_BIF_BLOCKS H_BIF_METAL H_BIF_BHIV H_BIF_BOOTVEC
 %token H_BIF_PUFDATA H_BIF_PTYPE H_BIF_IMAGECFG H_BIF_PMCCONFIG H_BIF_AARCH32 H_BIF_BIGENDIAN H_BIF_BOOTCONFIG H_BIF_COPY
 %token H_BIF_CORE H_BIF_DELAY_HANDOFF H_BIF_DELAY_LOAD H_BIF_FILE H_BIF_ID H_BIF_IMAGE H_BIF_METAHDR H_BIF_NAME H_BIF_PARTITION
-%token H_BIF_SLR H_BIF_TYPE H_BIF_KEYSRCENCR H_BIF_PARENTID H_DPACM_ENABLE H_BIF_USERKEYS
+%token H_BIF_SLR H_BIF_TYPE H_BIF_KEYSRCENCR H_BIF_PARENTID H_DPACM_ENABLE H_BIF_USERKEYS HVN_BIF_PCR HVN_BIF_PCR_MINDEX HV_BIF_IMAGESTORE
 
 %%
 top             : option_list;
@@ -145,6 +146,7 @@ option          : _IMAGE filename                   { options.SetBifFilename($2)
                 | _DUMP_DIR filename                { options.SetDumpDirectory($2); }
                 | _VERIFYKDF filename               { options.SetKDFTestVectorFile($2); }
                 | _OVERLAYCDO filename              { options.SetOverlayCDOFileName($2); }
+                | _OUT_TYPE outputType
                 ;
 
 charstring      : IDENTIFIER | HEXSTRING;
@@ -161,6 +163,10 @@ filloption      : _FILL                             { options.SetDoFill(true); }
                                                         options.SetOutputFillByte((uint8_t)$2); 
                                                       else 
                                                         LOG_ERROR("'-fill' - Fill byte must be 8 bits"); }
+                ;
+
+outputType      : MCS                               { options.SetOutType(File::MCS); }
+                | BIN                               { options.SetOutType(File::BIN); }
                 ;
                         
 helpoption      : /* empty */                       { ShowHelp(); exit(0); }
@@ -193,6 +199,7 @@ helpoption      : /* empty */                       { ShowHelp(); exit(0); }
                 | HDUMP                             { ShowCmdHelp(CO::BisonParser::token::HDUMP); exit(0); }
                 | HDUMPDIR                          { ShowCmdHelp(CO::BisonParser::token::HDUMPDIR); exit(0); }
                 | HOVLCDO                           { ShowCmdHelp(CO::BisonParser::token::HOVLCDO); exit(0); }
+                | HOUTTYPE                          { ShowCmdHelp(CO::BisonParser::token::HOUTTYPE); exit(0); }
                 ;
 
 bifhelpoption	: /* empty */                       { ShowBifHelp(0); exit(0); }
@@ -259,6 +266,9 @@ bifhelpoption	: /* empty */                       { ShowBifHelp(0); exit(0); }
                 | H_BIF_KEYSRCENCR                  { ShowBifHelp(CO::BisonParser::token::H_BIF_KEYSRCENCR); exit(0); }
                 | H_DPACM_ENABLE                    { ShowBifHelp(CO::BisonParser::token::H_DPACM_ENABLE); exit(0); }
                 | H_BIF_USERKEYS                    { ShowBifHelp(CO::BisonParser::token::H_BIF_USERKEYS); exit(0); }
+                | HVN_BIF_PCR                       { ShowBifHelp(CO::BisonParser::token::HVN_BIF_PCR); exit(0); }
+                | HVN_BIF_PCR_MINDEX                { ShowBifHelp(CO::BisonParser::token::HVN_BIF_PCR_MINDEX); exit(0); }
+                | HV_BIF_IMAGESTORE                 { ShowBifHelp(CO::BisonParser::token::HV_BIF_IMAGESTORE); exit(0); }
                 ;
 
 wopt            : /* empty*/                        { options.SetOverwrite(true); }
@@ -522,6 +532,10 @@ void ShowCmdHelp(int a)
         std::cout << OVERLAYCDO << std::endl;
         break;
 
+    case CO::BisonParser::token::HOUTTYPE:
+        std::cout << OUTTYPEHELP << std::endl;
+        break;    
+
     case 0:
         std::cout << HELP << std::endl;
         break;
@@ -768,6 +782,18 @@ void ShowBifHelp(int a)
 
     case CO::BisonParser::token::H_BIF_USERKEYS:
         std::cout << H_BIF_USERKEYS_H << std::endl;
+        break;
+
+    case CO::BisonParser::token::HVN_BIF_PCR_MINDEX:
+        std::cout << HVN_BIF_PCR_MINDEX_H << std::endl;
+        break;
+
+    case CO::BisonParser::token::HVN_BIF_PCR:
+        std::cout << HVN_BIF_PCR_H << std::endl;
+        break;
+
+    case CO::BisonParser::token::HV_BIF_IMAGESTORE:
+        std::cout << HV_BIF_IMAGESTORE_H << std::endl;
         break;
 
     case 0:

@@ -1,6 +1,7 @@
 
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -108,6 +109,7 @@ void ZynqReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
     do
     {
         iH = new ZynqImageHeaderStructure;
+        memset(iH, 0, sizeof(ZynqImageHeaderStructure));
         if (!(fseek(binFile, offset, SEEK_SET)))
         {
             result = fread(iH, 1, 4 * sizeof(uint32_t), binFile);

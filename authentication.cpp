@@ -1,5 +1,6 @@
 /******************************************************************************
-* Copyright 2015-2021 Xilinx, Inc.
+* Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -216,12 +217,6 @@ void AuthenticationContext::GetPresign(const std::string& presignFilename, uint8
     std::string filename(presignFilename);
     std::string baseFile = StringUtils::BaseName(filename);
 
-    if (index > 9) 
-    {
-        LOG_DEBUG(DEBUG_STAMP, "Partition index count %d too high",index);
-        LOG_ERROR("Presign file should have proper index (0-9)");
-    }
-
     if (index != 0)
     {
         size_t x = filename.find(".0.");
@@ -229,8 +224,9 @@ void AuthenticationContext::GetPresign(const std::string& presignFilename, uint8
         {
             LOG_ERROR("Presign file %s does not have partition index (*.0.*)", baseFile.c_str());
         }
-        // nudge the '0' to '1' ... '9'.
-        filename[x+1] = (char)(filename[x+1] + index); 
+        // nudge the '0' to index number
+        std::string sindex = std::to_string(index);
+        filename.replace(x+1,1,sindex);
     }
 
     LOG_TRACE("Reading presign file - %s", filename.c_str());

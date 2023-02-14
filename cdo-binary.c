@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2019-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -108,6 +109,7 @@ enum {
     CMD2_PLM_UPDATE	 = 0x120U,
     CMD2_SCATTER_WRITE	 = 0x121U,
     CMD2_SCATTER_WRITE2	 = 0x122U,
+    CMD2_TAMPER_TRIGGER  = 0x123U,
 
     /* PM Commands */
     CMD2_PM_GET_API_VERSION	= 0x201U,
@@ -167,12 +169,18 @@ enum {
     CMD2_PM_IF_NOC_CLOCK_ENABLE	= 0x246,
 
     /* NPI Commands */
+    /* Version 1.50 and later, but not version 2.00 */
     CMD2_NPI_SEQ	 = 0x301U,
     CMD2_NPI_PRECFG	 = 0x302U,
     CMD2_NPI_WRITE	 = 0x303U,
     CMD2_NPI_SHUTDN	 = 0x304U,
 
+    /* SEM Commands */
+    /* Version 2.00 and later */
+    CMD2_SEM_NPI_TABLE	 = 0x300U,
+
     /* CFU Commands */
+    /* Version 1.50 and later, but not version 2.00 */
     CMD2_CFU_SET_CRC32	 = 0x401U,
     CMD2_CFU_DECOMPRESS	 = 0x402U,
     CMD2_CFU_CRAM_RW	 = 0x403U,
@@ -601,19 +609,28 @@ static uint32_t decode_v2_cmd(CdoSequence * seq, uint32_t * p, uint32_t * ip, ui
             cdocmd_add_scatter_write2(seq, u32xe(p[i+0]), u32xe(p[i+1]), args - 2, &p[i+2], be);
             break;
 
+        case CMD2_TAMPER_TRIGGER:
+            if (args != 1) goto unexpected;
+            cdocmd_add_tamper_trigger(seq, u32xe(p[i+0]));
+            break;
+
         case CMD2_NPI_SEQ:
+            if (seq->version >= CDO_VERSION_2_00) goto unexpected;
             if (args != 2) goto unexpected;
             cdocmd_add_npi_seq(seq, u32xe(p[i+0]), u32xe(p[i+1]));
             break;
         case CMD2_NPI_PRECFG:
+            if (seq->version >= CDO_VERSION_2_00) goto unexpected;
             if (args != 2) goto unexpected;
             cdocmd_add_npi_precfg(seq, u32xe(p[i+0]), u32xe(p[i+1]));
             break;
         case CMD2_NPI_WRITE:
+            if (seq->version >= CDO_VERSION_2_00) goto unexpected;
             if (args < 2) goto unexpected;
             cdocmd_add_npi_write(seq, u32xe(p[i+0]), u32xe(p[i+1]), args - 2, &p[i+2], be);
             break;
         case CMD2_NPI_SHUTDN:
+            if (seq->version >= CDO_VERSION_2_00) goto unexpected;
             if (args != 2) goto unexpected;
             cdocmd_add_npi_shutdown(seq, u32xe(p[i+0]), u32xe(p[i+1]));
             break;
@@ -842,6 +859,7 @@ static uint32_t decode_v2_cmd(CdoSequence * seq, uint32_t * p, uint32_t * ip, ui
             break;
 
         case CMD2_CFU_SET_CRC32:
+            if (seq->version >= CDO_VERSION_2_00) goto unexpected;
             if (args < 1) goto unexpected;
             if (u32xe(p[i+0]) == 0) {
                 cdocmd_add_cfu_set_crc32(seq, 0, 0);
@@ -851,34 +869,42 @@ static uint32_t decode_v2_cmd(CdoSequence * seq, uint32_t * p, uint32_t * ip, ui
             cdocmd_add_cfu_set_crc32(seq, u32xe(p[i+0]), u32xe(p[i+1]));
             break;
         case CMD2_CFU_DECOMPRESS:
+            if (seq->version >= CDO_VERSION_2_00) goto unexpected;
             if (args < 1) goto unexpected;
             cdocmd_add_cfu_decompress(seq, u32xe(p[i+0]));
             break;
         case CMD2_CFU_CRAM_RW:
+            if (seq->version >= CDO_VERSION_2_00) goto unexpected;
             if (args < 1) goto unexpected;
             cdocmd_add_cfu_cram_rw(seq, u32xe(p[i+0]));
             break;
         case CMD2_CFU_SEU_GO:
+            if (seq->version >= CDO_VERSION_2_00) goto unexpected;
             if (args < 1) goto unexpected;
             cdocmd_add_cfu_seu_go(seq, u32xe(p[i+0]));
             break;
         case CMD2_CFU_CRC8_DIS:
+            if (seq->version >= CDO_VERSION_2_00) goto unexpected;
             if (args < 1) goto unexpected;
             cdocmd_add_cfu_crc8_dis(seq, u32xe(p[i+0]));
             break;
         case CMD2_CFU_SSI_PER_SLR_PR:
+            if (seq->version >= CDO_VERSION_2_00) goto unexpected;
             if (args < 1) goto unexpected;
             cdocmd_add_cfu_ssi_per_slr_pr(seq, u32xe(p[i+0]));
             break;
         case CMD2_CFU_GSR_GSC:
+            if (seq->version >= CDO_VERSION_2_00) goto unexpected;
             if (args < 1) goto unexpected;
             cdocmd_add_cfu_gsr_gsc(seq, u32xe(p[i+0]));
             break;
         case CMD2_CFU_GCAP_CLK_EN:
+            if (seq->version >= CDO_VERSION_2_00) goto unexpected;
             if (args < 1) goto unexpected;
             cdocmd_add_cfu_gcap_clk_en(seq, u32xe(p[i+0]));
             break;
         case CMD2_CFU_CFI_TYPE:
+            if (seq->version >= CDO_VERSION_2_00) goto unexpected;
             if (args < 1) goto unexpected;
             cdocmd_add_cfu_cfi_type(seq, u32xe(p[i+0]));
             break;
@@ -894,6 +920,11 @@ static uint32_t decode_v2_cmd(CdoSequence * seq, uint32_t * p, uint32_t * ip, ui
             if (args != 1) goto unexpected;
             cdocmd_add_ldr_cframe_clear_check(seq, u32xe(p[i+0]));
             break;
+        case CMD2_SEM_NPI_TABLE:
+            if (args < 2) goto unexpected;
+            cdocmd_add_sem_npi_table(seq, u32xe(p[i+0]), u32xe(p[i+1]), args - 2, &p[i+2], be);
+            break;
+
         default:
             cdocmd_add_generic_command(seq, hdr & 0xffff, p + i, args, be);
             break;
@@ -1056,13 +1087,13 @@ CdoSequence * decode_cdo_binary(const void * data, size_t size) {
     }
     identification = u32xe(p[1]);
     version = u32xe(p[2]);
-    if (version < 0x200) {
+    if (version < CDO_VERSION_1_50) {
         if (identification != 0x584C4E58) {
             fprintf(stderr, "invalid identification word %#"PRIx32"\n", identification);
             return NULL;
         }
         decode = decode_v1;
-    } else if (version < 0x300) {
+    } else if (version < CDO_VERSION_3_00) {
         if (identification != 0x004F4443) {
             fprintf(stderr, "invalid identification word %#"PRIx32"\n", identification);
             return NULL;
@@ -1379,7 +1410,7 @@ static LINK * find_block_end(LINK * l, LINK * lh) {
     return lh;
 }
 
-static void * encode_v2_cmd(LINK * l, LINK * lh, uint32_t * posp, uint32_t be) {
+static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * posp, uint32_t be) {
     uint32_t pos = *posp;
     uint32_t * p = grow_cdobuf(pos);
     while (l != lh) {
@@ -1698,13 +1729,13 @@ static void * encode_v2_cmd(LINK * l, LINK * lh, uint32_t * posp, uint32_t be) {
             hdr2(&p, &pos, CMD2_PROC, 1, be);
             payload_start = pos;
             p[pos++] = u32xe(cmd->value);
-            p = encode_v2_cmd(l, blockend, &pos, be);
+            p = encode_v2_cmd(version, l, blockend, &pos, be);
             hdr2(&p, &pos_save, CMD2_PROC, pos - payload_start, be);
             if (pos_save != payload_start) {
                 /* Header grew, regenerate payload */
                 pos = pos_save;
                 p[pos++] = u32xe(cmd->value);
-                p = encode_v2_cmd(l, blockend, &pos, be);
+                p = encode_v2_cmd(version, l, blockend, &pos, be);
                 /* Update payload size incase it changed due to alignment */
                 p[pos_save - 1] = u32xe(pos - pos_save);
             }
@@ -1723,7 +1754,7 @@ static void * encode_v2_cmd(LINK * l, LINK * lh, uint32_t * posp, uint32_t be) {
             memcpy(p + pos, cmd->buf, len);
             byte_swap_buffer(p + pos, count, be);
             pos += count;
-            p = encode_v2_cmd(l, blockend, &pos, be);
+            p = encode_v2_cmd(version, l, blockend, &pos, be);
             p[payload_start] = u32xe(pos - payload_start - 1);
             l = blockend;
             break;
@@ -1749,12 +1780,12 @@ static void * encode_v2_cmd(LINK * l, LINK * lh, uint32_t * posp, uint32_t be) {
             LINK * blockend = find_block_end(l, lh);
             hdr2(&p, &pos, CMD2_PSM_SEQUENCE, 0, be);
             payload_start = pos;
-            p = encode_v2_cmd(l, blockend, &pos, be);
+            p = encode_v2_cmd(version, l, blockend, &pos, be);
             hdr2(&p, &pos_save, CMD2_PSM_SEQUENCE, pos - payload_start, be);
             if (pos_save != payload_start) {
                 /* Header grew, regenerate payload */
                 pos = pos_save;
-                p = encode_v2_cmd(l, blockend, &pos, be);
+                p = encode_v2_cmd(version, l, blockend, &pos, be);
             }
             l = blockend;
             if (l != lh) l = l->next;
@@ -1775,18 +1806,24 @@ static void * encode_v2_cmd(LINK * l, LINK * lh, uint32_t * posp, uint32_t be) {
             byte_swap_buffer(p + pos, cmd->count, be);
             pos += cmd->count;
             break;
-
+        case CdoCmdTamperTrigger:
+            hdr2(&p, &pos, CMD2_TAMPER_TRIGGER, 1, be);
+            p[pos++] = u32xe(cmd->value);
+            break;
         case CdoCmdNpiSeq:
+            if (version >= CDO_VERSION_2_00) goto npi_error;
             hdr2(&p, &pos, CMD2_NPI_SEQ, 2, be);
             p[pos++] = u32xe_lo(cmd->dstaddr);
             p[pos++] = u32xe(cmd->flags);
             break;
         case CdoCmdNpiPreCfg:
+            if (version >= CDO_VERSION_2_00) goto npi_error;
             hdr2(&p, &pos, CMD2_NPI_PRECFG, 2, be);
             p[pos++] = u32xe_lo(cmd->dstaddr);
             p[pos++] = u32xe(cmd->flags);
             break;
         case CdoCmdNpiWrite:
+            if (version >= CDO_VERSION_2_00) goto npi_error;
             hdr2(&p, &pos, CMD2_NPI_WRITE, 2 + cmd->count, be);
             p[pos++] = u32xe_lo(cmd->dstaddr);
             p[pos++] = u32xe(cmd->flags);
@@ -1795,6 +1832,7 @@ static void * encode_v2_cmd(LINK * l, LINK * lh, uint32_t * posp, uint32_t be) {
             pos += cmd->count;
             break;
         case CdoCmdNpiShutdown:
+            if (version >= CDO_VERSION_2_00) goto npi_error;
             hdr2(&p, &pos, CMD2_NPI_SHUTDN, 2, be);
             p[pos++] = u32xe_lo(cmd->dstaddr);
             p[pos++] = u32xe(cmd->flags);
@@ -2099,6 +2137,7 @@ static void * encode_v2_cmd(LINK * l, LINK * lh, uint32_t * posp, uint32_t be) {
             pos += cmd->count;
             break;
         case CdoCmdCfuSetCrc32:
+            if (version >= CDO_VERSION_2_00) goto cfu_error;
             if (cmd->flags != 0) {
                 hdr2(&p, &pos, CMD2_CFU_SET_CRC32, 2, be);
                 p[pos++] = u32xe(cmd->flags);
@@ -2109,34 +2148,42 @@ static void * encode_v2_cmd(LINK * l, LINK * lh, uint32_t * posp, uint32_t be) {
             }
             break;
         case CdoCmdCfuDecompress:
+            if (version >= CDO_VERSION_2_00) goto cfu_error;
             hdr2(&p, &pos, CMD2_CFU_DECOMPRESS, 1, be);
             p[pos++] = u32xe(cmd->flags);
             break;
         case CdoCmdCfuCramRW:
+            if (version >= CDO_VERSION_2_00) goto cfu_error;
             hdr2(&p, &pos, CMD2_CFU_CRAM_RW, 1, be);
             p[pos++] = u32xe(cmd->value);
             break;
         case CdoCmdCfuSeuGo:
+            if (version >= CDO_VERSION_2_00) goto cfu_error;
             hdr2(&p, &pos, CMD2_CFU_SEU_GO, 1, be);
             p[pos++] = u32xe(cmd->flags);
             break;
         case CdoCmdCfuCrc8Dis:
+            if (version >= CDO_VERSION_2_00) goto cfu_error;
             hdr2(&p, &pos, CMD2_CFU_CRC8_DIS, 1, be);
             p[pos++] = u32xe(cmd->flags);
             break;
         case CdoCmdCfuSsiPerSlrPr:
+            if (version >= CDO_VERSION_2_00) goto cfu_error;
             hdr2(&p, &pos, CMD2_CFU_SSI_PER_SLR_PR, 1, be);
             p[pos++] = u32xe(cmd->flags);
             break;
         case CdoCmdCfuGsrGsc:
+            if (version >= CDO_VERSION_2_00) goto cfu_error;
             hdr2(&p, &pos, CMD2_CFU_GSR_GSC, 1, be);
             p[pos++] = u32xe(cmd->flags);
             break;
         case CdoCmdCfuGcapClkEn:
+            if (version >= CDO_VERSION_2_00) goto cfu_error;
             hdr2(&p, &pos, CMD2_CFU_GCAP_CLK_EN, 1, be);
             p[pos++] = u32xe(cmd->flags);
             break;
         case CdoCmdCfuCfiType:
+            if (version >= CDO_VERSION_2_00) goto cfu_error;
             hdr2(&p, &pos, CMD2_CFU_CFI_TYPE, 1, be);
             p[pos++] = u32xe(cmd->value);
             break;
@@ -2157,8 +2204,23 @@ static void * encode_v2_cmd(LINK * l, LINK * lh, uint32_t * posp, uint32_t be) {
             hdr2(&p, &pos, CMD2_LDR_CFRAME_CLEAR_CHECK, 1, be);
             p[pos++] = u32xe(cmd->id);
             break;
+        case CdoCmdSemNpiTable:
+            hdr2(&p, &pos, CMD2_SEM_NPI_TABLE, 2 + cmd->count, be);
+            p[pos++] = u32xe(cmd->id);
+            p[pos++] = u32xe(cmd->flags);
+            memcpy(p + pos, cmd->buf, cmd->count * sizeof(uint32_t));
+            byte_swap_buffer(p + pos, cmd->count, be);
+            pos += cmd->count;
+            break;
+
         default:
             fprintf(stderr, "unknown command (%u)\n", cmd->type);
+            break;
+        npi_error:
+            fprintf(stderr, "npi related commands are not supported in CDO version 2 or newer\n");
+            break;
+        cfu_error:
+            fprintf(stderr, "cfu related commands are not supported in CDO version 2 or newer\n");
             break;
         }
     }
@@ -2174,7 +2236,7 @@ static void * encode_v2(CdoSequence * seq, size_t * sizep, uint32_t be) {
     p[0] = u32xe(pos - 1);
     p[1] = u32xe(0x004F4443);
     p[2] = u32xe(seq->version);
-    p = encode_v2_cmd(l, &seq->cmds, &pos, be);
+    p = encode_v2_cmd(seq->version, l, &seq->cmds, &pos, be);
     p[3] = u32xe(pos - hdrlen - 1);
     p[4] = u32xe(checksum32(p, hdrlen, be));
     clear_cdobuf();
@@ -2182,12 +2244,54 @@ static void * encode_v2(CdoSequence * seq, size_t * sizep, uint32_t be) {
     return p;
 }
 
+void cdoseq_write_header_raw(FILE * f, CdoSequence ** seq) {
+    LINK * l = (*seq)->cmds.next;
+    char * buf;
+    fprintf(f, "Xilinx ASCII NPI Deviceimage\n");
+
+    while (l != &((*seq)->cmds)) {
+        CdoCommand * cmd = all2cmds(l);
+        l = l->next;
+        if (cmd->type != CdoCmdMarker) {
+            /* header markers are at the top */
+            break;
+        }
+        switch (cmd->value) {
+        case 1:
+            buf = "Created by";
+            break;
+        case 2:
+            buf = "Design name:";
+            break;
+        case 3:
+            buf = "Architecture:";
+            break;
+        case 4:
+            buf = "Part:";
+            break;
+        case 5:
+            buf = "SLR:";
+            break;
+        case 6:
+            buf = "Date:";
+            break;
+        default:
+            buf = NULL;
+            break;
+        }
+        if (buf) {
+            fprintf(f, "%s %s\n", buf, (char *)cmd->buf);
+            cdocmd_free(cmd);
+        }
+    }
+}
+
 void * cdoseq_to_binary(CdoSequence * seq, size_t * sizep, uint32_t be) {
     void * (*encode)(CdoSequence * seq, size_t * sizep, uint32_t be) = NULL;
     *sizep = 0;
-    if (seq->version < 0x200) {
+    if (seq->version < CDO_VERSION_1_50) {
         encode = encode_v1;
-    } else if (seq->version < 0x300) {
+    } else if (seq->version < CDO_VERSION_3_00) {
         encode = encode_v2;
     } else {
         fprintf(stderr, "unsupported version %#"PRIx32"\n", seq->version);

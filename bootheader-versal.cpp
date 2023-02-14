@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -23,7 +24,9 @@
 #include "bootheader-versal.h"
 #include "authentication-versal.h"
 
-#define PLM_MAX_SIZE            0x60000 //384KB
+#define PLM_MAX_SIZE               0x60000 //384KB
+#define PMCDATA_MAX_SIZE_VERSAL    0x14000 //80KB
+#define PMCDATA_MAX_SIZE_VERSALNET 0x10000 //64KB
 
 /*
 -------------------------------------------------------------------------------
@@ -243,6 +246,14 @@ void VersalBootHeader::Link(BootImage& bi)
     if (bHTable->totalPlmLength > PLM_MAX_SIZE && !bi.options.IsVersalNetSeries())
     {
         LOG_ERROR("Total PLM size : %dKB > maximum allowable size (384KB)", bHTable->totalPlmLength / 1024);
+    }
+    if (bHTable->totalPmcCdoLength > PMCDATA_MAX_SIZE_VERSAL && !bi.options.IsVersalNetSeries())
+    {
+        LOG_ERROR("Total PMC DATA size : %dKB > maximum allowable size (80KB)", bHTable->totalPlmLength / 1024);
+    }
+    if (bHTable->totalPmcCdoLength > PMCDATA_MAX_SIZE_VERSALNET && bi.options.IsVersalNetSeries())
+    {
+        LOG_ERROR("Total PMC DATA size : %dKB > maximum allowable size (64KB)", bHTable->totalPlmLength / 1024);
     }
 }
 

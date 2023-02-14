@@ -1,6 +1,7 @@
 
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -499,9 +500,12 @@ void VersalReadImage::DisplayBootHeader(void)
     DisplayIV("plm_sec_hdr_iv (0x64) : ", bH->plmSecureHdrIv);
     DisplayValue("puf_shutter (0x70) : ", bH->shutterValue);
     DisplayIV("pmccdo_sec_hdr_iv (0x74) : ", bH->pmcCdoSecureHdrIv);
-    //VersalNet
-    DisplayValue("puf_ro_swap (0x80) : ", bH->pufRoSwapConfigVal);
-    DisplayValue("revoke_id (0x84) : ", bH->revokeId);
+
+    if (versalNetSeries)
+    {
+        DisplayValue("puf_ro_swap (0x80) : ", bH->pufRoSwapConfigVal);
+        DisplayValue("revoke_id (0x84) : ", bH->revokeId);
+    }
     DisplayValue("metahdr_offset (0xc4) : ", bH->imageHeaderByteOffset);
     DisplayKey("puf_data (0x928) : ", bH->puf);
     DisplayValue("checksum (0xf30) : ", bH->headerChecksum);
@@ -586,6 +590,10 @@ void VersalReadImage::DisplayImageHeaders(void)
         DisplayValue("id (0x18) : ", (*iH)->imageId, "unique_id (0x24) : ", (*iH)->uniqueId);
         DisplayValue("parent_unique_id (0x28) : ", (*iH)->parentUniqueId, "function_id (0x2c) : ", (*iH)->functionId);
         DisplayValue("memcpy_address_lo (0x30) : ", (*iH)->memcpyAddressLo, "memcpy_address_hi (0x34) : ", (*iH)->memcpyAddressHi);
+        if (versalNetSeries)
+        {
+            DisplayValue("pcr_value (0x38) : ", (*iH)->pcrNumber, "pcr_mindex (0x3A) : ", (*iH)->pcrMeasurementIndex);
+        }
         DisplayValue("checksum (0x3c) : ", (*iH)->ihChecksum);
         std::cout << " attribute list -" << std::endl;
         DisplayIhAttributes((*iH)->imageAttributes);
@@ -761,7 +769,14 @@ void VersalReadImage::DisplayBhAttributes(uint32_t value)
         default: val = "[efuse]";       break;
     }
     val1 = val;
-    DisplayAttributes("puf_hd_source ", val1,"","");
+
+    switch ((value >> BH_PUF_MODE_BIT_SHIFT) & BH_PUF_MODE_BIT_MASK)
+    {
+        case 0: val = "[puf-12k]";      break;
+        case 3: val = "[puf-4k]";       break;
+        default: val = "[invalid]";     break;
+    }
+    DisplayAttributes("puf_hd_source ", val1, "puf_mode ", val);
 
     switch ((value >> BI_HASH_BIT_SHIFT) & BI_HASH_BIT_MASK)
     {
@@ -777,35 +792,32 @@ void VersalReadImage::DisplayBhAttributes(uint32_t value)
     }
     DisplayAttributes("integrity ", val1, "dpa_cm ", val);
 
-    switch ((value >> BH_RSA_BIT_SHIFT) & BH_RSA_BIT_MASK)
+    if (!versalNetSeries)
     {
-        case 3: val = "[enabled]";      break;
-        default: val = "[disabled]";    break;
+        switch ((value >> BH_RSA_BIT_SHIFT) & BH_RSA_BIT_MASK)
+        {
+            case 3: val = "[enabled]";      break;
+            default: val = "[disabled]";    break;
+        }
+        DisplayAttributes("bh_auth ", val, "", "");
     }
-    val1 = val;
-    
-    switch ((value >> BH_PUF_MODE_BIT_SHIFT) & BH_PUF_MODE_BIT_MASK)
-    {
-        case 0: val = "[puf-12k]";      break;
-        case 3: val = "[puf-4k]";       break;
-        default: val = "[invalid]";     break;
-    }
-    DisplayAttributes("bh_auth ", val1, "puf_mode ", val);
 
-    //VersalNet
-    switch ((value >> BH_RSA_SINGED_BIT_SHIFT) & BH_RSA_SINGED_BIT_MASK)
+    if (versalNetSeries)
     {
-    case 3: val = "[yes]";      break;
-    default: val = "[no]";    break;
-    }
-    val1 = val;
+        switch ((value >> BH_RSA_SINGED_BIT_SHIFT) & BH_RSA_SINGED_BIT_MASK)
+        {
+            case 3: val = "[yes]";      break;
+            default: val = "[no]";    break;
+        }
+        val1 = val;
 
-    switch ((value >> BH_DICE_BIT_SHIFT) & BH_DICE_BIT_MASK)
-    {
-    case 3: val = "[enabled]";      break;
-    default: val = "[disabled]";    break;
+        switch ((value >> BH_DICE_BIT_SHIFT) & BH_DICE_BIT_MASK)
+        {
+            case 3: val = "[enabled]";      break;
+            default: val = "[disabled]";    break;
+        }
+        DisplayAttributes("rsa_signed ", val1, "dice ", val);
     }
-    DisplayAttributes("rsa_signed ", val1, "dice ", val);
 }
 
 /*********************************************************************************/
@@ -813,7 +825,7 @@ void VersalReadImage::DisplayIhtAttributes(uint32_t value)
 {
     std::string val, val1;
 
-    switch ((value >> vihtIdCodeCheckShift) & vihtIdCodeCheckMask)
+    switch ((value >> vihtSiliconRevisionIdCodeCheckShift) & vihtSiliconRevisionIdCodeCheckMask)
     {
         case 1: val = "[true]";         break;
         default: val = "[false]";       break;
@@ -825,7 +837,7 @@ void VersalReadImage::DisplayIhtAttributes(uint32_t value)
         case 2: val = "[sdk]";          break;
         default: val = "[rsvd]";        break;
     }
-    DisplayAttributes("id_code_check ", val1, "image_creator ", val);
+    DisplayAttributes("silicon_rev_id_code_check ", val1, "image_creator ", val);
 
     switch ((value >> vihtSecBootDeviceShift) & vihtSecBootDeviceMask)
     {
@@ -850,6 +862,7 @@ void VersalReadImage::DisplayIhtAttributes(uint32_t value)
         case 18: val = "[mmc-raw]";     break;
         case 19: val = "[mmc0]";        break;
         case 20: val = "[mmc0-raw]";    break;
+        case 21: val = "[imagestore]";  break;
         default: val = "[n/a]";         break;
     }
     val1 = val;
@@ -867,6 +880,14 @@ void VersalReadImage::DisplayIhtAttributes(uint32_t value)
     }
     val1 = val;
     DisplayAttributes("puf_hd_source", val1, "", "");
+
+    switch ((value >> vihtIdCodeCheckShift) & vihtIdCodeCheckMask)
+    {
+        case 3: val = "[true]";           break;
+        default: val = "[false]";         break;
+    }
+    val1 = val;
+    DisplayAttributes("id_code_check", val1, "", "");
 }
 
 /************************************************************************************************/
@@ -903,26 +924,26 @@ void VersalReadImage::DisplayIhAttributes(uint32_t value)
     std::string powerDomains = "";
     switch ((value >> vihLowPowerDomainShift) & vihLowPowerDomainMask)
     {
-    case 1: powerDomains += "[lpd]";    break;
-    default:                            break;
+        case 1: powerDomains += "[lpd]";    break;
+        default:                            break;
     }
 
     switch ((value >> vihFullPowerDomainShift) & vihFullPowerDomainMask)
     {
-    case 1: powerDomains += "[fpd]";    break;
-    default:                            break;
+        case 1: powerDomains += "[fpd]";    break;
+        default:                            break;
     }
 
     switch ((value >> vihSystemPowerDomainShift) & vihSystemPowerDomainMask)
     {
-    case 1: powerDomains += "[spd]";    break;
-    default:                            break;
+        case 1: powerDomains += "[spd]";    break;
+        default:                            break;
     }
     val1 = val;
     switch ((value >> vihPLPowerDomainShift) & vihPLPowerDomainMask)
     {
-    case 1: powerDomains += "[pld]";    break;
-    default:                            break;
+        case 1: powerDomains += "[pld]";    break;
+        default:                            break;
     }
     if (powerDomains == "") powerDomains = "[none]";
     DisplayAttributes("dependentPowerDomains ", powerDomains, " ", "");
@@ -977,8 +998,17 @@ void VersalReadImage::DisplayPhtAttributes(uint32_t value)
     switch ((value >> vphtDestCpuShift) & vphtDestCpuMask)
     {
         case 0: val = "[none]";           break;
-        case 1: val = "[a72-0]";          break;
-        case 2: val = "[a72-1]";          break;
+        case 1: 
+            if (versalNetSeries) val = "[a78-0]"; 
+            else val = "[a72-0]";         break;
+        case 2: 
+            if (versalNetSeries) val = "[a78-1]";
+            else val = "[a72-1]";         break;
+        if (versalNetSeries)
+        {
+            case 3: val = "[a78-2]";      break;
+            case 4: val = "[a78-3]";      break;
+        }
         case 5: val = "[r5-0]";           break;
         case 6: val = "[r5-1]";           break;
         case 7: val = "[r5-lockstep]";    break;
@@ -993,25 +1023,25 @@ void VersalReadImage::DisplayPhtAttributes(uint32_t value)
 
     DisplayAttributes("exec_state ", val1, "core ", val);
 
-    //VersalNet
-    switch ((value >> vNetphtlockStepShift) & vNetphtlockStepMask)
+    if (versalNetSeries)
     {
-        case 0: val = "[disabled]";      break;
-        case 3: val = "[enabled]";       break;
-        default: val = "[invalid]";      break;
+        switch ((value >> vNetphtlockStepShift) & vNetphtlockStepMask)
+        {
+            case 0: val = "[disabled]";      break;
+            case 3: val = "[enabled]";       break;
+            default: val = "[invalid]";      break;
+        }
+        val1 = val;
+        switch ((value >> vNetphtClusterShift) & vNetphtClusterMask)
+        {
+            case 0: val = "[0]";            break;
+            case 1: val = "[1]";            break;
+            case 2: val = "[2]";            break;
+            case 3: val = "[3]";            break;
+            default: val = "[invalid]";     break;
+        }
+        DisplayAttributes("lockstep ", val1, "cluster", val);
     }
-    val1 = val;
-    switch ((value >> vNetphtClusterShift) & vNetphtClusterMask)
-    {
-        case 0: val = "[0]";            break;
-        case 1: val = "[1]";            break;
-        case 2: val = "[2]";            break;
-        case 3: val = "[3]";            break;
-        default: val = "[invalid]";     break;
-    }
-
-    DisplayAttributes("lockstep ", val1, "cluster", val);
-
     switch ((value >> vphtChecksumTypeShift) & vphtChecksumTypeMask)
     {
         case 0: val = "[none]";          break;

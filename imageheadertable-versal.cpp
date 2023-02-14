@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -115,10 +116,11 @@ VersalImageHeaderTable::VersalImageHeaderTable(std::ifstream& src)
     idCode = iHTable->idCode;
     extendedIdCode = iHTable->extendedIdCode;
     iht_optional_data_length = iHTable->optionalDataSize * 4;
-    bypassIdCode = (iHTable->imageHeaderTableAttributes >> vihtIdCodeCheckShift) & vihtIdCodeCheckMask;
+    bypassIdCode = (iHTable->imageHeaderTableAttributes >> vihtSiliconRevisionIdCodeCheckShift) & vihtSiliconRevisionIdCodeCheckMask;
     bootDevice = (iHTable->imageHeaderTableAttributes >> vihtSecBootDeviceShift) & vihtSecBootDeviceMask;
     dpacm = ((iHTable->imageHeaderTableAttributes >> vihtDpacmEnableShift) & vihtDpacmEnableMask) == 3 ? DpaCM::DpaCMEnable : DpaCM::DpaCMDisable;
     pufHDLoc = ((iHTable->imageHeaderTableAttributes >> vihtPufHDLocationShift) & vihtPufHDLocationMask) == 3 ? PufHdLoc::PUFinBH : PufHdLoc::PUFinEFuse;
+    idCodeCheck = (iHTable->imageHeaderTableAttributes >> vihtIdCodeCheckShift) & vihtIdCodeCheckMask;
     kekIvMust = false;
 }
 
@@ -134,6 +136,9 @@ VersalImageHeaderTable::~VersalImageHeaderTable()
 /******************************************************************************/
 void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
 {
+    bool isApuOrRpuSubsystem = false;
+    int nonApuSubSysCnt = 0;
+
     if (section != NULL)
     {
         cache.Sections.push_back(section);
@@ -212,11 +217,24 @@ void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
         for (std::list<SubSysImageHeader*>::iterator subsysimage = bi.subSysImageList.begin(); subsysimage != bi.subSysImageList.end(); subsysimage++)
         {
             (*subsysimage)->Build(bi, cache);
+            isApuOrRpuSubsystem = false;
             for (std::list<ImageHeader*>::iterator img = (*subsysimage)->imgList.begin(); img != (*subsysimage)->imgList.end(); img++)
             {
                 ValidateSecurityCombinations((*img)->GetAuthenticationType(), (*img)->GetEncryptContext()->Type(),
                     (*img)->GetChecksumContext()->Type());
+                if ((*img)->GetDestCpu() == DestinationCPU::A53_0 || (*img)->GetDestCpu() == DestinationCPU::A53_1 || (*img)->GetDestCpu() == DestinationCPU::R5_0 || (*img)->GetDestCpu() == DestinationCPU::R5_1 || (*img)->GetDestCpu() == DestinationCPU::R5_lockstep)
+                {
+                    isApuOrRpuSubsystem = true;
+                }    
             }
+            if (isApuOrRpuSubsystem == false)
+            {
+               nonApuSubSysCnt++;
+            }
+        }
+        if (nonApuSubSysCnt == 0)
+        {
+           idCodeCheck = 3;
         }
     }
     else
@@ -226,7 +244,10 @@ void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
             (*image)->Build(bi, cache);
             ValidateSecurityCombinations((*image)->GetAuthenticationType(), (*image)->GetEncryptContext()->Type(),
                 (*image)->GetChecksumContext()->Type());
-
+            if ((*image)->GetDestCpu() == DestinationCPU::A53_0 || (*image)->GetDestCpu() == DestinationCPU::A53_1 || (*image)->GetDestCpu() == DestinationCPU::R5_0 || (*image)->GetDestCpu() == DestinationCPU::R5_1 || (*image)->GetDestCpu() == DestinationCPU::R5_lockstep)
+            {
+               idCodeCheck = 3;
+            }
             imageHeaderList.push_back(*image);
         }
     }
@@ -436,6 +457,7 @@ void VersalImageHeaderTable::SetImageHeaderTableAttributes()
     iHTable->imageHeaderTableAttributes |= ((bootDevice & vihtSecBootDeviceMask) << vihtSecBootDeviceShift);
     iHTable->imageHeaderTableAttributes |= ((dpacm & vihtDpacmEnableMask) << vihtDpacmEnableShift);
     iHTable->imageHeaderTableAttributes |= ((pufHDLoc & vihtPufHDLocationMask) << vihtPufHDLocationShift);
+    iHTable->imageHeaderTableAttributes |= ((idCodeCheck & vihtIdCodeCheckMask) << vihtIdCodeCheckShift);
 }
 
 /******************************************************************************/
@@ -896,6 +918,8 @@ VersalImageHeader::VersalImageHeader(std::ifstream& ifs, VersalImageHeaderStruct
         dpacm = hdr->GetDpaCMFlag();
         pufHdLoc = hdr->GetPufHdLocation();
         offset += hdr->GetPartitionHeaderSize();
+        cluster = hdr->GetDestinationCluster();
+        lockstep = hdr->GetLockStepFlag();
     }
 }
 /******************************************************************************/
@@ -1387,6 +1411,10 @@ void VersalImageHeader::ParseFileToImport(BootImage& bi)
     {
         CreateSlrConfigPartition(bi);
     }
+    else if (partitionType == PartitionType::IMAGE_STORE_PDI)
+    {
+        CreateWriteImageStorePartition();
+    }
     else
     {
         if (Filename != "")
@@ -1440,6 +1468,7 @@ void VersalImageHeader::ParseFileToImport(BootImage& bi)
                 }
                 ImportBin(bi);
             }
+            stream.close();
         }
         else
         {
@@ -1539,7 +1568,6 @@ void VersalImageHeader::Link(BootImage &bi, PartitionHeader* partitionHeader, Im
     }
 
     SetImageId();
-    SetReservedFields();
     SetChecksum();
 }
 
@@ -1547,12 +1575,6 @@ void VersalImageHeader::Link(BootImage &bi, PartitionHeader* partitionHeader, Im
 void VersalImageHeader::SetMetaHdrRevokeId(uint32_t revokeId)
 {
     imageHeader->metaHdrRevokeId = revokeId;
-}
-
-/******************************************************************************/
-void VersalImageHeader::SetReservedFields(void)
-{
-    imageHeader->reserved = 0x00;
 }
 
 /******************************************************************************/
@@ -1937,7 +1959,7 @@ void VersalImageHeader::ParseSlaveSlrConfigCdos(BootImage& bi, std::vector<std::
             /* Enable the search for sync points - only needs to be done for SSIT devices */
             search_for_sync_points();
             cdo_data = cdoseq_to_binary(cdo_seq, &cdo_length, 0);
-            CheckIdsInCdo(cdo_seq);
+            CheckIdsInCdo(cdo_seq, bi.options.IsVersalNetSeries(), cdo_filename);
 
             if (cdo_length != 0)
             {
@@ -2129,7 +2151,7 @@ void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> fileli
                 LOG_ERROR("Error applying overlay CDO file");
             }
             cdo_data = cdoseq_to_binary(cdo_seq, &cdo_length, 0);
-            CheckIdsInCdo(cdo_seq);
+            CheckIdsInCdo(cdo_seq, bi.options.IsVersalNetSeries(), cdo_filename);
             // TODO: Call this only for v2
             const char * env = getenv("BOOTGEN_CHECK_CDO_COMMANDS");
             if (env && *env != '\0') {
@@ -2637,6 +2659,22 @@ uint32_t VersalImageHeader::CdoCmdDmaWrite(uint32_t pSize, uint64_t pAddr, uint8
 }
 
 /******************************************************************************/
+uint32_t VersalImageHeader::CdoCmdWriteImageStore(uint32_t pSize, uint64_t pdi_id, uint8_t *databuffer)
+{
+    uint32_t total_size;
+    CdoCommandWriteImageStore* cdoDataSec = new CdoCommandWriteImageStore;
+    uint32_t p_size_pad = pSize + ((4 - (pSize & 3)) & 3);
+    cdoDataSec->header = 0x00ff070D;
+    cdoDataSec->length = (p_size_pad / 4) + 2;
+    cdoDataSec->id = pdi_id;
+    cdoDataSec->data = new uint8_t[p_size_pad];
+    memset(cdoDataSec->data, 0, p_size_pad);
+    memcpy(cdoDataSec->data, databuffer, pSize);
+    total_size = (CDO_COMMAND_SIZE + p_size_pad);
+    return total_size;
+}
+
+/******************************************************************************/
 void VersalImageHeader::CalculateAieEngineBaseAddress(uint32_t colNum, uint32_t rowNum)
 {
 
@@ -2883,68 +2921,112 @@ bool IsCdoFile(uint32_t value)
 }
 
 /******************************************************************************/
-static bool CompareCDOSequences(CdoSequence * user_cdo_seq, std::string golden_cdo_filename)
+void CompareCDOSequences(CdoSequence * user_cdo_seq, std::string golden_cdo_filename, std::string user_cdo_filename)
 {
     cdoseq_extract_writes(user_cdo_seq);
-    size_t user_cdo_size = 0;
-    uint8_t* user_cdo_buffer = (uint8_t*)cdoseq_to_binary(user_cdo_seq, &user_cdo_size, 0);
-
+    uint32_t * golden_value = NULL;
+    uint32_t * user_value = NULL;
+    int pos_plus_neg_itr = 2;
     struct stat f_stat;
     bool found = false;
-    if (stat(golden_cdo_filename.c_str(), &f_stat) == 0)
+    bool golden_element_found = false;
+    std::string golden_cdo_folder;
+    std::vector <uint32_t> golden_cdo_write;
+
+    for (int i = 0; i < pos_plus_neg_itr; i++)
     {
-        found = true;
-    }
-    else
-    {
-#ifdef _WIN32
-        std::string DS = "\\";
-#else
-        std::string DS = "/";
-#endif
-        char * s = getenv("RDI_DATADIR");
-        if (s != NULL && *s != '\0')
+        golden_cdo_folder.clear();
+        golden_cdo_write.clear();
+        golden_value = NULL;   
+        user_value = NULL;
+        if (stat(golden_cdo_filename.c_str(), &f_stat) == 0)
         {
-            golden_cdo_filename = s + DS + "bootgen" + DS + golden_cdo_filename;
-            if (stat(golden_cdo_filename.c_str(), &f_stat) == 0)
+           found = true;
+        }
+        else
+        {
+    #ifdef _WIN32
+            std::string DS = "\\";
+    #else
+            std::string DS = "/";
+    #endif
+            char * s = getenv("RDI_DATADIR");
+            if (s != NULL && *s != '\0')
             {
-                found = true;
+               if (i == 0)
+               {
+                   golden_cdo_folder = s + DS + "bootgen" + DS + golden_cdo_filename  + "_positive.cdo"; 
+               }
+               else
+               {
+                   golden_cdo_folder = s + DS + "bootgen" + DS + golden_cdo_filename + "_negative.cdo";
+               }
+               if (stat(golden_cdo_folder.c_str(), &f_stat) == 0)
+               {
+                  found = true;
+               }
+            }
+        }    
+        if (!found)
+        {
+            LOG_WARNING("Cannot find golden CDO : %s", golden_cdo_folder.c_str());
+        }
+
+        CdoSequence * golden_cdo_seq = NULL;
+        golden_cdo_seq = cdoseq_load_cdo(golden_cdo_folder.c_str());
+        if (golden_cdo_seq == NULL)
+        {
+           LOG_ERROR("Error parsing CDO file : %s", golden_cdo_folder.c_str());
+        }
+        if(found)
+        {
+            LINK * l = golden_cdo_seq->cmds.next; 
+            while (l != &golden_cdo_seq->cmds) {
+                CdoCommand * golden_cmd = all2cmds(l);
+                l = l->next;
+                golden_value = (uint32_t *)golden_cmd->buf;
+                LINK * U = user_cdo_seq->cmds.next;
+                while (U != &user_cdo_seq->cmds) {
+                    CdoCommand * user_cmd = all2cmds(U);
+                    U = U->next;
+                    user_value = (uint32_t *)user_cmd->buf;
+                    if ((golden_cmd->dstaddr == user_cmd->dstaddr) && (*golden_value == *user_value))
+                    {
+                       golden_element_found = true;
+                       break;
+                    }
+                }
+                if ((i == 0) && (golden_element_found == false))
+                {
+                    golden_cdo_write.push_back(golden_cmd->dstaddr);
+                    golden_cdo_write.push_back(*golden_value);
+                }
+                else if ((i != 0) && golden_element_found == true)
+                {
+                    golden_cdo_write.push_back(golden_cmd->dstaddr);
+                    golden_cdo_write.push_back(*golden_value);
+                }
+                golden_element_found = false;
+            }
+            if (golden_cdo_write.size() != 0)
+            {
+               LOG_MSG("\n");
+               if (i == 0)
+               {
+                   LOG_WARNING("User Cdo %s has missing write commands with below address and value.\n", user_cdo_filename.c_str());
+               }
+               else
+               {
+                   LOG_WARNING("User Cdo %s has invalid write commands with below address and value.\n", user_cdo_filename.c_str());
+               }
+               for (size_t itr = 0; itr < golden_cdo_write.size(); itr+=2)
+               {
+                   LOG_MSG(" Address = 0x%x ; Value = 0x%x", golden_cdo_write[itr], golden_cdo_write[itr + 1]);
+               }
             }
         }
+        found = false;
     }
-    if (!found)
-    {
-        LOG_WARNING("Cannot find golden CDO : %s", golden_cdo_filename.c_str());
-        return true;
-    }
-
-    CdoSequence * golden_cdo_seq;
-    golden_cdo_seq = cdoseq_load_cdo(golden_cdo_filename.c_str());
-    if (golden_cdo_seq == NULL)
-    {
-        LOG_ERROR("Error parsing CDO file : %s", golden_cdo_filename.c_str());
-    }
-    cdoseq_extract_writes(golden_cdo_seq);
-
-    uint8_t* golden_cdo_buffer = NULL;
-    size_t golden_cdo_size = 0;
-    golden_cdo_buffer = (uint8_t*)cdoseq_to_binary(golden_cdo_seq, &golden_cdo_size, 0);
-    //cdocmd_delete_sequence(golden_cdo_seq);
-
-    const size_t header_size = 20;
-    if (golden_cdo_size != 0)
-    {
-        if (user_cdo_size == golden_cdo_size && memcmp(user_cdo_buffer + header_size, golden_cdo_buffer + header_size, golden_cdo_size - header_size) == 0)
-        {
-            return true;
-        }
-    }
-    else
-    {
-        LOG_ERROR("Incorrect length read from : %s", golden_cdo_filename.c_str());
-    }
-
-    return false;
 }
 
 /******************************************************************************/
@@ -3112,7 +3194,18 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
         if (do_ssit_check != NULL)
         {
             switch (bi.bifOptions->idCode) {
-            case 0x04d14093:
+            case 0x04d24093: /* h10 */
+                //device_name = "xcvp1202";
+                break;
+            case 0x04d08093: /* h20 */
+                device_name = "xcvp1502";
+                break;
+            case 0x04d2c093: /* h30 */
+                break;
+            case 0x04d10093: /* h40 */
+                device_name = "xcvp1702";
+                break;
+            case 0x04d14093: /* h50 */
                 device_name = "xcvp1802";
                 break;
             default:
@@ -3186,13 +3279,9 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                         }
                         else
                         {
-                            std::string golden_cdo_filename = device_name + "_boot_" + std::to_string((*slr_id)->index) + ".rnpi";
-                            bool ret = CompareCDOSequences(cdo_seq, golden_cdo_filename);
+                            std::string golden_cdo_filename = device_name + "_boot" + std::to_string((*slr_id)->index);
+                            CompareCDOSequences(cdo_seq, golden_cdo_filename, (*slr_id)->file);
                             //cdocmd_delete_sequence(cdo_seq);
-                            if (ret == false)
-                            {
-                                LOG_ERROR("NoC configuration for slr %d doesn't match golden configuration", (*slr_id)->index);
-                            }
                         }
                     }
                 }
@@ -3307,14 +3396,10 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                 }
                 if ((master_cdo_verified == 0) && (device_name != "") && (do_ssit_check != NULL))
                 {
-                    std::string golden_cdo_filename = device_name + "_boot_0.rnpi";
+                    std::string golden_cdo_filename = device_name + "_boot0";
                     master_cdo_verified = 1;
-                    bool ret = CompareCDOSequences(cdo_seq, golden_cdo_filename);
+                    CompareCDOSequences(cdo_seq, golden_cdo_filename, (*slr_id)->file.c_str());
                     //cdocmd_delete_sequence(cdo_seq);
-                    if (ret == false)
-                    {
-                        LOG_ERROR("NoC configuration for master slr doesn't match golden configuration");
-                    }
                     cdo_seq = cdoseq_load_cdo(cdo_filename);
                     if (cdo_seq == NULL)
                     {
@@ -3622,7 +3707,7 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
                         const char* cdo_filename = (*slr_info)->file.c_str();
                         CdoSequence * master_cdo_seq;
                         master_cdo_seq = cdoseq_load_cdo(cdo_filename);
-                        CheckIdsInCdo(master_cdo_seq);
+                        CheckIdsInCdo(master_cdo_seq, bi.options.IsVersalNetSeries(), cdo_filename);
                         if (master_cdo_seq == NULL)
                         {
                             LOG_ERROR("Error parsing CDO file");
@@ -3985,6 +4070,12 @@ void VersalImageHeader::SetSlrConfigPartitions(std::list<SlrPdiInfo*> configPdis
 }
 
 /******************************************************************************/
+void VersalImageHeader::SetWriteImageStorePartitions(ImageStorePdiInfo* imageStorePDIs)
+{
+    imageStorePdiInfo = imageStorePDIs;
+}
+
+/******************************************************************************/
 void VersalImageHeader::SetDpacm(DpaCM::Type type)
 {
     dpacm = type;
@@ -4071,15 +4162,36 @@ void SubSysImageHeader::Link(BootImage &bi, SubSysImageHeader* nextHeader)
 
     SetDataSectionCount();
     SetImageHeaderIds();
-    SetReservedFields();
+    SetPCRMeasurementIndex(bi.options.IsVersalNetSeries());
+    SetPCRNumber(bi.options.IsVersalNetSeries());
     SetChecksum();
 }
 
 
 /******************************************************************************/
-void SubSysImageHeader::SetReservedFields(void)
+void SubSysImageHeader::SetPCRMeasurementIndex(bool versalnet)
 {
-    subSysImageHeaderTable->reserved = 0x0;
+    if (versalnet)
+    {
+        subSysImageHeaderTable->pcrMeasurementIndex = GetPCRMeasurementIndex();
+    }
+    else
+    {
+        subSysImageHeaderTable->pcrMeasurementIndex = 0x00;
+    }
+}
+
+/******************************************************************************/
+void SubSysImageHeader::SetPCRNumber(bool versalnet)
+{
+    if (versalnet)
+    {
+        subSysImageHeaderTable->pcrNumber = GetPCRNumber();
+    }
+    else
+    {
+        subSysImageHeaderTable->pcrNumber = 0x00;
+    }
 }
 
 /******************************************************************************/
@@ -4285,6 +4397,8 @@ SubSysImageHeader::SubSysImageHeader(ImageBifOptions *imgOptions)
     uniqueId = imgOptions->GetUniqueId();
     parentUniqueId = imgOptions->GetParentUniqueId();
     functionId = imgOptions->GetFunctionId();
+    pcrNumber = imgOptions->GetPcrNumber();
+    pcrMeasurementIndex = imgOptions->GetPcrMeasurementIndex();
 
     isFullPowerDomain = false;
     isLowPowerDomain = false;
@@ -4346,6 +4460,8 @@ SubSysImageHeader::SubSysImageHeader(std::ifstream& ifs)
     isFullPowerDomain = ((subSysImageHeaderTable->imageAttributes >> vihFullPowerDomainShift) & vihFullPowerDomainMask);
     isLowPowerDomain = ((subSysImageHeaderTable->imageAttributes >> vihLowPowerDomainShift) & vihLowPowerDomainMask);
     isSystemPowerDomain = ((subSysImageHeaderTable->imageAttributes >> vihSystemPowerDomainShift) & vihSystemPowerDomainMask);
+    pcrNumber = subSysImageHeaderTable->pcrNumber;
+    pcrMeasurementIndex = subSysImageHeaderTable->pcrMeasurementIndex;
 
     /* Find the no. of image headers to be created */
     num_of_images = 0;
@@ -4372,13 +4488,14 @@ SubSysImageHeader::SubSysImageHeader(std::ifstream& ifs)
 }
 
 /******************************************************************************/
-void VersalImageHeader::CheckIdsInCdo(CdoSequence * seq)
+void VersalImageHeader::CheckIdsInCdo(CdoSequence * seq, bool isVersalNetSeries, std::string cdo_filename)
 {
     LINK * l = seq->cmds.next;
     while (l != &seq->cmds) 
     {
         CdoCommand * cmd = all2cmds(l);
         l = l->next;
+
         if(cmd->type == CdoCmdPmInitNode)
         {
             imageId = u32le(cmd->id);
@@ -4427,4 +4544,75 @@ void VersalImageHeader::SetPowerDomains(uint8_t* buf, uint32_t count)
         }
         buf += sizeof(uint32_t);
     }
+}
+
+/******************************************************************************/
+void VersalImageHeader::CreateWriteImageStorePartition()
+{
+    LOG_INFO("Creating Write Image Store CDO partition");
+    std::ifstream s(Filename.c_str());
+    if (!s)
+    {
+        LOG_ERROR("Cannot read file - %s ", Filename.c_str());
+    }
+
+    ByteFile data(Filename);
+    uint32_t p_size_pad = data.len + ((4 - (data.len & 3)) & 3);
+    uint8_t* tempBuffer = new uint8_t[p_size_pad];
+    memcpy(tempBuffer, data.bytes, p_size_pad);
+
+    size_t size = 0;
+    size_t p_offset = 0;
+    /* CDO Header */
+    cdoHeader = new VersalCdoHeader;
+    cdoHeader->remaining_words = CDO_REMAINING_WORDS;
+    cdoHeader->id_word = CDO_IDENTIFICATION; /* CDO */
+    cdoHeader->version = CDO_VERSION; /* Version - 2.0 */
+
+    /* Populate length and checksum later, as we can't estimate the exact size of CDO */
+    cdoHeader->length = 0;
+    cdoHeader->checksum = 0;
+    size += sizeof(VersalCdoHeader);
+    uint8_t* p_buffer = new uint8_t[size];
+    memcpy(p_buffer, cdoHeader, sizeof(VersalCdoHeader));
+    p_offset += sizeof(VersalCdoHeader);
+
+    CdoCommandWriteImageStore* cdoCmd = new CdoCommandWriteImageStore;
+    cdoCmd->header = 0x00ff070D;
+    cdoCmd->length = (p_size_pad / 4) + 2;
+    cdoCmd->id = imageStorePdiInfo->id;
+    cdoCmd->data = new uint8_t[p_size_pad];
+    memset(cdoCmd->data, 0, p_size_pad);
+    memcpy(cdoCmd->data, tempBuffer, p_size_pad);
+
+    size += CDO_CMD_WRITE_IMAGE_STORE_SIZE;
+    p_buffer = (uint8_t*)realloc(p_buffer, size);
+    memcpy(p_buffer + p_offset, cdoCmd, CDO_CMD_WRITE_IMAGE_STORE_SIZE);
+    p_offset += CDO_CMD_WRITE_IMAGE_STORE_SIZE;
+
+    size += p_size_pad;
+    p_buffer = (uint8_t*)realloc(p_buffer, size);
+    memcpy(p_buffer + p_offset, cdoCmd->data, p_size_pad);
+    p_offset += p_size_pad;
+
+    size += sizeof(CdoCommandHeader);
+    p_buffer = (uint8_t*)realloc(p_buffer, size);
+    CdoCommandHeader* cmd_end = CdoCmdCdoEnd();
+    memcpy(p_buffer + p_offset, cmd_end, sizeof(CdoCommandHeader));
+
+    /* Update CDO header lengths and checksum */
+    cdoHeader->length = (size - sizeof(VersalCdoHeader)) / 4;
+    cdoHeader->checksum = ~(cdoHeader->remaining_words + cdoHeader->id_word + cdoHeader->version + cdoHeader->length);
+    memcpy(p_buffer, cdoHeader, sizeof(VersalCdoHeader));
+
+    SetPartitionType(PartitionType::CONFIG_DATA_OBJ);
+    PartitionHeader* partHdr = new VersalPartitionHeader(this, imageStorePdiInfo->id);
+    partHdr->execState = 0;
+    partHdr->elfEndianess = 0;
+    partHdr->firstValidIndex = true;
+    partHdr->loadAddress = 0xFFFFFFFFFFFFFFFF;
+    partHdr->execAddress = 0;
+    partHdr->partitionSize = size;
+    partHdr->partition = new VersalPartition(partHdr, p_buffer, size);
+    partitionHeaderList.push_back(partHdr);
 }

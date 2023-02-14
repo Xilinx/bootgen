@@ -42,7 +42,7 @@
 
 /* "%code requires" blocks.  */
 /* Line 33 of lalr1.cc  */
-#line 38 "../../s/reginit.y"
+#line 39 "../../s/reginit.y"
 
 	namespace RE {
 		class BisonScanner;
@@ -68,7 +68,7 @@
 #endif
 
 /* Line 33 of lalr1.cc  */
-#line 23 "../../s/reginit.y"
+#line 24 "../../s/reginit.y"
 namespace RE {
 /* Line 33 of lalr1.cc  */
 #line 75 "reginit.tab.hpp"
@@ -82,7 +82,7 @@ namespace RE {
     union semantic_type
     {
 /* Line 33 of lalr1.cc  */
-#line 63 "../../s/reginit.y"
+#line 64 "../../s/reginit.y"
 
     unsigned long number;
 
@@ -292,7 +292,7 @@ namespace RE {
     RegisterTable& regtab;
   };
 /* Line 33 of lalr1.cc  */
-#line 23 "../../s/reginit.y"
+#line 24 "../../s/reginit.y"
 } // RE
 /* Line 33 of lalr1.cc  */
 #line 299 "reginit.tab.hpp"

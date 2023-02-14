@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2019-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -19,9 +20,6 @@
 
 #include <stdlib.h>
 #include "cdo-command.h"
-#define MARKER_DEVICE      0x1
-#define MARKER_SLRID       0x5
-#define MARKER_DATE        0x6
 
 void * file_to_buf(const char * path, size_t * sizep);
 CdoSequence * cdoseq_load_cdo(const char * path);

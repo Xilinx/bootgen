@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -31,7 +32,6 @@
 #include "options.h"
 #include "logger.h"
 #include "encryptutils.h"
-#include "imageheadertable-versal.h"
 #include <string.h>
 #include <fstream>
 
@@ -189,6 +189,7 @@ public:
     uint8_t GetChecksumType(void);
     uint8_t GetOwnerType(void);
     uint8_t GetDestinationCpu(void);
+    uint8_t GetDestinationCluster(void);
     uint8_t GetProcessorExecState(void);
     uint8_t GetElfEndianess(void);
     uint8_t GetExceptionLevel(void);
@@ -207,6 +208,7 @@ public:
     PartitionType::Type GetPartitionType(void);
     DpaCM::Type GetDpaCMFlag(void);
     PufHdLoc::Type GetPufHdLocation(void);
+    Lockstep::Type GetLockStepFlag(void);
     uint32_t GetPartitionUid(void);
     uint64_t GetLQspiExecAddrForXip(uint64_t addr);
     uint32_t GetSectionCount(void);

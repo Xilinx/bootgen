@@ -1,6 +1,7 @@
 
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -16,11 +17,11 @@
 ******************************************************************************/
 
 #ifndef RDI_VERSION
-#define RDI_VERSION "2022.2"
+#define RDI_VERSION "2023.1"
 #endif
 
-#define PROGRAMNAME     "Xilinx Bootgen"
-#define COPYRIGHT       "Copyright (c) 1986-2022 Xilinx, Inc. All rights reserved.\n"
+#define PROGRAMNAME     "Bootgen"
+#define COPYRIGHT       "Copyright (c) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.\n"
 
 
 /******************************************************************************
@@ -30,9 +31,9 @@
 ------------------------------------------------------------------------------+\n\
                        COMMAND LINE OPTIONS                                   |\n\
 ------------------------------------------------------------------------------+\n\
- arch              - Xilinx Architecture                                      |\n\
+ arch              - Device Architecture                                      |\n\
  bif_help          - Print the BIF help summary                               |\n\
- dual_ospi_mode    - Generate 2 output files for Dual QSPI                    |\n\
+ dual_ospi_mode    - Generate 2 output files for Dual OSPI                    |\n\
  dual_qspi_mode    - Generate 2 output files for Dual QSPI                    |\n\
  dump              - Dumps components from PDI as bin files                   |\n\
  dump_dir          - Dumps components in specified directory                  |\n\
@@ -81,7 +82,7 @@
  aarch32_mode         - 32-bit mode execution for binary partitions           |\n\
  alignment            - Alignment for the partition                           |\n\
  big_endian           - Big endian partition                                  |\n\
- bootimage            - Boot Image File (in Xilinx Boot Image format)         |\n\
+ bootimage            - BootImage File(Bootgen generated BootImage/PDI Format)|\n\
  bootloader           - First Stage Boot Loader                               |\n\
  bootvectors          - Vector table for XIP                                  |\n\
  boot_device          - Secondary Boot Device                                 |\n\
@@ -119,6 +120,9 @@
  type                 - Type of partition                                     |\n\
  udf_bh               - User Defined Feild of boot header                     |\n\
  xip_mode             - eXecute In Place                                      |\n\
+ pcr                  - PCR register number                                   |\n\
+ pcr_mindex           - PCR measurement index                                 |\n\
+ imagestore           - ID corresponding to Image Store PDI                   |\n\
 ------------------------------------------------------------------------------+\n\
  Encryption attributes                                                        |\n\
 ------------------------------------------------------------------------------+\n\

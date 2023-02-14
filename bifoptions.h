@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -25,7 +26,6 @@
 -------------------------------------------------------------------------------
 */
 #include "options.h"
-#include "imageheadertable-versal.h"
 
 /* Forward Class References */
 class Options;
@@ -169,11 +169,11 @@ public:
     Override<Binary::Length_t> reserve;
     Override<Binary::Address_t> load;
     Override<Binary::Address_t> startup;
-    Override<Binary::Address_t> pmcDataLoadAddress;
 
     bool bigEndian;
     bool a32Mode;
     uint32_t partitionId;
+    uint32_t imageStoreId;
     bool boot;
     bool user;
     bool Static;
@@ -223,6 +223,8 @@ public:
         , uniqueId(0xFFFFFFFF)
         , parentUniqueId(0xFFFFFFFF)
         , functionId(0xFFFFFFFF)
+        , pcrNumber(0xFFFF)
+        , pcrMeasurementIndex(0xFFFF)
     {
         partitionBifOptionsList.clear();
     }
@@ -257,6 +259,18 @@ public:
     void SetImageType(PartitionType::Type type)
     {
         imageType = type;
+    }
+    void SetPcrNumber(uint16_t num)
+    {
+        if ((2 > num) || (num > 7))
+        {
+            LOG_ERROR("'pcr' is specified as '%d' for the Image:'%s'\n\t   The permitted values range from 2 to 7.", num, GetImageName().c_str());
+        }
+        pcrNumber = num;
+    }
+    void SetPcrMeasurementIndex(uint16_t pcrIndex)
+    {
+        pcrMeasurementIndex = pcrIndex;
     }
 
     uint32_t GetImageId(void)
@@ -303,7 +317,14 @@ public:
     {
         return imageType;
     }
-
+    uint16_t GetPcrNumber(void)
+    {
+        return pcrNumber;
+    }
+    uint16_t GetPcrMeasurementIndex(void)
+    {
+        return pcrMeasurementIndex;
+    }
     std::list<PartitionBifOptions*> partitionBifOptionsList;
 
 private:
@@ -316,6 +337,8 @@ private:
     uint32_t uniqueId;
     uint32_t parentUniqueId;
     uint32_t functionId;
+    uint32_t pcrNumber;
+    uint32_t pcrMeasurementIndex;
 };
 
 /******************************************************************************/
@@ -386,11 +409,13 @@ public:
     void SetCore(Core::Type type);
     void SetMetaHeaderEncryptionKeySource(KeySource::Type type, bool versalNetSeries);
     void SetMetaHeaderEncryptType(Encryption::Type type);
+    void SetMetaHeaderEncryptionKeyFile(std::string file);
     void SetMetaHeaderAuthType(Authentication::Type type);
     void SetPufHdinBHFlag();
     void SetAuthJtagRevokeID(uint32_t value);
     void SetAuthJtagDeviceDna(std::string string);
     void SetAuthJtagTimeOut(uint32_t value);
+    void SetPmcDataAesFile(std::string filename);
 
     std::string GetGroupName(void);
     std::string GetAESKeyFileName(void);
@@ -469,7 +494,6 @@ public:
 
     //Versal
     Binary::Address_t pmcCdoLoadAddress;
-    std::string pmcDataAesFile;
     uint32_t idCode;
     uint32_t extendedIdCode;
     PartitionType::Type pdiType;
@@ -489,6 +513,7 @@ public:
     std::vector<uint32_t> pmcdataBlocks;
     uint8_t slrNum;
 private:
+    std::string pmcDataAesFile;
     std::string regInitFile;
     std::string udfBhFile;
     std::string pmuFwImageFile;
