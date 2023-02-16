@@ -4495,6 +4495,21 @@ void VersalImageHeader::CheckIdsInCdo(CdoSequence * seq, bool isVersalNetSeries,
     {
         CdoCommand * cmd = all2cmds(l);
         l = l->next;
+        if(cmd->type == CdoCmdMarker)
+        {
+            char* marker_arch = (char*)cmd->buf;
+            if (cmd->value == MARKER_ARCHITECTURE)
+            {
+               if (isVersalNetSeries && (strstr(marker_arch,"versalnet") == 0))
+               {
+                  LOG_WARNING("The architecture(%s) in '%s' does not match '-arch versalnet'", marker_arch, cdo_filename.c_str());
+               }
+               else if(!isVersalNetSeries && ((strstr(marker_arch,"versalnet") != 0) || (strstr(marker_arch,"versal") == 0)))
+               {
+                  LOG_WARNING("The architecture(%s) in '%s' does not match '-arch versal'", marker_arch, cdo_filename.c_str());
+               }
+            }
+        }
 
         if(cmd->type == CdoCmdPmInitNode)
         {

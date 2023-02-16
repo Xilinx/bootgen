@@ -120,6 +120,10 @@ void ZynqMpBootHeader::Build(BootImage& bi, Binary& cache)
     /* If the boot header is imported from a bootimage file, no need to build */
     if (prebuilt)
     {
+        if (bi.bifOptions->GetRegInitFileName() != "")
+        {
+            BuildRegInitTable(bi.options);
+        }
         return;
     }
 
