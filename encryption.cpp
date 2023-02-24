@@ -319,7 +319,7 @@ static uint32_t GetRandomValue(uint32_t	maxValue)
 
     do
     {
-        returnValue = (myrand() / (int)(((unsigned)RAND_MAX + 1) / maxValue));
+        returnValue = (rand() / (int)(((unsigned)RAND_MAX + 1) / maxValue));
     } while (returnValue > maxValue);
 
     return returnValue;
