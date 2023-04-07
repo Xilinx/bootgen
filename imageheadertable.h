@@ -396,6 +396,7 @@ public:
         , iht_optional_data(NULL)
         , iht_optional_data_length(0)
         , idCodeCheck(0)
+        , nonApuSubSysCnt(0)
     { }
 
     virtual ~ImageHeaderTable() {}
@@ -442,6 +443,7 @@ public:
     uint32_t* iht_optional_data;
     uint32_t iht_optional_data_length;
     uint8_t idCodeCheck;
+    int nonApuSubSysCnt;
 
 protected:
     bool slaveBootSplitMode;

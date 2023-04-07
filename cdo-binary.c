@@ -167,6 +167,7 @@ enum {
     CMD2_PM_APPLY_TRIM = 0x244,
     CMD2_PM_NOC_CLOCK_ENABLE	= 0x245,
     CMD2_PM_IF_NOC_CLOCK_ENABLE	= 0x246,
+    CMD2_PM_FORCE_HC =0x247,
 
     /* NPI Commands */
     /* Version 1.50 and later, but not version 2.00 */
@@ -857,7 +858,10 @@ static uint32_t decode_v2_cmd(CdoSequence * seq, uint32_t * p, uint32_t * ip, ui
             cdocmd_add_pm_if_noc_clock_enable(seq, u32xe(p[i+0]), u32xe(p[i+1]),
                                               args == 3 ? u32xe(p[i+2]) : 1);
             break;
-
+        case CMD2_PM_FORCE_HC:
+            if (args != 1) goto unexpected;
+            cdocmd_add_pm_force_hc(seq, u32xe(p[i+0]));
+            break;
         case CMD2_CFU_SET_CRC32:
             if (seq->version >= CDO_VERSION_2_00) goto unexpected;
             if (args < 1) goto unexpected;
@@ -2135,6 +2139,10 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
             memcpy(p + pos, cmd->buf, cmd->count * sizeof(uint32_t));
             byte_swap_buffer(p + pos, cmd->count, be);
             pos += cmd->count;
+            break;
+        case CdoCmdPmForceHc:
+            hdr2(&p, &pos, CMD2_PM_FORCE_HC, 1, be);
+            p[pos++] = u32xe(cmd->id);
             break;
         case CdoCmdCfuSetCrc32:
             if (version >= CDO_VERSION_2_00) goto cfu_error;

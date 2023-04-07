@@ -265,6 +265,7 @@ new_pdi_spec            :   ID EQUAL expression                                 
                         |   other_file_attr EQUAL filename                      { currentBifOptions->AddFiles($1, $3); }
                         |   KEYSRC_ENCRYPTION EQUAL key_src                     { currentBifOptions->SetEncryptionKeySource($3); }
                         |   PARTITION_TYPE EQUAL ptypevalue                     { currentBifOptions->SetPdiType($3); }
+                        |   REVOKE_ID EQUAL expression                          { currentBifOptions->SetRevokeId($3);}
                         ;
 
 image_spec              :   image_list
@@ -290,6 +291,7 @@ image_attributes        :   ID EQUAL expression                                 
                         |   NAME EQUAL WORD                                     { currentImageBifOptions->SetImageName($3); }
                         |   DELAY_HANDOFF                                       { currentImageBifOptions->SetDelayHandoff(true); }
                         |   DELAY_LOAD                                          { currentImageBifOptions->SetDelayLoad(true); }
+                        |   INIT                                                { LOG_ERROR("BIF attribute error !!!\n\t This usage of 'init' is not supported. See 'bootgen -bif_help init' for usage details."); }
                         |   COPY EQUAL expression                               { currentImageBifOptions->SetMemCopyAddress($3); }
                         |   PARTITION_TYPE EQUAL ptypevalue                     { currentImageBifOptions->SetImageType($3); }
                         |   UNIQUE_ID EQUAL expression                          { currentImageBifOptions->SetUniqueId($3); }
@@ -386,7 +388,7 @@ fsbl_attr               :   core                                                
                                                                                 }
                         |   SMAP_WIDTH EQUAL expression                         { if(($3 != 8) && ($3 !=16) && ($3 != 32) && ($3 != 0))
                                                                                         LOG_ERROR("Invalid smap_width value in BIF. Valid values are 8, 16 and 32");
-                                                                                  currentBifOptions->smapWidth = $3;
+                                                                                  currentBifOptions->SetSmapWidth($3);
                                                                                 }
                         |   BYPASS_IDCODE_CHECK                                 { currentBifOptions->SetBypassIdcodeFlag(true); }
                         |   A_HWROT                                             { currentBifOptions->SetAHwRoTFlag(true); }

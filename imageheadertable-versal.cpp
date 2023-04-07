@@ -137,7 +137,6 @@ VersalImageHeaderTable::~VersalImageHeaderTable()
 void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
 {
     bool isApuOrRpuSubsystem = false;
-    int nonApuSubSysCnt = 0;
 
     if (section != NULL)
     {
@@ -235,6 +234,10 @@ void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
         if (nonApuSubSysCnt == 0)
         {
            idCodeCheck = 3;
+        }
+        else
+        {
+           idCodeCheck = 0;
         }
     }
     else
@@ -2950,16 +2953,16 @@ void CompareCDOSequences(CdoSequence * user_cdo_seq, std::string golden_cdo_file
     #else
             std::string DS = "/";
     #endif
-            char * s = getenv("RDI_DATADIR");
+            char *s = getenv("HDI_APPROOT");
             if (s != NULL && *s != '\0')
             {
                if (i == 0)
                {
-                   golden_cdo_folder = s + DS + "bootgen" + DS + golden_cdo_filename  + "_positive.cdo"; 
+                   golden_cdo_folder = s + DS + "data" + DS + "bootgen" + DS + golden_cdo_filename  + "_positive.cdo";
                }
                else
                {
-                   golden_cdo_folder = s + DS + "bootgen" + DS + golden_cdo_filename + "_negative.cdo";
+                   golden_cdo_folder = s + DS + "data" + DS + "bootgen" + DS + golden_cdo_filename + "_negative.cdo";
                }
                if (stat(golden_cdo_folder.c_str(), &f_stat) == 0)
                {
@@ -2969,7 +2972,7 @@ void CompareCDOSequences(CdoSequence * user_cdo_seq, std::string golden_cdo_file
         }    
         if (!found)
         {
-            LOG_WARNING("Cannot find golden CDO : %s", golden_cdo_folder.c_str());
+            LOG_ERROR("Cannot find golden CDO : %s", golden_cdo_folder.c_str());
         }
 
         CdoSequence * golden_cdo_seq = NULL;
@@ -3853,75 +3856,129 @@ void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size
         offset += sizeof(VersalPartitionHeaderTableStructure);
         if (((pHT->partitionAttributes >> vphtPartitionTypeShift) & vphtPartitionTypeMask) == PartitionType::CONFIG_DATA_OBJ)
         {
-            CdoSequence * cdo_seq;
-            if (pHT->checksumWordOffset != 0 || pHT->authCertificateOffset != 0)
+            if(pHT->partitionKeySource != KeySource::None)
             {
-                uint8_t* partition_data = NULL;
-                uint32_t partition_length = pHT->encryptedPartitionLength * 4;
-                uint64_t data_chunk = SECURE_32K_CHUNK - SHA3_LENGTH_BYTES;
-                uint32_t partition_data_offset = (pHT->partitionWordOffset * 4);
-
-                partition_data = (uint8_t*)malloc(partition_length);
-                memset(partition_data, 0x00, partition_length);
-
-                if (partition_length <= data_chunk)
+                if (index == (iHT->partitionTotalCount - 1))
                 {
-                    memcpy(partition_data, data + partition_data_offset, partition_length);
-                }
-                else
-                {
-                    int num_secure_chunks = partition_length / data_chunk;
-                    if (partition_length % data_chunk != 0)
+                    LOG_TRACE("Reading SLR Config CDO Sync Addresses - %s", slr_info->file.c_str());
+                    std::string sync_addresses_filename = StringUtils::RemoveExtension(slr_info->file) + "_sync_offsets.txt";
+                    std::ifstream offsetFile(sync_addresses_filename.c_str());
+                    std::vector<uint32_t> syncpt_offsets;
+                    if (!offsetFile)
                     {
-                        num_secure_chunks++;
+                        LOG_ERROR("Failure reading SLR Config CDO Sync Addresses - %s", slr_info->file.c_str());
                     }
-                    uint32_t lastChunkSize = partition_length - ((num_secure_chunks - 1) * data_chunk);
-
-                    for (int i = 1; i < num_secure_chunks; i++)
+                    while (offsetFile)
                     {
-                        memcpy(partition_data + ((i - 1) * data_chunk), data + partition_data_offset, data_chunk);
-                        partition_data_offset += (data_chunk + SHA3_LENGTH_BYTES);
+                        std::string word;
+                        offsetFile >> word;
+                        // If file vacant
+                        if (word == "")
+                        {
+                            return;
+                        }
+                        if (word == "sync_offsets")
+                        {
+                            while (offsetFile)
+                            {
+                                offsetFile >> word;
+                                uint32_t offset = std::stoi(word);
+                                syncpt_offsets.push_back(offset);
+                            }
+                        }
                     }
-
-                    memcpy(partition_data + ((num_secure_chunks - 1) * data_chunk), data + partition_data_offset, lastChunkSize);
+                    syncpt_offsets.pop_back();
+                    num_of_sync_points = syncpt_offsets.size();
+                    if (num_of_sync_points > 0)
+                    {
+                        if (info_display)
+                        {
+                            LOG_TRACE("SSIT_SYNC_MASTER command detected at following offsets:");
+                            LOG_TRACE("   slr_%d:", slr_info->index);
+                            info_display = false;
+                        }
+                        for (int i = 0; i < num_of_sync_points; i++)
+                        {
+                            size_t offset = (pHT->partitionWordOffset * 4) + syncpt_offsets[i];
+                            slr_info->sync_addresses.push_back(offset);
+                            LOG_TRACE("       offset = 0x%x", offset);
+                        }
+                        remove(sync_addresses_filename.c_str());
+                    }
                 }
-                cdo_seq = decode_cdo_binary(partition_data, partition_length);
             }
             else
             {
-                cdo_seq = decode_cdo_binary(data + pHT->partitionWordOffset * 4, pHT->totalPartitionLength * 4);
-            }
-
-            if (cdo_seq == NULL)
-            {
-                LOG_ERROR("decode_cdo_binary failed - %s", slr_info->file.c_str());
-            }
-            size_t buffer_size = 0;
-
-            /* Enable the search for sync points - only needs to be done for SSIT devices */
-            search_for_sync_points();
-
-            uint8_t* buffer = (uint8_t*)cdoseq_to_binary(cdo_seq, &buffer_size, 0);
-
-            /* Get no. of sync points and sync points offsets */
-            num_of_sync_points = get_num_of_sync_points();
-            syncpt_offsets = get_slr_sync_point_offsets();
-            if (num_of_sync_points > 0)
-            {
-                if (info_display)
+                CdoSequence * cdo_seq;
+                if (pHT->checksumWordOffset != 0 || pHT->authCertificateOffset != 0)
                 {
-                    LOG_TRACE("SSIT_SYNC_MASTER command detected at following offsets:");
-                    LOG_TRACE("   slr_%d:", slr_info->index);
-                    info_display = false;
+                    uint8_t* partition_data = NULL;
+                    uint32_t partition_length = pHT->encryptedPartitionLength * 4;
+                    uint64_t data_chunk = SECURE_32K_CHUNK - SHA3_LENGTH_BYTES;
+                    uint32_t partition_data_offset = (pHT->partitionWordOffset * 4);
+
+                    partition_data = (uint8_t*)malloc(partition_length);
+                    memset(partition_data, 0x00, partition_length);
+
+                    if (partition_length <= data_chunk)
+                    {
+                        memcpy(partition_data, data + partition_data_offset, partition_length);
+                    }
+                    else
+                    {
+                        int num_secure_chunks = partition_length / data_chunk;
+                        if (partition_length % data_chunk != 0)
+                        {
+                            num_secure_chunks++;
+                        }
+                        uint32_t lastChunkSize = partition_length - ((num_secure_chunks - 1) * data_chunk);
+
+                        for (int i = 1; i < num_secure_chunks; i++)
+                        {
+                            memcpy(partition_data + ((i - 1) * data_chunk), data + partition_data_offset, data_chunk);
+                            partition_data_offset += (data_chunk + SHA3_LENGTH_BYTES);
+                        }
+
+                        memcpy(partition_data + ((num_secure_chunks - 1) * data_chunk), data + partition_data_offset, lastChunkSize);
+                    }
+                    cdo_seq = decode_cdo_binary(partition_data, partition_length);
                 }
-                for (int i = 0; i < num_of_sync_points; i++)
+                else
                 {
-                    size_t offset = (pHT->partitionWordOffset * 4) + (*(syncpt_offsets + i) * 4);
-                    slr_info->sync_addresses.push_back(offset);
-                    LOG_TRACE("       offset = 0x%x", offset);
+                    cdo_seq = decode_cdo_binary(data + pHT->partitionWordOffset * 4, pHT->totalPartitionLength * 4);
                 }
-                delete syncpt_offsets;
-                delete buffer;
+
+                if (cdo_seq == NULL)
+                {
+                    LOG_ERROR("decode_cdo_binary failed - %s", slr_info->file.c_str());
+                }
+                size_t buffer_size = 0;
+
+                /* Enable the search for sync points - only needs to be done for SSIT devices */
+                search_for_sync_points();
+
+                uint8_t* buffer = (uint8_t*)cdoseq_to_binary(cdo_seq, &buffer_size, 0);
+
+                /* Get no. of sync points and sync points offsets */
+                num_of_sync_points = get_num_of_sync_points();
+                syncpt_offsets = get_slr_sync_point_offsets();
+                if (num_of_sync_points > 0)
+                {
+                    if (info_display)
+                    {
+                        LOG_TRACE("SSIT_SYNC_MASTER command detected at following offsets:");
+                        LOG_TRACE("   slr_%d:", slr_info->index);
+                        info_display = false;
+                    }
+                    for (int i = 0; i < num_of_sync_points; i++)
+                    {
+                        size_t offset = (pHT->partitionWordOffset * 4) + (*(syncpt_offsets + i) * 4);
+                        slr_info->sync_addresses.push_back(offset);
+                        LOG_TRACE("       offset = 0x%x", offset);
+                    }
+                    delete syncpt_offsets;
+                    delete buffer;
+                }
             }
         }
     }

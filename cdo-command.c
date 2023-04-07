@@ -786,6 +786,12 @@ void cdocmd_add_pm_if_noc_clock_enable(CdoSequence * seq, uint32_t index, uint32
     add_command(seq, cmd);
 }
 
+void cdocmd_add_pm_force_hc(CdoSequence * seq, uint32_t nodeid) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdPmForceHc);
+    cmd->id = nodeid;
+    add_command(seq, cmd);
+}
+
 void cdocmd_add_cfu_set_crc32(CdoSequence * seq, uint32_t type, uint32_t value) {
     CdoCommand * cmd = cdocmd_alloc(CdoCmdCfuSetCrc32);
     cmd->flags = type;

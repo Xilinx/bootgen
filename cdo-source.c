@@ -138,6 +138,7 @@ struct command_info {
     { "pm_if_noc_clock_enable", CdoCmdPmIfNocClockEnable },
     { "pm_activate_subsystem", CdoCmdPmActivateSubsystem },
     { "pm_set_node_access", CdoCmdPmSetNodeAccess },
+    { "pm_force_hc", CdoCmdPmForceHc},
     { "cfu_set_crc32", CdoCmdCfuSetCrc32 },
     { "cfu_decompress", CdoCmdCfuDecompress },
     { "cfu_cram_rw", CdoCmdCfuCramRW },
@@ -1143,6 +1144,12 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             free(buf);
             break;
         }
+        case CdoCmdPmForceHc: {
+            uint32_t id;
+            if (parse_u32(&s, &id)) goto syntax_error;
+            cdocmd_add_pm_force_hc(seq, id);
+            break;
+        }
         case CdoCmdCfuSetCrc32: {
             uint32_t flags;
             uint32_t value;
@@ -1919,6 +1926,11 @@ void cdoseq_to_source(FILE * f, CdoSequence * seq) {
             fprintf(f, "pm_set_node_access ");
             print_x64(f, cmd->id);
             print_buf(f, cmd->buf, cmd->count);
+            fprintf(f, "\n");
+            break;
+        case CdoCmdPmForceHc:
+            fprintf(f, "pm_force_hc ");
+            print_x64(f, cmd->id);
             fprintf(f, "\n");
             break;
         case CdoCmdCfuSetCrc32:

@@ -385,6 +385,7 @@ public:
     void SetSPKSelection(uint32_t spkSelection);
     void SetSpkId(uint32_t spkId);
     void SetHeaderAuthentication();
+    void SetSmapWidth(uint32_t);
     void SetSplitMode(SplitMode::Type type);
     void SetSplitFmt(File::Type type);
     void SetPmcdataFile(const std::string & filename);
@@ -416,6 +417,7 @@ public:
     void SetAuthJtagDeviceDna(std::string string);
     void SetAuthJtagTimeOut(uint32_t value);
     void SetPmcDataAesFile(std::string filename);
+    void SetRevokeId(uint32_t id);
 
     std::string GetGroupName(void);
     std::string GetAESKeyFileName(void);
@@ -491,6 +493,7 @@ public:
     std::list<ImageBifOptions*> imageBifOptionList;
     std::list<PartitionBifOptions*> partitionBifOptionList;
     Core::Type GetCore(void);
+    uint32_t GetRevokeId();
 
     //Versal
     Binary::Address_t pmcCdoLoadAddress;
@@ -503,7 +506,6 @@ public:
     uint32_t pmcdataSize;
     uint32_t totalpmcdataSize;
     uint8_t* pmcDataBuffer;
-    uint32_t smapWidth;
     MetaHdrInfo metaHdrAttributes;
     AuthJtagInfo authJtagInfo;
     uint32_t slrBootCnt;
@@ -569,5 +571,7 @@ private:
     // Versal
     uint32_t pdiId;
     uint32_t parentId;
+    uint32_t revokeId;
+    uint32_t smapWidth;
 };
 #endif

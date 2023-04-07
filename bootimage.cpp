@@ -45,6 +45,8 @@
 ------------------------------------------------------------------------------
 */
 
+std::vector<std::string> BootImage::encryptionKeyFileVec;
+
 /******************************************************************************/
 void BIF_File::Process(Options& options)
 {
@@ -92,21 +94,23 @@ void BIF_File::Process(Options& options)
 
     BootImage* currentbi = NULL;
     uint8_t index = 0;
+    size_t itr = 0;
+    std::string lastPmcDataAesFile = bifOptionList.back()->GetPmcDataAesFile();
 
-    for (std::vector<BifOptions*>::iterator bifoptions = bifOptionList.begin(); bifoptions != bifOptionList.end(); bifoptions++)
+    for (std::vector<BifOptions*>::iterator bifoptions = bifOptionList.begin(); bifoptions != bifOptionList.end(); bifoptions++, itr++)
     {
         if (((*bifoptions)->slrBootCnt == 0) && ((*bifoptions)->slrConfigCnt == 0) && options.IsSsitBif())
         {
             (*bifoptions)->pdiType = PartitionType::SLR_SLAVE;
-            if ((*bifoptions)->smapWidth != 0)
+            if ((*bifoptions)->GetSmapWidth() != 0)
             {
-                LOG_WARNING("smap_width for SSIT SLAVE PDIs is identified as %d. Setting it to the default value : 0.", (*bifoptions)->smapWidth);
-                (*bifoptions)->smapWidth = 0;
+                LOG_WARNING("smap_width for SSIT SLAVE PDIs is identified as %d. Setting it to the default value : 0.", (*bifoptions)->GetSmapWidth());
+                (*bifoptions)->SetSmapWidth(0);
             }
         }
         else if ((*bifoptions)->pdiType == PartitionType::SLR_SLAVE_CONFIG)
         {
-            (*bifoptions)->smapWidth = 0;
+            (*bifoptions)->SetSmapWidth(0);
         }
 
         if (options.archType == Arch::ZYNQMP)
@@ -116,6 +120,11 @@ void BIF_File::Process(Options& options)
         else if (options.archType == Arch::VERSAL)
         {
             currentbi = new VersalBootImage(options, index);
+            currentbi->pmcDataAesFile = (*bifoptions)->GetPmcDataAesFile();
+            if ((itr+1) == bifOptionList.size())
+            {
+                currentbi->pmcDataAesFile = lastPmcDataAesFile;
+            }
         }
         else
         {
@@ -247,6 +256,24 @@ void BIF_File::Output(Options& options, uint8_t index)
                 if (options.IsSsitBif())
                 {
                     out_filename = StringUtils::RemoveExtension(*filename) + "_" + bi->Name + ".bin";
+                    if (bi->sync_offsets.size() != 0 && (bi->options.bifOptions->pdiType == PartitionType::SLR_SLAVE_CONFIG))
+                    {
+                        std::string sync_addresses_filename = StringUtils::RemoveExtension(*filename) + "_" + bi->Name + "_sync_offsets.txt";
+                        std::ofstream f(sync_addresses_filename.c_str(), std::ios_base::out | std::ios_base::binary);
+                        f << "sync_offsets" << "\n";
+                        for (size_t i = 0; i < bi->sync_offsets.size(); i++)
+                        {
+                            f << bi->sync_offsets[i] << "\n";
+                        }
+
+                        f.close();
+
+                        if (f.fail())
+                        {
+                            LOG_ERROR("Failed to write sync addresses to the file: %s", sync_addresses_filename.c_str());
+                        }
+                        LOG_TRACE("Sync addresses written to file %s successfully", sync_addresses_filename.c_str());
+                    }
                 }
             }
             OutputFile* file = OutputFile::Factory(out_filename);
@@ -304,8 +331,10 @@ BootImage::BootImage(Options& options, uint8_t index)
     , iht_optional_data(NULL)
     , iht_optional_data_length(0)
     , pmcDataAesFile("")
+    , xplm_modules_data_length(0)
+    , xplm_modules_data(NULL)
 {
-    bifOptions = options.bifOptionsList.at(index);
+    options.bifOptions = bifOptions = options.bifOptionsList.at(index);
     Name = bifOptions->GetGroupName();
     cache = new Binary();
     checksumTable = new ChecksumTable();

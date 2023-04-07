@@ -32,6 +32,15 @@
 #include "authentication-versal.h"
 #include "Keccak-compact-versal.h"
 
+extern "C" {
+#include "cdo-npi.h"
+#include "cdo-source.h"
+#include "cdo-command.h"
+#include "cdo-binary.h"
+#include "cdo-load.h"
+#include "cdo-overlay.h"
+};
+
 /*
 -------------------------------------------------------------------------------
 *****************************************************   F U N C T I O N S   ***
@@ -527,6 +536,36 @@ void VersalPartition::Build(BootImage& bi, Binary& cache)
     {
         LOG_ERROR("Cannot reencrypt a partition that is already encrypted for %s", section->Name.c_str());
     }
+
+    /*******************************************************************************/
+    if ((imageHeader.GetPartitionType() == PartitionType::CONFIG_DATA_OBJ) && (encryptCtx->Type() != Encryption::None))
+    {
+        size_t buffer_size = 0;
+        uint32_t* syncpt_offsets = NULL;
+        uint8_t num_of_sync_points = 0;
+
+        CdoSequence * cdo_seq;
+        cdo_seq = decode_cdo_binary(header->partition->section->Data, header->partition->section->Length);
+
+        /* Enable the search for sync points - only needs to be done for SSIT devices */
+        search_for_sync_points();
+
+        uint8_t* buffer = (uint8_t*)cdoseq_to_binary(cdo_seq, &buffer_size, 0);
+
+        /* Get no. of sync points and sync points offsets */
+        num_of_sync_points = get_num_of_sync_points();
+        syncpt_offsets = get_slr_sync_point_offsets();
+
+        for (int i = 0; i < num_of_sync_points; i++)
+        {
+            size_t offset = (*(syncpt_offsets + i) * 4);
+            bi.sync_offsets.push_back(offset);
+        }
+        delete syncpt_offsets;
+        delete buffer;
+    }
+    /*******************************************************************************/
+
     if (versalNetSeries)
     {
         encryptCtx->ChunkifyAndProcess(bi, header);
