@@ -167,6 +167,7 @@ enum {
     CMD2_PM_APPLY_TRIM = 0x244,
     CMD2_PM_NOC_CLOCK_ENABLE	= 0x245,
     CMD2_PM_IF_NOC_CLOCK_ENABLE	= 0x246,
+    CMD2_PM_FORCE_HC =0x247,
 
     /* NPI Commands */
     /* Version 1.50 and later, but not version 2.00 */
@@ -857,7 +858,10 @@ static uint32_t decode_v2_cmd(CdoSequence * seq, uint32_t * p, uint32_t * ip, ui
             cdocmd_add_pm_if_noc_clock_enable(seq, u32xe(p[i+0]), u32xe(p[i+1]),
                                               args == 3 ? u32xe(p[i+2]) : 1);
             break;
-
+        case CMD2_PM_FORCE_HC:
+            if (args != 1) goto unexpected;
+            cdocmd_add_pm_force_hc(seq, u32xe(p[i+0]));
+            break;
         case CMD2_CFU_SET_CRC32:
             if (seq->version >= CDO_VERSION_2_00) goto unexpected;
             if (args < 1) goto unexpected;
@@ -942,7 +946,7 @@ error:
     return 1;
 }
 
-uint32_t check_cdo_commands(void* data, uint32_t l, uint32_t * xplm_data, uint32_t xplm_length) {
+int check_cdo_commands(void* data, uint32_t l, uint32_t * xplm_data, uint32_t xplm_length) {
     uint32_t be = 0;
     uint32_t * p = (uint32_t *)data;
     uint32_t hdrlen = u32xe(p[0]);
@@ -974,31 +978,34 @@ uint32_t check_cdo_commands(void* data, uint32_t l, uint32_t * xplm_data, uint32
             if (hdr == CMD2_END) goto found_end_marker;
             if (i >= l) {
                 fprintf(stderr, "incomplete CDO command %#"PRIx32" at %"PRIu32"\n", hdr, cmdpos);
-                return -1;
             }
             args = u32xe(p[i++]);
         }
         if (l - i < args) {
             fprintf(stderr, "incomplete CDO command %#"PRIx32" at %"PRIu32"\n", hdr, cmdpos);
-            return -1;
         }
         cmd_id = hdr & 0xff;
         module_id = (hdr & 0xff00) >> 0x8;
         // TODO: only PLM commands are supported for now
-        if (module_id != 0x1) continue;
-        cmd_found = 0;
-        size_t cmdInfo_size = sizeof(XPlmi_CmdInfo);
-        for (index = 0; index < (xplm_length/ cmdInfo_size); index++) {
-            uint8_t* cmdInfo = (uint8_t*)malloc(cmdInfo_size);
-            memset(cmdInfo, 0, cmdInfo_size);
-            memcpy(cmdInfo, xplm_data + (index * (cmdInfo_size/4)), cmdInfo_size);
-            XPlmi_CmdInfo* cmd_info = (XPlmi_CmdInfo*)(cmdInfo);
-            if (cmd_info->cmd_id == cmd_id && cmd_info->module_id == module_id && cmd_info->min_arg_cnt >= args && cmd_info->max_arg_cnt <= args) {
-                cmd_found = 1;
-                break;
+        if (module_id == 0x1 && xplm_length != 0){
+           cmd_found = 0;
+           size_t cmdInfo_size = sizeof(XPlmi_CmdInfo);
+           for (index = 0; index < (xplm_length/ cmdInfo_size); index++) {
+               uint8_t* cmdInfo = (uint8_t*)malloc(cmdInfo_size);
+               memset(cmdInfo, 0, cmdInfo_size);
+               memcpy(cmdInfo, xplm_data + (index * (cmdInfo_size/4)), cmdInfo_size);
+               XPlmi_CmdInfo* cmd_info = (XPlmi_CmdInfo*)(cmdInfo);
+               if (cmd_info->cmd_id == cmd_id && cmd_info->module_id == module_id && args >= cmd_info->min_arg_cnt && args <= cmd_info->max_arg_cnt) {
+                  cmd_found = 1;
+                  break;
+               }
+            }
+            if (cmd_found == 0 && cmd_id != 5 && cmd_id != 13 && cmd_id != 0)
+            {
+               return 1;
             }
         }
-        if (cmd_found == 0) return -1;
+        i += args;
     }
 found_end_marker:
 return 0;
@@ -2135,6 +2142,10 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
             memcpy(p + pos, cmd->buf, cmd->count * sizeof(uint32_t));
             byte_swap_buffer(p + pos, cmd->count, be);
             pos += cmd->count;
+            break;
+        case CdoCmdPmForceHc:
+            hdr2(&p, &pos, CMD2_PM_FORCE_HC, 1, be);
+            p[pos++] = u32xe(cmd->id);
             break;
         case CdoCmdCfuSetCrc32:
             if (version >= CDO_VERSION_2_00) goto cfu_error;

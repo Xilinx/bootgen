@@ -98,6 +98,7 @@ BifOptions::BifOptions(Arch::Type architecture, const char* name)
     , dice(DICE::DiceDisable)
     , slrNum(0xFF)
     , pdiType(PartitionType::RESERVED)
+    , revokeId(0x00000000)
 {
     arch = architecture;
     SetGroupName(name);
@@ -1449,6 +1450,22 @@ void PartitionBifOptions::SetClusterNum(uint8_t id)
 }
 
 /******************************************************************************/
+void BifOptions::SetRevokeId(uint32_t id)
+{
+    if (id > 0xFF)
+    {
+        LOG_ERROR("revoke_id can only take values from 0x0 to 0xFF.");
+    }
+    revokeId = id;
+}
+
+/******************************************************************************/
+uint32_t BifOptions::GetRevokeId()
+{
+    return revokeId;
+}
+
+/******************************************************************************/
 void PartitionBifOptions::SetLockStepFlag()
 {
     if (arch == Arch::VERSAL && versalNetSeries)
@@ -1606,6 +1623,12 @@ void BifOptions::SetHeaderAuthentication()
     headerAuthParam = true;
     SetHeaderAC(true);
     LOG_TRACE("Setting Header Authentication");
+}
+
+/******************************************************************************/
+void BifOptions::SetSmapWidth(uint32_t value)
+{
+    smapWidth = value;
 }
 
 /******************************************************************************/

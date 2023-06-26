@@ -116,7 +116,7 @@ void OutputFile::OutputVersal(Options& options, Binary& cache)
             /* Fill the gap(if any) between sections will fill byte */
             if (runningAddress > unalignedRunningAddress)
             {
-                if (options.bifOptions->GetSmapWidth() != 0)
+                if (options.bifOptionsList.back()->GetSmapWidth() != 0)
                 {
                     Fill(unalignedRunningAddress, runningAddress, options.GetDoFill(), options.GetOutputFillByte());
                 }
@@ -138,7 +138,7 @@ void OutputFile::OutputVersal(Options& options, Binary& cache)
             /* Fill the gap(if any) between sections will fill byte */
             if (section.Address > runningAddress)
             {
-                if (options.bifOptions->GetSmapWidth() != 0)
+                if (options.bifOptionsList.back()->GetSmapWidth() != 0)
                 {
                     Fill(runningAddress, section.Address, options.GetDoFill(), options.GetOutputFillByte());
                 }
@@ -154,7 +154,7 @@ void OutputFile::OutputVersal(Options& options, Binary& cache)
             /* Fill the gap(if any) between sections will fill byte */
             if (runningAddress > unalignedRunningAddress)
             {
-                if (options.bifOptions->GetSmapWidth() != 0)
+                if (options.bifOptionsList.back()->GetSmapWidth() != 0)
                 {
                     Fill(unalignedRunningAddress, runningAddress, options.GetDoFill(), options.GetOutputFillByte());
                 }

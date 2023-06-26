@@ -43,7 +43,13 @@ void ReadImage::Separator()
 /*******************************************************************************/
 void ReadImage::DisplayImageDetails(ReadImageOption::Type type, DumpOption::Type dump, std::string path)
 {
-    ReadBinaryFile();
+    readType = type;
+    dumpType = dump;
+    dumpPath = path;
+
+    ReadHeaderTableDetails();
+    if (readType != ReadImageOption::NONE)
+    {
     switch (type)
     {
     case ReadImageOption::BH:
@@ -75,6 +81,8 @@ void ReadImage::DisplayImageDetails(ReadImageOption::Type type, DumpOption::Type
         break;
     }
     Separator();
+    }
+    ReadBinaryFile(dump, path);
 }
 
 /*******************************************************************************/

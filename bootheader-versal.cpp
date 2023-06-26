@@ -283,23 +283,26 @@ void VersalBootHeader::LinkPrebuiltBH(BootImage& bi)
         if (!(presignedLocal))
         {
             uint32_t acSize = sizeof(AuthCertificate4096Sha3PaddingStructure);
-            bHTable->totalPlmLength += acSize;
             bHTable->sourceOffset += acSize;
-
-            /* The AC should be appended to a 64-byte aligned FSBL + PMU partition
-               So find the pad length required for alignment and then add AC size */
-            //uint32_t padLength = (64 - (((bHTable->totalFsblLength + bHTable->totalPmuFwLength) & 63) & 63));
-            Binary::Length_t shaPadOnLength = bHTable->totalPlmLength + bHTable->totalPmcCdoLength - SIGN_LENGTH_VERSAL;
-            uint8_t shaPadLength = SHA3_PAD_LENGTH - (shaPadOnLength % SHA3_PAD_LENGTH);
-            if (bHTable->totalPmcCdoLength == 0)
+            if (bi.options.IsVersalNetSeries())
             {
-                bHTable->totalPlmLength += shaPadLength;
+                SetTotalPlmLength(bi.GetTotalFsblFwSize());
+                SetTotalPmcCdoLength(bi.bifOptions->GetTotalPmcFwSize());
             }
             else
             {
-                bHTable->totalPmcCdoLength += shaPadLength;
+                bHTable->totalPlmLength += acSize;
+                Binary::Length_t shaPadOnLength = bHTable->totalPlmLength + bHTable->totalPmcCdoLength - SIGN_LENGTH_VERSAL;
+                uint8_t shaPadLength = SHA3_PAD_LENGTH - (shaPadOnLength % SHA3_PAD_LENGTH);
+                if (bHTable->totalPmcCdoLength == 0)
+                {
+                    bHTable->totalPlmLength += shaPadLength;
+                }
+                else
+                {
+                    bHTable->totalPmcCdoLength += shaPadLength;
+                }
             }
-
             SetHeaderChecksum();
         }
         bi.SetTotalFsblFwSize(bHTable->totalPlmLength);

@@ -1,4 +1,3 @@
-
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
 * Copyright 2022-2023 Advanced Micro Devices, Inc.
@@ -28,6 +27,7 @@
 #include "imageheadertable-versal.h"
 #include "bootheader-versal.h"
 #include "partitionheadertable-versal.h"
+#include "authentication-versal.h"
 #include <openssl/rand.h>
 
 /*
@@ -490,7 +490,7 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
 
         LOG_INFO("Encrypting Bootloader");
 
-        if (partHdr->imageHeader->GetAuthenticationType() != Authentication::None)
+        if ((partHdr->imageHeader->GetAuthenticationType() != Authentication::None) || (partHdr->imageHeader->GetDelayAuthFlag()))
         {
             Binary::Length_t dataChunksCount = 0;
             // PLM
@@ -595,7 +595,11 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
         VersalBootHeaderStructure* bh = (VersalBootHeaderStructure*)bi.bootHeader->section->Data;
         bh->plmLength = partHdr->imageHeader->GetFsblFwSizeIh();
         bh->pmcCdoLength = partHdr->imageHeader->GetTotalPmcFwSizeIh();
-        bh->totalPlmLength = estimatedTotalFsblLength + partHdr->imageHeader->GetAuthContext()->GetCertificateSize();
+        bh->totalPlmLength = estimatedTotalFsblLength;
+        if ((bi.partitionHeaderList.front()->imageHeader->GetAuthenticationType() != Authentication::None) || (partHdr->imageHeader->GetDelayAuthFlag()))
+        {
+            bh->totalPlmLength += sizeof(AuthCertificate4096Sha3PaddingStructure);
+        }
         bh->totalPmcCdoLength = estimatedtotalPmcCdoLength;
 
         memcpy_be((uint8_t*)bh->plmSecureHdrIv, tmpIv, BYTES_PER_IV);
@@ -612,14 +616,17 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
             bh->bhAttributes |= bi.bifOptions->GetBhRsa() << BH_RSA_BIT_SHIFT;
             bh->bhAttributes |= bi.bifOptions->GetPufMode() << BH_PUF_MODE_BIT_SHIFT;
 
-            if (bi.partitionHeaderList.front()->imageHeader->GetAuthenticationType() != Authentication::None)
+            if ((bi.partitionHeaderList.front()->imageHeader->GetAuthenticationType() != Authentication::None) || (partHdr->imageHeader->GetDelayAuthFlag()))
             {
                 bh->bhAttributes |= BH_RSA_SINGED_BIT_MASK << BH_RSA_SINGED_BIT_SHIFT;
             }
             bh->bhAttributes |= bi.bifOptions->GetDice() << BH_DICE_BIT_SHIFT;
         }
-
-        bh->sourceOffset = sizeof(VersalBootHeaderStructure) + partHdr->imageHeader->GetAuthContext()->GetCertificateSize();
+        bh->sourceOffset = sizeof(VersalBootHeaderStructure);
+        if ((bi.partitionHeaderList.front()->imageHeader->GetAuthenticationType() != Authentication::None) || (partHdr->imageHeader->GetDelayAuthFlag()))
+        {
+            bh->sourceOffset += sizeof(AuthCertificate4096Sha3PaddingStructure);
+        }
         bh->imageHeaderByteOffset = sizeof(VersalBootHeaderStructure) + bh->totalPlmLength + bh->totalPmcCdoLength;
         bh->headerChecksum = bi.bootHeader->ComputeWordChecksum(&bh->widthDetectionWord, 3872);
 
@@ -775,7 +782,7 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
 
 
         uint32_t estimatedTotalFsblLength = estimatedEncrLength;
-        if (partHdr->imageHeader->GetAuthenticationType() != Authentication::None)
+        if ((partHdr->imageHeader->GetAuthenticationType() != Authentication::None) || (partHdr->imageHeader->GetDelayAuthFlag()))
         {
             Binary::Length_t dataChunksCount = 0;
 
@@ -794,7 +801,11 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
         VersalBootHeaderStructure* bh = (VersalBootHeaderStructure*)bi.bootHeader->section->Data;
         bh->plmLength = partHdr->imageHeader->GetFsblFwSizeIh();
         bh->pmcCdoLength = 0;
-        bh->totalPlmLength = estimatedTotalFsblLength + partHdr->imageHeader->GetAuthContext()->GetCertificateSize();
+        bh->totalPlmLength = estimatedTotalFsblLength;
+        if ((bi.partitionHeaderList.front()->imageHeader->GetAuthenticationType() != Authentication::None) || (partHdr->imageHeader->GetDelayAuthFlag()))
+        {
+            bh->totalPlmLength += sizeof(AuthCertificate4096Sha3PaddingStructure);
+        }
         bh->totalPmcCdoLength = 0;
 
         memcpy_be((uint8_t*)bh->plmSecureHdrIv, tmpIv, BYTES_PER_IV);
@@ -811,13 +822,17 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
             bh->bhAttributes |= bi.bifOptions->GetBhRsa() << BH_RSA_BIT_SHIFT;
             bh->bhAttributes |= bi.bifOptions->GetPufMode() << BH_PUF_MODE_BIT_SHIFT;
 
-            if (bi.partitionHeaderList.front()->imageHeader->GetAuthenticationType() != Authentication::None)
+            if ((bi.partitionHeaderList.front()->imageHeader->GetAuthenticationType() != Authentication::None) || (partHdr->imageHeader->GetDelayAuthFlag()))
             {
                 bh->bhAttributes |= BH_RSA_SINGED_BIT_MASK << BH_RSA_SINGED_BIT_SHIFT;
             }
             bh->bhAttributes |= bi.bifOptions->GetDice() << BH_DICE_BIT_SHIFT;
         }
-        bh->sourceOffset = sizeof(VersalBootHeaderStructure) + partHdr->imageHeader->GetAuthContext()->GetCertificateSize();
+        bh->sourceOffset = sizeof(VersalBootHeaderStructure);
+        if ((bi.partitionHeaderList.front()->imageHeader->GetAuthenticationType() != Authentication::None) || (partHdr->imageHeader->GetDelayAuthFlag()))
+        {
+            bh->sourceOffset += sizeof(AuthCertificate4096Sha3PaddingStructure);
+        }
         bh->imageHeaderByteOffset = sizeof(VersalBootHeaderStructure) + bh->totalPlmLength + bh->totalPmcCdoLength;
         bh->headerChecksum = bi.bootHeader->ComputeWordChecksum(&bh->widthDetectionWord, 3872);
 

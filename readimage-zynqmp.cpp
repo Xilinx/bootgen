@@ -1,4 +1,3 @@
-
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
 * Copyright 2022-2023 Advanced Micro Devices, Inc.
@@ -46,8 +45,65 @@ ZynqMpReadImage::~ZynqMpReadImage()
     }
 }
 
+/**********************************************************************************************/
+void ZynqMpReadImage::ReadPartitions()
+{
+    size_t result;
+    uint64_t offset = 0;
+    FILE *binFile = fopen(binFilename.c_str(), "rb");
+
+    if (!binFile)
+    {
+        fclose(binFile);
+        LOG_ERROR("Cannot read file %s", binFilename.c_str());
+    }
+    std::list<std::string>::iterator partitionName = pHTNames.begin();
+    for (std::list<ZynqMpPartitionHeaderTableStructure*>::iterator partitionHdr = pHTs.begin(); partitionHdr != pHTs.end(); partitionHdr++, partitionName++)
+    {
+        uint32_t bufferLength = ((*partitionHdr)->encryptedPartitionLength * 4);
+        uint8_t* tempBuffer = new uint8_t[bufferLength];
+        memset(tempBuffer, 0, bufferLength);
+
+        offset = (*partitionHdr)->partitionWordOffset * 4;
+        if (!(fseek(binFile, offset, SEEK_SET)))
+        {
+            result = fread(tempBuffer, 1, bufferLength, binFile);
+            if (result != bufferLength)
+            {
+                LOG_ERROR("Error reading partition for hash calculation");
+            }
+            if (bH && bH->sourceOffset == offset)
+            {
+                bufferLength = bH->totalFsblLength;
+            }
+            if (dumpType == DumpOption::BOOT_FILES)
+            {
+                DumpPartitions(tempBuffer, bufferLength, *partitionName);
+            }
+            if (dumpType == DumpOption::PARTITIONS)
+            {
+                DumpPartitions(tempBuffer, bufferLength, *partitionName);
+            }
+        }
+        else
+        {
+            LOG_ERROR("Error parsing Partitions from BootImage file %s",binFilename.c_str());
+        }
+    }
+    fclose(binFile);
+}
+
 /*******************************************************************************/
 void ZynqMpReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
+{
+    if (StringUtils::GetExtension(binFilename) == ".mcs")
+    {
+        LOG_ERROR("The option '-read/-dump' is not supported on mcs format file : %s", binFilename.c_str());
+    }
+    ReadPartitions();
+}
+/*******************************************************************************/
+void ZynqMpReadImage::ReadHeaderTableDetails()
 {
     size_t result;
     uint64_t offset = 0;
@@ -63,6 +119,7 @@ void ZynqMpReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
 
     if (!binFile)
     {
+        fclose(binFile);
         LOG_ERROR("Cannot read file %s", binFilename.c_str());
     }
 
@@ -77,6 +134,29 @@ void ZynqMpReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
     if ((bH->widthDetectionWord != WIDTH_DETECTION) && (bH->identificationWord != HEADER_ID_WORD))
     {
         LOG_ERROR("Boot Header not found in %s", binFilename.c_str());
+    }
+
+    if ((dumpType == DumpOption::BH) || (dumpType == DumpOption::BOOT_FILES))
+    {
+        FILE* filePtr;
+        std::string fName = binFilename;
+        if (dumpPath != "")
+        {
+            fName = dumpPath + "/" + StringUtils::BaseName(binFilename);
+        }
+        fName = StringUtils::RemoveExtension(fName);
+        fName += "_bh.bin";
+        filePtr = fopen(fName.c_str(), "wb");
+        if (filePtr != NULL)
+        {
+            result = fwrite(bH, 1, size_t(sizeof(ZynqMpBootHeaderStructure)), filePtr);
+            if (result != sizeof(ZynqMpBootHeaderStructure))
+            {
+                LOG_ERROR("Error dumping Boot Header to a file");
+            }
+            fclose(filePtr);
+            LOG_INFO("%s generated successfully", StringUtils::BaseName(fName).c_str());
+        }
     }
 
     /* Image Header Table Extraction */
@@ -239,6 +319,35 @@ void ZynqMpReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
         }
     }
     fclose(binFile);
+}
+
+/******************************************************************************/
+void ZynqMpReadImage::DumpPartitions(uint8_t* buffer, uint32_t length, std::string name)
+{
+    FILE* filePtr;
+    size_t result;
+    std::string extension = ".bin";
+
+    std::string fName = StringUtils::FolderPath(binFilename);
+    if (dumpPath != "")
+    {
+        fName = dumpPath;
+    }
+    fName = fName + "/" + name;
+    fName += extension;
+    filePtr = fopen(fName.c_str(), "wb");
+
+    if (filePtr != NULL)
+    {
+        result = fwrite(buffer, 1, length, filePtr);
+        if (result != length)
+        {
+            LOG_ERROR("Error dumping partition %s to a file", fName.c_str());
+        }
+        fclose(filePtr);
+        LOG_INFO("%s generated successfully", StringUtils::BaseName(fName).c_str());
+    }
+    return;
 }
 
 /*******************************************************************************/

@@ -152,6 +152,7 @@ typedef enum CdoCmdType {
     CdoCmdPmNocClockEnable,
     CdoCmdPmIfNocClockEnable,
     CdoCmdPmSetNodeAccess,
+    CdoCmdPmForceHc,
     CdoCmdCfuSetCrc32,
     CdoCmdCfuDecompress,
     CdoCmdCfuCramRW,
@@ -267,6 +268,7 @@ void cdocmd_add_pm_activate_subsystem(CdoSequence * seq, uint32_t ssid);
 void cdocmd_add_pm_set_node_access(CdoSequence * seq, uint32_t nodeid, uint32_t count, void * buf, uint32_t be);
 void cdocmd_add_pm_noc_clock_enable(CdoSequence * seq, uint32_t nodeid, uint32_t count, void * buf, uint32_t be);
 void cdocmd_add_pm_if_noc_clock_enable(CdoSequence * seq, uint32_t index, uint32_t state, uint32_t break_level);
+void cdocmd_add_pm_force_hc(CdoSequence * seq, uint32_t nodeid);
 
 void cdocmd_add_cfu_set_crc32(CdoSequence * seq, uint32_t type, uint32_t value);
 void cdocmd_add_cfu_decompress(CdoSequence * seq, uint32_t type);

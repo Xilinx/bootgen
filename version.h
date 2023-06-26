@@ -1,4 +1,3 @@
-
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
 * Copyright 2022-2023 Advanced Micro Devices, Inc.
@@ -17,7 +16,7 @@
 ******************************************************************************/
 
 #ifndef RDI_VERSION
-#define RDI_VERSION "2023.1"
+#define RDI_VERSION "2023.2_ksb"
 #endif
 
 #define PROGRAMNAME     "Bootgen"

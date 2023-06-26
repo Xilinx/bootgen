@@ -347,9 +347,12 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
         {
             attributes |= options.bifOptions->GetBhRsa() << BH_RSA_BIT_SHIFT;
         }
-        if (it->delayAuth || (it->authType != Authentication::None))
+        if (options.IsVersalNetSeries())
         {
-            attributes |= BH_RSA_SINGED_BIT_MASK << BH_RSA_SINGED_BIT_SHIFT;
+            if (it->delayAuth || (it->authType != Authentication::None))
+            {
+                attributes |= BH_RSA_SINGED_BIT_MASK << BH_RSA_SINGED_BIT_SHIFT;
+            }
         }
         if (authHash != AuthHash::Sha3)
         {
@@ -533,7 +536,7 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
                     {
                         if ((*subSysHdr)->GetSubSystemId() == subsys->GetSubSystemId())
                         {
-                            (*subSysHdr)->imgList.merge(subsys->imgList);
+                            (*subSysHdr)->imgList.splice((*subSysHdr)->imgList.end(), (subsys->imgList));
                         }
                     }
                 }
@@ -1275,6 +1278,7 @@ void VersalBootImage::Add(BifOptions* bifoptions)
             if (options.DoGenerateHashes())
             {
                 authCtx->hash = hash;
+                authCtx->spkIdentification = bifOptions->GetRevokeId();
                 LOG_INFO("Generating SPK Hash File");
                 authCtx->GenerateSPKHashFile(bifoptions->GetSPKFileName(), hash);
             }
