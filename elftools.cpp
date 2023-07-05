@@ -127,16 +127,16 @@ ElfFormat32::ElfFormat32(uint8_t* start)
     elfHdrEntryCount = 1;
 
     /* Basic ELF checks */
-    if(ELFHdrEntrySize() != sizeof(Elf32_Ehdr)) 
-    {
-        LOG_DEBUG(DEBUG_STAMP, "ELF Header size wrong - %d, actual size - %d", ELFHdrEntrySize(), sizeof(Elf64_Ehdr));
-        LOG_ERROR("ELF Parsing Error !!!\n           Wrong Header Size");
-    }
-
     if (memcmp(header.e_ident, ELFMAG, 4) != 0)
     {
         LOG_DEBUG(DEBUG_STAMP, "ELF magic identification word wrong");
         LOG_ERROR("ELF Parsing Error !!!\n          ELF magic identification word wrong");
+    }
+
+    if(ELFHdrEntrySize() != sizeof(Elf32_Ehdr)) 
+    {
+        LOG_DEBUG(DEBUG_STAMP, "ELF Header size wrong - %d, actual size - %d", ELFHdrEntrySize(), sizeof(Elf64_Ehdr));
+        LOG_ERROR("ELF Parsing Error !!!\n           Wrong Header Size");
     }
 
      /* If a Section header is defined, get its pointer and its record size
@@ -495,17 +495,17 @@ ElfFormat64::ElfFormat64(uint8_t* start)
     /* Get the header's size. For completeness, tell upper layers that
        we only have one record. */
     elfHdrEntryCount = 1;
-
-    if( ELFHdrEntrySize() != sizeof( Elf64_Ehdr ) ) 
-    {
-        LOG_DEBUG(DEBUG_STAMP, "ELF Header size wrong - %d, actual size - %d", ELFHdrEntrySize(), sizeof(Elf64_Ehdr));
-        LOG_ERROR("ELF Parsing Error !!!\n           Wrong Header Size");
-    }
-
+     
     if ( memcmp( header.e_ident, ELFMAG, 4 ) != 0 )
     {
         LOG_DEBUG(DEBUG_STAMP, "ELF magic identification word wrong");
         LOG_ERROR("ELF Parsing Error !!!\n          ELF magic identification word wrong");
+    }
+    
+    if( ELFHdrEntrySize() != sizeof( Elf64_Ehdr ) ) 
+    {
+        LOG_DEBUG(DEBUG_STAMP, "ELF Header size wrong - %d, actual size - %d", ELFHdrEntrySize(), sizeof(Elf64_Ehdr));
+        LOG_ERROR("ELF Parsing Error !!!\n           Wrong Header Size");
     }
 
      /* If a Section header is defined, get its pointer and its record size
