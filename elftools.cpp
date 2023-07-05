@@ -129,7 +129,7 @@ ElfFormat32::ElfFormat32(uint8_t* start)
     /* Basic ELF checks */
     if(ELFHdrEntrySize() != sizeof(Elf32_Ehdr)) 
     {
-        LOG_DEBUG(DEBUG_STAMP, "ELF Header size wrong - %d, actual size - %d", ELFHdrEntrySize(), sizeof(Elf64_Ehdr));
+        LOG_DEBUG(DEBUG_STAMP, "ELF Header size wrong - %d, actual size - %d", ELFHdrEntrySize(), sizeof(Elf32_Ehdr));
         LOG_ERROR("ELF Parsing Error !!!\n           Wrong Header Size");
     }
 
