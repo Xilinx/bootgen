@@ -31,8 +31,7 @@ struct CdoOverlayEntry {
 
 struct CdoOverlayInfo {
     CdoSequence * seq;
-    size_t count;
-    CdoOverlayEntry * list;
+    LINK actions;
 };
 
 CdoOverlayInfo * cdooverlay_open(CdoSequence * seq);

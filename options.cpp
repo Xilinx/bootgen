@@ -414,6 +414,19 @@ void Options::SetDumpDirectory(std::string path)
 {
     dumpPath = path;
 }
+
+/******************************************************************************/
+void Options::SetAuthOptimization(void)
+{
+    authOptimizationEnabled = true;
+}
+
+/******************************************************************************/
+bool Options::IsAuthOptimizationEnabled(void)
+{
+    return authOptimizationEnabled;
+}
+
 /******************************************************************************/
 OutputMode::Type  Options::GetOutputMode(void)
 {

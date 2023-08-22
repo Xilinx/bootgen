@@ -118,6 +118,7 @@ public:
         , deviceKeyStored(false)
         , versalNetSeries(false)
         , outType(File::Unknown)
+        , authOptimizationEnabled(false)
     {
         cmdEncryptOptions = new CommndLineEncryptOptions();
     };
@@ -189,7 +190,9 @@ public:
     void SetSecureDebugImageFile(std::string);
     void SetOverlayCDOFileName (std::string);
     void SetOutType (File::Type);
+    void SetAuthOptimization(void);
     
+    bool IsAuthOptimizationEnabled(void);
     std::string GetBifFilename (void);
     KeySource::Type GetEncryptedKeySource (void);
     std::string GetEncryptionKeyFile (void);
@@ -296,6 +299,7 @@ public:
 	File::Type outType;
 private:
     bool versalNetSeries;
+    bool authOptimizationEnabled;
 };
 
 #endif

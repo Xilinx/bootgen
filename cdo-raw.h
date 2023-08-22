@@ -18,7 +18,6 @@
 #ifndef D_cdo_raw
 #define D_cdo_raw
 
-#include "cdo-command.h"
 #include "cdo-metadata.h"
 
 typedef struct CdoRawInfo CdoRawInfo;

@@ -76,6 +76,9 @@ typedef enum
     vphtEndiannessShift = 18,
     vphtEndiannessMask = 0x1,
 
+    vNetphtTcmBootShift = 19,
+    vNetphtTcmBootMask = 0x3,
+
     vphtHivecShift = 23,
     vphtHivecMask = 0x1,
 
@@ -166,8 +169,9 @@ public:
     void SetEncryptedPartitionLength(uint32_t len);
     void SetUnencryptedPartitionLength(uint32_t len);
     void SetTotalPartitionLength(uint32_t len);
-    void SetLoadAddress(uint64_t addr);
+    void SetLoadAddress(uint64_t addr, bool versalNetSeries);
     void SetExecAddress(uint64_t addr);
+    uint64_t GetR52LoadAddr(uint64_t loadAddr);
     void SetPartitionWordOffset(uint32_t addr);
     void SetPartitionAttributes(void);
     void SetSectionCount(uint32_t cnt);
@@ -212,6 +216,7 @@ public:
     uint32_t GetPartitionUid(void);
     uint64_t GetLQspiExecAddrForXip(uint64_t addr);
     uint32_t GetSectionCount(void);
+    TcmBoot::Type GetTcmBootFlag(void);
 
 private:
     uint8_t partitionEncrypted;
@@ -224,6 +229,7 @@ private:
     std::string kekIvFile;
     DpaCM::Type dpaCM;
     PufHdLoc::Type pufHdLoc;
+    TcmBoot::Type tcmBoot;
     VersalPartitionHeaderTableStructure* pHTable;
 };
 
@@ -234,6 +240,7 @@ public:
     void Build(BootImage& bi, Binary& cache);
     void ConfigureMetaHdrAuthenticationContext(BootImage& bi);
     void UpdateAtfHandoffParams(BootImage& bi);
+    void SetPartitionHashinOptionalData(BootImage & bi);
     void Link(BootImage& bi);
     Section* firstSection;
 };

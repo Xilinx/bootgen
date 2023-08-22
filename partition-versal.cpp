@@ -185,13 +185,11 @@ size_t VersalPartition::GetBootloaderTotalDataChunks(Binary::Length_t partitionS
                 {
                     dataChunks.push_back(secureChunkSize + SECURE_HDR_SZ + AES_GCM_TAG_SZ);
                     firstChunkSize = secureChunkSize + SECURE_HDR_SZ + AES_GCM_TAG_SZ;
-                    LOG_TRACE("length of pmc data remaining length 0x%X:", secureChunkSize + SECURE_HDR_SZ + AES_GCM_TAG_SZ);
                 }
                 else
                 {
                     dataChunks.push_back(secureChunkSize);
                     firstChunkSize = secureChunkSize;
-                    LOG_TRACE("length of pmc data remaining length 0x%X:", secureChunkSize);
                 }
             }
         }
@@ -200,12 +198,10 @@ size_t VersalPartition::GetBootloaderTotalDataChunks(Binary::Length_t partitionS
             if (chunkOnlength % secureChunkSize != 0)
             {
                 dataChunks.push_back(((chunkOnlength)-((dataChunksCount - 1) * secureChunkSize)));
-                LOG_TRACE("length of pmc data remaining length %d:", ((chunkOnlength)-((dataChunksCount - 1) * secureChunkSize)));
             }
             else
             {
                 dataChunks.push_back(secureChunkSize);
-                LOG_TRACE("length of pmc data remaining length %d:", secureChunkSize);
             }
 
             for (uint32_t itr = 0; itr < dataChunksCount - 1; itr++)
@@ -793,6 +789,7 @@ void VersalPartition::Link(BootImage &bi)
     {
         if ((*acs))
         {
+            header->partition->section->partitionNum = header->partitionNum;
             (*acs)->Link(bi, header->partition->section);
         }
     }

@@ -75,7 +75,7 @@ public:
     virtual void SetEncryptedPartitionLength(uint32_t len) {}
     virtual void SetUnencryptedPartitionLength(uint32_t len) {}
     virtual void SetTotalPartitionLength(uint32_t len) {}
-    virtual void SetLoadAddress(uint64_t addr) {}
+    virtual void SetLoadAddress(uint64_t addr, bool arch) {}
     virtual void SetExecAddress(uint64_t addr) {}
     virtual void SetPartitionWordOffset(uint32_t addr) {}
     virtual void SetPartitionAttributes(void) {}

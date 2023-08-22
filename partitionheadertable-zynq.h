@@ -91,7 +91,7 @@ public:
     void SetEncryptedPartitionLength(uint32_t len);
     void SetUnencryptedPartitionLength(uint32_t len);
     void SetTotalPartitionLength(uint32_t len);
-    void SetLoadAddress(uint64_t addr);
+    void SetLoadAddress(uint64_t addr, bool arch);
     void SetExecAddress(uint64_t addr);
     void SetPartitionWordOffset(uint32_t addr);
     void SetPartitionAttributes(void);

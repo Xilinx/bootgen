@@ -80,7 +80,7 @@ void ShowCommonHelp(int,bool);
 %token _ENCRYPT BBRAM EFUSE _P_TOK
 %token _INTERFACE SMAPx8 SMAPx16 SMAPx32 SPI BPIx8 BPIx16
 %token _READ READ_BH READ_IHT READ_IH READ_PHT READ_AC
-%token _VERIFY _VERIFYKDF
+%token _VERIFY _VERIFYKDF _AUTH_OPTIMIZATION
 %token _ZYNQMPENCRDUMP
 %token <number> HEXVALUE
 %token <cstring> IDENTIFIER FILENAME QFILENAME HEXSTRING
@@ -145,6 +145,7 @@ option          : _IMAGE filename                   { options.SetBifFilename($2)
                 | _DUMP dumpOptions
                 | _DUMP_DIR filename                { options.SetDumpDirectory($2); }
                 | _VERIFYKDF filename               { options.SetKDFTestVectorFile($2); }
+                | _AUTH_OPTIMIZATION                { options.SetAuthOptimization();}
                 | _OVERLAYCDO filename              { options.SetOverlayCDOFileName($2); }
                 | _OUT_TYPE outputType
                 ;

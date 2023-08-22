@@ -110,6 +110,7 @@ enum {
     CMD2_SCATTER_WRITE	 = 0x121U,
     CMD2_SCATTER_WRITE2	 = 0x122U,
     CMD2_TAMPER_TRIGGER  = 0x123U,
+    CMD2_SET_IPI_ACCESS  = 0x125U,
 
     /* PM Commands */
     CMD2_PM_GET_API_VERSION	= 0x201U,
@@ -441,6 +442,8 @@ static uint32_t decode_v2_cmd(CdoSequence * seq, uint32_t * p, uint32_t * ip, ui
                 cdocmd_add_mask_poll(seq, u32xe(p[i+0]), u32xe(p[i+1]), u32xe(p[i+2]), u32xe(p[i+3]), 0);
             } else if (args == 5) {
                 cdocmd_add_mask_poll(seq, u32xe(p[i+0]), u32xe(p[i+1]), u32xe(p[i+2]), u32xe(p[i+3]), u32xe(p[i+4]));
+            } else if (args == 6) {
+                cdocmd_add_mask_poll_w_err(seq, u32xe(p[i+0]), u32xe(p[i+1]), u32xe(p[i+2]), u32xe(p[i+3]), u32xe(p[i+4]), u32xe(p[i+5]));
             } else {
                 goto unexpected;
             }
@@ -482,6 +485,8 @@ static uint32_t decode_v2_cmd(CdoSequence * seq, uint32_t * p, uint32_t * ip, ui
                 cdocmd_add_mask_poll(seq, u32pair(u32xe(p[i+0]), u32xe(p[i+1])), u32xe(p[i+2]), u32xe(p[i+3]), u32xe(p[i+4]), 0);
             } else if (args == 6) {
                 cdocmd_add_mask_poll(seq, u32pair(u32xe(p[i+0]), u32xe(p[i+1])), u32xe(p[i+2]), u32xe(p[i+3]), u32xe(p[i+4]), u32xe(p[i+5]));
+            } else if (args == 7) {
+                cdocmd_add_mask_poll_w_err(seq, u32pair(u32xe(p[i+0]), u32xe(p[i+1])), u32xe(p[i+2]), u32xe(p[i+3]), u32xe(p[i+4]), u32xe(p[i+5]), u32xe(p[i+6]));
             } else {
                 goto unexpected;
             }
@@ -613,6 +618,11 @@ static uint32_t decode_v2_cmd(CdoSequence * seq, uint32_t * p, uint32_t * ip, ui
         case CMD2_TAMPER_TRIGGER:
             if (args != 1) goto unexpected;
             cdocmd_add_tamper_trigger(seq, u32xe(p[i+0]));
+            break;
+
+        case CMD2_SET_IPI_ACCESS:
+            if (args != 2) goto unexpected;
+            cdocmd_add_set_ipi_access(seq, u32xe(p[i+0]), u32xe(p[i+1]));
             break;
 
         case CMD2_NPI_SEQ:
@@ -1380,10 +1390,10 @@ static void * encode_v1(CdoSequence * seq, size_t * sizep, uint32_t be) {
     return p;
 }
 
-static void hdr2(uint32_t ** bufp, uint32_t * posp, uint32_t cmd, uint32_t len, uint32_t be) {
+static void hdr2l(uint32_t ** bufp, uint32_t * posp, uint32_t cmd, uint32_t len, uint32_t be, uint32_t long_header) {
     uint32_t * p = *bufp;
     uint32_t pos = *posp;
-    if (len < 255) {
+    if (len < 255 && !long_header) {
         p = grow_cdobuf(pos + len + 1);
         p[pos++] = u32xe((len << 16) | cmd);
     } else {
@@ -1393,6 +1403,10 @@ static void hdr2(uint32_t ** bufp, uint32_t * posp, uint32_t cmd, uint32_t len, 
     }
     *bufp = p;
     *posp = pos;
+}
+
+static void hdr2(uint32_t ** bufp, uint32_t * posp, uint32_t cmd, uint32_t len, uint32_t be) {
+    hdr2l(bufp, posp, cmd, len, be, 0);
 }
 
 static LINK * find_block_end(LINK * l, LINK * lh) {
@@ -1417,9 +1431,10 @@ static LINK * find_block_end(LINK * l, LINK * lh) {
     return lh;
 }
 
-static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * posp, uint32_t be) {
+static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * posp, uint32_t be, uint32_t * aligned_commandp) {
     uint32_t pos = *posp;
     uint32_t * p = grow_cdobuf(pos);
+    uint32_t aligned_command = 0;
     while (l != lh) {
         CdoCommand * cmd = all2cmds(l);
         l = l->next;
@@ -1493,6 +1508,7 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
                     p[pos++] = u32xe_hi(dstaddr);
                     p[pos++] = u32xe_lo(dstaddr);
                     if (!auto_align) break;
+                    aligned_command = 1;
                     if ((pos & 3) == ((dstaddr >> 2) & 3)) break;
                     padding++;
                     pos = pos_save;
@@ -1537,6 +1553,7 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
                 p[pos++] = u32xe_lo(cmd->dstaddr);
                 p[pos++] = u32xe(cmd->value);
                 if (!auto_align) break;
+                aligned_command = 1;
                 if ((pos & 3) == ((cmd->dstaddr >> 2) & 3)) break;
                 padding++;
                 pos = pos_save;
@@ -1567,19 +1584,23 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
             break;
         case CdoCmdMaskPoll: {
             uint32_t has_flags = cmd->flags != 0;
+            uint32_t has_errorcode = cmd->errorcode != 0;
             if ((cmd->dstaddr >> 32) == 0) {
-                hdr2(&p, &pos, CMD2_MASK_POLL, has_flags ? 5 : 4, be);
+                hdr2(&p, &pos, CMD2_MASK_POLL, has_errorcode ? 6: (has_flags  ? 5 : 4), be);
                 p[pos++] = u32xe_lo(cmd->dstaddr);
             } else {
-                hdr2(&p, &pos, CMD2_MASK_POLL64, has_flags ? 6 : 5, be);
+                hdr2(&p, &pos, CMD2_MASK_POLL64, has_errorcode ? 7: (has_flags  ? 6 : 5), be);
                 p[pos++] = u32xe_hi(cmd->dstaddr);
                 p[pos++] = u32xe_lo(cmd->dstaddr);
             }
             p[pos++] = u32xe(cmd->mask);
             p[pos++] = u32xe(cmd->value);
             p[pos++] = u32xe(cmd->count);
-            if (has_flags) {
+            if (has_flags || has_errorcode) {
                 p[pos++] = u32xe(cmd->flags);
+            }
+            if (has_errorcode) {
+                p[pos++] = u32xe(cmd->errorcode);
             }
             break;
         }
@@ -1623,6 +1644,7 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
                 p[pos++] = u32xe_lo(cmd->dstaddr);
                 p[pos++] = u32xe(cmd->value);
                 if (!auto_align) break;
+                aligned_command = 1;
                 if ((pos & 3) == 0) break;
                 padding++;
                 pos = pos_save;
@@ -1708,6 +1730,10 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
         case CdoCmdMarker: {
             uint32_t len = strlen((char *)cmd->buf);
             uint32_t count = (len + 3)/4;
+            if (cmd->value == MARKER_DEVICE || cmd->value == MARKER_DATE)
+            {
+                break;
+            }
             /* Search for the START markers with string "NOC Start up", only for SSIT devices */
             if (search_sync_points && (cmd->value == 0x64 || cmd->value == 0x65) && (strcmp((char*)cmd->buf, "NOC Startup") == 0)) {
                 /* Store the offset of each of the START and END marker with "NOC Start up" string */
@@ -1731,20 +1757,52 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
         }
         case CdoCmdProc: {
             uint32_t pos_save = pos;
-            uint32_t payload_start;
+            uint32_t long_header = 0;
+            uint32_t aligned_proc_command = 0;
             LINK * blockend = find_block_end(l, lh);
-            hdr2(&p, &pos, CMD2_PROC, 1, be);
-            payload_start = pos;
-            p[pos++] = u32xe(cmd->value);
-            p = encode_v2_cmd(version, l, blockend, &pos, be);
-            hdr2(&p, &pos_save, CMD2_PROC, pos - payload_start, be);
-            if (pos_save != payload_start) {
-                /* Header grew, regenerate payload */
+            for (;;) {
+                uint32_t hdr_len = long_header ? 2 : 1;
+                uint32_t payload_start;
+                uint32_t restart = 0;
+                uint32_t pos_hdr;
                 pos = pos_save;
+
+                if (aligned_proc_command && auto_align && ((pos + hdr_len + 1) & 3) != 0) {
+                    /* Align proc if it contains commands that require alignment */
+                    uint32_t padding = 4 - ((pos + hdr_len + 1) & 3);
+                    hdr2(&p, &pos, CMD2_NOP, padding - 1, be);
+                    memset(p + pos, 0, (padding - 1)*4);
+                    pos += padding - 1;
+                }
+
+                /* Remember header location and reserve space */
+                pos_hdr = pos;
+                pos += hdr_len;
+                payload_start = pos;
                 p[pos++] = u32xe(cmd->value);
-                p = encode_v2_cmd(version, l, blockend, &pos, be);
-                /* Update payload size incase it changed due to alignment */
-                p[pos_save - 1] = u32xe(pos - pos_save);
+
+                /* Store commands as payload */
+                p = encode_v2_cmd(version, l, blockend, &pos, be, &aligned_proc_command);
+
+                /* Store header in reserved space. */
+                hdr2l(&p, &pos_hdr, CMD2_PROC, pos - payload_start, be, long_header);
+                if (pos_hdr != payload_start) {
+                    /* Header grew, restart with long header */
+                    assert(!long_header);
+                    assert(pos_hdr - payload_start == 1);
+                    long_header = 1;
+                    restart = 1;
+                }
+
+                if (aligned_proc_command) {
+                    aligned_command = 1;
+                    if (auto_align && ((pos_hdr + 1) & 3) != 0) {
+                        /* Update padding. */
+                        restart = 1;
+                    }
+                }
+
+                if (!restart) break;
             }
             l = blockend;
             if (l != lh) l = l->next;
@@ -1761,7 +1819,7 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
             memcpy(p + pos, cmd->buf, len);
             byte_swap_buffer(p + pos, count, be);
             pos += count;
-            p = encode_v2_cmd(version, l, blockend, &pos, be);
+            p = encode_v2_cmd(version, l, blockend, &pos, be, &aligned_command);
             p[payload_start] = u32xe(pos - payload_start - 1);
             l = blockend;
             break;
@@ -1787,12 +1845,12 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
             LINK * blockend = find_block_end(l, lh);
             hdr2(&p, &pos, CMD2_PSM_SEQUENCE, 0, be);
             payload_start = pos;
-            p = encode_v2_cmd(version, l, blockend, &pos, be);
+            p = encode_v2_cmd(version, l, blockend, &pos, be, &aligned_command);
             hdr2(&p, &pos_save, CMD2_PSM_SEQUENCE, pos - payload_start, be);
             if (pos_save != payload_start) {
                 /* Header grew, regenerate payload */
                 pos = pos_save;
-                p = encode_v2_cmd(version, l, blockend, &pos, be);
+                p = encode_v2_cmd(version, l, blockend, &pos, be, &aligned_command);
             }
             l = blockend;
             if (l != lh) l = l->next;
@@ -1816,6 +1874,11 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
         case CdoCmdTamperTrigger:
             hdr2(&p, &pos, CMD2_TAMPER_TRIGGER, 1, be);
             p[pos++] = u32xe(cmd->value);
+            break;
+        case CdoCmdSetIpiAccess:
+            hdr2(&p, &pos, CMD2_SET_IPI_ACCESS, 2, be);
+            p[pos++] = u32xe(cmd->value);
+            p[pos++] = u32xe(cmd->mask);
             break;
         case CdoCmdNpiSeq:
             if (version >= CDO_VERSION_2_00) goto npi_error;
@@ -2235,6 +2298,7 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
             break;
         }
     }
+    if (aligned_commandp) *aligned_commandp = aligned_command;
     *posp = pos;
     return p;
 }
@@ -2247,7 +2311,7 @@ static void * encode_v2(CdoSequence * seq, size_t * sizep, uint32_t be) {
     p[0] = u32xe(pos - 1);
     p[1] = u32xe(0x004F4443);
     p[2] = u32xe(seq->version);
-    p = encode_v2_cmd(seq->version, l, &seq->cmds, &pos, be);
+    p = encode_v2_cmd(seq->version, l, &seq->cmds, &pos, be, NULL);
     p[3] = u32xe(pos - hdrlen - 1);
     p[4] = u32xe(checksum32(p, hdrlen, be));
     clear_cdobuf();

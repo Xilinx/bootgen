@@ -333,6 +333,8 @@ BootImage::BootImage(Options& options, uint8_t index)
     , pmcDataAesFile("")
     , xplm_modules_data_length(0)
     , xplm_modules_data(NULL)
+    , authOnPartitionFound(false)
+    , numHashTableEntries(0)
 {
     options.bifOptions = bifOptions = options.bifOptionsList.at(index);
     Name = bifOptions->GetGroupName();
