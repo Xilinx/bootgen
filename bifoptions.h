@@ -58,6 +58,7 @@ typedef struct
     Checksum::Type checksum;
     DpaCM::Type dpaCM;
     PufHdLoc::Type pufHdLoc;
+    std::vector<std::pair<std::string, uint32_t>> ihtOptionalDataInfo;
 } MetaHdrInfo;
 
 typedef struct
@@ -106,6 +107,10 @@ public:
     void SetPufHdLocation(PufHdLoc::Type);
     void SetReserveLength(uint64_t length, bool flag);
     void SetDelayAuth(bool flag);
+    void SetTcmBootFlag();
+    void SetTcmARegion(uint64_t tcm_a_region);
+    void SetTcmBRegion(uint64_t tcm_b_region);
+    void SetTcmCRegion(uint64_t tcm_c_region);
 
     std::string GetUdfDataFile(void);
     std::vector<uint32_t>& GetEncryptionBlocks(void);
@@ -162,6 +167,10 @@ public:
     PufHdLoc::Type pufHdLoc;
     uint8_t slrNum;
     uint8_t clusterNum;
+    bool tcmBoot;
+    uint64_t tcmARegionAddr;
+    uint64_t tcmBRegionAddr;
+    uint64_t tcmCRegionAddr;
 
     //no default declared
     Override<int> alignment;

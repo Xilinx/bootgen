@@ -180,6 +180,10 @@ PartitionBifOptions::PartitionBifOptions()
     , bifSection("")
     , delayAuth(false)
     , imageStoreId(0xFF)
+    , tcmBoot(false)
+    , tcmARegionAddr(0)
+    , tcmBRegionAddr(0)
+    , tcmCRegionAddr(0)
 { }
 
 /******************************************************************************/
@@ -1479,6 +1483,45 @@ void PartitionBifOptions::SetLockStepFlag()
 }
 
 /******************************************************************************/
+void PartitionBifOptions::SetTcmARegion(uint64_t address)
+{
+    if ((arch == Arch::VERSAL && versalNetSeries) && (destCPUType == DestinationCPU::R5_0 || destCPUType == DestinationCPU::R5_1 || destCPUType == DestinationCPU::R5_lockstep))
+    {
+        tcmARegionAddr = address;
+    }
+    else
+    {
+        LOG_ERROR("BIF attribute error !!!\n\t  'tcm_a_region' is supported only in VersalNet architecture");
+    }
+}
+
+/******************************************************************************/
+void PartitionBifOptions::SetTcmBRegion(uint64_t address)
+{
+    if ((arch == Arch::VERSAL && versalNetSeries) && (destCPUType == DestinationCPU::R5_0 || destCPUType == DestinationCPU::R5_1 || destCPUType == DestinationCPU::R5_lockstep))
+    {
+        tcmBRegionAddr = address;
+    }
+    else
+    {
+        LOG_ERROR("BIF attribute error !!!\n\t  'tcm_b_region' is supported only in VersalNet architecture");
+    }
+}
+
+/******************************************************************************/
+void PartitionBifOptions::SetTcmCRegion(uint64_t address)
+{
+    if ((arch == Arch::VERSAL && versalNetSeries) && (destCPUType == DestinationCPU::R5_0 || destCPUType == DestinationCPU::R5_1 || destCPUType == DestinationCPU::R5_lockstep))
+    {
+        tcmCRegionAddr = address;
+    }
+    else
+    {
+        LOG_ERROR("BIF attribute error !!!\n\t  'tcm_c_region' is supported only in VersalNet architecture");
+    }
+}
+
+/******************************************************************************/
 std::vector<uint32_t>& PartitionBifOptions::GetEncryptionBlocks(void)
 {
     return blocks;
@@ -1530,6 +1573,19 @@ void PartitionBifOptions::SetReserveLength(uint64_t length, bool flag)
 void PartitionBifOptions::SetDelayAuth(bool flag)
 {
     delayAuth = flag;
+}
+
+/******************************************************************************/
+void PartitionBifOptions::SetTcmBootFlag()
+{
+    if ((arch == Arch::VERSAL && versalNetSeries) && (destCPUType == DestinationCPU::R5_0 || destCPUType == DestinationCPU::R5_1 || destCPUType == DestinationCPU::R5_lockstep))
+    {
+        tcmBoot = true;
+    }
+    else
+    {
+        LOG_ERROR("BIF attribute error !!!\n\t  'tcmboot' is supported only in VersalNet architecture");
+    }
 }
 
 /******************************************************************************/

@@ -275,6 +275,29 @@ void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
             }
         }
     }
+
+    if (bi.options.IsAuthOptimizationEnabled())
+    {
+        uint32_t i = 0;
+        for (std::list<PartitionHeader*>::iterator partHdr = bi.partitionHeaderList.begin(); partHdr != bi.partitionHeaderList.end(); partHdr++, i++)
+        {
+            if (!(*partHdr)->IsBootloader())
+            {
+                (*partHdr)->partitionNum = i;
+                (*partHdr)->section->partitionNum = i;
+                if ((*partHdr)->imageHeader->GetAuthenticationType() != Authentication::None)
+                {
+                    bi.numHashTableEntries++;
+                }
+            }
+        }
+    }
+
+    bi.imageHeaderTable->SetUserOptionalData(bi.bifOptions->metaHdrAttributes.ihtOptionalDataInfo, bi.numHashTableEntries);
+    bi.iht_optional_data_length = iht_optional_data_length;
+    bi.copied_iht_optional_data_length = copied_iht_optional_data_length;
+    bi.iht_optional_data = (uint32_t*)realloc(bi.iht_optional_data, bi.iht_optional_data_length);
+    memcpy(bi.iht_optional_data, iht_optional_data, iht_optional_data_length);
 }
 
 /******************************************************************************/
@@ -661,13 +684,60 @@ void VersalImageHeaderTable::SetOptionalData(uint32_t * data, uint32_t size)
     {
         iht_optional_data = (uint32_t*)malloc(iht_optional_data_length);
         memcpy(iht_optional_data, data, iht_optional_data_length);
+    }
+}
+
+/******************************************************************************/
+void VersalImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t numHashTableEntries)
+{
+    for (size_t i = 0; i < optionalDataInfo.size(); i++)
+    {
+        size_t size = 0;
+        void *data = file_to_buf((char *)optionalDataInfo[i].first.c_str(), &size);
+        if (size != 0)
+        {
+            uint32_t sectn_size_id = 0;
+            /* Optional Data Header + Optional Data Actual size + Checksum */
+            uint16_t sectn_length = sizeof(uint32_t) + size + sizeof(uint32_t);
+            sectn_size_id = (uint32_t)((sectn_length / 4) << 16) | (optionalDataInfo[i].second);
+
+            iht_optional_data = (uint32_t*)realloc(iht_optional_data, iht_optional_data_length + sectn_length);
+            memcpy(iht_optional_data + (iht_optional_data_length / 4), &sectn_size_id, sizeof(uint32_t));
+            memcpy(iht_optional_data + (iht_optional_data_length / 4) + sizeof(uint32_t) / 4, data, size);
+
+            uint32_t checksum = ComputeWordChecksum(iht_optional_data + (iht_optional_data_length / 4), sectn_length - sizeof(uint32_t));
+            memcpy(iht_optional_data + (iht_optional_data_length / 4) + (sectn_length - sizeof(uint32_t)) / 4, &checksum, sizeof(uint32_t));
+
+            iht_optional_data_length += sectn_length;
+        }
+    }
+
+    copied_iht_optional_data_length = iht_optional_data_length;
+
+    if (numHashTableEntries != 0)
+    {
+        /* Optional Data Header + Optional Data Actual size (32 bit(4Bytes) partition Number + Hash Length in bytes) + Checksum */
+        uint16_t sectn_length = sizeof(uint32_t) + (numHashTableEntries * (sizeof(uint32_t) + SHA3_LENGTH_BYTES)) + sizeof(uint32_t);
+        iht_optional_data = (uint32_t*)realloc(iht_optional_data, iht_optional_data_length + sectn_length);
+        memset(iht_optional_data + (iht_optional_data_length / 4), 0, sectn_length);
+
+        iht_optional_data_length += sectn_length;
+    }
+
+    if (iht_optional_data_length != 0)
+    {
+        uint32_t padLength = (iht_optional_data_length % 64 != 0) ? 64 - (iht_optional_data_length % 64) : 0;
+        iht_optional_data = (uint32_t*)realloc(iht_optional_data, iht_optional_data_length + padLength);
+        memset(iht_optional_data + (iht_optional_data_length / 4), 0xFF, padLength);
+        iht_optional_data_length += padLength;
 
         section->IncreaseLengthAndPadTo(sizeof(VersalImageHeaderTableStructure) + iht_optional_data_length, 0);
         memcpy(section->Data + sizeof(VersalImageHeaderTableStructure), iht_optional_data, iht_optional_data_length);
 
         iHTable = (VersalImageHeaderTableStructure*)section->Data;
+        iHTable->optionalDataSize = iht_optional_data_length / 4;
     }
-    iHTable->optionalDataSize = iht_optional_data_length / 4;
+    LOG_TRACE("User optional data is processed");
 }
 
 /******************************************************************************/

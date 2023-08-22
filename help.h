@@ -744,7 +744,7 @@ verify
  USAGE       | bootgen -arch zynqmp -verify boot.bin                          |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | All the authentication certificates in a boot image will be    |\n\
-             | verified againist the available partitions.                    |\n\
+             | verified against the available partitions.                     |\n\
              | The verification process is done as below -                    |\n\
              | 1. Verify Header Authentication Certificate                    |\n\
              |      verify SPK Signature                                      |\n\
@@ -753,7 +753,7 @@ verify
              |      verify Boot Header Signature                              |\n\
              |      verify SPK Signature                                      |\n\
              |      verify Bootloader Signature                               |\n\
-             | 3. Verifiy Partition Authentication Certificate                |\n\
+             | 3. Verify Partition Authentication Certificate                 |\n\
              |      verify SPK Signature                                      |\n\
              |      verify Partition Signature                                |\n\
              |    This is repeated for all partitions in the given boot image.|\n\
@@ -1368,34 +1368,7 @@ copy
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | copy                                                           |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | versal                                                         |\n\
--------------+----------------------------------------------------------------+\n\
- DESCRIPTION | This attribute specifies that the image is to be copied to     |\n\
-             | memory at specified address.                                   |\n\
-             | This is a image specific attribute and needs to be defined at  |\n\
-             | image level and not partition level.                           |\n\
--------------+----------------------------------------------------------------+\n\
- USAGE       | copy = <addr>                                                  |\n\
--------------+---------------------+------------------------------------------+\n\
- EXPLANATION | Sample BIF - test.bif                                          |\n\
-             +----------------------------------------------------------------|\n\
-             | all:                                                           |\n\
-             | {                                                              |\n\
-             |    boot_device { qspi32, address=0x10000 }                     |\n\
-             |    image                                                       |\n\
-             |    {                                                           |\n\
-             |      name = image1, id = 0x1c000001                            |\n\
-             |      { type=bootloader, file=plm.elf }                         |\n\
-             |      { type=pmcdata, file=pmc_cdo.bin }                        |\n\
-             |    }                                                           |\n\
-             |    image                                                       |\n\
-             |    {                                                           |\n\
-             |      name = image2, id = 0x1c000002, copy = 0x30000            |\n\
-             |      { type=cdo, file=fpd_data.cdo }                           |\n\
-             |      { core=psm, file=psm.elf }                                |\n\
-             |      { core=a72-0, file=hello.elf }                            |\n\
-             |    }                                                           |\n\
-             | }                                                              |\n\
+             + DEPRECTAED                                                     |\n\
 -------------+----------------------------------------------------------------+\n"
 
 /******************************************************************************

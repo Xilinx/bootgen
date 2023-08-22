@@ -118,8 +118,9 @@ ImageBifOptions* currentImageBifOptions;
 %token                  SLR_NUM CLUSTER_NUM DICE PCR_NUMBER PCR_MEASUREMENT_INDEX IMAGE_STORE
 %token                  PARENT_ID ID_CODE EXT_ID_CODE BYPASS_IDCODE_CHECK A_HWROT S_HWROT UNIQUE_ID PARENT_UNIQUE_ID FUNCTION_ID
 %token                  IMAGE ID NAME DELAY_HANDOFF DELAY_LOAD COPY INCLUDE DELAY_AUTH
-%token                  PARTITION PFILE
+%token                  PARTITION PFILE OPTIONAL_DATA
 %token                  METAHEADER
+%token                  TCM_BOOT TCM_A_REGION TCM_B_REGION TCM_C_REGION
 %token <string>         WORD HEXWORD
 %token <string>         FILENAME QFILENAME
 %token <number>         NONE
@@ -246,6 +247,13 @@ metahdr_attr            :   /* empty */
                                                                                   currentBifOptions->SetPufHdinBHFlag();}
                         ;
 
+optional_data           :   optional_data_attr
+                        |   optional_data_attr SEMICOLON  optional_data
+                        ;
+
+optional_data_attr      :   filename COMMA ID EQUAL expression                  { currentBifOptions->metaHdrAttributes.ihtOptionalDataInfo.push_back(std::pair<std::string, uint32_t>($1, $5)); }
+                        |
+
 metahdr_blk             :   metahdr_blk_attr
                         |   metahdr_blk_attr SEMICOLON  metahdr_blk
                         ;
@@ -292,7 +300,8 @@ image_attributes        :   ID EQUAL expression                                 
                         |   DELAY_HANDOFF                                       { currentImageBifOptions->SetDelayHandoff(true); }
                         |   DELAY_LOAD                                          { currentImageBifOptions->SetDelayLoad(true); }
                         |   INIT                                                { LOG_ERROR("BIF attribute error !!!\n\t This usage of 'init' is not supported. See 'bootgen -bif_help init' for usage details."); }
-                        |   COPY EQUAL expression                               { currentImageBifOptions->SetMemCopyAddress($3); }
+                        |   COPY EQUAL expression                               { LOG_ERROR("Copy to Memory feature with the attribute 'copy' is no more supported.\n\t   This can be duplicated with the option 'imagestore'. Please refer UG1283 for more details.");
+                                                                                  currentImageBifOptions->SetMemCopyAddress($3); }
                         |   PARTITION_TYPE EQUAL ptypevalue                     { currentImageBifOptions->SetImageType($3); }
                         |   UNIQUE_ID EQUAL expression                          { currentImageBifOptions->SetUniqueId($3); }
                         |   PARENT_UNIQUE_ID EQUAL expression                   { currentImageBifOptions->SetParentUniqueId($3); }
@@ -332,6 +341,7 @@ other_spec              :   OBRACKET KEYSRC_ENCRYPTION EBRACKET key_src         
                         |   OBRACKET SPLIT EBRACKET split_options
                         |   OBRACKET BOOTVECTORS EBRACKET bootvectors_list
                         |   AUTHJTAG_CONFIG OBRACE authjtag_attr_list EBRACE
+                        |   OPTIONAL_DATA OBRACE optional_data EBRACE
                         ;
 
 sec_boot_attr_list      :   sec_boot_attr
@@ -527,6 +537,7 @@ optattr                 :   AUTHENTICATION EQUAL authvalue                      
                         |   CLUSTER_NUM EQUAL expression                        { currentPartitionBifOptions->SetClusterNum($3); }
                         |   PUFHD_LOC                                           { currentPartitionBifOptions->SetPufHdLocation(PufHdLoc::PUFinBH); }
                         |   DELAY_AUTH                                          { currentPartitionBifOptions->SetDelayAuth(true); }
+                        |   TCM_BOOT                                            { currentPartitionBifOptions->SetTcmBootFlag(); }
                         ;
 
 other_file_attr         :   INIT
@@ -605,6 +616,9 @@ numattr                 :   ALIGNMENT EQUAL expression                          
                         |   BIGENDIAN                                           { currentPartitionBifOptions->bigEndian = true; }
                         |   A32_MODE                                            { currentPartitionBifOptions->a32Mode = true; }
                         |   PARTITION_NUM EQUAL expression                      { currentPartitionBifOptions->pid = $3; }
+                        |   TCM_A_REGION EQUAL expression                       { currentPartitionBifOptions->SetTcmARegion($3); }
+                        |   TCM_B_REGION EQUAL expression                       { currentPartitionBifOptions->SetTcmBRegion($3); }
+                        |   TCM_C_REGION EQUAL expression                       { currentPartitionBifOptions->SetTcmCRegion($3); }
                         ;
 
 fileattr                :   PRESIGN EQUAL filename                              { currentPartitionBifOptions->presignFile = $3; }

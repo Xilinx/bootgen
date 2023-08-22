@@ -1,4 +1,3 @@
-
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
 * Copyright 2022-2023 Advanced Micro Devices, Inc.
@@ -1112,6 +1111,13 @@ void VersalReadImage::DisplayPhtAttributes(uint32_t value)
             default: val = "[invalid]";     break;
         }
         DisplayAttributes("lockstep ", val1, "cluster", val);
+        switch ((value >> vNetphtTcmBootShift) & vNetphtTcmBootMask)
+        {
+            case 3: val = "[enabled]";      break;
+            default: val = "[disabled]";    break;
+        }
+        val1 = val;
+        DisplayAttributes("tcmboot ", val1, " ", "");
     }
     switch ((value >> vphtChecksumTypeShift) & vphtChecksumTypeMask)
     {

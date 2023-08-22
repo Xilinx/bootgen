@@ -346,6 +346,7 @@ public:
     void SetChecksum(void);
     void SetOptionalDataSize(void);
     void SetOptionalData(uint32_t*, uint32_t);
+    void SetUserOptionalData(std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t hashTableSize);
     void SetXplmModulesData(BootImage& bi, uint32_t*, uint32_t);
 
     uint32_t GetImageHeaderTableVersion(void);

@@ -380,7 +380,7 @@ void PartitionHeader::Link(BootImage &bi, PartitionHeader* next_part_hdr)
     SetEncryptedPartitionLength((uint32_t)transferSize);
     SetUnencryptedPartitionLength((uint32_t)(partitionSize+3));
     SetTotalPartitionLength((uint32_t)partition->section->Length);
-    SetLoadAddress(loadAddress);
+    SetLoadAddress(loadAddress, false);
     SetExecAddress((firstValidIndex) ? execAddress : 0);
     SetPartitionWordOffset((uint32_t)partition->section->Address);
     SetPartitionAttributes();

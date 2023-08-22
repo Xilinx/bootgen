@@ -41,6 +41,7 @@ class Elf32SectionHdr_t;
 class Elf64SectionHdr_t;
 class Elf64Symbol_t;
 
+#define DATA_ID_PARTITION_HASHES 3
 #define DATA_ID_STRUCT_INFO 2
 #define DATA_ID_XPLM_MODULES 1
 

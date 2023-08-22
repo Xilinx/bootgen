@@ -260,7 +260,7 @@ void cdocmd_add_generic_command(CdoSequence * seq, uint32_t id, void * buf, uint
 void cdocmd_add_comment(CdoSequence * seq, const char * comment, ...) {
     CdoCommand * cmd = cdocmd_alloc(CdoCmdComment);
     va_list ap;
-    int size = 1;
+    int size = 4;	/* Align on 4 to avoid issues in copy_buf() */
     cmd->buf = (char *)myalloc(size);
     while (1) {
         int n;
@@ -269,7 +269,7 @@ void cdocmd_add_comment(CdoSequence * seq, const char * comment, ...) {
         va_end(ap);
         if (n >= 0) {
             if (n < size) break;
-            size = n + 1;
+            size = (n + 4) & ~3;
         } else {
             size *= 2;
         }
@@ -331,6 +331,17 @@ void cdocmd_add_mask_poll(CdoSequence * seq, uint64_t addr, uint32_t mask, uint3
     cmd->value = value;
     cmd->count = count;
     cmd->flags = flags;
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_mask_poll_w_err(CdoSequence * seq, uint64_t addr, uint32_t mask, uint32_t value, uint32_t count, uint32_t flags, uint32_t errorcode) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdMaskPoll);
+    cmd->dstaddr = addr;
+    cmd->mask = mask;
+    cmd->value = value;
+    cmd->count = count;
+    cmd->flags = flags;
+    cmd->errorcode = errorcode;
     add_command(seq, cmd);
 }
 
@@ -981,6 +992,13 @@ void cdocmd_add_scatter_write2(CdoSequence * seq, uint32_t value1, uint32_t valu
 void cdocmd_add_tamper_trigger(CdoSequence * seq, uint32_t value) {
     CdoCommand * cmd = cdocmd_alloc(CdoCmdTamperTrigger);
     cmd->value = value;
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_set_ipi_access(CdoSequence * seq, uint32_t value, uint32_t mask) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdSetIpiAccess);
+    cmd->value = value;
+    cmd->mask = mask;
     add_command(seq, cmd);
 }
 

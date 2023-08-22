@@ -80,6 +80,7 @@ struct command_info {
     { "scatter_write", CdoCmdScatterWrite },
     { "scatter_write2", CdoCmdScatterWrite2 },
     { "tamper_trigger", CdoCmdTamperTrigger },
+    { "set_ipi_access", CdoCmdSetIpiAccess },
     { "npi_seq", CdoCmdNpiSeq },
     { "npi_precfg", CdoCmdNpiPreCfg },
     { "npi_write", CdoCmdNpiWrite },
@@ -453,6 +454,7 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             uint32_t value;
             uint32_t count = 0;
             uint32_t flags = 0;
+            uint32_t errorcode = 0;
             if (parse_u64(&s, &addr)) goto syntax_error;
             if (parse_u32(&s, &mask)) goto syntax_error;
             if (parse_u32(&s, &value)) goto syntax_error;
@@ -460,7 +462,12 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             if (istok(*s) && parse_u32(&s, &count)) goto syntax_error;
             skipsp(s);
             if (istok(*s) && parse_u32(&s, &flags)) goto syntax_error;
-            cdocmd_add_mask_poll(seq, addr, mask, value, count, flags);
+            skipsp(s);
+            if (istok(*s) && parse_u32(&s, &errorcode)) goto syntax_error;
+            if (errorcode)
+                cdocmd_add_mask_poll_w_err(seq, addr, mask, value, count, flags, errorcode);
+            else
+                cdocmd_add_mask_poll(seq, addr, mask, value, count, flags);
             break;
         }
         case CdoCmdDelay: {
@@ -664,7 +671,14 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             cdocmd_add_tamper_trigger(seq, value);
             break;
         }
-
+        case CdoCmdSetIpiAccess: {
+            uint32_t value;
+            uint32_t mask;
+            if (parse_u32(&s, &value)) goto syntax_error;
+            if (parse_u32(&s, &mask)) goto syntax_error;
+            cdocmd_add_set_ipi_access(seq, value, mask);
+            break;
+        }
         case CdoCmdNpiSeq:
         case CdoCmdNpiPreCfg:
         case CdoCmdNpiShutdown: {
@@ -1387,9 +1401,13 @@ void cdoseq_to_source(FILE * f, CdoSequence * seq) {
             print_x64(f, cmd->value);
             fprintf(f, " ");
             print_x64(f, cmd->count);
-            if (cmd->flags != 0) {
+            if (cmd->flags != 0 || cmd->errorcode != 0) {
                 fprintf(f, " ");
                 print_x64(f, cmd->flags);
+            }
+            if (cmd->errorcode != 0) {
+                fprintf(f, " ");
+                print_x64(f, cmd->errorcode);
             }
             fprintf(f, "\n");
             break;
@@ -1533,7 +1551,13 @@ void cdoseq_to_source(FILE * f, CdoSequence * seq) {
             print_x64(f, cmd->value);
             fprintf(f, "\n");
             break;
-
+        case CdoCmdSetIpiAccess:
+            fprintf(f, "set_ipi_access ");
+            print_x64(f, cmd->value);
+            fprintf(f, " ");
+            print_x64(f, cmd->mask);
+            fprintf(f, "\n");
+            break;
         case CdoCmdNpiSeq:
             fprintf(f, "npi_seq ");
             print_x64(f, cmd->dstaddr);

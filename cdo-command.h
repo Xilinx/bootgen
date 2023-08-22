@@ -23,6 +23,11 @@
 #include <stdbool.h>
 #include "link.h"
 
+#define MARKER_DEVICE            0x1
+#define MARKER_ARCHITECTURE      0x3
+#define MARKER_SLRID             0x5
+#define MARKER_DATE              0x6
+
 #define is_be_host() (0)
 
 /* CDO Version 1.50 is using CDOv2 format, but allows CDOv1 commands
@@ -94,6 +99,7 @@ typedef enum CdoCmdType {
     CdoCmdScatterWrite,
     CdoCmdScatterWrite2,
     CdoCmdTamperTrigger,
+    CdoCmdSetIpiAccess,
     CdoCmdNpiSeq,
     CdoCmdNpiPreCfg,
     CdoCmdNpiWrite,
@@ -182,6 +188,7 @@ struct CdoCommand {
     uint32_t count;
     uint32_t period;
     uint32_t flags;
+    uint32_t errorcode;
     void * buf;
 };
 
@@ -199,6 +206,7 @@ void cdocmd_add_comment(CdoSequence * seq, const char * comment, ...);
 void cdocmd_add_section(CdoSequence * seq, uint32_t secid);
 void cdocmd_add_include(CdoSequence * seq, const char * name);
 void cdocmd_add_mask_poll(CdoSequence * seq, uint64_t addr, uint32_t mask, uint32_t value, uint32_t count, uint32_t flags);
+void cdocmd_add_mask_poll_w_err(CdoSequence * seq, uint64_t addr, uint32_t mask, uint32_t value, uint32_t count, uint32_t flags, uint32_t errorcode);
 void cdocmd_add_mask_write(CdoSequence * seq, uint64_t addr, uint32_t mask, uint32_t value);
 void cdocmd_add_write(CdoSequence * seq, uint64_t addr, uint32_t value);
 void cdocmd_add_delay(CdoSequence * seq, uint32_t delay);
@@ -297,6 +305,7 @@ void cdocmd_add_break(CdoSequence * seq, uint32_t value);
 void cdocmd_add_ot_check(CdoSequence * seq, uint32_t value);
 void cdocmd_add_psm_sequence(CdoSequence * seq);
 void cdocmd_add_tamper_trigger(CdoSequence * seq, uint32_t value);
+void cdocmd_add_set_ipi_access(CdoSequence * seq, uint32_t value, uint32_t mask);
 void cdocmd_add_sem_npi_table(CdoSequence * seq, uint32_t nodeid, uint32_t flags, uint32_t count, void * buf, uint32_t be);
 void cdocmd_add_ldr_set_image_info(CdoSequence * seq, uint32_t nodeid, uint32_t uid, uint32_t puid, uint32_t funcid);
 void cdocmd_add_ldr_cframe_clear_check(CdoSequence * seq, uint32_t block_type);

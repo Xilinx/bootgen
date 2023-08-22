@@ -156,6 +156,7 @@ public:
     virtual void SetClusterNum(uint8_t num) { cluster = num; }
     virtual void SetLockStepFlag(bool flag) { lockstep = flag; }
     virtual void SetDelayAuthFlag (bool flag) { delayAuth = flag; }
+    virtual void SetTcmBoot(bool flag) { tcmBoot = flag; }
 
     virtual void SetEncryptionKeySrc(KeySource::Type type) { };
     virtual void SetPartitionRevocationId(uint32_t id) { };
@@ -217,6 +218,7 @@ public:
     virtual uint8_t GetClusterNum(void) { return cluster; }
     virtual bool GetLockStepFlag(void) { return lockstep; }
     virtual bool GetDelayAuthFlag(void) { return delayAuth; }
+    virtual bool GetTcmBootFlag(void) { return tcmBoot; }
 
     // For multiple key files and auth parameters
     void SetAesKeyFile(std::string filename) { aesKeyFile = filename; }
@@ -350,6 +352,7 @@ protected:
     DpaCM::Type dpacm;
     PufHdLoc::Type pufHdLoc;
     std::string kekIvFile;
+    bool tcmBoot;
 
     std::list<PartitionHeader*> partitionHeaderList;
 
@@ -423,7 +426,9 @@ public:
     virtual void SetBootDeviceAddress(uint32_t address) {};
     virtual void ValidateSecurityCombinations(Authentication::Type, Encryption::Type, Checksum::Type) = 0;
     virtual void SetOptionalData(uint32_t*, uint32_t) {};
+    virtual void SetUserOptionalData(std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t hashTableSize) {};
     virtual void SetXplmModulesData(BootImage& bi, uint32_t*, uint32_t) {};
+    virtual void SetOptionalDataSize(void) {};
 
     virtual uint32_t GetImageHeaderTableVersion(void) { return 0; }
     virtual uint32_t GetPartitionCount(void) { return 0; }
@@ -442,6 +447,7 @@ public:
     uint8_t* metaHdrSecHdrIv;
     uint32_t* iht_optional_data;
     uint32_t iht_optional_data_length;
+    uint32_t copied_iht_optional_data_length;
     uint8_t idCodeCheck;
     int nonApuSubSysCnt;
 

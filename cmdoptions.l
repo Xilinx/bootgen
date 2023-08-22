@@ -132,6 +132,7 @@
     pht                     return tok::READ_PHT;
     ac                      return tok::READ_AC;
 
+-enable_auth_opt            return tok::_AUTH_OPTIMIZATION;
 \-verify_kdf                return tok::_VERIFYKDF;
 \-verify                    return tok::_VERIFY;
 \-encryption_dump           return tok::_ZYNQMPENCRDUMP;

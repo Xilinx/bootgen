@@ -184,9 +184,13 @@ public:
     uint32_t xplm_modules_data_length;
     uint32_t* xplm_modules_data;
     char globalSlrId;
+    bool authOnPartitionFound;
 
     uint32_t* iht_optional_data;
     uint32_t iht_optional_data_length;
+    uint32_t copied_iht_optional_data_length;
+    std::vector<std::pair<uint32_t, uint8_t*>> hashTable;
+    uint32_t numHashTableEntries;
     std::string pmcDataAesFile;
 };
 #endif

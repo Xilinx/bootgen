@@ -197,6 +197,7 @@ void VersalBootImage::ConfigureAuthenticationContext(ImageHeader * image, Authen
         }
         image->SetAuthenticationType(authType);
         options.bifOptions->SetHeaderAC(true);
+        authOnPartitionFound = true;
         currentAuthCtx->hashType = GetAuthHashAlgo();
         currentAuthCtx->ppkFile = image->GetPpkFile();
         currentAuthCtx->pskFile = image->GetPskFile();
@@ -477,6 +478,7 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
                     PartitionHeader* ph = (*partHdr);
                     if (ph->GetAuthCertificateOffset() != 0)
                     {
+                        authOnPartitionFound = true;
                         LOG_INFO("Loading AC context for section %s ", ph->section->Name.c_str());
                         binFile = fopen(it->filename.c_str(), "rb");
                         if (!binFile)
@@ -827,6 +829,7 @@ ImageHeader* VersalBootImage::ParsePartitionDataToImage(BifOptions * bifoptions,
     image->SetClusterNum(partitionBifOptions->clusterNum);
     image->SetLockStepFlag(partitionBifOptions->lockstep);
     image->SetDelayAuthFlag(partitionBifOptions->delayAuth);
+    image->SetTcmBoot(partitionBifOptions->tcmBoot);
 
     if ((bifoptions->GetDpaCM() == DpaCM::DpaCMEnable) && (image->IsBootloader()))
     {
@@ -1894,8 +1897,16 @@ void VersalBootImage::BuildAndLink(Binary* cache)
     /* Link stage - fields which depend on partitions are populated here */
     bootHeader->Link(*this);
     imageHeaderTable->Link(*this);
-    partitionHeaderTable->Link(*this);
-    partitionHeaderTable->LinkPartitions(*this);
+    if (options.IsAuthOptimizationEnabled())
+    {
+        partitionHeaderTable->LinkPartitions(*this);
+        partitionHeaderTable->Link(*this);
+    }
+    else
+    {
+        partitionHeaderTable->Link(*this);
+        partitionHeaderTable->LinkPartitions(*this);
+    }
     checksumTable->Link(*this);
 
     LOG_INFO("After Link ");

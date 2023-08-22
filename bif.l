@@ -71,6 +71,8 @@ metaheader                                                          return tok::
 section                                                             return tok::BIF_SECTION;
 lockstep                                                            return tok::LOCKSTEP;
 include                                                             return tok::INCLUDE;
+tcmboot                                                             return tok::TCM_BOOT;
+optionaldata                                                        return tok::OPTIONAL_DATA;
 
 offset              yylval->number = tok::OFFSET;                   return tok::OFFSET;
 reserve_legacy      yylval->number = tok::RESERVE_LEGACY;           return tok::RESERVE_LEGACY;
@@ -108,6 +110,9 @@ function_id         yylval->number = tok::FUNCTION_ID;              return tok::
 pcr                 yylval->number = tok::PCR_NUMBER;               return tok::PCR_NUMBER;
 pcr_mindex          yylval->number = tok::PCR_MEASUREMENT_INDEX;    return tok::PCR_MEASUREMENT_INDEX;
 imagestore          yylval->number = tok::IMAGE_STORE;              return tok::IMAGE_STORE;
+tcm_a_region        yylval->number = tok::TCM_A_REGION;             return tok::TCM_A_REGION;
+tcm_b_region        yylval->number = tok::TCM_B_REGION;             return tok::TCM_B_REGION;
+tcm_c_region        yylval->number = tok::TCM_C_REGION;             return tok::TCM_C_REGION;
 
 bbram_kek_iv        yylval->number = tok::BBRAM_KEK_IV;             return tok::BBRAM_KEK_IV;
 bh_kek_iv           yylval->number = tok::BH_KEK_IV;                return tok::BH_KEK_IV;

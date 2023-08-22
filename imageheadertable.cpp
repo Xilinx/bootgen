@@ -220,6 +220,7 @@ ImageHeader::ImageHeader(std::string& filename)
     , lockstep(false)
     , cluster(0)
     , delayAuth(false)
+    , tcmBoot(false)
 { }
 
 /******************************************************************************/
@@ -291,6 +292,7 @@ ImageHeader::ImageHeader(std::ifstream& ifs)
     , lockstep(false)
     , cluster(0)
     , delayAuth(false)
+    , tcmBoot(false)
 { }
 
 /******************************************************************************/
@@ -362,6 +364,7 @@ ImageHeader::ImageHeader(uint8_t* data, uint64_t len)
     , lockstep(false)
     , cluster(0)
     , delayAuth(false)
+    , tcmBoot(false)
 {
 }
 
@@ -620,7 +623,7 @@ void ImageHeader::SetDestCpu(DestinationCPU::Type type)
     }
     if (destCpu == DestinationCPU::PMU && destCpuPmuExists)
     {
-        LOG_ERROR("Bif attribute Error!!!'core=psm/pmu' cannot be specified on multiple partitions.");
+        //LOG_ERROR("Bif attribute Error!!!'core=psm/pmu' cannot be specified on multiple partitions.");
     }
     else if (destCpu == DestinationCPU::PMU)
     {

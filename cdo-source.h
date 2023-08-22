@@ -21,11 +21,6 @@
 #include <stdio.h>
 #include "cdo-command.h"
 
-#define MARKER_DEVICE            0x1
-#define MARKER_ARCHITECTURE      0x3
-#define MARKER_SLRID             0x5
-#define MARKER_DATE              0x6
-
 CdoSequence * cdoseq_from_source(FILE * f);
 void cdoseq_to_source(FILE * f, CdoSequence * seq);
 char slr_id_from_source(char ch);

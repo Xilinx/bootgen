@@ -91,6 +91,7 @@ public:
     bool isBitStream;
     bool isBootloader;
     bool isPmcdata;
+    uint32_t partitionNum;
     int index;
 
     Binary::Address_t WordAddress()

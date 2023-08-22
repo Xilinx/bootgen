@@ -216,13 +216,6 @@ ElfFormat32::ElfFormat32(uint8_t* start)
                 iht_optional_data_size += sectn_length;
             }
         }
-        if (iht_optional_data_size != 0)
-        {
-            uint32_t padLength = (iht_optional_data_size % 64 != 0) ? 64 - (iht_optional_data_size % 64) : 0;
-            iht_optional_data = (uint32_t*)realloc(iht_optional_data, iht_optional_data_size + padLength);
-            memset(iht_optional_data + (iht_optional_data_size / 4), 0xFF, padLength);
-            iht_optional_data_size += padLength;
-        }
     }
 
     /* If a Program header is defined, get its pointer and its record size

@@ -63,6 +63,7 @@ VersalPartitionHeader::VersalPartitionHeader(ImageHeader* imageheader, int index
     , kekIvFile("")
     , lockstep(Lockstep::LockstepDisable)
     , cluster(0)
+    , tcmBoot(TcmBoot::TcmBootDisable)
 {
     std::string name;
     slr = 0;
@@ -159,6 +160,7 @@ void VersalPartitionHeader::ReadHeader(std::ifstream& ifs)
     partitionUid = GetPartitionUid();
     lockstep = GetLockStepFlag();
     cluster = GetDestinationCluster();
+    tcmBoot = GetTcmBootFlag();
 
     presigned = (authCertPresent != 0);
     if (presigned)
@@ -230,7 +232,7 @@ void VersalPartitionHeader::Link(BootImage &bi, PartitionHeader* next_part_hdr)
         addr = next_part_hdr->section->Address;
     }
     SetNextPartitionHeaderOffset(addr);
-    SetLoadAddress(loadAddress);
+    SetLoadAddress(loadAddress, bi.options.IsVersalNetSeries());
     SetPartitionWordOffset((uint32_t)partition->section->Address);
     SetPartitionAttributes();
     SetChecksumOffset();
@@ -485,7 +487,45 @@ void VersalPartitionHeader::SetExecAddress(uint64_t addr)
 }
 
 /******************************************************************************/
-void VersalPartitionHeader::SetLoadAddress(uint64_t addr)
+#define R52_0A_TCMA_BASE_ADDR 	0xEBA00000 /* R52_0A TCMA base address */
+#define R52_1A_TCMA_BASE_ADDR 	0xEBA40000 /* R52_1A TCMA base address */
+#define R52_0B_TCMA_BASE_ADDR 	0xEBA80000 /* R52_0B TCMA base address */
+#define R52_1B_TCMA_BASE_ADDR 	0xEBAC0000 /* R52_1B TCMA base address */
+#define R52_TCM_CLUSTER_OFFSET	0x00080000 /* R52_TCM TCM cluster offset */
+#define R52_TCMA_LOAD_ADDRESS	0x0        /* R52 TCMA load address */
+#define R52_TCM_TOTAL_LENGTH	0x30000    /* R52 TCMA total length */
+
+uint64_t VersalPartitionHeader::GetR52LoadAddr(uint64_t loadAddr)
+{
+    uint64_t address = loadAddr;
+
+    if ((imageHeader->GetDestCpu() == DestinationCPU::R5_0) && ((address < (R52_TCMA_LOAD_ADDRESS + R52_TCM_TOTAL_LENGTH))))
+    {
+        if (((address % R52_TCM_TOTAL_LENGTH) + GetEncryptedPartitionLength()) > R52_TCM_TOTAL_LENGTH)
+        {
+            //Status = XPlmi_UpdateStatus(XLOADER_ERR_TCM_ADDR_OUTOF_RANGE, 0);
+        }
+        address += R52_0A_TCMA_BASE_ADDR + (imageHeader->GetClusterNum() * R52_TCM_CLUSTER_OFFSET);
+    }
+    else if ((imageHeader->GetDestCpu() == DestinationCPU::R5_1) && ((address < (R52_TCMA_LOAD_ADDRESS + R52_TCM_TOTAL_LENGTH))))
+    {
+        if (((address % R52_TCM_TOTAL_LENGTH) + GetEncryptedPartitionLength()) > R52_TCM_TOTAL_LENGTH)
+        {
+            //Status = XPlmi_UpdateStatus(XLOADER_ERR_TCM_ADDR_OUTOF_RANGE, 0);
+        }
+        address += R52_1A_TCMA_BASE_ADDR + (imageHeader->GetClusterNum() * R52_TCM_CLUSTER_OFFSET);
+    }
+    else
+    {
+        /* Do nothing */
+    }
+
+    /* Update the load address */
+    return address;
+}
+
+/******************************************************************************/
+void VersalPartitionHeader::SetLoadAddress(uint64_t addr, bool versalNetSeries)
 {
     if ((imageHeader->GetPartitionType() == PartitionType::CONFIG_DATA_OBJ) ||
         (imageHeader->GetPartitionType() == PartitionType::CFI) || 
@@ -494,6 +534,12 @@ void VersalPartitionHeader::SetLoadAddress(uint64_t addr)
     {
         addr = 0xFFFFFFFFFFFFFFFF;
     }
+    if (versalNetSeries)
+    {
+        if((imageHeader->GetDestCpu() == DestinationCPU::R5_0) || (imageHeader->GetDestCpu() == DestinationCPU::R5_1))
+            addr = GetR52LoadAddr(addr);
+    }
+
     pHTable->destinationLoadAddress = addr;
 }
 
@@ -543,6 +589,10 @@ void VersalPartitionHeader::SetPartitionAttributes(void)
     if (imageHeader->GetLockStepFlag() == true)
     {
         lockstep = Lockstep::LockstepEnable;
+    }
+    if (imageHeader->GetTcmBootFlag() == true)
+    {
+        tcmBoot = TcmBoot::TcmBootEnable;
     }
 
     if (hivec) 
@@ -612,7 +662,8 @@ void VersalPartitionHeader::SetPartitionAttributes(void)
                                    (hivec << vphtHivecShift) |
                                    (dpaCM << vphtDpaCMShift) |
                                    (cluster << vNetphtClusterShift) |
-                                   (lockstep << vNetphtlockStepShift);
+                                   (lockstep << vNetphtlockStepShift) |
+                                   (tcmBoot << vNetphtTcmBootShift);
 }
 
 /******************************************************************************/
@@ -922,6 +973,12 @@ uint8_t VersalPartitionHeader::GetAuthCertFlag(void)
     {
         return 0;
     }
+}
+
+/******************************************************************************/
+TcmBoot::Type VersalPartitionHeader::GetTcmBootFlag(void)
+{
+    return (TcmBoot::Type)((pHTable->partitionAttributes >> vNetphtTcmBootShift) & vNetphtTcmBootMask);
 }
 
 /******************************************************************************/
@@ -1285,8 +1342,65 @@ void VersalPartitionHeaderTable::UpdateAtfHandoffParams(BootImage & bi)
 }
 
 /******************************************************************************/
+static uint32_t ComputeWordChecksum(void* firstWordPtr, size_t length)
+{
+    uint32_t checksum = 0;
+    size_t numChecksumedWords = length / sizeof(uint32_t);
+    for (size_t i = 0; i< numChecksumedWords; i++)
+    {
+        checksum += ((uint32_t*)firstWordPtr)[i];
+    }
+    /* Invert the Checksum value */
+    checksum ^= 0xFFFFFFFF;
+    return checksum;
+}
+
+/******************************************************************************/
+void VersalPartitionHeaderTable::SetPartitionHashinOptionalData(BootImage &bi)
+{
+    uint32_t sectn_size_id = 0;
+    /* Optional Data Header + Optional Data Actual size (32 bit(4Bytes) partition Number + Hash Length in bytes) + Checksum */
+    uint16_t sectn_length = sizeof(uint32_t) + (bi.hashTable.size() * (sizeof(uint32_t) + SHA3_LENGTH_BYTES)) + sizeof(uint32_t);
+    /* Data ID for Hash block is fixed to 3 */
+    sectn_size_id = (uint32_t)((sectn_length / 4) << 16) | DATA_ID_PARTITION_HASHES;
+
+    memcpy(bi.iht_optional_data + (bi.copied_iht_optional_data_length / 4), &sectn_size_id, sizeof(uint32_t));
+    bi.copied_iht_optional_data_length += sizeof(uint32_t);
+    for (size_t i = 0; i < bi.hashTable.size(); i++)
+    {
+        uint32_t partition_num = bi.hashTable[i].first;
+        memcpy(bi.iht_optional_data + (bi.copied_iht_optional_data_length / 4), &partition_num, sizeof(uint32_t));
+        bi.copied_iht_optional_data_length += sizeof(uint32_t);
+        memcpy(bi.iht_optional_data + (bi.copied_iht_optional_data_length / 4), bi.hashTable[i].second, SHA3_LENGTH_BYTES);
+        bi.copied_iht_optional_data_length += SHA3_LENGTH_BYTES;
+    }
+
+    uint32_t checksum = ComputeWordChecksum(bi.iht_optional_data + ((bi.copied_iht_optional_data_length - sectn_length + sizeof(uint32_t)) / 4),
+        sectn_length - sizeof(uint32_t));
+    memcpy(bi.iht_optional_data + (bi.copied_iht_optional_data_length / 4), &checksum, sizeof(uint32_t));
+    bi.copied_iht_optional_data_length += sizeof(uint32_t);
+
+    if (bi.copied_iht_optional_data_length != 0)
+    {
+        uint32_t padLength = (bi.copied_iht_optional_data_length % 64 != 0) ? 64 - (bi.copied_iht_optional_data_length % 64) : 0;
+        if (bi.copied_iht_optional_data_length + padLength != bi.iht_optional_data_length)
+        {
+            LOG_ERROR("Optional Data Length doen't match the calculated length");
+        }
+    }
+
+    memcpy(bi.imageHeaderTable->section->Data + sizeof(VersalImageHeaderTableStructure) + (bi.copied_iht_optional_data_length - sectn_length),
+        bi.iht_optional_data + (bi.copied_iht_optional_data_length - sectn_length) / 4, sectn_length);
+    //bi.copied_iht_optional_data_length += sectn_length;
+    LOG_TRACE("Partition Hash processed to optional data");
+}
+
+/******************************************************************************/
 void VersalPartitionHeaderTable::Link(BootImage & bi)
 {
+    if (bi.options.IsAuthOptimizationEnabled())
+        SetPartitionHashinOptionalData(bi);
+
     uint32_t numPart = 0;
     for (std::list<PartitionHeader*>::iterator partHdr = bi.partitionHeaderList.begin(); partHdr != bi.partitionHeaderList.end(); )
     {

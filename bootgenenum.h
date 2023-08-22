@@ -240,6 +240,16 @@ struct Lockstep
     } Type;
 };
 
+/* TCM Boot */
+struct TcmBoot
+{
+    typedef enum
+    {
+        TcmBootDisable = 0,
+        TcmBootEnable = 3,
+    } Type;
+};
+
 /* Authentication Hash Selection */
 struct AuthHash
 {

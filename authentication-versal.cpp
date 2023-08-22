@@ -920,6 +920,12 @@ void VersalAuthenticationContext::CopyPartitionSignature(BootImage& bi, std::lis
     Versalcrypto_hash(shaHash, partitionAc, hashSecLen + (acSection->Length - signatureLength), !((*section)->isBootloader && !bi.options.IsVersalNetSeries()));
     LOG_TRACE("Hash of %s (LE):", acSection->Name.c_str());
     LOG_DUMP_BYTES(shaHash, hashLength);
+    if (bi.options.IsAuthOptimizationEnabled() && ((*section)->Name != "Headers") && !((*section)->isBootloader))
+    {
+        uint8_t* hash = new uint8_t[hashLength];
+        bi.hashTable.push_back(std::pair<uint32_t, uint8_t*>((*section)->partitionNum, hash));
+        memcpy(hash, shaHash, hashLength);
+    }
     /* Create the PKCS padding for the hash */
     uint8_t* shaHashPadded = new uint8_t[signatureLength];
     memset(shaHashPadded, 0, signatureLength);
