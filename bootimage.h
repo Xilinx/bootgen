@@ -74,7 +74,7 @@ public:
     BIF_File(std::string& filename0) : biffilename(filename0) {} 
     void Process(Options& options);
     void ParseBifFile(Options& options);
-    void ReplaceFiles();
+    void AppendAndReplaceFilesinBIF();
 private:
     std::string biffilename;
     void Output(Options& options, uint8_t index);

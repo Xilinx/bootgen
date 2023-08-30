@@ -88,7 +88,7 @@ void BIF_File::Process(Options& options)
             }
         }
 
-        ReplaceFiles();
+        AppendAndReplaceFilesinBIF();
         options.bifOptionsList = bifOptionList = includeBifOptionList;
     }
 
@@ -779,7 +779,7 @@ void BIF_File::ParseBifFile(Options& options)
 }
 
 /******************************************************************************/
-void BIF_File::ReplaceFiles()
+void BIF_File::AppendAndReplaceFilesinBIF()
 {
     /* If slr number matches between partitions - replace the files */
     for (size_t i = 0; i < includeBifOptionList.size(); i++)
@@ -803,6 +803,7 @@ void BIF_File::ReplaceFiles()
 
                                 (*itr2)->filename = (*itr1)->filename;
                                 (*itr2)->filelist = (*itr1)->filelist;
+                                (*itr1)->erasePartition = true;
                                 break;
                             }
                         }
@@ -826,6 +827,7 @@ void BIF_File::ReplaceFiles()
                                 includeBifOptionList[i]->ClearPmcCdoFileList();
                                 for (size_t listSize = 0; listSize < (*itr1)->filelist.size(); listSize++)
                                     includeBifOptionList[i]->SetPmcCdoFileList((*itr1)->filelist[listSize]);
+                                (*itr1)->erasePartition = true;
                                 break;
                             }
                         }
@@ -844,11 +846,64 @@ void BIF_File::ReplaceFiles()
 
                                 (*itr2)->filename = (*itr1)->filename;
                                 (*itr2)->filelist = (*itr1)->filelist;
+                                (*itr1)->erasePartition = true;
                                 break;
                             }
                         }
                     }
                 }
+            }
+            for (std::list<ImageBifOptions*>::iterator itr1 = bifOptionList[j]->imageBifOptionList.begin(); itr1 != bifOptionList[j]->imageBifOptionList.end(); )
+            {
+                bool incremented = false;
+                for (std::list<PartitionBifOptions*>::iterator itr2 = (*itr1)->partitionBifOptionsList.begin(); itr2 != (*itr1)->partitionBifOptionsList.end(); )
+                {
+                    if ((*itr2)->erasePartition)
+                    {
+                        (*itr1)->partitionBifOptionsList.remove(*itr2++);
+                        if ((*itr1)->partitionBifOptionsList.size() == 0)
+                        {
+                            bifOptionList[j]->imageBifOptionList.remove(*itr1++);
+                            incremented = true;
+                            break;
+                        }
+                        //break;
+                    }
+                    else
+                    {
+                        itr2++;
+                    }
+                }
+                if(!incremented)
+                    itr1++;
+            }
+        }
+    }
+
+    for (size_t i = 0; i < includeBifOptionList.size(); i++)
+    {
+        if ((includeBifOptionList[i]->pdiType == PartitionType::SLR_CONFIG) || (includeBifOptionList[i]->slrNum == 0))
+        {
+            for (size_t j = 0; j < bifOptionList.size(); j++)
+            {
+                for (std::list<ImageBifOptions*>::iterator itr1 = bifOptionList[j]->imageBifOptionList.begin(); itr1 != bifOptionList[j]->imageBifOptionList.end(); itr1++)
+                {
+                    std::list<PartitionBifOptions*>::iterator itr2 = (*itr1)->partitionBifOptionsList.begin();
+                    {
+                        if (includeBifOptionList[i]->slrNum == (*itr2)->slrNum)
+                        {
+                            includeBifOptionList[i]->imageBifOptionList.push_back((*itr1));
+                            includeBifOptionList[i]->partitionBifOptionList.insert(includeBifOptionList[i]->partitionBifOptionList.end(), (*itr1)->partitionBifOptionsList.begin(), (*itr1)->partitionBifOptionsList.end());
+                        }
+                    }
+                }
+            }
+        }
+        else if(includeBifOptionList[i]->slrNum == 0xFF)
+        {
+            for (size_t j = 0; j < bifOptionList.size(); j++)
+            {
+                includeBifOptionList[i]->imageBifOptionList.splice(includeBifOptionList[i]->imageBifOptionList.end(), bifOptionList[j]->imageBifOptionList);
             }
         }
     }

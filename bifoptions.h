@@ -213,6 +213,7 @@ public:
     bool updateReserveInPh;
     Arch::Type arch;
     bool delayAuth;
+    bool erasePartition;
 
 private:
     bool versalNetSeries;
