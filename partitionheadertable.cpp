@@ -241,47 +241,51 @@ void PartitionHeaderTable::Link(BootImage &bi)
     std::list<PartitionHeader *>::iterator partHdr = bi.partitionHeaderList.begin();
     for (uint32_t currHdr = 0; currHdr < bi.partitionHeaderList.size(); currHdr++, partHdr++)
     {
-        uint8_t currCpu = (*partHdr)->GetDestinationCpu();
-        uint64_t currStrtAddr = (*partHdr)->GetLoadAddress();
-        uint64_t currEndAddr = currStrtAddr + (*partHdr)->GetPartitionSize();
-        if((*partHdr)->imageHeader->IsBootloader())
+        if ((*partHdr)->imageHeader->GetDomain() != Domain::PL)
         {
-            currEndAddr = currStrtAddr + (*partHdr)->imageHeader->GetTotalFsblFwSizeIh();
-        }
-        bool currCpuR5 = (currCpu == DestinationCPU :: R5_0 || currCpu == DestinationCPU :: R5_1 || currCpu == DestinationCPU :: R5_lockstep);
-        bool isCurrPartitionOnTcm = false;
-
-        std::list<PartitionHeader *>::iterator nextPartHdr = bi.partitionHeaderList.begin();
-        std::advance(nextPartHdr, currHdr + 1);
-        for (uint32_t nxtHdr = currHdr + 1; nxtHdr < bi.partitionHeaderList.size(); nxtHdr++)
-        {
-            uint8_t nxtCpu = (*nextPartHdr)->GetDestinationCpu();
-            uint64_t nxtStrtAddr = (*nextPartHdr)->GetLoadAddress();
-            uint64_t nxtEndAddr = nxtStrtAddr + (*nextPartHdr)->GetPartitionSize();
-            if((*nextPartHdr)->imageHeader->IsBootloader())
+            uint8_t currCpu = (*partHdr)->GetDestinationCpu();
+            uint64_t currStrtAddr = (*partHdr)->GetLoadAddress();
+            uint64_t currEndAddr = currStrtAddr + (*partHdr)->GetPartitionSize();
+            if ((*partHdr)->imageHeader->IsBootloader())
             {
-                nxtEndAddr = nxtStrtAddr + (*nextPartHdr)->imageHeader->GetTotalFsblFwSizeIh();
+               currEndAddr = currStrtAddr + (*partHdr)->imageHeader->GetTotalFsblFwSizeIh();
             }
-            bool nxtCpuR5 = (nxtCpu == DestinationCPU :: R5_0 || nxtCpu == DestinationCPU :: R5_1 || nxtCpu == DestinationCPU :: R5_lockstep);
-            bool isNxtPartitionOnTcm = false;
-
-            if (currCpuR5 !=  nxtCpuR5)
+            bool currCpuR5 = (currCpu == DestinationCPU :: R5_0 || currCpu == DestinationCPU :: R5_1 || currCpu == DestinationCPU :: R5_lockstep);
+            bool isCurrPartitionOnTcm = false;
+            std::list<PartitionHeader *>::iterator nextPartHdr = bi.partitionHeaderList.begin();
+            std::advance(nextPartHdr, currHdr + 1);
+            for (uint32_t nxtHdr = currHdr + 1; nxtHdr < bi.partitionHeaderList.size(); nxtHdr++)
             {
-                isCurrPartitionOnTcm = IsTcmMemoryRange((currCpu == DestinationCPU :: R5_lockstep) ? true:false, currStrtAddr, currEndAddr);
-                isNxtPartitionOnTcm = IsTcmMemoryRange((nxtCpu == DestinationCPU :: R5_lockstep) ? true:false, nxtStrtAddr, nxtEndAddr);
-                if (isCurrPartitionOnTcm || isNxtPartitionOnTcm)
+                if ((*nextPartHdr)->imageHeader->GetDomain() != Domain::PL)
                 {
-                    std::advance(nextPartHdr, 1);
-                    continue;
+                   uint8_t nxtCpu = (*nextPartHdr)->GetDestinationCpu();
+                   uint64_t nxtStrtAddr = (*nextPartHdr)->GetLoadAddress();
+                   uint64_t nxtEndAddr = nxtStrtAddr + (*nextPartHdr)->GetPartitionSize();
+                   if ((*nextPartHdr)->imageHeader->IsBootloader())
+                   {
+                      nxtEndAddr = nxtStrtAddr + (*nextPartHdr)->imageHeader->GetTotalFsblFwSizeIh();
+                   }
+                   bool nxtCpuR5 = (nxtCpu == DestinationCPU :: R5_0 || nxtCpu == DestinationCPU :: R5_1 || nxtCpu == DestinationCPU :: R5_lockstep);
+                   bool isNxtPartitionOnTcm = false;
+                   if (currCpuR5 !=  nxtCpuR5)
+                   {
+                      isCurrPartitionOnTcm = IsTcmMemoryRange((currCpu == DestinationCPU :: R5_lockstep) ? true:false, currStrtAddr, currEndAddr);
+                      isNxtPartitionOnTcm = IsTcmMemoryRange((nxtCpu == DestinationCPU :: R5_lockstep) ? true:false, nxtStrtAddr, nxtEndAddr);
+                      if (isCurrPartitionOnTcm || isNxtPartitionOnTcm)
+                      {
+                         std::advance(nextPartHdr, 1);
+                         continue;
+                      }
+                   }
+
+                   if ((nxtEndAddr >= currStrtAddr) && (nxtStrtAddr < currEndAddr))
+                   {
+                      LOG_WARNING("Partition %s range is overlapped with partition %s memory range", (*partHdr)->partition->section->Name.c_str(), (*nextPartHdr)->partition->section->Name.c_str());
+                      LOG_TRACE("Current Partition %s Start Address is %X and End Address is %X ,Next Partition %s Start Address is %X and End Address %X",(*partHdr)->partition->section->Name.c_str(), currStrtAddr, currEndAddr, (*nextPartHdr)->partition->section->Name.c_str(),nxtStrtAddr, nxtEndAddr);
+                   }
+                   std::advance(nextPartHdr, 1);
                 }
             }
-
-            if ((nxtEndAddr >= currStrtAddr) && (nxtStrtAddr < currEndAddr))
-            {
-                LOG_WARNING("Partition %s range is overlapped with partition %s memory range", (*partHdr)->partition->section->Name.c_str(), (*nextPartHdr)->partition->section->Name.c_str());
-                LOG_TRACE("Current Partition %s Start Address is %X and End Address is %X ,Next Partition %s Start Address is %X and End Address %X",(*partHdr)->partition->section->Name.c_str(), currStrtAddr, currEndAddr, (*nextPartHdr)->partition->section->Name.c_str(),nxtStrtAddr, nxtEndAddr);
-            }
-            std::advance(nextPartHdr, 1);
         }
     }
 }

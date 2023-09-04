@@ -1,4 +1,3 @@
-
 /******************************************************************************
 * Copyright 2015-2022 Xilinx, Inc.
 * Copyright 2022-2023 Advanced Micro Devices, Inc.
@@ -55,6 +54,8 @@ public:
     ~ZynqReadImage();
 
     void ReadBinaryFile(DumpOption::Type dump = DumpOption::NONE, std::string path = "");
+    void ReadHeaderTableDetails();
+    void ReadPartitions();
     void DisplayBootHeader(void);
     void DisplayImageHeaderTable(void);
     void DisplayImageHeaders(void);
@@ -64,6 +65,7 @@ public:
     void DisplayBhAttributes(uint32_t value);
     void DisplayPhtAttributes(uint32_t value);
     void DisplayBootVectors(void);
+    void DumpPartitions(uint8_t* buffer, uint32_t length, std::string name);
 
 protected:
     ZynqBootHeaderStructure* bH;

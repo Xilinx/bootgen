@@ -536,7 +536,7 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
                     {
                         if ((*subSysHdr)->GetSubSystemId() == subsys->GetSubSystemId())
                         {
-                            (*subSysHdr)->imgList.merge(subsys->imgList);
+                            (*subSysHdr)->imgList.splice((*subSysHdr)->imgList.end(), (subsys->imgList));
                         }
                     }
                 }

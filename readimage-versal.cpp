@@ -86,15 +86,24 @@ void VersalReadImage::ReadPartitions()
     std::list<VersalPartitionHeaderTableStructure*>::iterator pHT = pHTs.begin();
     for (std::list<VersalImageHeaderStructure*>::iterator iH = iHs.begin(); iH != iHs.end(); iH++)
     {
-        uint32_t prev_id = 0xffffffff;
-        uint32_t section_count = 0;
+        uint32_t part_sec_index = 0;
+        uint32_t part_sec_count = 0;
+        uint32_t part_index = 0;
 
         for (cnt_index = 0; cnt_index < (*iH)->dataSectionCount; cnt_index++)
         {
             uint32_t length = (*pHT)->encryptedPartitionLength * 4;
             uint8_t* buffer = new uint8_t[length];
-            uint32_t id = (*pHT)->puid & 0xFFFF;
             offset = (*pHT)->partitionWordOffset * 4;
+            if ((*pHT)->dataSectionCount > 0)
+            {
+               part_sec_index = 0;
+               part_sec_count = (*pHT)->dataSectionCount;
+            }
+            if (((*pHT)->dataSectionCount > 0) && (cnt_index != 0))
+            {
+               part_index++;
+            }
             if (!(fseek(binFile, offset, SEEK_SET)))
             {
                 result = fread(buffer, 1, length, binFile);
@@ -108,11 +117,11 @@ void VersalReadImage::ReadPartitions()
                     {
                         length = bH->totalPlmLength;
                     }
-                    if (prev_id == id)
+                    if((part_sec_count > 1) && ((*pHT)->dataSectionCount == 0))
                     {
-                        section_count++;
+                        part_sec_index++;
                     }
-                    DumpPartitions(buffer, length, (*iH)->imageName, id, section_count);
+                    DumpPartitions(buffer, length, (*iH)->imageName, part_index, part_sec_index);
                 }
                 else
                 {
@@ -123,7 +132,7 @@ void VersalReadImage::ReadPartitions()
                     }
                     if ((dumpType == DumpOption::PLM) || (dumpType == DumpOption::BOOT_FILES))
                     {
-                        DumpPartitions(buffer, length, "plm", id, section_count);
+                        DumpPartitions(buffer, length, "plm", part_index, part_sec_index);
                         if (dumpType == DumpOption::PLM)
                         {
                             delete[] buffer;
@@ -160,7 +169,6 @@ void VersalReadImage::ReadPartitions()
                 LOG_ERROR("Error parsing Partition Headers from bin file");
             }
             pHT++;
-            prev_id = id;
             delete[] buffer;
         }
     }
@@ -355,8 +363,13 @@ void VersalReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
     dumpPath = path;
 
     ReadHeaderTableDetails();
+    if (dumpType == DumpOption::PARTITIONS)
+    {
+        DisplayImageInfo();
+    }
     if (readType != ReadImageOption::NONE)
     {
+        DisplayImageInfo();
         DisplayHeaderTableDetails(readType);
     }
     ReadPartitions();
@@ -528,11 +541,8 @@ void VersalReadImage::DumpPartitions(uint8_t* buffer, uint32_t length, std::stri
     fName = fName + "/" + name;
     if (dumpType == DumpOption::PARTITIONS)
     {
-        fName += StringUtils::Format("_%x", id);
-        if (index != 0)
-        {
-            fName += StringUtils::Format(".%x", index);
-        }
+        fName += StringUtils::Format(".%x", id);
+        fName += StringUtils::Format(".%x", index);
     }
     fName += extension;
     filePtr = fopen(fName.c_str(), "wb");
@@ -607,10 +617,26 @@ void VersalReadImage::DisplayPartitionHeaderTable(void)
     std::list<VersalPartitionHeaderTableStructure*>::iterator pHT = pHTs.begin();
     for (std::list<VersalImageHeaderStructure*>::iterator iH = iHs.begin(); iH != iHs.end(); iH++)
     {
+        uint32_t part_sec_index = 0;
+        uint32_t part_sec_count = 0;
+        uint32_t part_index = 0;
         for (cnt_index = 0; cnt_index < (*iH)->dataSectionCount; cnt_index++)
         {
+            if ((*pHT)->dataSectionCount > 0)
+            {
+               part_sec_index = 0;
+               part_sec_count = (*pHT)->dataSectionCount;
+            }
+            if (((*pHT)->dataSectionCount > 0) && (cnt_index != 0))
+            {
+               part_index++;
+            }
+            if((part_sec_count > 1) && ((*pHT)->dataSectionCount == 0))
+            {
+                part_sec_index++;
+            }
             Separator();
-            std::cout << "   PARTITION HEADER TABLE " << "(" << (*iH)->imageName << "." << std::dec << cnt_index << ")" << std::endl;
+            std::cout << "   PARTITION HEADER TABLE " << "(" << (*iH)->imageName << "." << std::hex << part_index << "." << std::hex << part_sec_index << ")" << std::endl;
             Separator();
             DisplayValue("encrypted_length (0x00) : ", (*pHT)->encryptedPartitionLength, "unencrypted_length (0x04) : ", (*pHT)->unencryptedPartitionLength);
             DisplayValue("total_length (0x08) : ", (*pHT)->totalPartitionLength, "next_pht (0x0c) : ", (*pHT)->nextPartitionHeaderOffset);
@@ -759,6 +785,51 @@ void VersalReadImage::DisplaySmapVectors(void)
 }
 
 /******************************************************************************/
+void VersalReadImage::DisplayImageInfo()
+{
+    Separator();
+    std::cout << "   BOOTIMAGE COMPONENTS" << std::endl;
+    Separator();
+
+    uint32_t cnt_index = 0;
+    std::list<VersalPartitionHeaderTableStructure*>::iterator pHT = pHTs.begin();
+    for (std::list<VersalImageHeaderStructure*>::iterator iH = iHs.begin(); iH != iHs.end(); iH++)
+    {
+        uint32_t part_sec_index = 0;
+        uint32_t part_sec_count = 0;
+        uint32_t part_index = 0;
+        if ((dumpType == DumpOption::PARTITIONS) || readType != ReadImageOption::NONE)
+        {
+           LOG_MSG("+---Image: %s [id:0x%x]",(*iH)->imageName, (*iH)->imageId);
+        }
+        for (cnt_index = 0; cnt_index < (*iH)->dataSectionCount; cnt_index++)
+        {
+            std::string partitionType = GetPartitionType((*pHT)->partitionAttributes);
+            std::string partitionCore = GetPartitionCore((*pHT)->partitionAttributes);
+            if ((*pHT)->dataSectionCount > 0)
+            {
+               part_sec_index = 0;
+               part_sec_count = (*pHT)->dataSectionCount;
+            }
+            if (((*pHT)->dataSectionCount > 0) && (cnt_index != 0))
+            {
+               part_index++;
+            }
+            if((part_sec_count > 1) && ((*pHT)->dataSectionCount == 0))
+            {
+                part_sec_index++;
+            }
+            std::string fName = (*iH)->imageName;
+            fName += StringUtils::Format(".%x", part_index);
+            fName += StringUtils::Format(".%x", part_sec_index);
+            LOG_MSG("    |__ %s [core: %s, type: %s]",fName.c_str(), partitionCore.c_str(), partitionType.c_str());
+            pHT++;
+        }
+        LOG_MSG("");
+    }
+}
+
+/******************************************************************************/
 void VersalReadImage::DisplayBhAttributes(uint32_t value)
 {
     std::string val, val1;
@@ -887,7 +958,7 @@ void VersalReadImage::DisplayIhtAttributes(uint32_t value)
         default: val = "[false]";         break;
     }
     val1 = val;
-    DisplayAttributes("id_code_check", val1, "", "");
+    DisplayAttributes("skip_id_code_check", val1, "", "");
 }
 
 /************************************************************************************************/
@@ -1111,4 +1182,57 @@ void VersalReadImage::DisplayPhtAttributes(uint32_t value)
     }
     val1 = val;
     DisplayAttributes("dpacm ", val1, " ", "");
+}
+
+/*******************************************************************************************************/
+std::string VersalReadImage::GetPartitionCore(uint32_t value)
+{
+    std::string val;
+    bool is_elf = (((value >> vphtPartitionTypeShift) & vphtPartitionTypeMask) == 1);
+
+    switch ((value >> vphtDestCpuShift) & vphtDestCpuMask)
+    {
+        case 0: val = "none";           break;
+        case 1:
+            if (versalNetSeries) val = "a78-0";
+            else val = "a72-0";         break;
+        case 2:
+            if (versalNetSeries) val = "a78-1";
+            else val = "a72-1";         break;
+        if (versalNetSeries)
+        {
+            case 3: val = "a78-2";      break;
+            case 4: val = "a78-3";      break;
+        }
+        case 5: val = "r5-0";           break;
+        case 6: val = "r5-1";           break;
+        case 7: val = "r5-lockstep";    break;
+        case 8: val = "psm";            break;
+        case 9: val = "aie";            break;
+        default: val = "invalid";       break;
+    }
+    if (!is_elf)
+    {
+        val = "n/a";
+    }
+    return val;
+}
+
+/*******************************************************************************************************/
+std::string VersalReadImage::GetPartitionType(uint32_t value)
+{
+    std::string val;
+    switch ((value >> vphtPartitionTypeShift) & vphtPartitionTypeMask)
+    {
+        case 0: val = "none";             break;
+        case 1: val = "elf";              break;
+        case 2: val = "cdo";              break;
+        case 3: val = "cfi";              break;
+        case 4: val = "raw";              break;
+        case 5: val = "raw-elf";          break;
+        case 6: val = "cfi-gsc-mask";     break;
+        case 7: val = "cfi-gsc-unmask";   break;
+        default: val = "invalid";         break;
+    }
+    return val;
 }

@@ -104,7 +104,7 @@ void BIF_File::Process(Options& options)
             (*bifoptions)->pdiType = PartitionType::SLR_SLAVE;
             if ((*bifoptions)->GetSmapWidth() != 0)
             {
-                LOG_WARNING("smap_width for SSIT SLAVE PDIs is identified as %d. Setting it to the default value : 0.", (*bifoptions)->GetSmapWidth());
+                LOG_WARNING("smap_width for SSIT SLAVE PDIs is identified as %d. Setting it to the default value '0'.", (*bifoptions)->GetSmapWidth());
                 (*bifoptions)->SetSmapWidth(0);
             }
         }

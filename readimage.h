@@ -65,10 +65,15 @@ public:
         iHNames.clear();
         pHTNames.clear();
         aCs.clear();
+        readType = ReadImageOption::NONE;
+        dumpType = DumpOption::NONE;
     }
     virtual ~ReadImage() { }
 
     virtual void ReadBinaryFile(DumpOption::Type dump = DumpOption::NONE, std::string path = "") = 0;
+    virtual void ReadHeaderTableDetails() = 0;
+    virtual void DumpPartitions() {};
+    virtual void ReadPartitions(void) = 0;
     virtual void DisplayImageDetails(ReadImageOption::Type type, DumpOption::Type dump, std::string path="");
     virtual void DisplayBootHeader(void) = 0;
     virtual void DisplayImageHeaderTable(void) = 0;
@@ -88,7 +93,6 @@ public:
 
     virtual void VerifyAuthentication(bool) {};
     void Separator();
-
     bool versalNetSeries;
 protected:
     std::string binFilename;
@@ -97,5 +101,8 @@ protected:
     std::list<std::string> aCNames;
     std::list<uint8_t*> aCs;
     RSA* rsa;
+    std::string dumpPath;
+    DumpOption::Type dumpType;
+    ReadImageOption::Type readType;
 };
 #endif

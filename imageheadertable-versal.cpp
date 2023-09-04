@@ -1097,17 +1097,6 @@ void VersalImageHeader::Build(BootImage& bi, Binary& cache)
 }
 
 /******************************************************************************/
-bool IsElf(std::string line)
-{
-    bool status = false;
-    if ((line.at(0) == 0x7f) && (line.at(1) == 0x45) && (line.at(2) == 0x4C) && (line.at(3) == 0x46))
-    {
-        status = true;
-    }
-    return status;
-}
-
-/******************************************************************************/
 void VersalImageHeader::ImportBin(BootImage& bi)
 {
     SetDomain(Domain::PS);
@@ -1445,6 +1434,10 @@ void VersalImageHeader::ParseFileToImport(BootImage& bi)
             if (IsElf(line) && (partitionType != PartitionType::RAW))
             {
                 ImportElf(bi);
+            }
+            else if (!IsElf(line) && (partitionType == PartitionType::RAW))
+            {
+                ImportBin(bi);
             }
             else if ((line.find("Xilinx ASCII Bitstream") != std::string::npos) || (line.find("Xilinx ASCII CFI Deviceimage") != std::string::npos))
             {
@@ -2158,7 +2151,7 @@ void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> fileli
             // TODO: Call this only for v2
             const char * env = getenv("BOOTGEN_CHECK_CDO_COMMANDS");
             if (env && *env != '\0') {
-                if (check_cdo_commands(cdo_data, cdo_length, bi.xplm_modules_data, bi.xplm_modules_data_length) < 0) {
+                if (check_cdo_commands(cdo_data, cdo_length, bi.xplm_modules_data, bi.xplm_modules_data_length) != 0) {
                     LOG_WARNING("Invalid PLM cdo command is found in input cdo file");
                 }
             }
@@ -2933,12 +2926,12 @@ void CompareCDOSequences(CdoSequence * user_cdo_seq, std::string golden_cdo_file
     struct stat f_stat;
     bool found = false;
     bool golden_element_found = false;
-    std::string golden_cdo_folder;
+    std::string golden_cdo;
     std::vector <uint32_t> golden_cdo_write;
 
     for (int i = 0; i < pos_plus_neg_itr; i++)
     {
-        golden_cdo_folder.clear();
+        golden_cdo.clear();
         golden_cdo_write.clear();
         golden_value = NULL;   
         user_value = NULL;
@@ -2958,13 +2951,13 @@ void CompareCDOSequences(CdoSequence * user_cdo_seq, std::string golden_cdo_file
             {
                if (i == 0)
                {
-                   golden_cdo_folder = s + DS + "data" + DS + "bootgen" + DS + golden_cdo_filename  + "_positive.cdo";
+                   golden_cdo = s + DS + "data" + DS + "bootgen" + DS + golden_cdo_filename  + "_positive.cdo";
                }
                else
                {
-                   golden_cdo_folder = s + DS + "data" + DS + "bootgen" + DS + golden_cdo_filename + "_negative.cdo";
+                   golden_cdo = s + DS + "data" + DS + "bootgen" + DS + golden_cdo_filename + "_negative.cdo";
                }
-               if (stat(golden_cdo_folder.c_str(), &f_stat) == 0)
+               if (stat(golden_cdo.c_str(), &f_stat) == 0)
                {
                   found = true;
                }
@@ -2972,14 +2965,14 @@ void CompareCDOSequences(CdoSequence * user_cdo_seq, std::string golden_cdo_file
         }    
         if (!found)
         {
-            LOG_ERROR("Cannot find golden CDO : %s", golden_cdo_folder.c_str());
+            LOG_ERROR("Cannot find golden CDO : %s", golden_cdo.c_str());
         }
 
         CdoSequence * golden_cdo_seq = NULL;
-        golden_cdo_seq = cdoseq_load_cdo(golden_cdo_folder.c_str());
+        golden_cdo_seq = cdoseq_load_cdo(golden_cdo.c_str());
         if (golden_cdo_seq == NULL)
         {
-           LOG_ERROR("Error parsing CDO file : %s", golden_cdo_folder.c_str());
+           LOG_ERROR("Error parsing CDO file : %s", golden_cdo.c_str());
         }
         if(found)
         {
@@ -3198,21 +3191,26 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
         {
             switch (bi.bifOptions->idCode) {
             case 0x04d24093: /* h10 */
+            case 0x14d24093:
                 //device_name = "xcvp1202";
                 break;
             case 0x04d08093: /* h20 */
+            case 0x14d08093:
                 device_name = "xcvp1502";
                 break;
             case 0x04d2c093: /* h30 */
+            case 0x14d2c093:
                 break;
             case 0x04d10093: /* h40 */
+            case 0x14d10093:
                 device_name = "xcvp1702";
                 break;
             case 0x04d14093: /* h50 */
+            case 0x14d14093:
                 device_name = "xcvp1802";
                 break;
             default:
-                LOG_WARNING("Skipping NoC configuration verification for the SSIT device. Device IDCODE 0x%08x, ", bi.bifOptions->idCode);
+                LOG_WARNING("Skipping NoC configuration verification for the SSIT device. Device IDCODE 0x%08x ", bi.bifOptions->idCode);
             }
         }
 
@@ -3893,7 +3891,7 @@ void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size
                     {
                         if (info_display)
                         {
-                            LOG_TRACE("SSIT_SYNC_MASTER command detected at following offsets:");
+                            LOG_TRACE("SSIT_SYNC_MASTER command detected at following offsets:\n           Count : 0x%X", num_of_sync_points);
                             LOG_TRACE("   slr_%d:", slr_info->index);
                             info_display = false;
                         }
@@ -3966,7 +3964,7 @@ void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size
                 {
                     if (info_display)
                     {
-                        LOG_TRACE("SSIT_SYNC_MASTER command detected at following offsets:");
+                        LOG_TRACE("SSIT_SYNC_MASTER command detected at following offsets:\n           Count : 0x%X", num_of_sync_points);
                         LOG_TRACE("   slr_%d:", slr_info->index);
                         info_display = false;
                     }
@@ -4006,7 +4004,7 @@ void VersalImageHeader::ParseSlrConfigFiles(size_t* slr_total_file_size)
             (*slr_info)->data = (uint8_t*)cdoseq_to_binary(cdo_seq, &(*slr_info)->size, 0);
             num_of_sync_points = get_num_of_sync_points();
             syncpt_offsets = get_slr_sync_point_offsets();
-            LOG_TRACE("SSIT_SYNC_SLAVES command detected at following offsets:");
+            LOG_TRACE("SSIT_SYNC_SLAVES command detected at following offsets:\n           Count : 0x%X", num_of_sync_points);
             slr_sync_points[0] = num_of_sync_points;
             for (int i = 0; i < num_of_sync_points; i++)
             {
@@ -4051,11 +4049,12 @@ void VersalImageHeader::ParseSlrConfigFiles(size_t* slr_total_file_size)
 
     /* Check for mismatch in sync points between different slaves and master */
     bool sync_point_mismatch_error = false;
-    for (uint8_t i = 1; i < num_of_slrs; i++)
+    for (uint8_t i = 1; i <= num_of_slrs; i++)
     {
         if (slr_sync_points[i] != slr_sync_points[0])
         {
             sync_point_mismatch_error = true;
+            break;
         }
     }
     char * env_ss = getenv("BOOTGEN_SKIP_SSIT_SYNCPOINT_CHECK");

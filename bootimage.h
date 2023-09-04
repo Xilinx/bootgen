@@ -117,7 +117,7 @@ public:
     void SetCoreFromDestCpu (DestinationCPU::Type type, A53ExecState::Type procType);
     void SetDestCpuFromCore(Core::Type coreType, DestinationCPU::Type cpuType);
     
-    static std::vector<std::string> encryptionKeyFileVec ;
+    static std::vector<std::string> encryptionKeyFileVec;
     std::vector<std::string>& GetEncryptionKeyFileVec();
     void InsertEncryptionKeyFile(std::string filename);
     std::vector<std::pair<KeySource::Type, uint32_t*>> aesKeyandKeySrc;
@@ -163,7 +163,6 @@ public:
     void * overlayCDO;
 
     virtual uint64_t GetSecureChunkSize(bool isBootloader) { return 0; }
-
     std::vector<uint32_t> sync_offsets;
 //private:
     bool assumeEncryption;
