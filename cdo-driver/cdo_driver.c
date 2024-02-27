@@ -24,7 +24,6 @@
  * */
 /***************************** Include Files *********************************/
 
-#include "cdo_rts.h"
 #include "cdo_driver.h"
 #include <stdio.h>
 #include <string.h>
