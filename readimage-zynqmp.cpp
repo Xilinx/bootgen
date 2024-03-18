@@ -100,6 +100,7 @@ void ZynqMpReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
     {
         LOG_ERROR("The option '-read/-dump' is not supported on mcs format file : %s", binFilename.c_str());
     }
+    ReadHeaderTableDetails();
     ReadPartitions();
 }
 /*******************************************************************************/
