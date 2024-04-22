@@ -111,6 +111,7 @@ void ZynqMpBootImage::ConfigureAuthenticationContext(ImageHeader * image, Authen
         image->SetAuthContext(new ZynqMpAuthenticationContext(this->currentAuthCtx));
         AuthenticationContext* authCtx = image->GetAuthContext();
         authCtx->SetPresignFile(partitionbifoptions->presignFile);
+        authCtx->SetACFile(partitionbifoptions->acFile);
         authCtx->SetUdfFile(partitionbifoptions->udfDataFile);
 
         if (spkSignFile != "")
@@ -124,6 +125,10 @@ void ZynqMpBootImage::ConfigureAuthenticationContext(ImageHeader * image, Authen
         if ((StringUtils::EndsWith(copyName, ".bit") || StringUtils::EndsWith(copyName, ".rbt")))
         {
             image->SetAuthBlock(partitionbifoptions->authblockattr, options.GetNoAuthBlocksFlag());
+        }
+        else if (StringUtils::EndsWith(copyName, ".hashbit"))
+        {
+            image->SetAuthBlock(partitionbifoptions->authblockattr, true);
         }
     }
     break;
@@ -407,7 +412,7 @@ void ZynqMpBootImage::ValidateSecureAttributes(ImageHeader * image,BifOptions * 
         }
         else if (partitionBifOptions->authblockattr != 0)
         {
-            LOG_ERROR("'-authblocks' option supported only for bit stream");
+            LOG_ERROR("'authblocks' option supported only for bit stream");
         }
     }
     break;
@@ -419,13 +424,17 @@ void ZynqMpBootImage::ValidateSecureAttributes(ImageHeader * image,BifOptions * 
         {
             LOG_ERROR("Cannot specify 'presign' attribute when Authentication is not enabled");
         }
+        if (partitionBifOptions->acFile != "")
+        {
+            LOG_ERROR("Cannot specify 'ac' attribute when Authentication is not enabled");
+        }
         if (partitionBifOptions->udfDataFile != "")
         {
             LOG_ERROR("Cannot specify 'udf_data' attribute with Authentication is not enabled");
         }
         if (partitionBifOptions->authblockattr != 0)
         {
-            LOG_ERROR("Cannot specify '-authblocks' attribute with Authentication NOT enabled");
+            LOG_ERROR("Cannot specify 'authblocks' attribute with Authentication NOT enabled");
         }
         if ((image->IsBootloader()) && (bifoptions->GetAuthOnly() == AuthOnly::Enabled))
         {

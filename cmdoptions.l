@@ -145,6 +145,7 @@
 \-help                      return tok::_H;
 bif_help                    return tok::HBIFHELP;
 arch                        return tok::HARCH;
+enable_auth_opt             return tok::HAUTHOPT;
 image                       return tok::HIMAGE;
 fill                        return tok::HFILL;
 o                           return tok::HO;
@@ -205,6 +206,8 @@ bootloader                  return tok::H_BIF_BL;
 encryption                  return tok::H_BIF_ENCR;
 pid                         return tok::H_BIF_PID;
 authentication              return tok::H_BIF_AUTH;
+tcmboot                     return tok::H_BIF_TCMBOOT;
+optionaldata                return tok::H_BIF_OPTIONALDATA;
 checksum                    return tok::H_BIF_CHKSM;
 owner                       return tok::H_BIF_POWNER;
 partition_owner             return tok::H_BIF_POWNER;

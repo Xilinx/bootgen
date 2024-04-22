@@ -210,7 +210,7 @@ void Section::IncreaseLengthAndPadSHA3(Binary::Length_t newLength)
     if (newLength < Length)
     {
         LOG_DEBUG(DEBUG_STAMP, "Resize length is less than original length");
-        LOG_ERROR("Section resize issue for authentication..");
+        LOG_ERROR("Section resize issue for authentication");
     }
 
     uint8_t* newDataPtr = new uint8_t[newLength];

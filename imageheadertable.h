@@ -445,7 +445,7 @@ public:
     uint32_t metaHeaderLength;
     KeySource::Type metaHdrKeySrc;
     uint8_t* metaHdrSecHdrIv;
-    uint32_t* iht_optional_data;
+    void* iht_optional_data;
     uint32_t iht_optional_data_length;
     uint32_t copied_iht_optional_data_length;
     uint8_t idCodeCheck;

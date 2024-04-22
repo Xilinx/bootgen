@@ -497,6 +497,61 @@ Section* VersalAuthenticationContext::CreateCertificate(BootImage& bi, Binary& c
 }
 
 /******************************************************************************/
+static uint32_t ComputeWordChecksum(void* firstWordPtr, size_t length)
+{
+    uint32_t checksum = 0;
+    size_t numChecksumedWords = length / sizeof(uint32_t);
+    for (size_t i = 0; i< numChecksumedWords; i++)
+    {
+        checksum += ((uint32_t*)firstWordPtr)[i];
+    }
+    /* Invert the Checksum value */
+    checksum ^= 0xFFFFFFFF;
+    return checksum;
+}
+
+/******************************************************************************/
+void VersalAuthenticationContext::SetHashinOptionalData(BootImage& bi)
+{
+    uint32_t sectn_size_id = 0;
+    /* Optional Data Header + Optional Data Actual size (32 bit(4Bytes) partition Number + Hash Length in bytes) + Checksum */
+    uint16_t sectn_length = sizeof(uint32_t) + (bi.hashTable.size() * (sizeof(uint32_t) + SHA3_LENGTH_BYTES)) + sizeof(uint32_t);
+    /* Data ID for Hash block is fixed to 3 */
+    sectn_size_id = (uint32_t)((sectn_length / 4) << 16) | DATA_ID_PARTITION_HASHES;
+
+    memcpy(bi.iht_optional_data + (bi.copied_iht_optional_data_length / 4), &sectn_size_id, sizeof(uint32_t));
+    bi.copied_iht_optional_data_length += sizeof(uint32_t);
+    for (size_t i = 0; i < bi.hashTable.size(); i++)
+    {
+        uint32_t partition_num = bi.hashTable[i].first;
+        memcpy(bi.iht_optional_data + (bi.copied_iht_optional_data_length / 4), &partition_num, sizeof(uint32_t));
+        bi.copied_iht_optional_data_length += sizeof(uint32_t);
+        memcpy(bi.iht_optional_data + (bi.copied_iht_optional_data_length / 4), bi.hashTable[i].second, SHA3_LENGTH_BYTES);
+        bi.copied_iht_optional_data_length += SHA3_LENGTH_BYTES;
+    }
+
+    uint32_t checksum = ComputeWordChecksum(bi.iht_optional_data + ((bi.copied_iht_optional_data_length - sectn_length + sizeof(uint32_t)) / 4),
+        sectn_length - sizeof(uint32_t));
+    memcpy(bi.iht_optional_data + (bi.copied_iht_optional_data_length / 4), &checksum, sizeof(uint32_t));
+    bi.copied_iht_optional_data_length += sizeof(uint32_t);
+
+    if (bi.copied_iht_optional_data_length != 0)
+    {
+        uint32_t padLength = (bi.copied_iht_optional_data_length % 64 != 0) ? 64 - (bi.copied_iht_optional_data_length % 64) : 0;
+        if (bi.copied_iht_optional_data_length + padLength != bi.iht_optional_data_length)
+        {
+            LOG_ERROR("Optional Data Length doen't match the calculated length");
+        }
+    }
+
+    memcpy(bi.imageHeaderTable->section->Data + sizeof(VersalImageHeaderTableStructure) + (bi.copied_iht_optional_data_length - sectn_length),
+        bi.iht_optional_data + (bi.copied_iht_optional_data_length - sectn_length) / 4, sectn_length);
+    //bi.copied_iht_optional_data_length += sectn_length;
+    LOG_TRACE("Partition Hash processed to optional data");
+
+}
+
+/******************************************************************************/
 void VersalAuthenticationContext::Link(BootImage& bi, std::list<Section*> sections, AuthenticationCertificate* cert)
 {
     /* Copy bhSignature when bootloader */
@@ -507,25 +562,56 @@ void VersalAuthenticationContext::Link(BootImage& bi, std::list<Section*> sectio
     }
 
     /*  Copy meta header Signature when headers */
-    if (sections.front()->Name == "Headers")
-    {
-        CopyIHTSignature(bi, cert->section->Data + AC_BH_SIGN_OFFSET);
-    }
+    /* With authentication optimization */
+    if(bi.options.IsAuthOptimizationEnabled()){
+        if (sections.front()->Name == "Headers")
+        {
+            CopyPartitionSignature(bi, sections, cert->section->Data + AC_PARTITION_SIGN_OFFSET, cert->section);
+            SetHashinOptionalData(bi);
+            CopyIHTSignature(bi, cert->section->Data + AC_BH_SIGN_OFFSET);
+        }
 
-    if (presignFile == "")
-    {
-        CopyPartitionSignature(bi, sections, cert->section->Data + AC_PARTITION_SIGN_OFFSET, cert->section);
+        if (presignFile == "")
+        {
+            if(sections.front()->Name != "Headers"){
+                CopyPartitionSignature(bi, sections, cert->section->Data + AC_PARTITION_SIGN_OFFSET, cert->section);
+            }
+        }
+        else
+        {
+            int index = acIndex;
+            if (cert->section->index != 0)
+            {
+                index = cert->section->index;
+            }
+            GetPresign(presignFile, cert->section->Data + AC_PARTITION_SIGN_OFFSET, index);
+            acIndex++;
+        }
     }
+    /* Normal flow -- Without authentication optimization */
     else
     {
-        int index = acIndex;
-        if (cert->section->index != 0)
+        if (sections.front()->Name == "Headers")
         {
-            index = cert->section->index;
+            CopyIHTSignature(bi, cert->section->Data + AC_BH_SIGN_OFFSET);
         }
-        GetPresign(presignFile, cert->section->Data + AC_PARTITION_SIGN_OFFSET, index);
-        acIndex++;
-    }
+
+        if (presignFile == "")
+        {
+            CopyPartitionSignature(bi, sections, cert->section->Data + AC_PARTITION_SIGN_OFFSET, cert->section);
+        }
+        else
+        {
+            int index = acIndex;
+            if (cert->section->index != 0)
+            {
+                index = cert->section->index;
+            }
+            GetPresign(presignFile, cert->section->Data + AC_PARTITION_SIGN_OFFSET, index);
+            acIndex++;
+        }
+   }
+
 }
 
 /******************************************************************************/
@@ -906,21 +992,30 @@ void VersalAuthenticationContext::CopyPartitionSignature(BootImage& bi, std::lis
     {
         hashSecLen = (*section)->firstChunkSize + hashLength;
     }
+
     /* Update with AC and then Partition */
-    uint8_t *partitionAc = new uint8_t[hashSecLen + (acSection->Length - signatureLength)];
+    int signSecLength  = acSection->Length - signatureLength;
+    /*Remove the IHT signature length from sign section in case of auth optimization*/
+    if (bi.options.IsAuthOptimizationEnabled() && (*section)->Name == "Headers")
+    {
+        signSecLength -= signatureLength;
+        (*section)->partitionNum = 0x00;
+    }
+
+    uint8_t *partitionAc = new uint8_t[hashSecLen + signSecLength];
 
     /* Update with authentication certificate except the last 256 bytes - which is the partition signature that we are calculating now.
     Once calculated, the partition signature will sit there */
-    memcpy(partitionAc, acSection->Data, acSection->Length - signatureLength);
+    memcpy(partitionAc, acSection->Data, signSecLength);
 
     /* Update with Partition */
-    memcpy(partitionAc + acSection->Length - signatureLength, (*section)->Data, hashSecLen);
+    memcpy(partitionAc + signSecLength, (*section)->Data, hashSecLen);
 
     /* Calculate the final hash */
-    Versalcrypto_hash(shaHash, partitionAc, hashSecLen + (acSection->Length - signatureLength), !((*section)->isBootloader && !bi.options.IsVersalNetSeries()));
+    Versalcrypto_hash(shaHash, partitionAc, hashSecLen + signSecLength, !((*section)->isBootloader && !bi.options.IsVersalNetSeries()));
     LOG_TRACE("Hash of %s (LE):", acSection->Name.c_str());
     LOG_DUMP_BYTES(shaHash, hashLength);
-    if (bi.options.IsAuthOptimizationEnabled() && ((*section)->Name != "Headers") && !((*section)->isBootloader))
+    if (bi.options.IsAuthOptimizationEnabled() && !((*section)->isBootloader))
     {
         uint8_t* hash = new uint8_t[hashLength];
         bi.hashTable.push_back(std::pair<uint32_t, uint8_t*>((*section)->partitionNum, hash));

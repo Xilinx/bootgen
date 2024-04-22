@@ -208,6 +208,7 @@ void cdocmd_add_random_command(CdoSequence * seq, uint32_t * levelp) {
         cmd->type == CdoCmdPmInitNode ||
         cmd->type == CdoCmdPmSetNodeAccess ||
         cmd->type == CdoCmdPmNocClockEnable ||
+        cmd->type == CdoCmdListSet ||
         cmd->type == CdoCmdSemNpiTable) {
         uint32_t * p;
         uint32_t i;
@@ -357,6 +358,45 @@ void cdocmd_add_write(CdoSequence * seq, uint64_t addr, uint32_t value) {
     cdocmd_add_block_write(seq, addr, 1, &value, is_be_host());
 }
 
+void cdocmd_add_list_set(CdoSequence * seq, uint32_t id, uint32_t count, void * buf, uint32_t be) {
+	CdoCommand * cmd = cdocmd_alloc(CdoCmdListSet);
+	cmd->id = id;
+	cmd->count = count;
+	cmd->buf = copy_buf(buf, count, be);
+	add_command(seq, cmd);
+}
+
+void cdocmd_add_list_write(CdoSequence * seq, uint32_t id, uint32_t value) {
+	CdoCommand * cmd = cdocmd_alloc(CdoCmdListWrite);
+	cmd->id = id;
+	cmd->value = value;
+	add_command(seq, cmd);
+}
+
+void cdocmd_add_list_mask_write(CdoSequence * seq, uint32_t id, uint32_t mask, uint32_t value) {
+	CdoCommand * cmd = cdocmd_alloc(CdoCmdListMaskWrite);
+	cmd->id = id;
+	cmd->mask = mask;
+	cmd->value = value;
+	add_command(seq, cmd);
+}
+
+void cdocmd_add_list_mask_poll(CdoSequence * seq, uint32_t id, uint32_t mask, uint32_t value, uint32_t count, uint32_t flags) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdListMaskPoll);
+    cmd->id = id;
+    cmd->mask = mask;
+    cmd->value = value;
+    cmd->count = count;
+    cmd->flags = flags;
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_run_proc(CdoSequence * seq, uint32_t id) {
+	CdoCommand * cmd = cdocmd_alloc(CdoCmdRunProc);
+	cmd->id = id;
+	add_command(seq, cmd);
+}
+
 void cdocmd_add_delay(CdoSequence * seq, uint32_t delay) {
     CdoCommand * cmd = cdocmd_alloc(CdoCmdDelay);
     cmd->value = delay;
@@ -471,6 +511,13 @@ void cdocmd_add_pm_request_wakeup(CdoSequence * seq, uint32_t nodeid, uint64_t a
     cmd->dstaddr = addr;
     cmd->flags = ack;
     add_command(seq, cmd);
+}
+
+void cdocmd_add_pm_hnicx_npi_data_xfer(CdoSequence * seq, uint32_t addr, uint32_t value) {
+	CdoCommand * cmd = cdocmd_alloc(CdoCmdPmHnicxNpiDataXfer);
+	cmd->dstaddr = addr;
+	cmd->value = value;
+	add_command(seq, cmd);
 }
 
 void cdocmd_add_pm_set_wakeup_source(CdoSequence * seq, uint32_t target, uint32_t source, uint32_t enable) {

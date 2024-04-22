@@ -45,4 +45,5 @@ void search_for_sync_points(void);
 size_t get_num_of_sync_points(void);
 size_t get_num_start_markers(void);
 size_t get_num_end_markers(void);
+uint32_t idcode_from_binary(uint32_t id);
 #endif /* D_cdo_binary */

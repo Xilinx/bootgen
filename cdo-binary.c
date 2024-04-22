@@ -25,6 +25,7 @@
 static uint32_t verbose;
 static uint32_t auto_align;
 static uint32_t add_offset;
+uint32_t id_code;
 
 #define u32xe(v) (be ? u32be(v) : u32le(v))
 #define u32xe_lo(v) u32xe((uint32_t)(v))
@@ -111,6 +112,11 @@ enum {
     CMD2_SCATTER_WRITE2	 = 0x122U,
     CMD2_TAMPER_TRIGGER  = 0x123U,
     CMD2_SET_IPI_ACCESS  = 0x125U,
+    CMD2_RUN_PROC	 = 0x126U,
+    CMD2_LIST_SET	 = 0x127U,
+    CMD2_LIST_WRITE	 = 0x128U,
+    CMD2_LIST_MASK_WRITE = 0x129U,
+    CMD2_LIST_MASK_POLL  = 0x12AU,
 
     /* PM Commands */
     CMD2_PM_GET_API_VERSION	= 0x201U,
@@ -169,6 +175,7 @@ enum {
     CMD2_PM_NOC_CLOCK_ENABLE	= 0x245,
     CMD2_PM_IF_NOC_CLOCK_ENABLE	= 0x246,
     CMD2_PM_FORCE_HC =0x247,
+    CMD2_PM_HNICX_NPI_DATA_XFER	= 0x24AU,
 
     /* NPI Commands */
     /* Version 1.50 and later, but not version 2.00 */
@@ -203,6 +210,69 @@ enum {
     CMD2_END             = 0xffffffffU
 };
 
+struct cdo_device {
+    const char* name;
+    uint32_t idcode;
+} binary_device_list[] = {
+    { "xcvm1402", 0x04C08093 },
+    { "xcvm1302", 0x04C09093 },
+    { "xcv20", 0x04C0F093 },
+    { "xcvp1052", 0x04C18093 },
+    { "xcvp1002", 0x04C1B093 },
+    { "xcvm2102", 0x04C1C093 },
+    { "xcvp1402", 0x04C20093 },
+    { "xcvp1102", 0x04C22093 },
+    { "xcvm2902", 0x04C23093 },
+    { "xcvm2302", 0x04C24093 },
+    { "xcvr1352", 0x04C90093 },
+    { "xcvr1302", 0x04C91093 },
+    { "xcvc1352", 0x04C93093 },
+    { "xcvr1402", 0x04C94093 },
+    { "xcvc1702", 0x04C98093 },
+    { "xcvm1502", 0x04C99093 },
+    { "xcve1752", 0x04C9A093 },
+    { "xcvc1502", 0x04C9B093 },
+    { "xcvr1702", 0x04CA0093 },
+    { "xcvr1502", 0x04CA2093 },
+    { "xcvr1602", 0x04CA3093 },
+    { "xcvr1802", 0x04CA5093 },
+    { "xcvc1802", 0x14CA9093 },
+    { "xcvm1802", 0x14CAA093 },
+    { "xcv65", 0x14CAF093 },
+    { "xcve2102", 0x04CC0093 },
+    { "xcve2002", 0x04CC1093 },
+    { "xcve2302", 0x14CC8093 },
+    { "xcve2202", 0x14CC9093 },
+    { "xcvm1102", 0x14CCA093 },
+    { "xcvc2802", 0x14CD0093 },
+    { "xcvc2602", 0x14CD1093 },
+    { "xcve2602", 0x14CD2093 },
+    { "xcve2802", 0x14CD3093 },
+    { "xcvm2202", 0x14CD4093 },
+    { "xcv70", 0x14CD7093 },
+    { "xcvp1202", 0x14D00093 },
+    { "xcvm2502", 0x14D01093 },
+    { "xcvp1502", 0x14D08093 },
+    { "xcvp1702", 0x14D10093 },
+    { "xcvp1802", 0x14D14093 },
+    { "xcvp2502", 0x14D1C093 },
+    { "xcvp2802", 0x14D20093 },
+    { "xcvh1582", 0x14D28093 },
+    { "xcvh1542", 0x14D29093 },
+    { "xcvh1522", 0x14D2A093 },
+    { "xcvh1782", 0x14D2C093 },
+    { "xcvh1742", 0x14D2D093 },
+    { "xcv80", 0x14D2F093 },
+    { "xcvp1552", 0x14D34093 },
+    { "xcvp1752", 0x14D38093 },
+    { "xcvn3716", 0x14D80093 },
+    { "xcvn3516", 0x14D81093 },
+    { "xcvn3408", 0x14D82093 },
+    { "xcvn3708", 0x14D83093 },
+    { "xcvc1902", 0x14CA8093 },
+    { NULL, 0 }
+};
+
 void cdobinary_set_verbose(uint32_t level) {
     verbose = level;
 }
@@ -222,6 +292,25 @@ static void byte_swap_buffer(uint32_t * p, uint32_t count, uint32_t be) {
             p[i] = u32swap(p[i]);
         }
     }
+}
+
+uint32_t idcode_from_binary(uint32_t id)
+{
+    if (id_code != 0)
+    {
+        id = id_code;
+        id_code = 0;
+    }
+    return id;
+}
+
+static uint32_t  find_device(char * name) {
+    struct cdo_device * device = binary_device_list;
+    while (device->name != NULL) {
+        if (strncmp(device->name, name, sizeof(char*)) == 0) break;
+        device++;
+    }
+    return device->idcode;
 }
 
 static uint32_t decode_v1(CdoSequence * seq, uint32_t * p, uint32_t l, uint32_t be) {
@@ -456,6 +545,31 @@ static uint32_t decode_v2_cmd(CdoSequence * seq, uint32_t * p, uint32_t * ip, ui
             if (args != 2) goto unexpected;
             cdocmd_add_write(seq, u32xe(p[i+0]), u32xe(p[i+1]));
             break;
+	case CMD2_RUN_PROC:
+		if (args != 1) goto unexpected;
+		cdocmd_add_run_proc(seq, u32xe(p[i+0]));
+		break;
+	case CMD2_LIST_SET:
+		if (args < 2) goto unexpected;
+		cdocmd_add_list_set(seq, u32xe(p[i+0]), args - 1, &p[i+1], be);
+		break;
+	case CMD2_LIST_WRITE:
+		if (args != 2) goto unexpected;
+		cdocmd_add_list_write(seq, u32xe(p[i+0]), u32xe(p[i+1]));
+		break;
+	case CMD2_LIST_MASK_WRITE:
+		if (args != 3) goto unexpected;
+		cdocmd_add_list_mask_write(seq, u32xe(p[i+0]), u32xe(p[i+1]), u32xe(p[i+2]));
+		break;
+	case CMD2_LIST_MASK_POLL:
+            if (args == 4) {
+                cdocmd_add_list_mask_poll(seq, u32xe(p[i+0]), u32xe(p[i+1]), u32xe(p[i+2]), u32xe(p[i+3]), 0);
+            } else if (args == 5) {
+                cdocmd_add_list_mask_poll(seq, u32xe(p[i+0]), u32xe(p[i+1]), u32xe(p[i+2]), u32xe(p[i+3]), u32xe(p[i+4]));
+	   } else {
+		goto unexpected;
+	}
+		break;
         case CMD2_DELAY:
             if (args != 1) goto unexpected;
             cdocmd_add_delay(seq, u32xe(p[i+0]));
@@ -645,6 +759,10 @@ static uint32_t decode_v2_cmd(CdoSequence * seq, uint32_t * p, uint32_t * ip, ui
             if (args != 2) goto unexpected;
             cdocmd_add_npi_shutdown(seq, u32xe(p[i+0]), u32xe(p[i+1]));
             break;
+	case CMD2_PM_HNICX_NPI_DATA_XFER:
+		if (args != 2) goto unexpected;
+		cdocmd_add_pm_hnicx_npi_data_xfer(seq, u32xe(p[i+0]), u32xe(p[i+1]));
+		break;
         case CMD2_PM_GET_API_VERSION:
             if (args != 0) goto unexpected;
             cdocmd_add_pm_get_api_version(seq);
@@ -872,6 +990,7 @@ static uint32_t decode_v2_cmd(CdoSequence * seq, uint32_t * p, uint32_t * ip, ui
             if (args != 1) goto unexpected;
             cdocmd_add_pm_force_hc(seq, u32xe(p[i+0]));
             break;
+
         case CMD2_CFU_SET_CRC32:
             if (seq->version >= CDO_VERSION_2_00) goto unexpected;
             if (args < 1) goto unexpected;
@@ -934,6 +1053,7 @@ static uint32_t decode_v2_cmd(CdoSequence * seq, uint32_t * p, uint32_t * ip, ui
             if (args != 1) goto unexpected;
             cdocmd_add_ldr_cframe_clear_check(seq, u32xe(p[i+0]));
             break;
+
         case CMD2_SEM_NPI_TABLE:
             if (args < 2) goto unexpected;
             cdocmd_add_sem_npi_table(seq, u32xe(p[i+0]), u32xe(p[i+1]), args - 2, &p[i+2], be);
@@ -1582,6 +1702,40 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
             p[pos++] = u32xe(cmd->mask);
             p[pos++] = u32xe(cmd->value);
             break;
+	case CdoCmdListSet:
+		hdr2(&p, &pos, CMD2_LIST_SET, 1 + cmd->count, be);
+		p[pos++] = u32xe_lo(cmd->id);
+		memcpy(p + pos, cmd->buf, cmd->count * sizeof(uint32_t));
+		byte_swap_buffer(p + pos, cmd->count, be);
+		pos += cmd->count;
+		break;
+	case CdoCmdRunProc:
+		hdr2(&p, &pos, CMD2_RUN_PROC, 1, be);
+		p[pos++] = u32xe_lo(cmd->id);
+		break;
+	case CdoCmdListWrite:
+		hdr2(&p, &pos, CMD2_LIST_WRITE, 2, be);
+		p[pos++] = u32xe_lo(cmd->id);
+		p[pos++] = u32xe(cmd->value);
+		break;
+	case CdoCmdListMaskWrite:
+		hdr2(&p, &pos, CMD2_LIST_MASK_WRITE, 3, be);
+		p[pos++] = u32xe_lo(cmd->id);
+		p[pos++] = u32xe(cmd->mask);
+		p[pos++] = u32xe(cmd->value);
+		break;
+	case CdoCmdListMaskPoll: {
+		uint32_t has_flags = cmd->flags != 0;
+		hdr2(&p, &pos, CMD2_LIST_MASK_POLL, has_flags  ? 5 : 4, be);
+		p[pos++] = u32xe_lo(cmd->id);
+		p[pos++] = u32xe(cmd->mask);
+		p[pos++] = u32xe(cmd->value);
+		p[pos++] = u32xe(cmd->count);
+		if (has_flags) {
+			p[pos++] = u32xe(cmd->flags);
+		}
+		break;
+	}
         case CdoCmdMaskPoll: {
             uint32_t has_flags = cmd->flags != 0;
             uint32_t has_errorcode = cmd->errorcode != 0;
@@ -1733,6 +1887,10 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
             if (cmd->value == MARKER_DEVICE || cmd->value == MARKER_DATE)
             {
                 break;
+            }
+            if (cmd->value == MARKER_PART)
+            {
+                id_code = find_device((char*)cmd->buf);
             }
             /* Search for the START markers with string "NOC Start up", only for SSIT devices */
             if (search_sync_points && (cmd->value == 0x64 || cmd->value == 0x65) && (strcmp((char*)cmd->buf, "NOC Startup") == 0)) {
@@ -1908,6 +2066,11 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
             p[pos++] = u32xe(cmd->flags);
             break;
 
+        case CdoCmdPmHnicxNpiDataXfer:
+            hdr2(&p, &pos, CMD2_PM_HNICX_NPI_DATA_XFER, 2, be);
+            p[pos++] = u32xe_lo(cmd->dstaddr);
+            p[pos++] = u32xe(cmd->value);
+            break;
         case CdoCmdPmGetApiVersion:
             hdr2(&p, &pos, CMD2_PM_GET_API_VERSION, 0, be);
             break;
@@ -2210,6 +2373,7 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
             hdr2(&p, &pos, CMD2_PM_FORCE_HC, 1, be);
             p[pos++] = u32xe(cmd->id);
             break;
+
         case CdoCmdCfuSetCrc32:
             if (version >= CDO_VERSION_2_00) goto cfu_error;
             if (cmd->flags != 0) {
@@ -2278,6 +2442,7 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
             hdr2(&p, &pos, CMD2_LDR_CFRAME_CLEAR_CHECK, 1, be);
             p[pos++] = u32xe(cmd->id);
             break;
+
         case CdoCmdSemNpiTable:
             hdr2(&p, &pos, CMD2_SEM_NPI_TABLE, 2 + cmd->count, be);
             p[pos++] = u32xe(cmd->id);

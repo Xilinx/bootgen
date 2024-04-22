@@ -25,6 +25,7 @@
 
 #define MARKER_DEVICE            0x1
 #define MARKER_ARCHITECTURE      0x3
+#define MARKER_PART              0x4
 #define MARKER_SLRID             0x5
 #define MARKER_DATE              0x6
 
@@ -104,6 +105,7 @@ typedef enum CdoCmdType {
     CdoCmdNpiPreCfg,
     CdoCmdNpiWrite,
     CdoCmdNpiShutdown,
+    CdoCmdPmHnicxNpiDataXfer,
     CdoCmdPmGetApiVersion,
     CdoCmdPmGetDeviceStatus,
     CdoCmdPmRegisterNotifier,
@@ -172,6 +174,11 @@ typedef enum CdoCmdType {
     CdoCmdLdrSetImageInfo,
     CdoCmdLdrCframeClearCheck,
     CdoCmdSemNpiTable,
+    CdoCmdListSet,
+    CdoCmdListWrite,
+    CdoCmdListMaskWrite,
+    CdoCmdListMaskPoll,
+    CdoCmdRunProc,
 
     /* The following line must be last */
     CdoCmdLast
@@ -209,6 +216,11 @@ void cdocmd_add_mask_poll(CdoSequence * seq, uint64_t addr, uint32_t mask, uint3
 void cdocmd_add_mask_poll_w_err(CdoSequence * seq, uint64_t addr, uint32_t mask, uint32_t value, uint32_t count, uint32_t flags, uint32_t errorcode);
 void cdocmd_add_mask_write(CdoSequence * seq, uint64_t addr, uint32_t mask, uint32_t value);
 void cdocmd_add_write(CdoSequence * seq, uint64_t addr, uint32_t value);
+void cdocmd_add_list_set(CdoSequence * seq, uint32_t id, uint32_t count, void * buf, uint32_t be);
+void cdocmd_add_list_write(CdoSequence * seq, uint32_t id, uint32_t value);
+void cdocmd_add_list_mask_write(CdoSequence * seq, uint32_t id, uint32_t mask, uint32_t value);
+void cdocmd_add_list_mask_poll(CdoSequence * seq, uint32_t id, uint32_t mask, uint32_t value, uint32_t count, uint32_t flags);
+void cdocmd_add_run_proc(CdoSequence * seq, uint32_t id);
 void cdocmd_add_delay(CdoSequence * seq, uint32_t delay);
 void cdocmd_add_block_write(CdoSequence * seq, uint64_t addr, uint32_t count, void * buf, uint32_t be);
 void cdocmd_add_keyhole_write(CdoSequence * seq, uint64_t addr, uint32_t keyhole_size, uint32_t count, void * buf, uint32_t be);
@@ -218,11 +230,6 @@ void cdocmd_add_npi_seq(CdoSequence * seq, uint32_t addr, uint32_t flags);
 void cdocmd_add_npi_precfg(CdoSequence * seq, uint32_t addr, uint32_t flags);
 void cdocmd_add_npi_write(CdoSequence * seq, uint32_t addr, uint32_t flags, uint32_t count, void * buf, uint32_t be);
 void cdocmd_add_npi_shutdown(CdoSequence * seq, uint32_t addr, uint32_t flags);
-
-void cdocmd_add_scatter_write(CdoSequence * seq, uint32_t value, uint32_t count, void * buf, uint32_t be);
-void cdocmd_add_scatter_write2(CdoSequence * seq, uint32_t value1, uint32_t value2, uint32_t count, void * buf, uint32_t be);
-void cdocmd_add_pm_bisr(CdoSequence * seq, uint32_t tagid);
-void cdocmd_add_pm_apply_trim(CdoSequence * seq, uint32_t trimtype);
 
 void cdocmd_add_pm_get_api_version(CdoSequence * seq);
 void cdocmd_add_pm_get_device_status(CdoSequence * seq, uint32_t nodeid);
@@ -274,6 +281,8 @@ void cdocmd_add_pm_feature_check(CdoSequence * seq, uint32_t id);
 void cdocmd_add_pm_iso_control(CdoSequence * seq, uint32_t nodeid, uint32_t value);
 void cdocmd_add_pm_activate_subsystem(CdoSequence * seq, uint32_t ssid);
 void cdocmd_add_pm_set_node_access(CdoSequence * seq, uint32_t nodeid, uint32_t count, void * buf, uint32_t be);
+void cdocmd_add_pm_bisr(CdoSequence * seq, uint32_t tagid);
+void cdocmd_add_pm_apply_trim(CdoSequence * seq, uint32_t trimtype);
 void cdocmd_add_pm_noc_clock_enable(CdoSequence * seq, uint32_t nodeid, uint32_t count, void * buf, uint32_t be);
 void cdocmd_add_pm_if_noc_clock_enable(CdoSequence * seq, uint32_t index, uint32_t state, uint32_t break_level);
 void cdocmd_add_pm_force_hc(CdoSequence * seq, uint32_t nodeid);
@@ -304,9 +313,13 @@ void cdocmd_add_end(CdoSequence * seq);
 void cdocmd_add_break(CdoSequence * seq, uint32_t value);
 void cdocmd_add_ot_check(CdoSequence * seq, uint32_t value);
 void cdocmd_add_psm_sequence(CdoSequence * seq);
+void cdocmd_add_scatter_write(CdoSequence * seq, uint32_t value, uint32_t count, void * buf, uint32_t be);
+void cdocmd_add_scatter_write2(CdoSequence * seq, uint32_t value1, uint32_t value2, uint32_t count, void * buf, uint32_t be);
 void cdocmd_add_tamper_trigger(CdoSequence * seq, uint32_t value);
 void cdocmd_add_set_ipi_access(CdoSequence * seq, uint32_t value, uint32_t mask);
+
 void cdocmd_add_sem_npi_table(CdoSequence * seq, uint32_t nodeid, uint32_t flags, uint32_t count, void * buf, uint32_t be);
+
 void cdocmd_add_ldr_set_image_info(CdoSequence * seq, uint32_t nodeid, uint32_t uid, uint32_t puid, uint32_t funcid);
 void cdocmd_add_ldr_cframe_clear_check(CdoSequence * seq, uint32_t block_type);
 void cdocmd_add_em_set_action(CdoSequence * seq, uint32_t nodeid, uint32_t action, uint32_t mask);
@@ -318,6 +331,7 @@ void cdocmd_rewrite_block(CdoSequence * seq);
 void cdocmd_rewrite_sequential(CdoSequence * seq);
 void cdocmd_rewrite_repeat(CdoSequence * seq);
 void cdocmd_remove_comments(CdoSequence * seq);
+void cdocmd_add_pm_hnicx_npi_data_xfer(CdoSequence * seq, uint32_t addr, uint32_t value);
 
 static inline uint16_t u16swap(uint16_t v) {
     return ((v >> 8) & 0xff) | ((v << 8) & 0xff00);

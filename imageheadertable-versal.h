@@ -113,6 +113,9 @@ typedef enum
 
     vihtIdCodeCheckShift = 16,
     vihtIdCodeCheckMask = 0x3,
+
+    vNetihtEndofPDISyncShift = 18,
+    vNetihtEndofPDISynckMask = 0x3,
 } VersalIHTAttributes;
 
 

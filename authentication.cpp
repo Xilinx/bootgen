@@ -44,9 +44,17 @@ bool AuthenticationContext::zynpmpVerEs1 = false;
 *****************************************************   F U N C T I O N S   ***
 -------------------------------------------------------------------------------
 */
-void AuthenticationContext::SetPresignFile(const std::string& filename) 
+
+/******************************************************************************/
+void AuthenticationContext::SetPresignFile(const std::string& filename)
 {
     presignFile = filename;
+}
+
+/******************************************************************************/
+void AuthenticationContext::SetACFile(const std::string& filename)
+{
+    acFile = filename;
 }
 
 /******************************************************************************/
@@ -267,6 +275,54 @@ void AuthenticationContext::GetPresign(const std::string& presignFilename, uint8
     else       
     {
         LOG_ERROR("Failure opening presign file - %s", baseFile.c_str());
+    }
+}
+
+/******************************************************************************/
+void AuthenticationContext::GetAC(const std::string& acFilename, uint8_t* ac, uint32_t index)
+{
+    std::string filename(acFilename);
+    std::string baseFile = StringUtils::BaseName(filename);
+
+    if (index != 0)
+    {
+        size_t x = filename.find(".0.");
+        if (x == std::string::npos)
+        {
+            LOG_ERROR("AC file %s does not have partition index (*.0.*)", baseFile.c_str());
+        }
+        // nudge the '0' to index number
+        std::string sindex = std::to_string(index);
+        filename.replace(x + 1, 1, sindex);
+    }
+
+    LOG_TRACE("Reading AC from - %s", filename.c_str());
+    FILE* filePtr;
+    filePtr = fopen(filename.c_str(), "rb");
+    if (filePtr)
+    {
+        fseek(filePtr, 0, SEEK_END);
+        long size = ftell(filePtr);
+        fclose(filePtr);
+        if (size == GetCertificateSize())
+        {
+            // read binary
+            filePtr = fopen(filename.c_str(), "rb");
+            long read_size = fread(ac, 1, GetCertificateSize(), filePtr);
+            if (read_size != GetCertificateSize())
+            {
+                LOG_ERROR("Authentication Error !!!\n           AC file %s should be of %d bytes", baseFile.c_str(), GetCertificateSize());
+            }
+            fclose(filePtr);
+        }
+        else
+        {
+            LOG_ERROR("Authentication Error !!!\n           AC file %s should be of %d bytes", baseFile.c_str(), GetCertificateSize());
+        }
+    }
+    else
+    {
+        LOG_ERROR("Failure opening AC file - %s", baseFile.c_str());
     }
 }
 

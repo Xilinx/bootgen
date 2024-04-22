@@ -112,7 +112,7 @@ ImageBifOptions* currentImageBifOptions;
 %token                  SPLIT_MODE SPLIT_FMT
 %token                  BOOT USER STATIC NOAUTOSTART MULTIBOOT PROTECTED  
 %token                  BLOCKS AUTHBLOCKS BOOTVECTORS
-%token                  PRESIGN BIF_SECTION
+%token                  PRESIGN AC BIF_SECTION
 %token                  UDF_DATA
 %token                  MCS BIN
 %token                  SLR_NUM CLUSTER_NUM DICE PCR_NUMBER PCR_MEASUREMENT_INDEX IMAGE_STORE
@@ -355,6 +355,7 @@ sec_boot_attr           :   boot_device_type                                    
 
 fsbl_attr_list          :   fsbl_attr
                         |   fsbl_attr COMMA fsbl_attr_list
+                        |   fsbl_attr fsbl_attr_list
                         ;
 
 authjtag_attr_list      :   authjtag_attr
@@ -622,6 +623,7 @@ numattr                 :   ALIGNMENT EQUAL expression                          
                         ;
 
 fileattr                :   PRESIGN EQUAL filename                              { currentPartitionBifOptions->presignFile = $3; }
+                        |   AC EQUAL filename                                   { currentPartitionBifOptions->acFile = $3; }
                         |   UDF_DATA EQUAL filename                             { currentPartitionBifOptions->SetUdfDataFile($3); }
                         ;
 

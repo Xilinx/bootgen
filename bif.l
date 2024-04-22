@@ -47,6 +47,7 @@
 
 bootloader                                                          return tok::BOOTLOADER;
 presign                                                             return tok::PRESIGN;
+ac                                                                  return tok::AC;
 udf_data                                                            return tok::UDF_DATA;
 xip_mode                                                            return tok::XIP_MODE;
 boot                                                                return tok::BOOT;

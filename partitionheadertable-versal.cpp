@@ -1342,65 +1342,8 @@ void VersalPartitionHeaderTable::UpdateAtfHandoffParams(BootImage & bi)
 }
 
 /******************************************************************************/
-static uint32_t ComputeWordChecksum(void* firstWordPtr, size_t length)
-{
-    uint32_t checksum = 0;
-    size_t numChecksumedWords = length / sizeof(uint32_t);
-    for (size_t i = 0; i< numChecksumedWords; i++)
-    {
-        checksum += ((uint32_t*)firstWordPtr)[i];
-    }
-    /* Invert the Checksum value */
-    checksum ^= 0xFFFFFFFF;
-    return checksum;
-}
-
-/******************************************************************************/
-void VersalPartitionHeaderTable::SetPartitionHashinOptionalData(BootImage &bi)
-{
-    uint32_t sectn_size_id = 0;
-    /* Optional Data Header + Optional Data Actual size (32 bit(4Bytes) partition Number + Hash Length in bytes) + Checksum */
-    uint16_t sectn_length = sizeof(uint32_t) + (bi.hashTable.size() * (sizeof(uint32_t) + SHA3_LENGTH_BYTES)) + sizeof(uint32_t);
-    /* Data ID for Hash block is fixed to 3 */
-    sectn_size_id = (uint32_t)((sectn_length / 4) << 16) | DATA_ID_PARTITION_HASHES;
-
-    memcpy(bi.iht_optional_data + (bi.copied_iht_optional_data_length / 4), &sectn_size_id, sizeof(uint32_t));
-    bi.copied_iht_optional_data_length += sizeof(uint32_t);
-    for (size_t i = 0; i < bi.hashTable.size(); i++)
-    {
-        uint32_t partition_num = bi.hashTable[i].first;
-        memcpy(bi.iht_optional_data + (bi.copied_iht_optional_data_length / 4), &partition_num, sizeof(uint32_t));
-        bi.copied_iht_optional_data_length += sizeof(uint32_t);
-        memcpy(bi.iht_optional_data + (bi.copied_iht_optional_data_length / 4), bi.hashTable[i].second, SHA3_LENGTH_BYTES);
-        bi.copied_iht_optional_data_length += SHA3_LENGTH_BYTES;
-    }
-
-    uint32_t checksum = ComputeWordChecksum(bi.iht_optional_data + ((bi.copied_iht_optional_data_length - sectn_length + sizeof(uint32_t)) / 4),
-        sectn_length - sizeof(uint32_t));
-    memcpy(bi.iht_optional_data + (bi.copied_iht_optional_data_length / 4), &checksum, sizeof(uint32_t));
-    bi.copied_iht_optional_data_length += sizeof(uint32_t);
-
-    if (bi.copied_iht_optional_data_length != 0)
-    {
-        uint32_t padLength = (bi.copied_iht_optional_data_length % 64 != 0) ? 64 - (bi.copied_iht_optional_data_length % 64) : 0;
-        if (bi.copied_iht_optional_data_length + padLength != bi.iht_optional_data_length)
-        {
-            LOG_ERROR("Optional Data Length doen't match the calculated length");
-        }
-    }
-
-    memcpy(bi.imageHeaderTable->section->Data + sizeof(VersalImageHeaderTableStructure) + (bi.copied_iht_optional_data_length - sectn_length),
-        bi.iht_optional_data + (bi.copied_iht_optional_data_length - sectn_length) / 4, sectn_length);
-    //bi.copied_iht_optional_data_length += sectn_length;
-    LOG_TRACE("Partition Hash processed to optional data");
-}
-
-/******************************************************************************/
 void VersalPartitionHeaderTable::Link(BootImage & bi)
 {
-    if (bi.options.IsAuthOptimizationEnabled())
-        SetPartitionHashinOptionalData(bi);
-
     uint32_t numPart = 0;
     for (std::list<PartitionHeader*>::iterator partHdr = bi.partitionHeaderList.begin(); partHdr != bi.partitionHeaderList.end(); )
     {

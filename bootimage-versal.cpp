@@ -282,7 +282,6 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
     bool full_pdi = true;
     bool smap_exists = false;
     bool this_bootimage = false;
-    static uint32_t prev_image_block = 0;
     if (StringUtils::GetExtension(baseFile) == ".mcs")
     {
         LOG_ERROR("Parsing mcs format file is not supported : %s", baseFile.c_str());
@@ -791,13 +790,13 @@ void VersalBootImage::ValidateSecureAttributes(ImageHeader * image, BifOptions *
 }
 
 /******************************************************************************/
-ImageHeader* VersalBootImage::ParsePartitionDataToImage(BifOptions * bifoptions, PartitionBifOptions * partitionBifOptions)
+ImageHeader* VersalBootImage::ParsePartitionDataToImage(BifOptions * bifoptions, PartitionBifOptions * partitionBifOptions, ImageBifOptions* imageBifOptions)
 {
     static int aie_elf_cnt = 0;
     static uint8_t slr_boot_cnt = 0;
-    static uint8_t slr_cfg_cnt = 0;
     static std::list<SlrPdiInfo*> slrBootPdiInfo;
-    static std::list<SlrPdiInfo*> slrConfigPdiInfo;
+
+    imageBifOptions->slrConfigPartitionIndex++;
 
     ImageHeader *image = new VersalImageHeader(partitionBifOptions->filename);
     image->SetFileList(partitionBifOptions->filelist);
@@ -964,12 +963,11 @@ ImageHeader* VersalBootImage::ParsePartitionDataToImage(BifOptions * bifoptions,
         else
         {
             slrPdi->type = SlrPdiType::CONFIG;
-            slr_cfg_cnt++;
             slrPdi->index = (SlrId::Type) partitionBifOptions->slrNum;
             if (partitionBifOptions->slrNum == 0xFF)
             {
-                slrPdi->index = (SlrId::Type) slr_cfg_cnt;
-                if (slrPdi->index == bifoptions->slrConfigCnt)
+                slrPdi->index = (SlrId::Type) imageBifOptions->slrConfigPartitionIndex;
+                if (slrPdi->index == imageBifOptions->slrConfigCnt)
                 {
                     slrPdi->index = SlrId::MASTER;
                 }
@@ -978,10 +976,10 @@ ImageHeader* VersalBootImage::ParsePartitionDataToImage(BifOptions * bifoptions,
             {
                 slrPdi->index = (partitionBifOptions->slrNum == 0x0) ? (SlrId::MASTER) : ((SlrId::Type) partitionBifOptions->slrNum);
             }
-            slrConfigPdiInfo.push_back(slrPdi);
-            if (slr_cfg_cnt == bifoptions->slrConfigCnt)
+            imageBifOptions->slrConfigPdiInfo.push_back(slrPdi);
+            if (imageBifOptions->slrConfigPartitionIndex == imageBifOptions->slrConfigCnt)
             {
-                image->SetSlrConfigPartitions(slrConfigPdiInfo);
+                image->SetSlrConfigPartitions(imageBifOptions->slrConfigPdiInfo);
                 image->SetName("SSIT Config Partition");
                 image->SetSlrPartition(true);
                 imageList.push_back(image);
@@ -1042,6 +1040,12 @@ ImageHeader* VersalBootImage::ParsePartitionDataToImage(BifOptions * bifoptions,
             break;
         }
     }
+
+    if (image->GetTcmBootFlag() == true && image->GetDestCpu() != DestinationCPU::R5_0 && image->GetDestCpu() != DestinationCPU::R5_1 && image->GetDestCpu() != DestinationCPU::R5_lockstep)
+    {
+        LOG_ERROR("BIF attribute error !!!\n\t  'tcmboot' is supported only with R5 cpu");
+    }
+
     return image;
 }
 
@@ -1215,7 +1219,6 @@ void VersalBootImage::ConfigureProcessingStages(ImageHeader* image, PartitionBif
 void VersalBootImage::Add(BifOptions* bifoptions)
 {
     uint8_t slr_boot_cnt = 0;
-    uint8_t slr_cfg_cnt = 0;
     // Add 'LOG_WARNING("A bootimage cannot be generated on the go, with '-generate_keys'.\n           However, the requested keys will be generated.");'
     if (bifoptions->GetAESKeyFileName() != "")
     {
@@ -1369,7 +1372,7 @@ void VersalBootImage::Add(BifOptions* bifoptions)
             }
             else
             {
-                ParsePartitionDataToImage(bifOptions, *itr);
+                ParsePartitionDataToImage(bifOptions, *itr, NULL);
             }
         }
     } 
@@ -1377,6 +1380,7 @@ void VersalBootImage::Add(BifOptions* bifoptions)
     {
         for (std::list<ImageBifOptions*>::iterator imgitr = bifoptions->imageBifOptionList.begin(); imgitr != bifoptions->imageBifOptionList.end(); imgitr++)
         {
+            uint8_t slr_cfg_cnt = 0;
             SubSysImageHeader *subSysImage = new SubSysImageHeader(*imgitr);
             bool bootimage_partition = false;
             current_image_block++;
@@ -1407,7 +1411,7 @@ void VersalBootImage::Add(BifOptions* bifoptions)
                 }
                 else
                 {
-                    ImageHeader* img = ParsePartitionDataToImage(bifOptions, *partitr);
+                    ImageHeader* img = ParsePartitionDataToImage(bifOptions, *partitr, *imgitr);
                     if (img != NULL)
                     {
                         img->SetName(subSysImage->GetSubSystemName());
@@ -1460,7 +1464,7 @@ void VersalBootImage::Add(BifOptions* bifoptions)
                             }
                             if ((*partitr)->partitionType == PartitionType::SLR_CONFIG)
                             {
-                                if (++slr_cfg_cnt == bifoptions->slrConfigCnt)
+                                if (++slr_cfg_cnt == (*imgitr)->slrConfigCnt)
                                 {
                                     subSysImage->imgList.push_back(img);
                                 }

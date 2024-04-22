@@ -278,6 +278,27 @@ void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
 
     if (bi.options.IsAuthOptimizationEnabled())
     {
+         /* Adding an entry for header in hashtable */
+        if(bi.options.bifOptions->metaHdrAttributes.authenticate == Authentication::None){
+            LOG_ERROR("MetaHeader must be authenticated if authentication optimization is enabled, using -enable_auth_opt");
+        }
+        else
+        {
+            bi.numHashTableEntries++;
+        }
+
+        std::string metaHdrSsk = bi.options.bifOptions->metaHdrAttributes.ssk;
+        if(metaHdrSsk.size() == 0)
+        {
+            metaHdrSsk = bi.options.bifOptions->GetSSKFileName();
+        }
+
+        std::string metaHdrPsk = bi.options.bifOptions->metaHdrAttributes.psk;
+        if(metaHdrPsk.size() == 0)
+        {
+            metaHdrPsk = bi.options.bifOptions->GetPSKFileName();
+        }
+
         uint32_t i = 0;
         for (std::list<PartitionHeader*>::iterator partHdr = bi.partitionHeaderList.begin(); partHdr != bi.partitionHeaderList.end(); partHdr++, i++)
         {
@@ -287,6 +308,14 @@ void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
                 (*partHdr)->section->partitionNum = i;
                 if ((*partHdr)->imageHeader->GetAuthenticationType() != Authentication::None)
                 {
+                    std::string partHdrSsk = (*partHdr)->imageHeader->GetAuthContext()->sskFile;
+                    std::string partHdrPsk = (*partHdr)->imageHeader->GetAuthContext()->pskFile;
+                    if(metaHdrSsk.compare(partHdrSsk)){
+                        LOG_ERROR("MetaHeader and partition must use same SSK if authentication optimization is enabled, using -enable_auth_opt");
+                    }
+                    if(metaHdrPsk.compare(partHdrPsk)){
+                        LOG_ERROR("MetaHeader and partition must use same PSK if authentication optimization is enabled, using -enable_auth_opt");
+                    }
                     bi.numHashTableEntries++;
                 }
             }
@@ -692,8 +721,24 @@ void VersalImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::stri
 {
     for (size_t i = 0; i < optionalDataInfo.size(); i++)
     {
+        if ((0x00 <= optionalDataInfo[i].second) && (optionalDataInfo[i].second <= 0x20))
+        {
+            LOG_WARNING("The Data IDs form 0x0 to 0x20 for Optional Data are reserved for internal use. Please use any ID > 0x20 as User Optional Data ID");
+        }
+
         size_t size = 0;
-        void *data = file_to_buf((char *)optionalDataInfo[i].first.c_str(), &size);
+        uint8_t* tempData = (uint8_t*)file_to_buf((char *)optionalDataInfo[i].first.c_str(), &size);
+        if(size > 0x20000){
+            LOG_ERROR("Maximum allowed size for optional data is 0x20000 bytes, including optional data header of 8 bytes. Refer UG1283 for more details");
+        }
+
+        uint32_t optional_data_padLength = (size % 64 != 0) ? 64 - (size % 64) : 0;
+        uint8_t*  data= new uint8_t[size + optional_data_padLength];
+        memset(data, 0, size + optional_data_padLength);
+        memcpy(data, tempData, size);
+        delete[] tempData;
+        size += optional_data_padLength;
+
         if (size != 0)
         {
             uint32_t sectn_size_id = 0;
@@ -702,11 +747,11 @@ void VersalImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::stri
             sectn_size_id = (uint32_t)((sectn_length / 4) << 16) | (optionalDataInfo[i].second);
 
             iht_optional_data = (uint32_t*)realloc(iht_optional_data, iht_optional_data_length + sectn_length);
-            memcpy(iht_optional_data + (iht_optional_data_length / 4), &sectn_size_id, sizeof(uint32_t));
-            memcpy(iht_optional_data + (iht_optional_data_length / 4) + sizeof(uint32_t) / 4, data, size);
+            memcpy((uint8_t*)iht_optional_data + iht_optional_data_length, &sectn_size_id, sizeof(uint32_t));
+            memcpy((uint8_t*)iht_optional_data + iht_optional_data_length + sizeof(uint32_t), data, size);
 
-            uint32_t checksum = ComputeWordChecksum(iht_optional_data + (iht_optional_data_length / 4), sectn_length - sizeof(uint32_t));
-            memcpy(iht_optional_data + (iht_optional_data_length / 4) + (sectn_length - sizeof(uint32_t)) / 4, &checksum, sizeof(uint32_t));
+            uint32_t checksum = ComputeWordChecksum((uint8_t*)iht_optional_data + iht_optional_data_length, sectn_length - sizeof(uint32_t));
+            memcpy((uint8_t*)iht_optional_data + iht_optional_data_length + sectn_length - sizeof(uint32_t), &checksum, sizeof(uint32_t));
 
             iht_optional_data_length += sectn_length;
         }
@@ -719,7 +764,7 @@ void VersalImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::stri
         /* Optional Data Header + Optional Data Actual size (32 bit(4Bytes) partition Number + Hash Length in bytes) + Checksum */
         uint16_t sectn_length = sizeof(uint32_t) + (numHashTableEntries * (sizeof(uint32_t) + SHA3_LENGTH_BYTES)) + sizeof(uint32_t);
         iht_optional_data = (uint32_t*)realloc(iht_optional_data, iht_optional_data_length + sectn_length);
-        memset(iht_optional_data + (iht_optional_data_length / 4), 0, sectn_length);
+        memset((uint8_t*)iht_optional_data + iht_optional_data_length, 0, sectn_length);
 
         iht_optional_data_length += sectn_length;
     }
@@ -728,7 +773,7 @@ void VersalImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::stri
     {
         uint32_t padLength = (iht_optional_data_length % 64 != 0) ? 64 - (iht_optional_data_length % 64) : 0;
         iht_optional_data = (uint32_t*)realloc(iht_optional_data, iht_optional_data_length + padLength);
-        memset(iht_optional_data + (iht_optional_data_length / 4), 0xFF, padLength);
+        memset((uint8_t*)iht_optional_data + (iht_optional_data_length), 0xFF, padLength);
         iht_optional_data_length += padLength;
 
         section->IncreaseLengthAndPadTo(sizeof(VersalImageHeaderTableStructure) + iht_optional_data_length, 0);
@@ -2140,6 +2185,10 @@ void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> fileli
     char input_ch_binary = 0;
     bool is_source_cdo = false;
     bool is_binary_cdo = false;
+    uint32_t idcode_source = 0;
+    uint32_t source_cdo_idcode = 0;
+    uint32_t idcode_binary = 0;
+    uint32_t binary_cdo_idcode = 0;
 
     if (filelist.size() > 0)
     {
@@ -2230,6 +2279,22 @@ void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> fileli
             if (cdocmd_post_process_cdo(cdo_data, cdo_length, &cdo_data_pp, &cdo_data_pp_length))
             {
                 LOG_ERROR("PMC CDO post process error");
+            }
+            source_cdo_idcode = idcode_from_source(idcode_source);
+            binary_cdo_idcode = idcode_from_binary(idcode_binary);
+            if (source_cdo_idcode != 0)
+            {
+               if (bi.bifOptions->idCode != source_cdo_idcode)
+               {
+                   //LOG_WARNING("CDO %s is of different device than cdos present in pdi", cdo_filename);
+               }
+            }
+            else if (binary_cdo_idcode != 0)
+            {
+               if (bi.bifOptions->idCode != binary_cdo_idcode)
+               {
+                   //LOG_WARNING("CDO %s is of different device than cdos present in pdi", cdo_filename);
+               }
             }
             if (cdo_data_pp != NULL)
             {
@@ -3705,6 +3770,7 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
        6. Master SLR chunk is data between two sync points (CDO_SSIT_SYNC_SLAVES_CMD).
        7. Repeat the above steps, till all the sync points are processed or EOF for each slave SLR PDI.
     */
+    uint8_t master_index = 0;
     while (total_slr_chunk_size < slr_total_file_size)
     {
         for (std::vector<SsitConfigSlrInfo*>::iterator slr_info = configSlrsInfo.begin(); slr_info != configSlrsInfo.end(); slr_info++)
@@ -3768,7 +3834,6 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
                     /* Do not process any other SLR data, until the master data is processed */
                     if (((*slr_info)->index == SlrId::MASTER) && (master_file_size < (*slr_info)->size))
                     {
-                        static uint8_t master_index = 0;
                         size_t master_chunk_size = 0;
 
                         /* Chunk size in master is different from the chunk size of slave SLR chunk sizes

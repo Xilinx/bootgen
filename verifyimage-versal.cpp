@@ -255,7 +255,7 @@ void VersalReadImage::VerifyHeaderTableSignature()
     VerifySPKSignature(*auth_cert);
 
     /* Verifying IHT Signature */
-    uint32_t iHTLength = sizeof(VersalImageHeaderTableStructure);
+    uint32_t iHTLength = sizeof(VersalImageHeaderTableStructure) + (iHT->optionalDataSize * 4);
     uint8_t* tempIHBuffer = new uint8_t[iHTLength];
     memset(tempIHBuffer, 0, iHTLength);
     bool signatureVerified = false;
@@ -348,6 +348,7 @@ void VersalReadImage::VerifyHeaderTableSignature()
             offset = sizeof(VersalImageHeaderTableStructure);
         }
     }
+    offset += (iHT->optionalDataSize * 4);
     if (!(fseek(binFile, offset, SEEK_SET)))
     {
         result = fread(tempBuffer, 1, headersAcDataSize, binFile);

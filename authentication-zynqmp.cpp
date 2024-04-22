@@ -362,12 +362,23 @@ Section* ZynqMpAuthenticationContext::CreateCertificate(BootImage& bi, Binary& c
     /* Secondary key is must for authenticating */
     if (!secondaryKey->Loaded)
     {
-        LOG_ERROR("Authentication Error !!!\n           Secondary key must be specified in BIF file for %s", dataSection->Name.c_str());
+        if (acFile != "")
+        {
+            // ok
+        }
+        else
+        {
+            LOG_ERROR("Authentication Error !!!\n           Secondary key must be specified in BIF file for %s", dataSection->Name.c_str());
+        }
     }
 
     if (!secondaryKey->isSecret)
     {
         if (presignFile != "")
+        {
+            // ok
+        }
+        else if (acFile != "")
         {
             // ok
         }
@@ -404,6 +415,10 @@ Section* ZynqMpAuthenticationContext::CreateCertificate(BootImage& bi, Binary& c
         {
             LOG_WARNING("Either PSK or spksignature is needed to authenticate bootimage or generate partition hashes. Because they are not provided, the bootimage and partition hashes will not be usable. However SPK hash and bootheader hash files generated can be used for offline signing.");
         }
+        else if (acFile != "")
+        {
+            // ok
+        }
         else
         {
             LOG_ERROR("Authentication Error !!!\n           Either PSK or SPK signature file must be specified in BIF file.");
@@ -429,32 +444,38 @@ Section* ZynqMpAuthenticationContext::CreateCertificate(BootImage& bi, Binary& c
         LOG_ERROR("Authentication Error !!!");
     }
     memset(authCert, 0, certSize);
-
-    uint32_t acHdr = AUTH_HDR_ZYNQMP;
-    acHdr |= ppkSelect << AC_HDR_PPK_SELECT_BIT_SHIFT;
-    acHdr |= spkSelect << AC_HDR_SPK_SELECT_BIT_SHIFT;
-    acHdr |= ((bi.GetAuthHashAlgo()) ? 0 : 1) << AC_HDR_SHA_2_3_BIT_SHIFT;
-
-    WriteLittleEndian32(&authCert->acHeader, acHdr);
-    WriteLittleEndian32(&authCert->spkId, spkIdentification);
-
-    if (udfFile != "")
+    if (acFile != "")
     {
-        LoadUdfData(udfFile, udf_data);
-        RearrangeEndianess(udf_data, sizeof(udf_data));
-        memcpy(authCert->acUdf, udf_data, UDF_DATA_SIZE);
+        // ok
     }
+    else
+    {
+        uint32_t acHdr = AUTH_HDR_ZYNQMP;
+        acHdr |= ppkSelect << AC_HDR_PPK_SELECT_BIT_SHIFT;
+        acHdr |= spkSelect << AC_HDR_SPK_SELECT_BIT_SHIFT;
+        acHdr |= ((bi.GetAuthHashAlgo()) ? 0 : 1) << AC_HDR_SHA_2_3_BIT_SHIFT;
 
-    primaryKey->Export(&authCert->acPpk);
-    RearrangeEndianess(authCert->acPpk.N, sizeof(authCert->acPpk.N));
-    RearrangeEndianess(authCert->acPpk.N_extension, sizeof(authCert->acPpk.N_extension));
-    RearrangeEndianess(authCert->acPpk.E, sizeof(authCert->acPpk.E));
-    secondaryKey->Export(&authCert->acSpk);
-    RearrangeEndianess(authCert->acSpk.N, sizeof(authCert->acSpk.N));
-    RearrangeEndianess(authCert->acSpk.N_extension, sizeof(authCert->acSpk.N_extension));
-    RearrangeEndianess(authCert->acSpk.E, sizeof(authCert->acSpk.E));
+        WriteLittleEndian32(&authCert->acHeader, acHdr);
+        WriteLittleEndian32(&authCert->spkId, spkIdentification);
 
-    CopySPKSignature(&authCert->acSpkSignature);
+        if (udfFile != "")
+        {
+            LoadUdfData(udfFile, udf_data);
+            RearrangeEndianess(udf_data, sizeof(udf_data));
+            memcpy(authCert->acUdf, udf_data, UDF_DATA_SIZE);
+        }
+
+        primaryKey->Export(&authCert->acPpk);
+        RearrangeEndianess(authCert->acPpk.N, sizeof(authCert->acPpk.N));
+        RearrangeEndianess(authCert->acPpk.N_extension, sizeof(authCert->acPpk.N_extension));
+        RearrangeEndianess(authCert->acPpk.E, sizeof(authCert->acPpk.E));
+        secondaryKey->Export(&authCert->acSpk);
+        RearrangeEndianess(authCert->acSpk.N, sizeof(authCert->acSpk.N));
+        RearrangeEndianess(authCert->acSpk.N_extension, sizeof(authCert->acSpk.N_extension));
+        RearrangeEndianess(authCert->acSpk.E, sizeof(authCert->acSpk.E));
+
+        CopySPKSignature(&authCert->acSpkSignature);
+    }
     certIndex++;
     return acSection;
 }
@@ -466,7 +487,18 @@ void ZynqMpAuthenticationContext::Link(BootImage& bi, std::list<Section*> sectio
     uint8_t* signatureBlock = (uint8_t*)&authCert->acPartitionSignature;
     CopyBHSignature(bi, &authCert->acBhSignature);
 
-    if (presignFile == "")
+    if (acFile != "")
+    {
+        /* If the parition AC file present */
+        int index = acIndex;
+        if (cert->section->index != 0)
+        {
+            index = cert->section->index;
+        }
+        GetAC(acFile, cert->section->Data, index);
+        acIndex++;
+    }
+    else if (presignFile == "")
     {
         /* If the parition is not presigned / presign file not present */
         std::list<Section*>::iterator section = sections.begin();
@@ -526,6 +558,10 @@ void ZynqMpAuthenticationContext::CopyBHSignature(BootImage& bi, ACSignature4096
             LOG_WARNING("Either SSK or (bhsignature and presign) is needed to authenticate a boot image or generate partition hashes. Because they are not provided, the bootimage and partition hashes will not be usable. However, the boot header hash file generated can be used for offline signing");
             warningGiven = true;
         }
+    }
+    else if (acFile != "")
+    {
+        // ok
     }
     else
     {

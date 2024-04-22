@@ -16,7 +16,7 @@
 ******************************************************************************/
 
 #ifndef RDI_VERSION
-#define RDI_VERSION "2023.2"
+#define RDI_VERSION "2024.1"
 #endif
 
 #define PROGRAMNAME     "Bootgen"
@@ -59,6 +59,7 @@
  verify_kdf        - Verify AES key generation                                |\n\
  w                 - Overwrite mode                                           |\n\
  zynqmpes1         - Generate boot image for ZynqMP ES1                       |\n\
+ enable_auth_opt   - Enables authentication optimization                      |\n\
 ------------------------------------------------------------------------------+\n\
  Note    : Some options are valid only for specific architectures.            |\n\
            Help for such options include a list of supported architectures.   |\n\
@@ -122,6 +123,7 @@
  pcr                  - PCR register number                                   |\n\
  pcr_mindex           - PCR measurement index                                 |\n\
  imagestore           - ID corresponding to Image Store PDI                   |\n\
+ optionaldata         - Adds optional metadata                                |\n\
 ------------------------------------------------------------------------------+\n\
  Encryption attributes                                                        |\n\
 ------------------------------------------------------------------------------+\n\
@@ -139,7 +141,7 @@
  keysrc_encryption    - Encryption Key Source                                 |\n\
  puf_file             - PUF Helper Data File                                  |\n\
  blocks               - Blocks for Key Rolling Encryption                     |\n\
- dpacm_enable          - Enables DPA Counter Measure for Encryption           |\n\
+ dpacm_enable         - Enables DPA Counter Measure for Encryption            |\n\
 ------------------------------------------------------------------------------+\n\
  Authentication attributes                                                    |\n\
 ------------------------------------------------------------------------------+\n\

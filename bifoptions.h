@@ -26,6 +26,7 @@
 -------------------------------------------------------------------------------
 */
 #include "options.h"
+#include "imageheadertable.h"
 
 /* Forward Class References */
 class Options;
@@ -153,6 +154,7 @@ public:
     bool pmuFwImage;
     bool pmcData;
     std::string presignFile;
+    std::string acFile;
     std::string udfDataFile;
     Encryption::Type encryptType;
     Authentication::Type authType;
@@ -235,6 +237,8 @@ public:
         , functionId(0xFFFFFFFF)
         , pcrNumber(0xFFFF)
         , pcrMeasurementIndex(0xFFFF)
+        , slrConfigCnt(0)
+        , slrConfigPartitionIndex(0)
     {
         partitionBifOptionsList.clear();
     }
@@ -336,6 +340,10 @@ public:
         return pcrMeasurementIndex;
     }
     std::list<PartitionBifOptions*> partitionBifOptionsList;
+
+    uint32_t slrConfigCnt;
+    uint32_t slrConfigPartitionIndex;
+    std::list<SlrPdiInfo*> slrConfigPdiInfo;
 
 private:
     uint32_t imageId;

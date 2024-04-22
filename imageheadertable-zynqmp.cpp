@@ -591,6 +591,12 @@ void ZynqMpImageHeader::Build(BootImage& bi, Binary& cache)
         {
             ImportBit(bi);
         }
+        else if (StringUtils::EndsWith(comparison, ".hashbit"))
+        {
+            ImportBin(bi);
+            SetDomain(Domain::PL);
+            SetDestDevice(DestinationDevice::DEST_DEV_PL);
+        }
         else
         {
             ImportBin(bi);

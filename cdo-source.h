@@ -24,4 +24,5 @@
 CdoSequence * cdoseq_from_source(FILE * f);
 void cdoseq_to_source(FILE * f, CdoSequence * seq);
 char slr_id_from_source(char ch);
+uint32_t idcode_from_source(uint32_t id);
 #endif /* D_cdo_source */

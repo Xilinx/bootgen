@@ -115,6 +115,7 @@ CdoRawInfo * cdoraw_decode(void * data, size_t size) {
     uint64_t bits = 0;
     skipline(s, e);
     if ((s-p == 28 && memcmp(p, "Xilinx ASCII NPI Deviceimage", s-p) == 0) ||
+        (s-p == 16 && memcmp(p, "Xilinx ASCII CDO", s-p) == 0) ||
         (s-p == 32 && memcmp(p, "Xilinx ASCII PSAXIMM Deviceimage", s-p) == 0)) {
         raw = cdoraw_create(CdoRawCdo);
         words = 1;

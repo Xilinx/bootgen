@@ -134,6 +134,7 @@ PartitionBifOptions::PartitionBifOptions()
     , pmuFwImage(false)
     , pmcData(false)
     , presignFile("")
+    , acFile("")
     , udfDataFile("")
     , encryptType(Encryption::None)
     , authType(Authentication::None)
@@ -299,6 +300,7 @@ void BifOptions::Add(PartitionBifOptions* currentPartitionBifOptions, ImageBifOp
             if (currentImageBifOptions->GetImageType() == PartitionType::SLR_CONFIG)
             {
                 slrConfigCnt++;
+                currentImageBifOptions->slrConfigCnt++;
                 currentPartitionBifOptions->partitionType = PartitionType::SLR_CONFIG;
             }
             if (currentPartitionBifOptions->partitionType == PartitionType::RESERVED)
@@ -1539,11 +1541,11 @@ void PartitionBifOptions::SetAuthBlockAttr(size_t authBlockAttr)
 {
     if (authBlockAttr != 4 && authBlockAttr != 8 && authBlockAttr != 16 && authBlockAttr != 32 && authBlockAttr != 64)
     {
-        LOG_ERROR("'-authblock' option supports only 4,8,16,32,64 sizes (taken in MB)");
+        LOG_ERROR("'authblock' option supports only 4,8,16,32,64 sizes (taken in MB)");
     }
     if (arch != Arch::ZYNQMP)
     {
-        LOG_ERROR("BIF attribute error !!!\n\t\t'-authblock' option supported only for ZYNQMP architecture '-arch zynqmp'");
+        LOG_ERROR("BIF attribute error !!!\n\t\t'authblock' option supported only for ZYNQMP architecture '-arch zynqmp'");
     }
     authblockattr = authBlockAttr;
 }
@@ -1579,7 +1581,7 @@ void PartitionBifOptions::SetDelayAuth(bool flag)
 /******************************************************************************/
 void PartitionBifOptions::SetTcmBootFlag()
 {
-    if ((arch == Arch::VERSAL && versalNetSeries) && (destCPUType == DestinationCPU::R5_0 || destCPUType == DestinationCPU::R5_1 || destCPUType == DestinationCPU::R5_lockstep))
+    if (arch == Arch::VERSAL && versalNetSeries)
     {
         tcmBoot = true;
     }

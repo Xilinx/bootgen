@@ -70,6 +70,133 @@ VersalReadImage::~VersalReadImage()
 }
 
 /**********************************************************************************************/
+void VersalReadImage::DisplayOptionalData()
+{
+    //Return without displaying anything if optional data size in IHT is 0
+    if(iHT->optionalDataSize == 0){
+        LOG_INFO("Optional data does not exist");
+        return;
+    }
+
+    size_t result;
+    uint32_t read_opData = 0;
+    uint32_t opData_total_length = 0;
+    uint32_t opData_length = 0;
+    uint32_t opData_id = 0;
+    uint32_t opData_hdr_length = sizeof(uint32_t);
+    uint32_t opData_checksum_length = sizeof(uint32_t);
+    bool smap_header_found = false;
+    uint32_t offset;
+    int cnt_opData = 0;
+
+    //Opening PDI to read optional data
+    FILE *binFile = fopen(binFilename.c_str(), "rb");
+    if (!binFile)
+    {
+        fclose(binFile);
+        LOG_ERROR("Cannot read file %s", binFilename.c_str());
+    }
+
+    //Creating text file to dump optional data
+    FILE* filePtr;
+    std::string fName = StringUtils::FolderPath(binFilename);
+    if (dumpPath != "")
+    {
+        fName = dumpPath;
+    }
+    fName = fName + "/" + "optional_data.txt";
+    filePtr = fopen(fName.c_str(), "wb");
+    if (!filePtr)
+    {
+        fclose(filePtr);
+        LOG_ERROR("Cannot create file %s", fName.c_str());
+    }
+
+    if (bH && ((bH->smapWords[0] == 0xDD000000) || (bH->smapWords[0] == 0x00DD0000) || (bH->smapWords[0] == 0x000000DD)))
+    {
+        smap_header_found = true;
+    }
+
+    if(bH)
+    {
+        offset = bH->imageHeaderByteOffset;
+    }
+    else
+    {
+        if(smap_header_found)
+        {
+            offset = sizeof(VersalSmapWidthTable);
+        }
+        else
+        {
+            offset = 0;
+        }
+    }
+    offset += sizeof(VersalImageHeaderTableStructure);
+
+    while(!feof(binFile))
+    {
+        if(read_opData == (iHT->optionalDataSize * 4))
+            break;
+
+        //Extracting optional data header
+        if (!(fseek(binFile, offset, SEEK_SET)))
+        {
+            uint32_t* buffer = new uint32_t[opData_hdr_length];
+            size_t result = fread(buffer, 1, opData_hdr_length, binFile);
+            if (result != opData_hdr_length)
+            {
+                LOG_ERROR("Error parsing Optional Data Header from PDI file");
+            }
+
+            opData_total_length = (((*buffer) & 0xFFFF0000) >> 16) * 4;
+            opData_id = (*buffer) & 0x0000FFFF;
+            opData_length = opData_total_length - opData_hdr_length - opData_checksum_length;
+        }
+        else
+        {
+            LOG_ERROR("Error parsing Optional Data Header from PDI file");
+        }
+
+        if(0x00 <= opData_id && opData_id <= 0x20){
+            offset += opData_total_length;
+            continue;
+        }
+
+        if(opData_id == 0xFFFF){
+            break;
+        }
+
+        fprintf(filePtr, "Optional Data %d\n", ++cnt_opData);
+        fprintf(filePtr, "Length %d\n", opData_length);
+        fprintf(filePtr, "ID %d\n", opData_id);
+
+        fprintf(filePtr, "Data\n");
+        char* opData_buffer = new char[opData_length];
+        result = fread(opData_buffer, 1, opData_length, binFile);
+        if (result != opData_length)
+        {
+                LOG_ERROR("Error parsing Optional Data from PDI file");
+        }
+
+        for(uint32_t i=0; i < opData_length; i++)
+        {
+            char c1 = (*opData_buffer);
+            opData_buffer++;
+            fprintf(filePtr, "%x", c1);
+        }
+
+        offset += opData_total_length;
+        read_opData += opData_total_length;
+        fprintf(filePtr, "\n\n");
+    }
+
+    fclose(filePtr);
+    LOG_INFO("%s generated successfully", StringUtils::BaseName(fName).c_str());
+    fclose(binFile);
+}
+
+/**********************************************************************************************/
 void VersalReadImage::ReadPartitions()
 {
     size_t result;
@@ -403,6 +530,7 @@ void VersalReadImage::DisplayHeaderTableDetails(ReadImageOption::Type type)
 
     case ReadImageOption::IHT:
         DisplayImageHeaderTable();
+        DisplayOptionalData();
         break;
 
     case ReadImageOption::IH:
@@ -428,6 +556,7 @@ void VersalReadImage::DisplayHeaderTableDetails(ReadImageOption::Type type)
     default:
         DisplayBootHeader();
         DisplayImageHeaderTable();
+        DisplayOptionalData();
         if (iHT->metaHdrKeySource == KeySource::None)
         {
             DisplayImageHeaders();

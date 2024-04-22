@@ -88,12 +88,12 @@ void ShowCommonHelp(int,bool);
 %type <number> number
 %type <cstring> filename charstring
 
-%token HBIFHELP HARCH HIMAGE HFILL HO HP HW HEFUSEPPKBITS HGENHASHES HLEGACY HPADHDR H_SPKSIGN
+%token HBIFHELP HARCH HIMAGE HFILL HO HP HW HEFUSEPPKBITS HGENHASHES HLEGACY HPADHDR H_SPKSIGN HAUTHOPT
 %token HPACKAGE HENCRYPT HGENKEYS HDQSPI HLOG HZYNQMPES1 HPROCESSBIT HNONBOOTING HENCRDUMP HPOSTPROCESS
 %token HVERIFY HSECUREDEBUG HREAD HVERIFYKDF HDUMP HDUMPDIR HOVLCDO HOUTTYPE
 
 %token H_BIF_INIT H_BIF_UDFBH H_BIF_AES H_BIF_PPK H_BIF_PSK H_BIF_SPK H_BIF_SSK H_BIF_SPKSIGN H_BIF_HIVEC
-%token H_BIF_HDRSIGN H_BIF_BOOTIMAGE H_BIF_BL H_BIF_PID H_BIF_ENCR H_BIF_AUTH H_BIF_CHKSM H_BIF_ELYHNDOFF H_BIF_BHSIGN 
+%token H_BIF_HDRSIGN H_BIF_BOOTIMAGE H_BIF_BL H_BIF_PID H_BIF_ENCR H_BIF_AUTH H_BIF_CHKSM H_BIF_ELYHNDOFF H_BIF_BHSIGN H_BIF_TCMBOOT H_BIF_OPTIONALDATA 
 %token H_BIF_POWNER H_BIF_PRESIGN H_BIF_UDF H_BIF_XIP H_BIF_ALIGN H_BIF_OFFSET H_BIF_RES H_BIF_LOAD H_BIF_TZ
 %token H_BIF_STARTUP H_BIF_KEYSRC H_BIF_FSBLCFG H_BIF_BOOTDEV H_BIF_DESTCPU H_BIF_DESTDEV H_BIF_EL H_SPLIT
 %token H_BIF_AUTHPARAM H_BIF_BHKEY H_BIF_PFW H_BIF_BLOCKS H_BIF_METAL H_BIF_BHIV H_BIF_BOOTVEC
@@ -173,6 +173,7 @@ outputType      : MCS                               { options.SetOutType(File::M
 helpoption      : /* empty */                       { ShowHelp(); exit(0); }
                 | HBIFHELP                          { ShowCmdHelp(CO::BisonParser::token::HBIFHELP); exit(0); }
                 | HARCH                             { ShowCmdHelp(CO::BisonParser::token::HARCH); exit(0); }
+                | HAUTHOPT                          { ShowCmdHelp(CO::BisonParser::token::HAUTHOPT); exit(0); }
                 | HIMAGE                            { ShowCmdHelp(CO::BisonParser::token::HIMAGE); exit(0); }
                 | HFILL                             { ShowCmdHelp(CO::BisonParser::token::HFILL); exit(0); }
                 | H_SPLIT                           { ShowCommonHelp(CO::BisonParser::token::H_SPLIT,true); exit(0); }
@@ -218,6 +219,8 @@ bifhelpoption	: /* empty */                       { ShowBifHelp(0); exit(0); }
                 | H_BIF_ENCR                        { ShowBifHelp(CO::BisonParser::token::H_BIF_ENCR); exit(0); }
                 | H_BIF_PID                         { ShowBifHelp(CO::BisonParser::token::H_BIF_PID); exit(0); }
                 | H_BIF_AUTH                        { ShowBifHelp(CO::BisonParser::token::H_BIF_AUTH); exit(0); }
+                | H_BIF_TCMBOOT                     { ShowBifHelp(CO::BisonParser::token::H_BIF_TCMBOOT); exit(0); }
+                | H_BIF_OPTIONALDATA                { ShowBifHelp(CO::BisonParser::token::H_BIF_OPTIONALDATA); exit(0); }
                 | H_BIF_CHKSM                       { ShowBifHelp(CO::BisonParser::token::H_BIF_CHKSM); exit(0); }
                 | H_BIF_POWNER                      { ShowBifHelp(CO::BisonParser::token::H_BIF_POWNER); exit(0); }
                 | H_BIF_PRESIGN                     { ShowBifHelp(CO::BisonParser::token::H_BIF_PRESIGN); exit(0); }
@@ -433,6 +436,10 @@ void ShowCmdHelp(int a)
         std::cout << ARCHHELP << std::endl;
         break;
 
+    case CO::BisonParser::token::HAUTHOPT:
+        std::cout << ENABLEAUTHOPTHELP << std::endl;
+        break;
+
     case CO::BisonParser::token::HIMAGE:
         std::cout << IMAGEHELP << std::endl;
         break;
@@ -595,6 +602,14 @@ void ShowBifHelp(int a)
 
     case CO::BisonParser::token::H_BIF_AUTH:
         std::cout << H_BIF_AUTH_H << std::endl;
+        break;
+
+    case CO::BisonParser::token::H_BIF_TCMBOOT:
+        std::cout << H_BIF_TCMBOOT_H << std::endl;
+        break;
+
+    case CO::BisonParser::token::H_BIF_OPTIONALDATA:
+        std::cout << H_BIF_OPTIONALDATA_H << std::endl;
         break;
 
     case CO::BisonParser::token::H_BIF_CHKSM:

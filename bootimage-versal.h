@@ -61,11 +61,12 @@ public:
     void CheckForIhtAttributes(std::string base_file);
     void ParseBootImage(PartitionBifOptions * it);
     void ValidateSecureAttributes(ImageHeader * image, BifOptions* bifoptions, PartitionBifOptions* partitionBifOptions);
-    ImageHeader* ParsePartitionDataToImage(BifOptions* bifoptions, PartitionBifOptions* it);
+    ImageHeader* ParsePartitionDataToImage(BifOptions* bifoptions, PartitionBifOptions* partitionIterator, ImageBifOptions* ssIterator);
     void OutputOptionalSecureDebugImage();
     void ConfigureEncryptionBlocks(ImageHeader * image, PartitionBifOptions* partitionBifOptions);
     void SetPmcdataFile(const std::string & filename);
     uint64_t GetSecureChunkSize(bool isBootloader);
     uint32_t current_image_block;
+    uint32_t prev_image_block;
 };
 #endif

@@ -82,22 +82,25 @@ void RegisterTable::Add(Options& options, uint32_t address, uint32_t value)
         LOG_ERROR("Too many register init pairs in %s", filename.c_str());
     }
 
-    if (fileParseEnd != true)
+    if (options.archType == Arch::VERSAL && !options.IsVersalNetSeries())
     {
-        bool isvalidAddress = false;
-        for (int j = 0; j < MAX_REG_GROUPS; j++)
+        if (fileParseEnd != true)
         {
-            if ((address <= (VersalAddressRanges[j].baseaddr + VersalAddressRanges[j].size)) &&
-                (address >= (VersalAddressRanges[j].baseaddr)))
+            bool isvalidAddress = false;
+            for (int j = 0; j < MAX_REG_GROUPS; j++)
             {
-                isvalidAddress = true;
-                break;
+                if ((address <= (VersalAddressRanges[j].baseaddr + VersalAddressRanges[j].size)) &&
+                        (address >= (VersalAddressRanges[j].baseaddr)))
+                {
+                    isvalidAddress = true;
+                    break;
+                }
             }
-        }
 
-        if (!isvalidAddress)
-        {
-            invalidAddr.push_back(address);
+            if (!isvalidAddress)
+            {
+                invalidAddr.push_back(address);
+            }
         }
     }
 

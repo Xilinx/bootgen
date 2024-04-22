@@ -71,6 +71,7 @@ public:
     void ReadBinaryFile(DumpOption::Type dump=DumpOption::NONE, std::string path="");
     void ReadHeaderTableDetails();
     void ReadPartitions();
+    void DisplayOptionalData();
     void DisplayImageDetails(ReadImageOption::Type type, DumpOption::Type dump, std::string path="");
     void DisplayHeaderTableDetails(ReadImageOption::Type type);
     void DisplayBootHeader(void);

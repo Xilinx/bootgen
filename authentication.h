@@ -283,10 +283,12 @@ public:
     void SetBHSignatureFile(const std::string & filename);
     void ParseBHSignatureFile(const std::string & filename);
     void GetPresign(const std::string& presignFilename, uint8_t* signature, uint32_t index);
+    void GetAC(const std::string& presignFilename, uint8_t* signature, uint32_t index);
     void LoadUdfData(const std::string & udfFilename, uint8_t * signature);
     void WritePaddedSHAFile(const uint8_t * shaBuf, const std::string & hashfilename);
 
     void SetPresignFile(const std::string& filename);
+    void SetACFile(const std::string& filename);
     void SetUdfFile(const std::string& filename);
     void SetPSKeyFile(const std::string& filename);
     void ParsePSKeyFile(const std::string& filename);
@@ -341,6 +343,7 @@ public:
     AuthenticationCertificate *authCertificate;
     uint16_t signatureLength;
     std::string presignFile;
+    std::string acFile;
     std::string udfFile;
 protected:
     static uint16_t authKeyLength;

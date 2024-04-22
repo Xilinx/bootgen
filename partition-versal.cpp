@@ -363,7 +363,7 @@ void VersalPartition::ChunkifyAndHash(Section* section, bool encryptionFlag)
     if (newLength <length)
     {
         LOG_DEBUG(DEBUG_STAMP, "Resize length is less than original length");
-        LOG_ERROR("Section resize issue for authentication..");
+        LOG_ERROR("Section resize issue for authentication");
     }
 
     uint8_t* dataPtr = new uint8_t[length];

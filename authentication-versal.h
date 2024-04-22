@@ -284,6 +284,7 @@ public:
     void SetKeyLength(Authentication::Type type);
     AuthenticationAlgorithm* GetAuthenticationAlgorithm(Authentication::Type type);
     uint32_t GetCertificateSize();
+    void SetHashinOptionalData(BootImage& bi);
 
 private:
     void CopybHSignature(BootImage& bi, uint8_t* ptr);

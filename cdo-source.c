@@ -25,6 +25,7 @@
 
 static char* slr_id_ptr;
 static char slr_id;
+uint32_t id_code;
 
 #if defined(_WIN32)
 #define strcasecmp(x,y) stricmp(x,y)
@@ -81,10 +82,16 @@ struct command_info {
     { "scatter_write2", CdoCmdScatterWrite2 },
     { "tamper_trigger", CdoCmdTamperTrigger },
     { "set_ipi_access", CdoCmdSetIpiAccess },
+    { "list_set", CdoCmdListSet},
+    { "list_write", CdoCmdListWrite},
+    { "list_mask_write", CdoCmdListMaskWrite},
+    { "list_mask_poll", CdoCmdListMaskPoll},
+    { "run_proc", CdoCmdRunProc},
     { "npi_seq", CdoCmdNpiSeq },
     { "npi_precfg", CdoCmdNpiPreCfg },
     { "npi_write", CdoCmdNpiWrite },
     { "npi_shutdown", CdoCmdNpiShutdown },
+    { "pm_hnicx_npi_data_xfer", CdoCmdPmHnicxNpiDataXfer },
     { "pm_get_api_version", CdoCmdPmGetApiVersion },
     { "pm_get_device_status", CdoCmdPmGetDeviceStatus },
     { "pm_register_notifier", CdoCmdPmRegisterNotifier },
@@ -166,6 +173,69 @@ char* marker_list[] = {
 };
 int marker_count[sizeof(marker_list) / sizeof(marker_list[0])];
 
+struct cdo_device {
+    const char* name;
+    uint32_t idcode;
+} device_list[] = {
+    { "xcvm1402", 0x04C08093 },
+    { "xcvm1302", 0x04C09093 },
+    { "xcv20", 0x04C0F093 },
+    { "xcvp1052", 0x04C18093 },
+    { "xcvp1002", 0x04C1B093 },
+    { "xcvm2102", 0x04C1C093 },
+    { "xcvp1402", 0x04C20093 },
+    { "xcvp1102", 0x04C22093 },
+    { "xcvm2902", 0x04C23093 },
+    { "xcvm2302", 0x04C24093 },
+    { "xcvr1352", 0x04C90093 },
+    { "xcvr1302", 0x04C91093 },
+    { "xcvc1352", 0x04C93093 },
+    { "xcvr1402", 0x04C94093 },
+    { "xcvc1702", 0x04C98093 },
+    { "xcvm1502", 0x04C99093 },
+    { "xcve1752", 0x04C9A093 },
+    { "xcvc1502", 0x04C9B093 },
+    { "xcvr1702", 0x04CA0093 },
+    { "xcvr1502", 0x04CA2093 },
+    { "xcvr1602", 0x04CA3093 },
+    { "xcvr1802", 0x04CA5093 },
+    { "xcvc1802", 0x14CA9093 },
+    { "xcvm1802", 0x14CAA093 },
+    { "xcv65", 0x14CAF093 },
+    { "xcve2102", 0x04CC0093 },
+    { "xcve2002", 0x04CC1093 },
+    { "xcve2302", 0x14CC8093 },
+    { "xcve2202", 0x14CC9093 },
+    { "xcvm1102", 0x14CCA093 },
+    { "xcvc2802", 0x14CD0093 },
+    { "xcvc2602", 0x14CD1093 },
+    { "xcve2602", 0x14CD2093 },
+    { "xcve2802", 0x14CD3093 },
+    { "xcvm2202", 0x14CD4093 },
+    { "xcv70", 0x14CD7093 },
+    { "xcvp1202", 0x14D00093 },
+    { "xcvm2502", 0x14D01093 },
+    { "xcvp1502", 0x14D08093 },
+    { "xcvp1702", 0x14D10093 },
+    { "xcvp1802", 0x14D14093 },
+    { "xcvp2502", 0x14D1C093 },
+    { "xcvp2802", 0x14D20093 },
+    { "xcvh1582", 0x14D28093 },
+    { "xcvh1542", 0x14D29093 },
+    { "xcvh1522", 0x14D2A093 },
+    { "xcvh1782", 0x14D2C093 },
+    { "xcvh1742", 0x14D2D093 },
+    { "xcv80", 0x14D2F093 },
+    { "xcvp1552", 0x14D34093 },
+    { "xcvp1752", 0x14D38093 },
+    { "xcvn3716", 0x14D80093 },
+    { "xcvn3516", 0x14D81093 },
+    { "xcvn3408", 0x14D82093 },
+    { "xcvn3708", 0x14D83093 },
+    { "xcvc1902", 0x14CA8093 },
+    { NULL, 0 }
+};
+
 static uint32_t iseol(char ** sp) {
     char * s = *sp;
     skipsp(s);
@@ -181,6 +251,15 @@ static command_info * find_command(char * name, uint32_t len) {
         cmd++;
     }
     return NULL;
+}
+
+static uint32_t  find_device(char * name) {
+    struct cdo_device * device = device_list;
+    while (device->name != NULL) {
+        if (strncmp(device->name, name, sizeof(char*)) == 0) break;
+        device++;
+    }
+    return device->idcode;
 }
 
 static uint32_t parse_u32(char ** sp, uint32_t * valuep) {
@@ -285,6 +364,16 @@ char slr_id_from_source(char ch)
         slr_id = 0;
     }
     return ch;
+}
+
+uint32_t idcode_from_source(uint32_t id)
+{
+    if (id_code != 0)
+    {
+        id = id_code;
+        id_code = 0;
+    }
+    return id;
 }
 
 static void check_redundant_markers(char * marker_string)
@@ -416,6 +505,57 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             free(buf);
             break;
         }
+	case CdoCmdListSet: {
+		uint32_t id;
+		uint32_t * buf;
+		uint32_t count;
+		if (parse_u32(&s, &id)) goto syntax_error;
+		if (parse_buf(&s, &buf, &count)) goto syntax_error;
+		cdocmd_add_list_set(seq, id, count, buf, is_be_host());
+		free(buf);
+		break;
+	}
+	case CdoCmdListWrite: {
+		uint32_t id;
+		uint32_t value;
+		if (parse_u32(&s, &id)) goto syntax_error;
+		if (parse_u32(&s, &value)) goto syntax_error;
+		cdocmd_add_list_write(seq, id, value);
+		break;
+	}
+	case CdoCmdListMaskWrite: {
+		uint32_t id;
+		uint32_t mask;
+		uint32_t value;
+		if (parse_u32(&s, &id)) goto syntax_error;
+		if (parse_u32(&s, &mask)) goto syntax_error;
+		if (parse_u32(&s, &value)) goto syntax_error;
+		cdocmd_add_list_mask_write(seq, id, mask, value);
+		break;
+	}
+	case CdoCmdListMaskPoll: {
+            uint32_t id;
+            uint32_t mask;
+            uint32_t value;
+            uint32_t count = 0;
+            uint32_t flags = 0;
+            if (parse_u32(&s, &id)) goto syntax_error;
+            if (parse_u32(&s, &mask)) goto syntax_error;
+            if (parse_u32(&s, &value)) goto syntax_error;
+            skipsp(s);
+            if (istok(*s) && parse_u32(&s, &count)) goto syntax_error;
+            skipsp(s);
+            if (istok(*s) && parse_u32(&s, &flags)) goto syntax_error;
+            skipsp(s);
+            cdocmd_add_list_mask_poll(seq, id, mask, value, count, flags);
+            break;
+	}
+	case CdoCmdRunProc: {
+            uint32_t id;
+            if (parse_u32(&s, &id)) goto syntax_error;
+		cdocmd_add_run_proc(seq, id);
+		break;
+	}
         case CdoCmdSetBlock: {
             uint64_t addr;
             uint32_t count;
@@ -597,6 +737,10 @@ CdoSequence * cdoseq_from_source(FILE * f) {
                 slr_id_ptr = name;
                 slr_id = *slr_id_ptr;
             }
+            if (value == MARKER_PART)
+            {
+               id_code = find_device(name);
+            }   
             cdocmd_add_marker(seq, value, name);
             free(name);
             break;
@@ -707,6 +851,14 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             if (parse_buf(&s, &buf, &count)) goto syntax_error;
             cdocmd_add_npi_write(seq, addr, flags, count, buf, is_be_host());
             free(buf);
+            break;
+        }
+        case CdoCmdPmHnicxNpiDataXfer: {
+            uint32_t addr;
+            uint32_t value;
+            if (parse_u32(&s, &addr)) goto syntax_error;
+            if (parse_u32(&s, &value)) goto syntax_error;
+            cdocmd_add_pm_hnicx_npi_data_xfer(seq, addr, value);
             break;
         }
         case CdoCmdPmGetApiVersion: {
@@ -1294,6 +1446,14 @@ error:
     return NULL;
 }
 
+static void print_x32(FILE * f, uint32_t v) {
+    if (v == 0) {
+        fprintf(f, "0");
+    } else {
+        fprintf(f, "%#"PRIx32, v);
+    }
+}
+
 static void print_x64(FILE * f, uint64_t v) {
     if (v == 0) {
         fprintf(f, "0");
@@ -1585,6 +1745,13 @@ void cdoseq_to_source(FILE * f, CdoSequence * seq) {
             print_x64(f, cmd->dstaddr);
             fprintf(f, " ");
             print_x64(f, cmd->flags);
+            fprintf(f, "\n");
+            break;
+        case CdoCmdPmHnicxNpiDataXfer:
+            fprintf(f, "pm_hnicx_npi_data_xfer ");
+            print_x32(f, cmd->dstaddr);
+            fprintf(f, " ");
+            print_x32(f, cmd->value);
             fprintf(f, "\n");
             break;
         case CdoCmdPmGetApiVersion:
@@ -2039,6 +2206,49 @@ void cdoseq_to_source(FILE * f, CdoSequence * seq) {
             print_buf(f, cmd->buf, cmd->count);
             fprintf(f, "\n");
             break;
+	case CdoCmdListSet:
+		fprintf(f, "list_set ");
+		print_x64(f, cmd->id);
+		fprintf(f, " ");
+		print_buf(f, cmd->buf, cmd->count);
+		fprintf(f, "\n");
+		break;
+	case CdoCmdListWrite:
+		fprintf(f, "list_write ");
+		print_x64(f, cmd->id);
+		fprintf(f, " ");
+		print_x64(f, cmd->value);
+		fprintf(f, "\n");
+		break;
+	case CdoCmdListMaskWrite:
+		fprintf(f, "list_mask_write ");
+		print_x64(f, cmd->id);
+		fprintf(f, " ");
+		print_x64(f, cmd->mask);
+		fprintf(f, " ");
+		print_x64(f, cmd->value);
+		fprintf(f, "\n");
+		break;
+	case CdoCmdListMaskPoll:
+		fprintf(f, "list_mask_poll ");
+		print_x64(f, cmd->id);
+		fprintf(f, " ");
+		print_x64(f, cmd->mask);
+		fprintf(f, " ");
+		print_x64(f, cmd->value);
+		fprintf(f, " ");
+		print_x64(f, cmd->count);
+		if (cmd->flags != 0) {
+			fprintf(f, " ");
+			print_x64(f, cmd->flags);
+		}
+		fprintf(f, "\n");
+		break;
+	case CdoCmdRunProc:
+		fprintf(f, "run_proc ");
+		print_x64(f, cmd->id);
+		fprintf(f, "\n");
+		break;
         default:
             fprintf(f, "unknown command (%u)\n", cmd->type);
             break;
