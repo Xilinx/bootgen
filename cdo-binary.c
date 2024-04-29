@@ -25,7 +25,7 @@
 static uint32_t verbose;
 static uint32_t auto_align;
 static uint32_t add_offset;
-uint32_t id_code;
+uint32_t id_code_binary;
 
 #define u32xe(v) (be ? u32be(v) : u32le(v))
 #define u32xe_lo(v) u32xe((uint32_t)(v))
@@ -296,10 +296,10 @@ static void byte_swap_buffer(uint32_t * p, uint32_t count, uint32_t be) {
 
 uint32_t idcode_from_binary(uint32_t id)
 {
-    if (id_code != 0)
+    if (id_code_binary != 0)
     {
-        id = id_code;
-        id_code = 0;
+        id = id_code_binary;
+        id_code_binary = 0;
     }
     return id;
 }
@@ -1890,7 +1890,7 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
             }
             if (cmd->value == MARKER_PART)
             {
-                id_code = find_device((char*)cmd->buf);
+                id_code_binary = find_device((char*)cmd->buf);
             }
             /* Search for the START markers with string "NOC Start up", only for SSIT devices */
             if (search_sync_points && (cmd->value == 0x64 || cmd->value == 0x65) && (strcmp((char*)cmd->buf, "NOC Startup") == 0)) {
@@ -1935,7 +1935,7 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
 
                 /* Remember header location and reserve space */
                 pos_hdr = pos;
-                pos += hdr_len;
+                hdr2l(&p, &pos, CMD2_PROC, 1, be, long_header);
                 payload_start = pos;
                 p[pos++] = u32xe(cmd->value);
 
