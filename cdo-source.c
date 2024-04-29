@@ -25,7 +25,7 @@
 
 static char* slr_id_ptr;
 static char slr_id;
-uint32_t id_code;
+uint32_t id_code_source;
 
 #if defined(_WIN32)
 #define strcasecmp(x,y) stricmp(x,y)
@@ -368,10 +368,10 @@ char slr_id_from_source(char ch)
 
 uint32_t idcode_from_source(uint32_t id)
 {
-    if (id_code != 0)
+    if (id_code_source != 0)
     {
-        id = id_code;
-        id_code = 0;
+        id = id_code_source;
+        id_code_source = 0;
     }
     return id;
 }
@@ -739,7 +739,7 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             }
             if (value == MARKER_PART)
             {
-               id_code = find_device(name);
+                id_code_source = find_device(name);
             }   
             cdocmd_add_marker(seq, value, name);
             free(name);
