@@ -145,7 +145,6 @@ void startCDOFileStream(const char* cdoFileName)
         printf("File could not be opened, fopen Error: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
-    printf("Generating: %s\n", cdoFileName);
 }
 
 void endCurrentCDOFileStream()
