@@ -370,7 +370,7 @@ void ZynqMpReadImage::DisplayBootHeader(void)
     DisplayValue("checksum (0x48) : ", bH->headerChecksum);
     DisplayKey("grey/black_key (0x4c) : ", bH->greyOrBlackKey);
     DisplayValue("puf_shutter (0x6c) : ", bH->shutterValue);
-    //DisplayValue("user_defined_feilds (0x70) : ", bH->udf);
+    DisplayLongValues("user_defined_fields (0x70) : ", (uint8_t*)bH->udf, UDF_BH_SIZE_ZYNQMP * sizeof(uint32_t));
     DisplayValue("iht_offset (0x98) : ", bH->imageHeaderByteOffset);
     DisplayValue("pht_offset (0x9c) : ", bH->partitionHeaderByteOffset);
     DisplayIV("fsbl_sec_hdr_iv (0xa0) : ", bH->secureHdrIv);
