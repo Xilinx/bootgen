@@ -34,7 +34,7 @@
 /*******************************************************************************/
 void VersalReadImage::VerifyAuthentication(bool verifyImageOption)
 {
-    ReadBinaryFile();
+    ReadHeaderTableDetails();
 
     if (iHT->headerAuthCertificateWordOffset != 0)
     {
