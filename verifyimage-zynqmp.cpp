@@ -50,7 +50,7 @@ static void RearrangeEndianess(uint8_t *array, uint32_t size)
 /*******************************************************************************/
 void ZynqMpReadImage::VerifyAuthentication(bool verifyImageOption)
 {
-    ReadBinaryFile();
+    ReadHeaderTableDetails();
 
     if (iHT->headerAuthCertificateWordOffset != 0)
     {
