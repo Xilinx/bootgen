@@ -159,6 +159,7 @@ void VersalReadImage::DisplayOptionalData()
         }
 
         if(0x00 <= opData_id && opData_id <= 0x20){
+            read_opData += opData_total_length;
             offset += opData_total_length;
             continue;
         }
@@ -314,7 +315,7 @@ void VersalReadImage::ReadHeaderTableDetails()
 
     if (!binFile)
     {
-        fclose(binFile);
+        //fclose(binFile);
         LOG_ERROR("Cannot read file %s", binFilename.c_str());
     }
 

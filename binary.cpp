@@ -146,7 +146,10 @@ Section::Section(const std::string& name, Binary::Length_t length)
 /******************************************************************************/
 Section::~Section() 
 {
-    delete[] Data;
+    if (Data != NULL)
+    {
+        delete[] Data;
+    }
 }
 
 /******************************************************************************/

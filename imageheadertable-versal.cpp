@@ -21,6 +21,7 @@
 -------------------------------------------------------------------------------
 */
 #include "imageheadertable-versal.h"
+#include "authentication-versal.h"
 #include "bootimage.h"
 #include "bootheader-versal.h"
 #include "elftools.h"
@@ -279,7 +280,8 @@ void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
     if (bi.options.IsAuthOptimizationEnabled())
     {
          /* Adding an entry for header in hashtable */
-        if(bi.options.bifOptions->metaHdrAttributes.authenticate == Authentication::None){
+        if(bi.options.bifOptions->metaHdrAttributes.authenticate == Authentication::None)
+        {
             LOG_ERROR("MetaHeader must be authenticated if authentication optimization is enabled, using -enable_auth_opt");
         }
         else
@@ -310,10 +312,12 @@ void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
                 {
                     std::string partHdrSsk = (*partHdr)->imageHeader->GetAuthContext()->sskFile;
                     std::string partHdrPsk = (*partHdr)->imageHeader->GetAuthContext()->pskFile;
-                    if(metaHdrSsk.compare(partHdrSsk)){
+                    if(metaHdrSsk.compare(partHdrSsk))
+                    {
                         LOG_ERROR("MetaHeader and partition must use same SSK if authentication optimization is enabled, using -enable_auth_opt");
                     }
-                    if(metaHdrPsk.compare(partHdrPsk)){
+                    if(metaHdrPsk.compare(partHdrPsk))
+                    {
                         LOG_ERROR("MetaHeader and partition must use same PSK if authentication optimization is enabled, using -enable_auth_opt");
                     }
                     bi.numHashTableEntries++;
@@ -495,7 +499,7 @@ void VersalImageHeaderTable::SetIds(bool warnIdCode)
 {
     if (idCode == 0 && warnIdCode)
     {
-        LOG_WARNING("id_code is not specified in BIF, default id code is 0x04ca8093 (s80 device)");
+        LOG_WARNING("id_code is not specified in BIF, default id code is 0x04ca8093");
         idCode = DEFAULT_ID_CODE_S80;
     }
     iHTable->idCode = idCode;
@@ -719,6 +723,24 @@ void VersalImageHeaderTable::SetOptionalData(uint32_t * data, uint32_t size)
 /******************************************************************************/
 void VersalImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t numHashTableEntries)
 {
+    /* Fetch optional data, if available then exclude padding */
+    if(iht_optional_data_length > 0)
+    {
+        uint32_t actual_opData_length = 0;
+        while(actual_opData_length < iht_optional_data_length)
+        {
+            uint32_t* buffer = (uint32_t*)iht_optional_data + (actual_opData_length / 4);
+            uint32_t opData_id = buffer[0] & 0x0000FFFF;
+            if(opData_id == 0x0000FFFF)
+                break;
+
+            actual_opData_length += (((buffer[0] & 0xFFFF0000) >> 16) * 4);
+        }
+
+        /* Update existing length to exculde padding */
+        iht_optional_data_length = actual_opData_length;
+    }
+
     for (size_t i = 0; i < optionalDataInfo.size(); i++)
     {
         if ((0x00 <= optionalDataInfo[i].second) && (optionalDataInfo[i].second <= 0x20))
@@ -3367,7 +3389,7 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                 file_size = slr_boot_data.len;
                 pad_size = file_size + ((4 - (file_size & 3)) & 3);
                 uint32_t bh_offset = 0;
-                uint32_t ih_offset = *((uint32_t *)(slr_boot_data.bytes + bh_offset + 0xc4));
+                uint32_t ih_offset = ((VersalBootHeaderStructure *)(slr_boot_data.bytes))->imageHeaderByteOffset;
                 /* Remove the 16-bytes of SMAP bus width from start of PDI */
                 uint32_t smap_data = (slr_boot_data.bytes[0]) + (slr_boot_data.bytes[1] << 8) + (slr_boot_data.bytes[2] << 16) + (slr_boot_data.bytes[3] << 24);
                 if ((smap_data == 0xDD000000) || (smap_data == 0x00DD0000) || (smap_data == 0x000000DD))
@@ -3628,6 +3650,42 @@ size_t GetActualChunkSize(SsitConfigSlrInfo* slr_info)
     {
         LOG_INFO("SSIT chunk size = 0x%x", chunk_size);
         chunk_size_info_printed = true;
+    }
+
+    for (std::vector<SsitConfigPartitionSecurityInfo*>::iterator slr_security_info = slr_info->security_info.begin(); slr_security_info != slr_info->security_info.end(); slr_security_info++)
+    {
+        if ((*slr_security_info)->partition_index == slr_info->partition_index && (*slr_security_info)->top_chunk_processed == false)
+        {
+            if ((*slr_security_info)->checksum != Checksum::None)
+            {
+                num_bytes = SHA3_LENGTH_BYTES;
+                slr_info->partition_offset += num_bytes;
+                (*slr_security_info)->top_chunk_processed = true;
+                return num_bytes;
+            }
+            else if (((*slr_security_info)->encryption != Encryption::None) && ((*slr_security_info)->authentication != Authentication::None))
+            {
+                num_bytes = sizeof(AuthCertificate4096Sha3PaddingStructure); /* Auth Certificate size is the same for all Algorithms in case of Versal */
+                num_bytes += (SECURE_HDR_SZ + AES_GCM_TAG_SZ);
+                slr_info->partition_offset += num_bytes;
+                (*slr_security_info)->top_chunk_processed = true;
+                return num_bytes;
+            }
+            else if ((*slr_security_info)->authentication != Authentication::None)
+            {
+                num_bytes = sizeof(AuthCertificate4096Sha3PaddingStructure); /* Auth Certificate size is the same for all Algorithms in case of Versal */
+                slr_info->partition_offset += num_bytes;
+                (*slr_security_info)->top_chunk_processed = true;
+                return num_bytes;
+            }
+            else if ((*slr_security_info)->encryption != Encryption::None)
+            {
+                num_bytes = (SECURE_HDR_SZ + AES_GCM_TAG_SZ);
+                slr_info->partition_offset += num_bytes;
+                (*slr_security_info)->top_chunk_processed = true;
+                return num_bytes;
+            }
+        }
     }
 
     /* Create chunks such that each partition within a SLR PDI starts as a new chunk */
@@ -3966,7 +4024,6 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
 /******************************************************************************/
 void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size)
 {
-    uint32_t* syncpt_offsets = NULL;
     uint8_t num_of_sync_points = 0;
     bool info_display = true;
     VersalImageHeaderTableStructure* iHT = (VersalImageHeaderTableStructure*)data;
@@ -3986,115 +4043,104 @@ void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size
             slr_info->partition_sizes.push_back(pHT->totalPartitionLength * 4);
         }
 
+        SsitConfigPartitionSecurityInfo* partition_security_info = new SsitConfigPartitionSecurityInfo;
+        partition_security_info->partition_index = index + 1;
+        partition_security_info->checksum = Checksum::None;
+        partition_security_info->authentication = Authentication::None;
+        partition_security_info->encryption = Encryption::None;
+        partition_security_info->top_chunk_processed = false;
+        if (pHT->checksumWordOffset != 0)
+        {
+            partition_security_info->checksum = Checksum::SHA3;
+        }
+        else if (pHT->authCertificateOffset != 0)
+        {
+            partition_security_info->authentication = Authentication::RSA;
+        }
+        if (pHT->partitionKeySource != KeySource::None)
+        {
+            partition_security_info->encryption = Encryption::AES;
+        }
+        slr_info->security_info.push_back(partition_security_info);
+
         offset += sizeof(VersalPartitionHeaderTableStructure);
+
         if (((pHT->partitionAttributes >> vphtPartitionTypeShift) & vphtPartitionTypeMask) == PartitionType::CONFIG_DATA_OBJ)
         {
-            if(pHT->partitionKeySource != KeySource::None)
+            if (index == (iHT->partitionTotalCount - 1))
             {
-                if (index == (iHT->partitionTotalCount - 1))
+                LOG_TRACE("Reading SLR Config CDO Sync Addresses - %s", slr_info->file.c_str());
+                std::string sync_addresses_filename = StringUtils::RemoveExtension(slr_info->file) + "_sync_offsets.txt";
+                std::ifstream offsetFile(sync_addresses_filename.c_str());
+                std::vector<uint32_t> syncpt_offsets;
+                if (!offsetFile)
                 {
-                    LOG_TRACE("Reading SLR Config CDO Sync Addresses - %s", slr_info->file.c_str());
-                    std::string sync_addresses_filename = StringUtils::RemoveExtension(slr_info->file) + "_sync_offsets.txt";
-                    std::ifstream offsetFile(sync_addresses_filename.c_str());
-                    std::vector<uint32_t> syncpt_offsets;
-                    if (!offsetFile)
-                    {
-                        LOG_ERROR("Failure reading SLR Config CDO Sync Addresses - %s", slr_info->file.c_str());
-                    }
-                    while (offsetFile)
-                    {
-                        std::string word;
-                        offsetFile >> word;
-                        // If file vacant
-                        if (word == "")
-                        {
-                            return;
-                        }
-                        if (word == "sync_offsets")
-                        {
-                            while (offsetFile)
-                            {
-                                offsetFile >> word;
-                                uint32_t offset = std::stoi(word);
-                                syncpt_offsets.push_back(offset);
-                            }
-                        }
-                    }
-                    syncpt_offsets.pop_back();
-                    num_of_sync_points = syncpt_offsets.size();
-                    if (num_of_sync_points > 0)
-                    {
-                        if (info_display)
-                        {
-                            LOG_TRACE("SSIT_SYNC_MASTER command detected at following offsets:\n           Count : 0x%X", num_of_sync_points);
-                            LOG_TRACE("   slr_%d:", slr_info->index);
-                            info_display = false;
-                        }
-                        for (int i = 0; i < num_of_sync_points; i++)
-                        {
-                            size_t offset = (pHT->partitionWordOffset * 4) + syncpt_offsets[i];
-                            slr_info->sync_addresses.push_back(offset);
-                            LOG_TRACE("       offset = 0x%x", offset);
-                        }
-                        remove(sync_addresses_filename.c_str());
-                    }
-                }
-            }
-            else
-            {
-                CdoSequence * cdo_seq;
-                if (pHT->checksumWordOffset != 0 || pHT->authCertificateOffset != 0)
-                {
-                    uint8_t* partition_data = NULL;
-                    uint32_t partition_length = pHT->encryptedPartitionLength * 4;
-                    uint64_t data_chunk = SECURE_32K_CHUNK - SHA3_LENGTH_BYTES;
-                    uint32_t partition_data_offset = (pHT->partitionWordOffset * 4);
-
-                    partition_data = (uint8_t*)malloc(partition_length);
-                    memset(partition_data, 0x00, partition_length);
-
-                    if (partition_length <= data_chunk)
-                    {
-                        memcpy(partition_data, data + partition_data_offset, partition_length);
-                    }
-                    else
-                    {
-                        int num_secure_chunks = partition_length / data_chunk;
-                        if (partition_length % data_chunk != 0)
-                        {
-                            num_secure_chunks++;
-                        }
-                        uint32_t lastChunkSize = partition_length - ((num_secure_chunks - 1) * data_chunk);
-
-                        for (int i = 1; i < num_secure_chunks; i++)
-                        {
-                            memcpy(partition_data + ((i - 1) * data_chunk), data + partition_data_offset, data_chunk);
-                            partition_data_offset += (data_chunk + SHA3_LENGTH_BYTES);
-                        }
-
-                        memcpy(partition_data + ((num_secure_chunks - 1) * data_chunk), data + partition_data_offset, lastChunkSize);
-                    }
-                    cdo_seq = decode_cdo_binary(partition_data, partition_length);
+                    LOG_TRACE("SLR Config CDO Sync Addresses not found for - %s", slr_info->file.c_str());
+                    offsetFile.close();
                 }
                 else
                 {
-                    cdo_seq = decode_cdo_binary(data + pHT->partitionWordOffset * 4, pHT->totalPartitionLength * 4);
+                    LOG_TRACE("Reading SLR Config CDO Sync Addresses from - %s", sync_addresses_filename.c_str());
                 }
 
-                if (cdo_seq == NULL)
+                while (offsetFile)
                 {
-                    LOG_ERROR("decode_cdo_binary failed - %s", slr_info->file.c_str());
+                    std::string word;
+                    offsetFile >> word;
+                    // If file vacant
+                    if (word == "")
+                    {
+                        return;
+                    }
+                    if (word == "sync_offsets")
+                    {
+                        while (offsetFile)
+                        {
+                            offsetFile >> word;
+                            uint32_t offset = std::stoi(word);
+                            syncpt_offsets.push_back(offset);
+                        }
+                    }
                 }
-                size_t buffer_size = 0;
+                if(syncpt_offsets.size() != 0)
+                    syncpt_offsets.pop_back();
 
-                /* Enable the search for sync points - only needs to be done for SSIT devices */
-                search_for_sync_points();
+                num_of_sync_points = syncpt_offsets.size();
 
-                uint8_t* buffer = (uint8_t*)cdoseq_to_binary(cdo_seq, &buffer_size, 0);
+                //remove(sync_addresses_filename.c_str());
 
-                /* Get no. of sync points and sync points offsets */
-                num_of_sync_points = get_num_of_sync_points();
-                syncpt_offsets = get_slr_sync_point_offsets();
+                int num_secure_chunks = 0;
+                uint64_t data_chunk = SECURE_32K_CHUNK;
+                size_t offset_shift = 0;
+
+                uint32_t partition_length = pHT->unencryptedPartitionLength * 4;
+                uint32_t padLength = (partition_length % 16 != 0) ? 16 - (partition_length % 16) : 0;
+                partition_length += padLength;
+
+                if (pHT->authCertificateOffset != 0 || pHT->checksumWordOffset != 0)
+                {
+                    data_chunk -= SHA3_LENGTH_BYTES;
+                    offset_shift += SHA3_LENGTH_BYTES;
+                }
+                if (pHT->partitionKeySource != KeySource::None)
+                {
+                    data_chunk -= (SECURE_HDR_SZ + AES_GCM_TAG_SZ);
+                    offset_shift += SECURE_HDR_SZ + AES_GCM_TAG_SZ;
+                }
+
+                if (partition_length <= data_chunk)
+                {
+                    // no chunking
+		}
+                else
+                {
+                    num_secure_chunks = partition_length / data_chunk;
+                    if (partition_length % data_chunk != 0)
+                    {
+                        num_secure_chunks++;
+                    }
+                }
+
                 if (num_of_sync_points > 0)
                 {
                     if (info_display)
@@ -4103,14 +4149,22 @@ void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size
                         LOG_TRACE("   slr_%d:", slr_info->index);
                         info_display = false;
                     }
-                    for (int i = 0; i < num_of_sync_points; i++)
+
+		    for (int i = 0; i < num_of_sync_points; i++)
                     {
-                        size_t offset = (pHT->partitionWordOffset * 4) + (*(syncpt_offsets + i) * 4);
+                        size_t offset = syncpt_offsets[i];
+                        for (int i = 1; i < num_secure_chunks; i++)
+                        {
+                            if (offset > (data_chunk * i))
+                            {
+                                offset += offset_shift;
+                            }
+                        }
+
+                        offset += (pHT->partitionWordOffset * 4);
                         slr_info->sync_addresses.push_back(offset);
                         LOG_TRACE("       offset = 0x%x", offset);
                     }
-                    delete syncpt_offsets;
-                    delete buffer;
                 }
             }
         }

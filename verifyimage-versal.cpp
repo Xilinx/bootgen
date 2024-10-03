@@ -530,9 +530,16 @@ void VersalReadImage::VerifyPartitionSignature(void)
                 VerifySPKSignature(*auth_cert);
 
                 uint32_t actualSecureChunkSize = SECURE_32K_CHUNK - SHA3_LENGTH_BYTES;
+                if(versalNetSeries && isItBootloader)
+                    actualSecureChunkSize = SECURE_16K_CHUNK - SHA3_LENGTH_BYTES;
+
                 bool nist = true;
                 /* Partition Signature should not be included for hash calculation. */
                 uint32_t encryptedSize = ((*partitionHdr)->encryptedPartitionLength * 4);
+                if (isItBootloader && versalNetSeries)
+                {
+                    encryptedSize = bH->plmLength;
+                }
                 uint32_t dataBufferLength = ((*partitionHdr)->totalPartitionLength * 4) - SIGN_LENGTH_VERSAL;
                 uint32_t acBufferLength = sizeof(AuthCertificate4096Sha3PaddingStructure) - SIGN_LENGTH_VERSAL;
                 uint8_t* tempBuffer = new uint8_t[dataBufferLength];
@@ -565,7 +572,7 @@ void VersalReadImage::VerifyPartitionSignature(void)
                 {
                     LOG_ERROR("Error parsing Partitions from BootImage file %s", binFilename.c_str());
                 }
-                if (encryptedSize <= actualSecureChunkSize || isItBootloader)
+                if (encryptedSize <= actualSecureChunkSize || (isItBootloader && !versalNetSeries))
                 {
                     if (isItBootloader)
                     {
@@ -621,7 +628,7 @@ void VersalReadImage::VerifyPartitionSignature(void)
                         {
                             encryptedSize -= (SECURE_HDR_SZ + AES_GCM_TAG_SZ);
                         }
-                        int count = encryptedSize / actualSecureChunkSize;
+                        int count = (encryptedSize / actualSecureChunkSize);
                         if (encryptedSize % actualSecureChunkSize != 0)
                         {
                             count = count + 1;
@@ -635,8 +642,8 @@ void VersalReadImage::VerifyPartitionSignature(void)
                                 dataSize = lastChunkSize;
                             }
                             uint8_t* dataBuffer = new uint8_t[dataSize];
-                            memcpy(hashBuffer, tempBuffer + chunk0Size - SHA3_LENGTH_BYTES + (SECURE_32K_CHUNK) * (i-1), SHA3_LENGTH_BYTES);
-                            memcpy(dataBuffer, tempBuffer + chunk0Size + (SECURE_32K_CHUNK) * (i-1), dataSize);
+                            memcpy(hashBuffer, tempBuffer + chunk0Size - SHA3_LENGTH_BYTES + (actualSecureChunkSize + SHA3_LENGTH_BYTES) * (i-1), SHA3_LENGTH_BYTES);
+                            memcpy(dataBuffer, tempBuffer + chunk0Size + (actualSecureChunkSize + SHA3_LENGTH_BYTES) * (i-1), dataSize);
                             uint8_t* shaHash = new uint8_t[SHA3_LENGTH_BYTES];
                             Versalcrypto_hash(shaHash, dataBuffer, dataSize, true);
                             int compare = memcmp(shaHash, hashBuffer, SHA3_LENGTH_BYTES);

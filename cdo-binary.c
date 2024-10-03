@@ -1935,7 +1935,7 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
 
                 /* Remember header location and reserve space */
                 pos_hdr = pos;
-                hdr2l(&p, &pos, CMD2_PROC, 1, be, long_header);
+                pos += hdr_len;
                 payload_start = pos;
                 p[pos++] = u32xe(cmd->value);
 

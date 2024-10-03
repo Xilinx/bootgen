@@ -534,7 +534,7 @@ void VersalPartition::Build(BootImage& bi, Binary& cache)
     }
 
     /*******************************************************************************/
-    if ((imageHeader.GetPartitionType() == PartitionType::CONFIG_DATA_OBJ) && (encryptCtx->Type() != Encryption::None))
+    if ((imageHeader.GetPartitionType() == PartitionType::CONFIG_DATA_OBJ) && !header->preencrypted && !header->presigned)
     {
         size_t buffer_size = 0;
         uint32_t* syncpt_offsets = NULL;

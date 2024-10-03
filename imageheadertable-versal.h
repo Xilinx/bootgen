@@ -288,6 +288,14 @@ typedef struct
     uint32_t checksum;
 } VersalCdoHeader;
 
+typedef struct
+{
+    uint32_t partition_index;
+    Checksum::Type checksum;
+    Authentication::Type authentication;
+    Encryption::Type encryption;
+    bool top_chunk_processed;
+} SsitConfigPartitionSecurityInfo;
 
 typedef struct
 {
@@ -302,6 +310,7 @@ typedef struct
     uint32_t partition_offset;              /* To track current partition of SLR PDI to chunk and pack */
     uint32_t sync_points;                   /* To track how many sync points are processed within SLR PDI */
     uint32_t num_chunks;                    /* To track no of chunks created or processed */
+    std::vector<SsitConfigPartitionSecurityInfo*> security_info;
     bool eof;                               /* To track end of file for each SLR PDI */
 } SsitConfigSlrInfo;
 
