@@ -78,6 +78,7 @@ struct command_info {
     { "break", CdoCmdBreak },
     { "ot_check", CdoCmdOtCheck },
     { "psm_sequence", CdoCmdPsmSequence },
+    { "cdo_sequence", CdoCmdCdoSequence },
     { "scatter_write", CdoCmdScatterWrite },
     { "scatter_write2", CdoCmdScatterWrite2 },
     { "tamper_trigger", CdoCmdTamperTrigger },
@@ -787,6 +788,15 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             cdocmd_add_psm_sequence(seq);
             level++;
             break;
+        case CdoCmdCdoSequence: {
+            uint64_t addr;
+            uint32_t value;
+            if (parse_u64(&s, &addr)) goto syntax_error;
+            if (parse_u32(&s, &value)) goto syntax_error;
+            cdocmd_add_cdo_sequence(seq, addr, value);
+            level++;
+            break;
+        }
         case CdoCmdScatterWrite: {
             uint32_t * buf;
             uint32_t count;
@@ -1690,6 +1700,14 @@ void cdoseq_to_source(FILE * f, CdoSequence * seq) {
             break;
         case CdoCmdPsmSequence:
             fprintf(f, "psm_sequence\n");
+            level++;
+            break;
+        case CdoCmdCdoSequence:
+            fprintf(f, "cdo_sequence ");
+            print_x64(f, cmd->dstaddr);
+            fprintf(f, " ");
+            print_x64(f, cmd->value);
+            fprintf(f, "\n");
             level++;
             break;
         case CdoCmdScatterWrite:

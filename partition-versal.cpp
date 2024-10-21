@@ -539,6 +539,7 @@ void VersalPartition::Build(BootImage& bi, Binary& cache)
         size_t buffer_size = 0;
         uint32_t* syncpt_offsets = NULL;
         uint8_t num_of_sync_points = 0;
+        std::vector<uint32_t> sync_offsets;
 
         CdoSequence * cdo_seq;
         cdo_seq = decode_cdo_binary(header->partition->section->Data, header->partition->section->Length);
@@ -556,9 +557,29 @@ void VersalPartition::Build(BootImage& bi, Binary& cache)
         {
             size_t offset = (*(syncpt_offsets + i) * 4);
             bi.sync_offsets.push_back(offset);
+            sync_offsets.push_back(offset);
         }
         delete syncpt_offsets;
         delete buffer;
+
+        if (num_of_sync_points != 0)
+        {
+            std::string sync_addresses_filename = StringUtils::RemoveExtension(bi.options.GetOutputFileNames().front()) +
+                "_" + bi.Name + "_" + std::to_string(imageHeader.GetPartitionUid()) + "_sync_offsets.txt";
+            std::ofstream f(sync_addresses_filename.c_str(), std::ios_base::out | std::ios_base::binary);
+            f << "sync_offsets" << "\n";
+            for (size_t i = 0; i < sync_offsets.size(); i++)
+            {
+                f << sync_offsets[i] << "\n";
+            }
+            f.close();
+
+            if (f.fail())
+            {
+                LOG_ERROR("Failed to write sync addresses to the file: %s", sync_addresses_filename.c_str());
+            }
+            LOG_TRACE("Sync addresses written to file %s successfully", sync_addresses_filename.c_str());
+        }
     }
     /*******************************************************************************/
 

@@ -156,6 +156,7 @@ void cdocmd_add_random_command(CdoSequence * seq, uint32_t * levelp) {
              type == CdoCmdSetBaseAddress ||
              (type == CdoCmdProc && level != 0) ||
              (type == CdoCmdPsmSequence && level != 0) ||
+             (type == CdoCmdCdoSequence && level != 0) ||
              (type == CdoCmdBegin && level >= (randu32() & 3)) ||
              (type == CdoCmdEnd && level == 0) ||
              (type == CdoCmdBreak && level == 0) ||
@@ -208,7 +209,7 @@ void cdocmd_add_random_command(CdoSequence * seq, uint32_t * levelp) {
         cmd->type == CdoCmdPmInitNode ||
         cmd->type == CdoCmdPmSetNodeAccess ||
         cmd->type == CdoCmdPmNocClockEnable ||
-        cmd->type == CdoCmdListSet ||
+	cmd->type == CdoCmdListSet ||
         cmd->type == CdoCmdSemNpiTable) {
         uint32_t * p;
         uint32_t i;
@@ -244,6 +245,7 @@ void cdocmd_add_random_command(CdoSequence * seq, uint32_t * levelp) {
     }
     if (cmd->type == CdoCmdProc) level++;
     if (cmd->type == CdoCmdPsmSequence) level++;
+    if (cmd->type == CdoCmdCdoSequence) level++;
     if (cmd->type == CdoCmdBegin) level++;
     if (cmd->type == CdoCmdEnd) level--;
     add_command(seq, cmd);
@@ -289,7 +291,7 @@ void cdocmd_add_section(CdoSequence * seq, uint32_t id) {
 void cdocmd_add_include(CdoSequence * seq, const char * name) {
     CdoCommand * cmd = cdocmd_alloc(CdoCmdInclude);
     cmd->count = strlen(name) / 4 + 1;
-    cmd->buf = strdup(name);
+    cmd->buf = my_strdup(name);
     add_command(seq, cmd);
 }
 
@@ -760,7 +762,7 @@ void cdocmd_add_pm_add_node_name(CdoSequence * seq, uint32_t nodeid, const char 
     CdoCommand * cmd = cdocmd_alloc(CdoCmdPmAddNodeName);
     cmd->id = nodeid;
     cmd->count = strlen(name) / 4 + 1;
-    cmd->buf = strdup(name);
+    cmd->buf = my_strdup(name);
     add_command(seq, cmd);
 }
 
@@ -952,7 +954,7 @@ void cdocmd_add_event_logging(CdoSequence * seq, uint32_t subcmd, uint32_t count
 void cdocmd_add_set_board(CdoSequence * seq, const char * name) {
     CdoCommand * cmd = cdocmd_alloc(CdoCmdSetBoard);
     cmd->count = strlen(name) / 4 + 1;
-    cmd->buf = strdup(name);
+    cmd->buf = my_strdup(name);
     add_command(seq, cmd);
 }
 
@@ -966,7 +968,7 @@ void cdocmd_add_set_plm_wdt(CdoSequence * seq, uint32_t nodeid, uint32_t periodi
 void cdocmd_add_log_string(CdoSequence * seq, const char * name) {
     CdoCommand * cmd = cdocmd_alloc(CdoCmdLogString);
     cmd->count = strlen(name) / 4 + 1;
-    cmd->buf = strdup(name);
+    cmd->buf = my_strdup(name);
     add_command(seq, cmd);
 }
 
@@ -980,7 +982,7 @@ void cdocmd_add_marker(CdoSequence * seq, uint32_t value, const char * name) {
     CdoCommand * cmd = cdocmd_alloc(CdoCmdMarker);
     cmd->value = value;
     cmd->count = strlen(name) / 4 + 1;
-    cmd->buf = strdup(name);
+    cmd->buf = my_strdup(name);
     add_command(seq, cmd);
 }
 
@@ -993,7 +995,7 @@ void cdocmd_add_proc(CdoSequence * seq, uint32_t value) {
 void cdocmd_add_begin(CdoSequence * seq, const char * name) {
     CdoCommand * cmd = cdocmd_alloc(CdoCmdBegin);
     cmd->count = strlen(name) / 4 + 1;
-    cmd->buf = strdup(name);
+    cmd->buf = my_strdup(name);
     add_command(seq, cmd);
 }
 
@@ -1016,6 +1018,13 @@ void cdocmd_add_ot_check(CdoSequence * seq, uint32_t value) {
 
 void cdocmd_add_psm_sequence(CdoSequence * seq) {
     CdoCommand * cmd = cdocmd_alloc(CdoCmdPsmSequence);
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_cdo_sequence(CdoSequence * seq, uint64_t addr, uint32_t keyhole_size) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdCdoSequence);
+    cmd->dstaddr = addr;
+    cmd->value = keyhole_size;
     add_command(seq, cmd);
 }
 

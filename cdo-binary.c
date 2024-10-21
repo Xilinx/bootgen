@@ -117,6 +117,7 @@ enum {
     CMD2_LIST_WRITE	 = 0x128U,
     CMD2_LIST_MASK_WRITE = 0x129U,
     CMD2_LIST_MASK_POLL  = 0x12AU,
+    CMD2_CDO_SEQUENCE    = 0x12CU,
 
     /* PM Commands */
     CMD2_PM_GET_API_VERSION	= 0x201U,
@@ -566,10 +567,10 @@ static uint32_t decode_v2_cmd(CdoSequence * seq, uint32_t * p, uint32_t * ip, ui
                 cdocmd_add_list_mask_poll(seq, u32xe(p[i+0]), u32xe(p[i+1]), u32xe(p[i+2]), u32xe(p[i+3]), 0);
             } else if (args == 5) {
                 cdocmd_add_list_mask_poll(seq, u32xe(p[i+0]), u32xe(p[i+1]), u32xe(p[i+2]), u32xe(p[i+3]), u32xe(p[i+4]));
-	   } else {
-		goto unexpected;
-	}
-		break;
+            } else {
+                goto unexpected;
+            }
+            break;
         case CMD2_DELAY:
             if (args != 1) goto unexpected;
             cdocmd_add_delay(seq, u32xe(p[i+0]));
@@ -715,6 +716,16 @@ static uint32_t decode_v2_cmd(CdoSequence * seq, uint32_t * p, uint32_t * ip, ui
             uint32_t i2 = i;
             cdocmd_add_psm_sequence(seq);
             if (decode_v2_cmd(seq, p, &i2, i2 + args, be)) {
+                goto error;
+            }
+            cdocmd_add_end(seq);
+            break;
+        }
+        case CMD2_CDO_SEQUENCE: {
+            uint32_t i2 = i + 3;
+            if (args < 3) goto unexpected;
+            cdocmd_add_cdo_sequence(seq, u32pair(u32xe(p[i+0]), u32xe(p[i+1])), u32xe(p[i+2]));
+            if (decode_v2_cmd(seq, p, &i2, i2 + args - 3, be)) {
                 goto error;
             }
             cdocmd_add_end(seq);
@@ -1935,7 +1946,7 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
 
                 /* Remember header location and reserve space */
                 pos_hdr = pos;
-                pos += hdr_len;
+                hdr2l(&p, &pos, CMD2_PROC, 1, be, long_header);
                 payload_start = pos;
                 p[pos++] = u32xe(cmd->value);
 
@@ -1955,6 +1966,61 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
                 if (aligned_proc_command) {
                     aligned_command = 1;
                     if (auto_align && ((pos_hdr + 1) & 3) != 0) {
+                        /* Update padding. */
+                        restart = 1;
+                    }
+                }
+
+                if (!restart) break;
+            }
+            l = blockend;
+            if (l != lh) l = l->next;
+            break;
+        }
+        case CdoCmdCdoSequence: {
+            uint32_t pos_save = pos;
+            uint32_t long_header = 0;
+            uint32_t aligned_cdo_command = 0;
+            LINK * blockend = find_block_end(l, lh);
+            for (;;) {
+                uint32_t hdr_len = long_header ? 2 : 1;
+                uint32_t payload_start;
+                uint32_t restart = 0;
+                uint32_t pos_hdr;
+                pos = pos_save;
+
+                if (aligned_cdo_command && auto_align && ((pos + hdr_len + 3) & 3) != 0) {
+                    /* Align command if it contains commands that require alignment */
+                    uint32_t padding = 4 - ((pos + hdr_len + 3) & 3);
+                    hdr2(&p, &pos, CMD2_NOP, padding - 1, be);
+                    memset(p + pos, 0, (padding - 1)*4);
+                    pos += padding - 1;
+                }
+
+                /* Remember header location and reserve space */
+                pos_hdr = pos;
+                hdr2l(&p, &pos, CMD2_CDO_SEQUENCE, 3, be, long_header);
+                payload_start = pos;
+                p[pos++] = u32xe_hi(cmd->dstaddr);
+                p[pos++] = u32xe_lo(cmd->dstaddr);
+                p[pos++] = u32xe(cmd->value);
+
+                /* Store commands as payload */
+                p = encode_v2_cmd(version, l, blockend, &pos, be, &aligned_cdo_command);
+
+                /* Store header in reserved space. */
+                hdr2l(&p, &pos_hdr, CMD2_CDO_SEQUENCE, pos - payload_start, be, long_header);
+                if (pos_hdr != payload_start) {
+                    /* Header grew, restart with long header */
+                    assert(!long_header);
+                    assert(pos_hdr - payload_start == 1);
+                    long_header = 1;
+                    restart = 1;
+                }
+
+                if (aligned_cdo_command) {
+                    aligned_command = 1;
+                    if (auto_align && ((pos_hdr + 3) & 3) != 0) {
                         /* Update padding. */
                         restart = 1;
                     }

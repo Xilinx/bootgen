@@ -179,6 +179,7 @@ typedef enum CdoCmdType {
     CdoCmdListMaskWrite,
     CdoCmdListMaskPoll,
     CdoCmdRunProc,
+    CdoCmdCdoSequence,
 
     /* The following line must be last */
     CdoCmdLast
@@ -313,6 +314,7 @@ void cdocmd_add_end(CdoSequence * seq);
 void cdocmd_add_break(CdoSequence * seq, uint32_t value);
 void cdocmd_add_ot_check(CdoSequence * seq, uint32_t value);
 void cdocmd_add_psm_sequence(CdoSequence * seq);
+void cdocmd_add_cdo_sequence(CdoSequence * seq, uint64_t addr, uint32_t keyhole_size);
 void cdocmd_add_scatter_write(CdoSequence * seq, uint32_t value, uint32_t count, void * buf, uint32_t be);
 void cdocmd_add_scatter_write2(CdoSequence * seq, uint32_t value1, uint32_t value2, uint32_t count, void * buf, uint32_t be);
 void cdocmd_add_tamper_trigger(CdoSequence * seq, uint32_t value);

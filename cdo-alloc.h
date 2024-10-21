@@ -22,5 +22,6 @@ void * myalloc(size_t len);
 void * myalloc_zero(size_t len);
 void * myrealloc(void * p, size_t len);
 void myfree(void * p);
+char* my_strdup(const char* src);
 
 #endif /* D_cdo_alloc */

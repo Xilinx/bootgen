@@ -4067,15 +4067,13 @@ void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size
 
         if (((pHT->partitionAttributes >> vphtPartitionTypeShift) & vphtPartitionTypeMask) == PartitionType::CONFIG_DATA_OBJ)
         {
-            if (index == (iHT->partitionTotalCount - 1))
             {
-                LOG_TRACE("Reading SLR Config CDO Sync Addresses - %s", slr_info->file.c_str());
-                std::string sync_addresses_filename = StringUtils::RemoveExtension(slr_info->file) + "_sync_offsets.txt";
+                std::string sync_addresses_filename = StringUtils::RemoveExtension(slr_info->file) + 
+                    "_" + std::to_string(pHT->puid) + "_sync_offsets.txt";
                 std::ifstream offsetFile(sync_addresses_filename.c_str());
                 std::vector<uint32_t> syncpt_offsets;
                 if (!offsetFile)
                 {
-                    LOG_TRACE("SLR Config CDO Sync Addresses not found for - %s", slr_info->file.c_str());
                     offsetFile.close();
                 }
                 else
@@ -4150,7 +4148,7 @@ void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size
                         info_display = false;
                     }
 
-		    for (int i = 0; i < num_of_sync_points; i++)
+                    for (int i = 0; i < num_of_sync_points; i++)
                     {
                         size_t offset = syncpt_offsets[i];
                         for (int i = 1; i < num_secure_chunks; i++)

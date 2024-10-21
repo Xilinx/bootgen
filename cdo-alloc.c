@@ -46,6 +46,30 @@ void * myrealloc(void * p, size_t len) {
     return p;
 }
 
+/**
+ * @brief This function similar to strdup() which is duplicate input string
+ * however, this will make sure the length of the output is divisible by 4
+ * @param src string source 
+ * @return char* string return
+ */
+char* my_strdup(const char* src) {
+
+    if (src == NULL) return NULL;
+
+    // Calculate the length of the original string
+    size_t len = strlen(src) + 1;
+    size_t padded_length = (len + 3) & ~3;  // Round up to nearest multiple of 4
+
+    // Allocate memory for the new string with padding
+    char* dup = (char*)myalloc_zero(padded_length);
+    if (dup == NULL) return NULL;
+
+    // Copy the string and pad with null characters
+    strcpy(dup, src);
+
+    return dup;
+}
+
 void myfree(void * p) {
     free(p);
 }

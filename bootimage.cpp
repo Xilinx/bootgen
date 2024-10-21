@@ -245,7 +245,6 @@ void BIF_File::Output(Options& options, uint8_t index)
            Write to the file outputs based on the format */
         for(std::list<std::string>::iterator filename = outFilename.begin();filename != outFilename.end(); filename++) 
         {
-            static bool sync_offsets_written = false;
             std::string out_filename;
             if (index == (options.bifOptionsList.size() - 1))
             {
@@ -257,46 +256,6 @@ void BIF_File::Output(Options& options, uint8_t index)
                 if (options.IsSsitBif())
                 {
                     out_filename = StringUtils::RemoveExtension(*filename) + "_" + bi->Name + ".bin";
-                    if (bi->sync_offsets.size() != 0 && (bi->options.bifOptions->pdiType == PartitionType::SLR_SLAVE_CONFIG))
-                    {
-                        std::string sync_addresses_filename = StringUtils::RemoveExtension(*filename) + "_" + bi->Name + "_sync_offsets.txt";
-                        std::ofstream f(sync_addresses_filename.c_str(), std::ios_base::out | std::ios_base::binary);
-                        f << "sync_offsets" << "\n";
-                        for (size_t i = 0; i < bi->sync_offsets.size(); i++)
-                        {
-                            f << bi->sync_offsets[i] << "\n";
-                        }
-
-                        f.close();
-
-                        if (f.fail())
-                        {
-                            LOG_ERROR("Failed to write sync addresses to the file: %s", sync_addresses_filename.c_str());
-                        }
-                        LOG_TRACE("Sync addresses written to file %s successfully", sync_addresses_filename.c_str());
-                    }
-                    sync_offsets_written = true;
-                }
-            }
-            if (!sync_offsets_written)
-            {
-                if (bi->sync_offsets.size() != 0 && (bi->options.bifOptions->pdiType == PartitionType::SLR_SLAVE_CONFIG))
-                {
-                    std::string sync_addresses_filename = StringUtils::RemoveExtension(*filename) + "_" + bi->Name + "_sync_offsets.txt";
-                    std::ofstream f(sync_addresses_filename.c_str(), std::ios_base::out | std::ios_base::binary);
-                    f << "sync_offsets" << "\n";
-                    for (size_t i = 0; i < bi->sync_offsets.size(); i++)
-                    {
-                        f << bi->sync_offsets[i] << "\n";
-                    }
-
-                    f.close();
-
-                    if (f.fail())
-                    {
-                        LOG_ERROR("Failed to write sync addresses to the file: %s", sync_addresses_filename.c_str());
-                    }
-                    LOG_TRACE("Sync addresses written to file %s successfully", sync_addresses_filename.c_str());
                 }
             }
             OutputFile* file = OutputFile::Factory(out_filename);

@@ -235,11 +235,11 @@ void cdoraw_encode(CdoRawInfo * raw, FILE * f) {
     size_t size = raw->size;
     size_t i;
     fprintf(f, "Xilinx ASCII NPI Deviceimage\n");
-    fprintf(f, "Created by %s\n", raw->meta.creator ? raw->meta.creator : "CDO utility");
-    fprintf(f, "Design name: \t%s\n", raw->meta.design ? raw->meta.design : "");
-    fprintf(f, "Architecture:\t%s\n", raw->meta.arch ? raw->meta.arch : "");
-    fprintf(f, "Part:        \t%s\n", raw->meta.part ? raw->meta.part : "");
-    fprintf(f, "Date:        \t%s\n", raw->meta.date ? raw->meta.date : "");
+    fprintf(f, "Created by %s\n", raw->meta.creator[0] ? raw->meta.creator : "CDO utility");
+    fprintf(f, "Design name: \t%s\n", raw->meta.design[0] ? raw->meta.design : "");
+    fprintf(f, "Architecture:\t%s\n", raw->meta.arch[0] ? raw->meta.arch : "");
+    fprintf(f, "Part:        \t%s\n", raw->meta.part[0] ? raw->meta.part : "");
+    fprintf(f, "Date:        \t%s\n", raw->meta.date[0] ? raw->meta.date : "");
     fprintf(f, "Bits:        \t%"PRIu64"\n", (uint64_t)size * 8);
     for (i = 0; i < size; i++) {
         uint8_t b = p[i];
