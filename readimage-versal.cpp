@@ -1205,11 +1205,12 @@ std::string VersalReadImage::GetPartitionCore(uint32_t value)
         case 2:
             if (versalNetSeries) val = "a78-1";
             else val = "a72-1";         break;
-        if (versalNetSeries)
-        {
-            case 3: val = "a78-2";      break;
-            case 4: val = "a78-3";      break;
-        }
+        case 3:
+            if (versalNetSeries) val = "a78-2";
+            else val = "invalid";       break;
+        case 4:
+            if (versalNetSeries) val = "a78-3";
+            else val = "invalid";       break;
         case 5: val = "r5-0";           break;
         case 6: val = "r5-1";           break;
         case 7: val = "r5-lockstep";    break;
