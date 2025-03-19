@@ -982,6 +982,12 @@ TcmBoot::Type VersalPartitionHeader::GetTcmBootFlag(void)
 }
 
 /******************************************************************************/
+uint32_t VersalPartitionHeader::GetChecksumOffset(void)
+{
+	return pHTable->checksumWordOffset;
+}
+
+/******************************************************************************/
 void VersalPartitionHeaderTable::Build(BootImage & bi, Binary & cache)
 {
     LOG_INFO("Building the Partition Header Table");
@@ -1358,6 +1364,38 @@ void VersalPartitionHeaderTable::Link(BootImage & bi)
         {
             currentPartHdr->Link(bi, (*partHdr));
         }
+    }
+
+    if(bi.bifOptions->metaHdrAttributes.encrKeySource != KeySource::None && bi.bifOptions->pdiType == PartitionType::SLR_SLAVE_CONFIG)
+    {
+        std::ofstream outFile;
+	std::string SlaveSLRmetaEncrypt = StringUtils::RemoveExtension(bi.options.GetOutputFileNames().front()) + "_" + bi.Name + "_" + "metahdrencrypt_offsets.txt";
+	outFile.open(SlaveSLRmetaEncrypt.c_str(),  std::ios::out | std::ios::binary);
+	if (!outFile.is_open()) {
+	    LOG_ERROR("Error in opening a file %s", SlaveSLRmetaEncrypt.c_str());
+	}
+	for (std::list<PartitionHeader*>::iterator partHdr = bi.partitionHeaderList.begin(); partHdr != bi.partitionHeaderList.end(); )
+	{
+		PartitionHeader* currentPartHdr = (*partHdr);
+		outFile << "partition" ;
+		int position = std::distance(bi.partitionHeaderList.begin(), partHdr);
+		outFile <<  position << "\n";
+		outFile << currentPartHdr->GetChecksumOffset() << "\n";
+	        outFile << (currentPartHdr->GetTotalPartitionLength())/sizeof(uint32_t) << "\n";
+		outFile << currentPartHdr->GetAuthCertificateOffset() << "\n";
+		outFile << currentPartHdr->GetPartitionKeySource() << "\n";
+	        outFile << ((currentPartHdr->GetPartitionType() << vphtPartitionTypeShift) | 0x6) <<  "\n";
+	        outFile << currentPartHdr->GetPartitionUid() << "\n";
+	        outFile << (currentPartHdr->GetUnencryptedPartitionLength())/sizeof(uint32_t) << "\n";
+	        outFile << ((currentPartHdr->GetPartitionWordOffset())/sizeof(uint32_t)) << "\n";
+
+		if(outFile.fail())
+		{
+			LOG_ERROR("Failed to Write SlaveSLR PHT data to the file incase of slave SLR metahdr encryption enabled: %s", SlaveSLRmetaEncrypt.c_str());
+		}
+	        partHdr++;
+	}
+	outFile.close();
     }
 
     if (bi.bifOptions->GetHeaderAC())

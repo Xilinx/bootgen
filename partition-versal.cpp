@@ -562,7 +562,7 @@ void VersalPartition::Build(BootImage& bi, Binary& cache)
         delete syncpt_offsets;
         delete buffer;
 
-        if (num_of_sync_points != 0)
+        if (num_of_sync_points != 0 && (bi.options.GetOutputFileNames().size())!=0)
         {
             std::string sync_addresses_filename = StringUtils::RemoveExtension(bi.options.GetOutputFileNames().front()) +
                 "_" + bi.Name + "_" + std::to_string(imageHeader.GetPartitionUid()) + "_sync_offsets.txt";

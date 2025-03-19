@@ -217,6 +217,7 @@ public:
     uint64_t GetLQspiExecAddrForXip(uint64_t addr);
     uint32_t GetSectionCount(void);
     TcmBoot::Type GetTcmBootFlag(void);
+    uint32_t GetChecksumOffset(void);
 
 private:
     uint8_t partitionEncrypted;

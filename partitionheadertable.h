@@ -116,6 +116,11 @@ public:
     virtual uint32_t GetEncryptedPartitionLength(void) { return 0; };
     virtual PartitionType::Type GetPartitionType(void) { return PartitionType::RESERVED; }
     virtual uint32_t GetSectionCount(void) { return 0; }
+    virtual uint32_t GetTotalPartitionLength(void)  { return 0; };
+    virtual KeySource::Type GetPartitionKeySource(void) { return KeySource::None; };
+    virtual uint32_t GetPartitionUid(void) { return 0; };
+    virtual uint32_t GetUnencryptedPartitionLength(void) { return 0; };
+    virtual uint32_t GetChecksumOffset(void) { return 0; };
     
     Binary::Address_t GetLoadAddress(void) { return loadAddress; }
     Binary::Address_t GetExecAddress(void) { return execAddress; }

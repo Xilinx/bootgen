@@ -130,7 +130,7 @@ void VersalBootHeader::Build(BootImage& bi, Binary& cache)
 
     SetWidthDetectionWord();
     SetIdentificationWord();
-    SetEncryptionKeySource(bi.options.GetEncryptedKeySource(), bi.bifOptions);
+    SetEncryptionKeySource(bi.bifOptions->GetEncryptionKeySource(), bi.bifOptions);
     SetPmcCdoLoadAddress(bi.bifOptions->GetPmcCdoLoadAddress());
     SetShutterValue(bi.bifOptions->GetShutterValue());
     SetPufRingOscilltorSwapConfigValue(bi.bifOptions->GetPufRingOscilltorSwapConfigValue());

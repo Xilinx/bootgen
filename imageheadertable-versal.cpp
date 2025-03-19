@@ -4026,6 +4026,8 @@ void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size
 {
     uint8_t num_of_sync_points = 0;
     bool info_display = true;
+    uint8_t max_partition_offsets = 8;
+    std::vector<uint32_t> partitionhdr_offsets;
     VersalImageHeaderTableStructure* iHT = (VersalImageHeaderTableStructure*)data;
     size_t offset = iHT->firstPartitionHeaderWordOffset * 4;
     slr_info->partition_sizes.push_back(sizeof(VersalImageHeaderTableStructure) + (iHT->optionalDataSize * 4) + (iHT->totalMetaHdrLength * 4));
@@ -4033,14 +4035,61 @@ void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size
     for (uint8_t index = 0; index < iHT->partitionTotalCount; index++)
     {
         VersalPartitionHeaderTableStructure* pHT = (VersalPartitionHeaderTableStructure*)(data + offset);
-        /* TotalPartitionLength includes AC + partition + hashes if authenticated.*/
-        if (pHT->checksumWordOffset != 0)
+
+	if (iHT->metaHdrKeySource == KeySource::None)    //check to assign the PHT data to temp variables
         {
-            slr_info->partition_sizes.push_back((pHT->totalPartitionLength * 4) + SHA3_LENGTH_BYTES);
+	    partitionhdr_offsets.assign(max_partition_offsets,0);
+            partitionhdr_offsets[0] = pHT->checksumWordOffset;
+            partitionhdr_offsets[1] = pHT->totalPartitionLength;
+            partitionhdr_offsets[2] = pHT->authCertificateOffset;
+            partitionhdr_offsets[3] = pHT->partitionKeySource;
+            partitionhdr_offsets[4] = pHT->partitionAttributes;
+            partitionhdr_offsets[5] = pHT->puid;
+            partitionhdr_offsets[6] = pHT->unencryptedPartitionLength;
+            partitionhdr_offsets[7] = pHT->partitionWordOffset;
+        }
+        if (iHT->metaHdrKeySource != KeySource::None)
+        {
+            std::string SlaveSLRmetaEncrypt = StringUtils::RemoveExtension(slr_info->file) + "_" + "metahdrencrypt_offsets.txt";
+            std::ifstream outFile(SlaveSLRmetaEncrypt.c_str());
+
+            if (!outFile)
+            {
+                LOG_ERROR("Error in opening a file %s", SlaveSLRmetaEncrypt.c_str());
+            }
+            while (outFile)
+            {
+                std::string word;
+                outFile >> word;
+
+                // If file vacant
+                if (word == "")
+                {
+                    return;
+                }
+                if (word == "partition" + std::to_string(index))
+                {
+                    int wordCount = 0;
+                    while (outFile >> word && wordCount < max_partition_offsets)
+                    {
+                        uint32_t offset = std::stoi(word);
+                        partitionhdr_offsets.push_back(offset);
+                        ++wordCount;
+                    }
+                    break;
+                }
+            }
+            outFile.close();
+        }
+
+        /* TotalPartitionLength includes AC + partition + hashes if authenticated.*/
+        if (partitionhdr_offsets[0] != 0)
+        {
+            slr_info->partition_sizes.push_back((partitionhdr_offsets[1] * 4) + SHA3_LENGTH_BYTES);
         }
         else
         {
-            slr_info->partition_sizes.push_back(pHT->totalPartitionLength * 4);
+            slr_info->partition_sizes.push_back(partitionhdr_offsets[1] * 4);
         }
 
         SsitConfigPartitionSecurityInfo* partition_security_info = new SsitConfigPartitionSecurityInfo;
@@ -4049,15 +4098,15 @@ void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size
         partition_security_info->authentication = Authentication::None;
         partition_security_info->encryption = Encryption::None;
         partition_security_info->top_chunk_processed = false;
-        if (pHT->checksumWordOffset != 0)
+        if (partitionhdr_offsets[0] != 0)
         {
             partition_security_info->checksum = Checksum::SHA3;
         }
-        else if (pHT->authCertificateOffset != 0)
+        else if (partitionhdr_offsets[2] != 0)
         {
             partition_security_info->authentication = Authentication::RSA;
         }
-        if (pHT->partitionKeySource != KeySource::None)
+        if (partitionhdr_offsets[3] != KeySource::None)
         {
             partition_security_info->encryption = Encryption::AES;
         }
@@ -4065,11 +4114,11 @@ void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size
 
         offset += sizeof(VersalPartitionHeaderTableStructure);
 
-        if (((pHT->partitionAttributes >> vphtPartitionTypeShift) & vphtPartitionTypeMask) == PartitionType::CONFIG_DATA_OBJ)
+        if (((partitionhdr_offsets[4] >> vphtPartitionTypeShift) & vphtPartitionTypeMask) == PartitionType::CONFIG_DATA_OBJ)
         {
             {
                 std::string sync_addresses_filename = StringUtils::RemoveExtension(slr_info->file) + 
-                    "_" + std::to_string(pHT->puid) + "_sync_offsets.txt";
+                    "_" + std::to_string(partitionhdr_offsets[5]) + "_sync_offsets.txt";
                 std::ifstream offsetFile(sync_addresses_filename.c_str());
                 std::vector<uint32_t> syncpt_offsets;
                 if (!offsetFile)
@@ -4111,16 +4160,16 @@ void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size
                 uint64_t data_chunk = SECURE_32K_CHUNK;
                 size_t offset_shift = 0;
 
-                uint32_t partition_length = pHT->unencryptedPartitionLength * 4;
+                uint32_t partition_length = partitionhdr_offsets[6] * 4;
                 uint32_t padLength = (partition_length % 16 != 0) ? 16 - (partition_length % 16) : 0;
                 partition_length += padLength;
 
-                if (pHT->authCertificateOffset != 0 || pHT->checksumWordOffset != 0)
+                if (partitionhdr_offsets[2] != 0 || partitionhdr_offsets[0] != 0)
                 {
                     data_chunk -= SHA3_LENGTH_BYTES;
                     offset_shift += SHA3_LENGTH_BYTES;
                 }
-                if (pHT->partitionKeySource != KeySource::None)
+                if (partitionhdr_offsets[3] != KeySource::None)
                 {
                     data_chunk -= (SECURE_HDR_SZ + AES_GCM_TAG_SZ);
                     offset_shift += SECURE_HDR_SZ + AES_GCM_TAG_SZ;
@@ -4159,13 +4208,17 @@ void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size
                             }
                         }
 
-                        offset += (pHT->partitionWordOffset * 4);
+                        offset += (partitionhdr_offsets[7] * 4);
                         slr_info->sync_addresses.push_back(offset);
                         LOG_TRACE("       offset = 0x%x", offset);
                     }
                 }
             }
         }
+       if (partitionhdr_offsets.size() != 0)
+       {
+           partitionhdr_offsets.clear();
+       }
     }
 }
 

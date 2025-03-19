@@ -896,7 +896,7 @@ ImageHeader* VersalBootImage::ParsePartitionDataToImage(BifOptions * bifoptions,
     {
         if (partitionBifOptions->keySrc != KeySource::None)
         {
-            options.SetEncryptedKeySource(partitionBifOptions->keySrc);
+            bifOptions->SetEncryptionKeySource(partitionBifOptions->keySrc);
         }
 
         if (bootloaderFound == true)
