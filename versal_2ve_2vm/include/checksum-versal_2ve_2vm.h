@@ -1,0 +1,71 @@
+/******************************************************************************
+* Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+* http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+******************************************************************************/
+
+#pragma once
+
+/*
+-------------------------------------------------------------------------------
+***********************************************   H E A D E R   F I L E S   ***
+-------------------------------------------------------------------------------
+*/
+#include "bootgenenum.h"
+#include "binary.h"
+#include "bootimage.h"
+#include "checksum.h"
+
+class BootImage;
+class Section;
+
+
+/*
+-------------------------------------------------------------------------------
+*********************************************   P R E P R O C E S S O R S   ***
+-------------------------------------------------------------------------------
+*/
+
+/*
+-------------------------------------------------------------------------------
+*********************************************************   C L A S S E S   ***
+-------------------------------------------------------------------------------
+*/
+/******************************************************************************/
+class Versal_2ve_2vmSHA3ChecksumContext : public ChecksumContext
+{
+public:
+    Checksum::Type Type()
+    {
+        return Checksum::SHA3;
+    }
+
+    uint8_t Size()
+    {
+        return (SHA3_LENGTH_BYTES*2);
+    }
+
+    Section* Build(Binary& cache, const uint8_t* data, const Binary::Length_t length);
+    Section* Build(std::string name);
+
+    void Link(bool bootloader, const uint8_t* data, const Binary::Length_t length, Section* section);
+};
+
+/******************************************************************************/
+class Versal_2ve_2vmChecksumTable : public ChecksumTable
+{
+public:
+    void Build(BootImage& bi, Binary& cache);
+    void Link(BootImage& bi);
+};

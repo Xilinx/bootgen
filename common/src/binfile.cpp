@@ -1,0 +1,257 @@
+/******************************************************************************
+* Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+* http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+******************************************************************************/
+
+/*
+-------------------------------------------------------------------------------
+***********************************************   H E A D E R   F I L E S   ***
+-------------------------------------------------------------------------------
+*/
+#include "outputfile.h"
+#include "systemutils.h"
+#include <string.h>
+
+/*
+-------------------------------------------------------------------------------
+*****************************************************   F U N C T I O N S   ***
+-------------------------------------------------------------------------------
+*/
+/******************************************************************************/
+void BinFile::Open() 
+{
+    std::string fName1 = filename.c_str();
+    std::string fName2 = filename.c_str();
+    if ((qspiDualMode == QspiMode::PARALLEL_LQSPI) || (qspiDualMode == QspiMode::PARALLEL_GQSPI) ||
+        ((qspiDualMode == QspiMode::STACKED) && (totalImageSize > qspiSizeInBytes)))
+    {
+        fName1 = fName1.substr(0, fName1.find_last_of("."));  //remove extension
+        fName1.append("_1.bin");
+        fName2 = fName2.substr(0, fName2.find_last_of("."));  //remove extension
+        fName2.append("_2.bin");
+
+        ofs1.open(fName2.c_str(), std::ios::binary);
+
+        if (!ofs1)
+        {
+            LOG_ERROR("Cannot write output file : %s", fName2.c_str());
+        }
+    }
+
+    ofs.open(fName1.c_str(), std::ios::binary);
+
+    if (!ofs) 
+    {
+        LOG_ERROR("Cannot write output file : %s", filename.c_str());
+    }
+}
+
+/******************************************************************************/
+void BinFile::Append() 
+{
+    ofs.open(filename.c_str(), std::ios::binary | std::ios::app);
+}
+
+/******************************************************************************/
+void BinFile::WritePreamble()
+{
+    // do nothing
+}
+
+/******************************************************************************/
+void BinFile::WritePostscript()
+{
+    // do nothing
+}
+
+/******************************************************************************/
+void BinFile::Close()
+{
+    ofs.close();
+}
+
+/******************************************************************************/
+void BinFile::Fill(Binary::Address_t start, Binary::Address_t end, bool doFill, uint8_t fillByte)
+{
+    /* ignore "doFill". Always fill! */
+    size_t length = end - start;
+    if (qspiDualMode == QspiMode::PARALLEL_GQSPI || qspiDualMode == QspiMode::PARALLEL_LQSPI)
+    {
+        for (size_t i = 0; i < length/2; i++)
+        {
+            ofs.put((char)fillByte);
+            ofs1.put((char)fillByte);
+        }
+    }
+    else if (qspiDualMode == QspiMode::STACKED)
+    {
+        Binary::Length_t write_size_1 = 0;
+        Binary::Length_t write_size_2 = 0;
+        if ((start + length) <= qspiSizeInBytes)
+        {
+            for (size_t i = 0; i < length; i++)
+            {
+                ofs.put((char)fillByte);
+            }
+        }
+        else
+        {
+            if (start <= qspiSizeInBytes)
+            {
+                write_size_1 = qspiSizeInBytes - start;
+                for (size_t i = 0; i < write_size_1; i++)
+                {
+                    ofs.put((char)fillByte);
+                }
+            }
+            write_size_2 = length - write_size_1;
+            for (size_t i = 0; i < write_size_2; i++)
+            {
+                ofs1.put((char)fillByte);
+            }
+        }
+    }
+    else
+    {
+        for (size_t i = 0; i < length; i++)
+        {
+            ofs.put((char)fillByte);
+        }
+    }
+    totalByteOutputCount += length;
+}
+
+/******************************************************************************/
+static uint8_t reverseBits(unsigned int num)
+{
+    uint8_t reverse_num = 0;
+    int i;
+    for (i = 0; i < 8; i++)
+    {
+        if ((num & (1 << i)))
+            reverse_num |= 1 << ((8 - 1) - i);
+    }
+    return reverse_num;
+}
+
+/******************************************************************************/
+void BinFile::Write(Binary::Address_t start, Binary::Length_t length, const uint8_t *buffer)
+{
+    uint8_t* writedata = new uint8_t[length];
+    memcpy(writedata, buffer, length);
+
+    /* Only applicable to Data Records 
+    To match the BIN file generation in different interface formats according to write_cfgmem of Vivado */
+    // SMAPx32
+    if ((interfaceType != Interface::NONE) && (interfaceType != Interface::SPI))
+    {
+        for (uint64_t i = 0; i<length; i++)
+        {
+            writedata[i] = reverseBits(buffer[i]);
+        }
+    }
+
+    // SMAPx8
+    if ((interfaceType == Interface::SMAPx8) || (interfaceType == Interface::SMAPx16) ||
+        (interfaceType == Interface::BPIx8) || (interfaceType == Interface::BPIx16) ||
+        (interfaceType == Interface::SPI))
+    {
+        for (uint64_t j = 0; j<length; j = j + 4)
+        {
+            uint32_t test = ReadLittleEndian32(writedata + j);
+            if (encrypted)
+            {
+                WriteLittleEndian32(writedata + j, test);
+            }
+            else
+            {
+                WriteBigEndian32(writedata + j, test);
+            }
+        }
+    }
+    // SMAPx16
+    if ((interfaceType == Interface::SMAPx16) || (interfaceType == Interface::BPIx16))
+    {
+        for (uint64_t j = 0; j<length; j = j + 2)
+        {
+            uint16_t test = ReadLittleEndian16(writedata + j);
+            WriteBigEndian16(writedata + j, test);
+        }
+    }
+
+    if (qspiDualMode == QspiMode::PARALLEL_GQSPI)
+    {
+        uint8_t* buffer1 = new uint8_t[length / 2];
+        uint8_t* buffer2 = new uint8_t[length / 2];
+        for (uint64_t i = 0, j = 0; i < length; i += 2, j++)
+        {
+            buffer1[j] = (writedata[i]);
+            buffer2[j] = (writedata[i + 1]);
+        }
+        ofs.write((const char*)buffer1, length / 2);
+        ofs1.write((const char*)buffer2, length / 2);
+    }
+    else if (qspiDualMode == QspiMode::PARALLEL_LQSPI)
+    {
+        uint8_t* buffer1 = new uint8_t[length / 2];
+        uint8_t* buffer2 = new uint8_t[length / 2];
+        int k = 0;
+        for (uint64_t i = 0; i < length; i += 2, k++)
+        {
+            uint8_t lsb = 0, lsbNxt = 0;
+            uint8_t msb = 0, msbNxt = 0;
+            uint8_t tempData = writedata[i];
+            uint8_t tempDataNxt = writedata[i + 1];
+            for (int j = 0; j < 4; j++)
+            {
+                lsb = lsb | ((tempData & 0x1) << j);
+                msb = msb | (((tempData & 0x2) >> 1) << j);
+                tempData = tempData >> 2;
+                lsbNxt = lsbNxt | ((tempDataNxt & 0x1) << j);
+                msbNxt = msbNxt | (((tempDataNxt & 0x2) >> 1) << j);
+                tempDataNxt = tempDataNxt >> 2;
+            }
+            buffer1[k] = (lsb << 4) | lsbNxt;
+            buffer2[k] = (msb << 4) | msbNxt;
+        }
+        ofs.write((const char*)buffer1, length / 2);
+        ofs1.write((const char*)buffer2, length / 2);
+    }
+    else if (qspiDualMode == QspiMode::STACKED)
+    {
+        Binary::Length_t write_size_1 = 0;
+        Binary::Length_t write_size_2 = 0;
+        if((start + length) <= qspiSizeInBytes)
+        {
+            ofs.write((const char*)writedata, length);
+        }
+        else
+        {
+            if (start <= qspiSizeInBytes)
+            {
+                write_size_1 = qspiSizeInBytes - start;
+                ofs.write((const char*)writedata, write_size_1);
+            }
+            write_size_2 = length - write_size_1;
+            ofs1.write((const char*)(writedata + write_size_1), write_size_2);
+        }
+    }
+    else
+    {
+        ofs.write((const char*)writedata, length);
+    }
+    totalByteOutputCount += length;
+    delete [] writedata;
+}

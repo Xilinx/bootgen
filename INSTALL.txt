@@ -1,0 +1,33 @@
+Required 3rd Party Packages
+         
+* OpenSSL v1.1.1b libraries
+   Windows : http://slproweb.com/products/Win32OpenSSL.html
+   Linux   : libssl-dev package
+
+
+================================================================================
+
+Linux Builds
+
+1. Install OpenSSL libraries.
+
+2. In the bootgen directory run
+
+   make
+
+3. If OpenSSL libraries are located at a custom path, then you can link with these libraries as given below.
+   Assuming OpenSSL libraries are located at /home/$USER/local/openssl
+
+   make "LIBS=/home/$USER/local/openssl/lib/libssl.a /home/$USER/local/openssl/lib/libcrypto.a -ldl" "INCLUDE_USER=-I/home/$USER/local/openssl/include"
+  
+================================================================================
+
+Windows Builds
+
+1. Install OpenSSL libraries from http://slproweb.com/products/Win32OpenSSL.html
+
+   Download and install "Win64 OpenSSL v1.1.1b"
+  
+2. Use Microsoft Visual Studio 2015 to build Bootgen source code and link it with OpenSSL libraries downloaded in previous step
+
+

@@ -1,0 +1,289 @@
+/******************************************************************************
+* Copyright 2015-2022 Xilinx, Inc.
+* Copyright 2022-2023 Advanced Micro Devices, Inc.
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+* http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+******************************************************************************/
+#pragma once
+
+#ifndef _SPARTANUP_IMAGEHEADERTABLE_H_
+#define _SPARTANUP_IMAGEHEADERTABLE_H_
+
+/*
+-------------------------------------------------------------------------------
+***********************************************   H E A D E R   F I L E S   ***
+-------------------------------------------------------------------------------
+*/
+#define MAX_NUM_PARTITIONS_SPARTAN   20
+#define MAX_NUM_IMAGES_SPARTAN       10
+#include "imageheadertable.h"
+#include "bootheader.h"
+extern "C" {
+#include "cdo-command.h"
+}
+
+class ImageBifOptions;
+class SubSysImageHeader;
+class BifOptions;
+/*
+-------------------------------------------------------------------------------
+*********************************************   P R E P R O C E S S O R S   ***
+-------------------------------------------------------------------------------
+*/
+
+/*
+-------------------------------------------------------------------------------
+***************************************************   S T R U C T U R E S   ***
+-------------------------------------------------------------------------------
+*/
+/* totalMetaHdrLength: Includes Authentication and encryption over head (excluding IHT and including AC) */
+typedef struct
+{
+    uint32_t    version;                            // 0x0
+    uint32_t    imageTotalCount;                    // 0x4
+    uint32_t    firstImageHeaderWordOffset;         // 0x8
+    uint32_t    partitionTotalCount;                // 0xc
+    uint32_t    firstPartitionHeaderWordOffset;     // 0x10
+    uint32_t    secondaryBootDeviceAddress;         // 0x14
+    uint32_t    idCode;                             // 0x18
+    uint32_t    imageHeaderTableAttributes;         // 0x1c
+    uint32_t    pdiId;                              // 0x20
+    uint32_t    parentId;                           // 0x24
+    uint32_t    identificationString;               // 0x28
+    uint32_t    headerSizes;                        // 0x2C
+    uint32_t    totalMetaHdrLength;                 // 0x30
+    uint32_t    metaHdrSecureHdrIv[IV_LENGTH];      // 0x34
+    uint32_t    metaHdrKeySource;                   // 0x40
+    uint32_t    extendedIdCode;                     // 0x44
+    uint32_t    headerAuthCertificateWordOffset;    // 0x48
+    uint32_t    metaHdrGreyOrBlackIV[IV_LENGTH];    // 0x4C
+    uint32_t    optionalDataSize;                   // 0x58
+
+    uint32_t authHeader1;                           // 0x5C
+    uint32_t hashBlockLength1;                      // 0x60
+    uint32_t hashBlockOffset;                       // 0x64
+    uint32_t totalppkkSize1;                        // 0x68
+    uint32_t actualppkSize1;                        // 0x6C
+    uint32_t totalHashBlockSignatureSize1;          // 0x70
+    uint32_t actualSignatureSize1;                  // 0x74
+    uint32_t reserved;                              // 0x78
+
+    //uint32_t    reserved[MAX_IHT_RESERVED_VERSAL];  // 0x5C - 0x78
+    uint32_t    ihtChecksum;                        // 0x7C
+} SpartanupImageHeaderTableStructure;
+
+typedef struct
+{
+    uint32_t partitionHeaderWordOffset;         // 0x00
+    uint32_t dataSectionCount;                  // 0x04
+    uint32_t metaHdrRevokeId;                   // 0x08
+    uint32_t imageAttributes;                   // 0x0C
+    char     imageName[16];                     // 0x10 
+    uint32_t imageId;                           // 0x20
+    uint32_t uniqueId;                          // 0x24
+    uint32_t parentUniqueId;                    // 0x28
+    uint32_t functionId;                        // 0x2C
+    uint32_t memcpyAddressLo;                   // 0x30
+    uint32_t memcpyAddressHi;                   // 0x34
+    uint16_t pcrNumber;                         // 0x38
+    uint16_t pcrMeasurementIndex;               // 0x3A
+    uint32_t ihChecksum;                        // 0x3C
+} SpartanupImageHeaderStructure;
+
+/*
+-------------------------------------------------------------------------------
+*********************************************************   C L A S S E S   ***
+-------------------------------------------------------------------------------
+*/
+/******************************************************************************/
+class SpartanupImageHeaderTable : public ImageHeaderTable
+{
+public:
+    SpartanupImageHeaderTable();
+    SpartanupImageHeaderTable(std::ifstream& ifs);
+    ~SpartanupImageHeaderTable();
+    
+    void Build(BootImage & bi, Binary & cache);
+    void Link(BootImage & bi);
+    void ValidateSecurityCombinations(Authentication::Type, Encryption::Type, Checksum::Type);
+    void RealignSectionDataPtr(void);
+
+    void SetImageHeaderTableVersion(uint32_t version);
+    void SetHeaderTablesSize();
+    void SetImageCount(uint32_t count);
+    void SetFirstImageHeaderOffset(uint32_t offset);
+    void SetFirstPartitionHeaderOffset(uint32_t offset);
+    void SetPartitionCount(uint32_t count);
+    void SetBootDeviceAddress(uint32_t address);
+    void SetIds(bool warnIdCode);
+    void SetIdentificationString(bool bootloader);
+    void SetImageHeaderTableAttributes();
+    void SetTotalMetaHdrLength(uint32_t size);
+    void SetHashBlockLength(uint32_t size);
+    void SetMetaHdrSecureHdrIv(uint8_t* iv);
+    void SetMetaHdrKeySrc(KeySource::Type keyType, BifOptions* bifOptions);
+    void SetMetaHdrGreyOrBlackIv(std::string);
+    void SetHeaderAuthCertificateOffset(uint32_t offset);
+    void SetHashBlockOffset(uint32_t address);
+    void SetReservedFields(void);
+    void SetChecksum(void);
+    void SetOptionalDataSize(void);
+    void SetOptionalData(uint32_t*, uint32_t);
+    void SetUserOptionalData(std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t hashTableSize = 0);
+    void SetXplmModulesData(BootImage& bi, uint32_t*, uint32_t);
+
+    uint32_t GetImageHeaderTableVersion(void);
+    uint32_t GetPartitionCount(void);
+    uint32_t GetImageCount(void);
+    uint32_t GetFirstImageHeaderOffset(void);
+    uint8_t GetMaxNumOfPartitions(void) { return MAX_NUM_PARTITIONS_SPARTAN; }
+    uint32_t GetTotalMetaHdrLength();
+
+    void SetCreatorId(uint8_t id);
+    void SetPdiId(uint32_t id);
+    void SetParentId(uint32_t id);
+    std::list<SubSysImageHeader*> subSysImageList;
+
+private:
+    SpartanupImageHeaderTableStructure *iHTable;
+    uint8_t creatorId;
+    uint32_t parentId;
+    uint32_t pdiId;
+    uint32_t idCode;
+    uint32_t extendedIdCode;
+    uint8_t bootDevice;
+    std::string kekIvFile;
+    bool kekIvMust;
+    bool bypassIdCode;
+    bool prebuilt;
+    DpaCM::Type dpacm;
+    PufHdLoc::Type pufHDLoc;
+};
+
+/******************************************************************************/
+class SpartanupImageHeader : public ImageHeader
+{
+public:
+    SpartanupImageHeader(std::string& filename);
+    SpartanupImageHeader(uint8_t* data, uint64_t len);
+    SpartanupImageHeader(std::ifstream& ifs, bool isBootloader);
+    SpartanupImageHeader(std::ifstream& ifs, SpartanupImageHeaderStructure* importedIH, bool isBootloader, uint32_t index);
+    ~SpartanupImageHeader();
+    
+    void ImportElf(BootImage& bi);
+    void Build(BootImage& bi, Binary& cache);
+    void Link(BootImage &bi, PartitionHeader* partitionHeader, ImageHeader* nextImageheader);
+    void SetMetaHdrRevokeId(uint32_t revocId);
+    void ParseFileToImport(BootImage& bi);
+    void ImportNpi(BootImage& bi);
+    void ImportBuffer(BootImage &bi);
+    void ImportBin(BootImage& bi);
+    void ImportBit(BootImage& bi);
+    void ImportCdoSource(BootImage& bi);
+    void ImportCdo(BootImage& bi);
+    uint8_t* DecodeCdo(std::string file, size_t* size);
+    void ImportAieEngineElf(BootImage& bi);
+    void CreateAieEnginePartition(BootImage& bi);
+    uint64_t ImportAieEngineElfCdo(std::string);
+    uint32_t CdoCmdDmaWrite(uint32_t pSize, uint64_t pAddr, uint8_t *databuffer);
+    uint32_t CdoCmdWriteImageStore(uint32_t pSize, uint64_t id, uint8_t *databuffer);
+    void SetLoadAndExecAddress(PartitionHeader *partHdr);
+    std::list<std::string> ParseAieJson(const char* filename);
+    std::list <std::string> GetAieFilesPath(std::string);
+    Binary::Address_t GetAieEngineGlobalAddress(Binary::Address_t elfAddr);
+    void CalculateAieEngineBaseAddress(uint32_t colNum, uint32_t rowNum);
+    uint32_t CheckAieEngineDataMemoryBoundary(Binary::Address_t globalAddr, Binary::Length_t pSize);
+    void ParseCdos(BootImage& bi, std::vector<std::string> filelist, uint8_t**, size_t*, bool);
+    void ParseSlaveSlrConfigCdos(BootImage & bi, std::vector<std::string> filelist, uint8_t **, size_t *, bool);
+    //post-processing
+    //bool PostProcessCdo(const uint8_t* cdo_data, Binary::Length_t cdo_size);
+    //bool PostProcessCfi(const uint8_t* cdo_data, Binary::Length_t cdo_size);
+
+    void SetPartitionHeaderOffset(uint32_t addr);
+    void SetDataSectionCount(uint32_t cnt);
+    void SetImageHeaderAttributes();
+    void SetImageName(void);
+    void SetPartitionUid(uint32_t id);
+    void SetEncryptionKeySrc(KeySource::Type type);
+    void SetImageId();
+    void SetPartitionRevocationId(uint32_t id);
+    void SetSpkRevocationId(uint32_t id);
+    void SetMemCopyAddr();
+    void SetChecksum(void);
+    void SetAuthBlock(size_t blockSize, bool flag);
+    void SetWriteImageStorePartitions(ImageStorePdiInfo*);
+    void SetDpacm(DpaCM::Type);
+    void SetPufHdLocation(PufHdLoc::Type type);
+
+    uint32_t GetPartitionHeaderOffset(void);
+    uint32_t GetDataSectionCount(void);
+    uint32_t GetImageHeaderAttributes(void);
+    uint32_t GetPartitionUid(void);
+    KeySource::Type GetEncryptionKeySrc();
+    uint32_t GetPartitionRevocationId();
+    uint32_t GetSpkRevocationId();
+    DpaCM::Type GetDpacm(void);
+    PufHdLoc::Type GetPufHdLocation(void);
+    std::string GetKekIV(void);
+
+private:
+    void CheckIdsInCdo(CdoSequence * cdo_seq, std::string cdo_filename);
+    void SetPowerDomains(uint8_t* buf, uint32_t count);
+    void CreateWriteImageStorePartition();
+    uint64_t slr_total_file_size;
+
+    SpartanupImageHeaderStructure *imageHeader;
+    VersalCdoHeader* cdoHeader;
+ 
+    uint64_t aie_array_base_address;
+    Binary::Address_t coreBaseAddr;
+    Binary::Address_t southBankBaseAddr;
+    Binary::Address_t westBankBaseAddr;
+    Binary::Address_t northBankBaseAddr;
+    Binary::Address_t eastBankBaseAddr;
+
+protected:
+    static std::list<CdoCommandDmaWrite*> cdoSections;
+    uint8_t num_of_slrs;
+};
+
+/******************************************************************************/
+class SpartanupSubSysImageHeader : public SubSysImageHeader
+{
+public:
+    SpartanupSubSysImageHeader(ImageBifOptions * imgOptions);
+    SpartanupSubSysImageHeader(std::ifstream & ifs);
+
+    void Build(BootImage & bi, Binary & cache);
+    void Link(BootImage &bi, SubSysImageHeader* nextheader);
+
+    void SetPCRMeasurementIndex(bool versalnet);
+    void SetPCRNumber(bool versalnet);
+    void SetChecksum(void);
+    void SetPartitionHeaderOffset(uint32_t addr);
+    void SetDataSectionCount(void);
+    void SetMetaHdrRevokeId(uint32_t id);
+    void SetImageHeaderIds(void);
+    void SetImageHeaderAttributes(void);
+    void SetImageName(void);
+    void SetMemCopyAddress(void);
+
+    uint64_t GetMemCopyAddress(void);
+    uint32_t GetPartitionHeaderOffset(void);
+    uint32_t GetDataSectionCount(void);
+    uint32_t GetImageHeaderAttributes(void);
+
+protected:
+    SpartanupImageHeaderStructure *spartanupSubSysImageHeaderTable;
+};
+#endif

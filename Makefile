@@ -28,17 +28,6 @@
 #
 ##############################################################################
 
-ifneq ($(CROSS_COMPILE), )
- CXX	= $(CROSS_COMPILE)g++
- CC	= $(CROSS_COMPILE)gcc
-else ifneq ($(CROSS_COMPILER), )
- CXX	= $(CROSS_COMPILER)
- CC	= $(subst g++,gcc,$(CROSS_COMPILER))
-else
- CXX	= g++
- CC	= gcc
-endif
-
 OBJ = o
 CXXFLAGS ?= -std=c++0x -O -Wall -Wno-reorder -Wno-deprecated-declarations
 CFLAGS ?= -O -Wall
@@ -48,11 +37,16 @@ ifeq "$(GCCVERSIONGTEQ9)" "1"
 CXXFLAGS += -Wno-aligned-new -Wno-misleading-indentation -Wno-class-memaccess
 endif
 
-EXEC = bootgen
+LMS_HASH_DIR = lms-hash-sigs
+LMS_LIB = hss_lib_thread.a
+
+
+EXEC = build/bin/bootgen
+OBJDIR = build/obj
 UNAME := $(shell uname)
 
 ifeq ($(UNAME), Linux)
-INCLUDE_SYS = -I.
+INCLUDE_SYS = -I bisonflex -I common/include -I spartanup/include -I versal/include -I versal_2ve_2vm/include -I zynq/include -I zynqmp/include -I utils/include -I lms-hash-sigs -I win_include 
 LIBS    = -lssl -lcrypto
 RTLIBS  =
 OPTIONS_USER =
@@ -60,22 +54,35 @@ endif
 
 INCLUDE = $(INCLUDE_USER) $(INCLUDE_SYS)
 
-OPTIONS = $(OPTIONS_USER)
+OPTIONS = $(OPTIONS_USER) -lpthread 
 
 all: $(EXEC) $(RTLIBS)
 
-OBJECTS = $(addsuffix .o, $(basename $(wildcard *.cpp)))
-OBJECTS += $(addsuffix .o, $(basename $(wildcard *.c)))
+GRAMMAR = bif.tab.cpp bif.yy.cpp reginit.tab.cpp reginit.yy.cpp cmdoptions.tab.cpp cmdoptions.yy.cpp
 
-%.${OBJ} : %.cpp
-	${CXX} -c ${CXXFLAGS} $(OPTIONS) ${INCLUDE} $<
+GFILES=$(shell echo $(GRAMMAR))  # Assuming GRAMMAR is a list of .cpp files
+OBJECTS=$(patsubst %.cpp,${OBJDIR}/%.o,$(GFILES))
 
-%.${OBJ} : %.c
-	${CC} -c ${CFLAGS} $(OPTIONS) ${INCLUDE} $<
+CXXFILES=$(shell find common/src spartanup/src versal/src versal_2ve_2vm/src zynq/src zynqmp/src utils/src -name "*.cpp")
+OBJECTS+=$(patsubst %.cpp,build/obj/%.o,$(notdir $(CXXFILES)))
+
+CFILES=$(shell find common/src spartanup/src versal/src versal_2ve_2vm/src zynq/src zynqmp/src utils/src -name "*.c")
+OBJECTS+=$(patsubst %.c,build/obj/%.o,$(notdir $(CFILES)))
+
+${OBJDIR}/%.${OBJ} : bisonflex/%.cpp 
+	${CXX} -c ${CXXFLAGS} $(OPTIONS) ${INCLUDE} $< -o $@
+
+${OBJDIR}/%.${OBJ} : */src/%.cpp 
+	${CXX} -c ${CXXFLAGS} $(OPTIONS) ${INCLUDE} $< -o $@
+
+${OBJDIR}/%.${OBJ} : */src/%.c 
+	${CC} -c ${CFLAGS} $(OPTIONS) ${INCLUDE} $< -o $@
+
 
 ${EXEC}: $(OBJECTS)
 	echo Building executable file: $@...
-	${CXX} $(CXXFLAGS) $(LDFLAGS) $(OPTIONS_USER) -o $@ $(OBJECTS) $(LIBS)
+	cd ${LMS_HASH_DIR} && $(MAKE) ${LMS_LIB}
+	${CXX} $(CXXFLAGS) $(LDFLAGS) $(OPTIONS_USER) -o $@ $(OBJECTS) ${LMS_HASH_DIR}/${LMS_LIB}  $(OPTIONS)$(LIBS)
 
 execs: ${EXEC}
 
@@ -83,3 +90,4 @@ clean:
 	echo
 	rm -rf ${EXEC}
 	rm -f $(OBJECTS)
+	cd ${LMS_HASH_DIR} && $(MAKE) clean
