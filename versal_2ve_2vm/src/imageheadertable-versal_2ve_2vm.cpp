@@ -726,11 +726,11 @@ void Versal_2ve_2vmImageHeaderTable::SetUserOptionalData(std::vector<std::pair<s
             sectn_size_id = (uint32_t)((sectn_length / 4) << 16) | (optionalDataInfo[i].second);
 
             iht_optional_data = (uint32_t*)realloc(iht_optional_data, iht_optional_data_length + sectn_length);
-            memcpy((uint8_t*)iht_optional_data + (iht_optional_data_length / 4), &sectn_size_id, sizeof(uint32_t));
-            memcpy((uint8_t*)iht_optional_data + (iht_optional_data_length / 4) + sizeof(uint32_t) / 4, data, size);
+            memcpy((uint32_t*)iht_optional_data + (iht_optional_data_length / 4), &sectn_size_id, sizeof(uint32_t));
+            memcpy((uint32_t*)iht_optional_data + (iht_optional_data_length / 4) + sizeof(uint32_t) / 4, data, size);
 
-            uint32_t checksum = ComputeWordChecksum((uint8_t*)iht_optional_data + (iht_optional_data_length / 4), sectn_length - sizeof(uint32_t));
-            memcpy((uint8_t*)iht_optional_data + (iht_optional_data_length / 4) + (sectn_length - sizeof(uint32_t)) / 4, &checksum, sizeof(uint32_t));
+            uint32_t checksum = ComputeWordChecksum((uint32_t*)iht_optional_data + (iht_optional_data_length / 4), sectn_length - sizeof(uint32_t));
+            memcpy((uint32_t*)iht_optional_data + (iht_optional_data_length / 4) + (sectn_length - sizeof(uint32_t)) / 4, &checksum, sizeof(uint32_t));
 
             iht_optional_data_length += sectn_length;
         }
@@ -740,7 +740,7 @@ void Versal_2ve_2vmImageHeaderTable::SetUserOptionalData(std::vector<std::pair<s
     {
         uint32_t padLength = (iht_optional_data_length % 64 != 0) ? 64 - (iht_optional_data_length % 64) : 0;
         iht_optional_data = (uint32_t*)realloc(iht_optional_data, iht_optional_data_length + padLength);
-        memset((uint8_t*)iht_optional_data + (iht_optional_data_length / 4), 0xFF, padLength);
+        memset((uint32_t*)iht_optional_data + (iht_optional_data_length / 4), 0xFF, padLength);
         iht_optional_data_length += padLength;
 
         section->IncreaseLengthAndPadTo(sizeof(Versal_2ve_2vmImageHeaderTableStructure) + iht_optional_data_length, 0);
