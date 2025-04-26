@@ -183,7 +183,7 @@ void ZynqMpPartitionHeader::SetExecAddress(uint64_t addr)
 }
 
 /******************************************************************************/
-void ZynqMpPartitionHeader::SetLoadAddress(uint64_t addr)
+void ZynqMpPartitionHeader::SetLoadAddress(uint64_t addr, bool arch)
 {
     pHTable->destinationLoadAddress = addr;
 }

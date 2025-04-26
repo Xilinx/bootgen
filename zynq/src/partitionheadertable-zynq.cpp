@@ -138,7 +138,7 @@ void ZynqPartitionHeader::SetTotalPartitionLength(uint32_t len)
 }
 
 /******************************************************************************/
-void ZynqPartitionHeader::SetLoadAddress(uint64_t addr)
+void ZynqPartitionHeader::SetLoadAddress(uint64_t addr, bool arch)
 {
     pHTable->destinationLoadAddress = (uint32_t)addr;
 }
