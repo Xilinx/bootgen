@@ -2118,7 +2118,7 @@ void VersalImageHeader::ParseSlaveSlrConfigCdos(BootImage& bi, std::vector<std::
             }
             else
             {
-                LOG_ERROR("Incorrect CDO length read from : %s", cdo_filename);
+                LOG_WARNING("Incorrect CDO length read from : %s", cdo_filename);
             }
 
             total_cdo_length += (actual_cdo_size);
@@ -2351,7 +2351,7 @@ void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> fileli
             }
             else
             {
-                LOG_ERROR("Incorrect cdo length read from : %s", cdo_filename);
+                LOG_WARNING("Incorrect cdo length read from : %s", cdo_filename);
             }
 
             total_cdo_length += (actual_cdo_size);
@@ -3336,7 +3336,7 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                 }
                 else
                 {
-                    LOG_ERROR("Incorrect CDO length read from : %s", cdo_filename);
+                    LOG_WARNING("Incorrect CDO length read from : %s", cdo_filename);
                 }
 
                 if (IsCdoCmdEndFound(cdo_buffer, file_size))
@@ -3714,7 +3714,7 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
                         }
                         else
                         {
-                            LOG_ERROR("Incorrect CDO length read from : %s", cdo_filename);
+                            LOG_WARNING("Incorrect CDO length read from : %s", cdo_filename);
                         }
                         p_offset += (master_chunk_size);
                         (*slr_info)->offset += (master_chunk_size);
