@@ -75,7 +75,6 @@ class BIF_File
 public:
     BIF_File(std::string& filename0) : biffilename(filename0) {} 
     void Process(Options& options);
-    void ParseFpgaFile(Options& options);
     void ParseBifFile(Options& options);
     void AppendAndReplaceFilesinBIF();
 private:
@@ -167,9 +166,6 @@ public:
     std::string fsblFilename;
     std::string bitFilename;    
     void * overlayCDO;
-    virtual void PostProcessStart() {};
-    virtual ImageHeader* PostProcessEnd() { return NULL; }
-    virtual bool IsPostProcessingEnabled() { return false; }
     virtual uint64_t GetSecureChunkSize(bool isBootloader) { return 0; }
     Arch::Type GetDeviceArchitecture(void) { return arch; }
 

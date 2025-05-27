@@ -101,7 +101,6 @@ void HashSha3::CalculateHash(bool nist, const uint8_t *data, size_t length, uint
     }
 }
 
-//SH- Revisit place the below code in right location
 /******************************************************************************/
 void HashSha3::CalculateVersalHash(bool nist, const uint8_t *data, size_t length, uint8_t* out)
 {

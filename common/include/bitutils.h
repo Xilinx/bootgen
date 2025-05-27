@@ -501,19 +501,6 @@ public:
 };
 
 /******************************************************************************/
-class FpgaBitFile : public BitFile
-{
-public:
-    FpgaBitFile(std::istream& stream) : BitFile(stream) { };
-    OutputStream* GetOutputStreamType(void);
-    bool GetBitStripFlag(void);
-    bool GetBitPadFlag(bool);
-    bool GetPreserveHeaderFlag(void);
-    void DummyRead(void);
-    void ComparePartsDataBase(const std::string&) { };
-};
-
-/******************************************************************************/
 class BitCommand
 {
 public:

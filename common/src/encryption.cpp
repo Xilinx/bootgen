@@ -301,19 +301,6 @@ void EncryptionContext::SetRandomSeed()
 }
 
 /******************************************************************************/
-/*static int myrand(void)
-{
-    static unsigned long next;
-    static int firsttime = 1;
-    if (firsttime) {
-        firsttime = 0;
-        next = time(NULL);
-    }
-    next = next * 1103515245 + 12345;
-    return((unsigned)(next / 65536) % 32768);
-}*/
-
-/******************************************************************************/
 static uint32_t GetRandomValue(uint32_t	maxValue)
 {
     uint32_t returnValue;

@@ -84,15 +84,10 @@ startup             yylval->number = tok::STARTUP;                  return tok::
 pid                 yylval->number = tok::PARTITION_NUM;            return tok::PARTITION_NUM;
 init                yylval->number = tok::INIT;                     return tok::INIT;
 udf_bh              yylval->number = tok::UDF_BH;                   return tok::UDF_BH;
-aeskey              yylval->number = tok::AES_KEY_FILE;             LOG_WARNING("BIF attribute error !!!\n\t\t'aeskey' is deprecated. Please use 'aeskeyfile' instead.");return tok::AES_KEY_FILE;
 aeskeyfile          yylval->number = tok::AES_KEY_FILE;             return tok::AES_KEY_FILE;
-ppk                 yylval->number = tok::PPK_FILE;                 LOG_WARNING("BIF attribute error !!!\n\t\t'ppk' is deprecated. Please use 'ppkfile' instead.");return tok::PPK_FILE;
 ppkfile             yylval->number = tok::PPK_FILE;                 return tok::PPK_FILE;
-psk                 yylval->number = tok::PSK_FILE;                 LOG_WARNING("BIF attribute error !!!\n\t\t'psk' is deprecated. Please use 'pskfile' instead.");return tok::PSK_FILE;
 pskfile             yylval->number = tok::PSK_FILE;                 return tok::PSK_FILE;
-spk                 yylval->number = tok::SPK_FILE;                 LOG_WARNING("BIF attribute error !!!\n\t\t'spk' is deprecated. Please use 'spkfile' instead.");return tok::SPK_FILE;
 spkfile             yylval->number = tok::SPK_FILE;                 return tok::SPK_FILE;
-ssk                 yylval->number = tok::SSK_FILE;                 LOG_WARNING("BIF attribute error !!!\n\t\t'ssk' is deprecated. Please use 'sskfile' instead.");return tok::SSK_FILE;
 sskfile             yylval->number = tok::SSK_FILE;                 return tok::SSK_FILE;
 spksignature        yylval->number = tok::SPK_SIGNATURE_FILE;       return tok::SPK_SIGNATURE_FILE;
 bhsignature         yylval->number = tok::BH_SIGNATURE_FILE;        return tok::BH_SIGNATURE_FILE;
@@ -106,7 +101,6 @@ id                  yylval->number = tok::ID;                       return tok::
 name                yylval->number = tok::NAME;                     return tok::NAME; 
 file                yylval->number = tok::PFILE;                    return tok::PFILE;
 bh_keyfile          yylval->number = tok::BH_KEY_FILE;              return tok::BH_KEY_FILE;
-puf                 yylval->number = tok::PUF_HELPER_FILE;          LOG_WARNING("BIF attribute error !!!\n\t\t'puf' is deprecated. Please use 'puffile' instead.");return tok::PUF_HELPER_FILE;
 puf_file            yylval->number = tok::PUF_HELPER_FILE;          return tok::PUF_HELPER_FILE;
 pmufw_image         yylval->number = tok::PMUFW_IMAGE;              return tok::PMUFW_IMAGE;
 pmcdata             yylval->number = tok::PMCDATA;                  return tok::PMCDATA;
@@ -272,7 +266,6 @@ core                                                                return tok::
     pmu             yylval->number = DestinationCPU::PMU;           return tok::DEST_CPU_TYPE;
     psm             yylval->number = DestinationCPU::PMU;           return tok::DEST_CPU_TYPE;
     asu             yylval->number = DestinationCPU::PMU;           return tok::DEST_CPU_TYPE;
-    me              yylval->number = DestinationCPU::AIE;           LOG_WARNING("BIF attribute error !!!\n\t\t'destination_cpu=me/core=me' is unsupported. Please use 'core=aie' instead."); return tok::DEST_CPU_TYPE;
     aie             yylval->number = DestinationCPU::AIE;           return tok::DEST_CPU_TYPE;
     cluster         yylval->number = tok::CLUSTER_NUM;              return tok::CLUSTER_NUM;
 

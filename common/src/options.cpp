@@ -435,20 +435,6 @@ void Options::SetReadImageFile(std::string file)
 }
 
 /******************************************************************************/
-void Options::SetInterfaceType(Interface::Type type)
-{
-    if (archType != Arch::FPGA)
-    {
-        LOG_ERROR("'-interface' option supported only for FPGA architecture '-arch fpga'");
-    }
-    interfaceType = type;
-}
-
-/******************************************************************************/
-void Options::SetPostProcessMode(std::string mode)
-{
-    postProcessMode = mode;
-}
 
 void Options::SetOverlayCDOFileName(std::string filename)
 {
@@ -456,10 +442,7 @@ void Options::SetOverlayCDOFileName(std::string filename)
 }
 
 /******************************************************************************/
-void Options::EnableSubsystemFlow(bool flag)
-{
-    enableSubsystems = flag;
-}
+
 
 /******************************************************************************/
 void Options::SetOutType(File::Type type)
@@ -468,10 +451,7 @@ void Options::SetOutType(File::Type type)
 }
 
 /******************************************************************************/
-void Options::GenerateJsonBif(void)
-{
-    bifToJson = true;
-}
+
 
 /******************************************************************************/
 void Options::SetDumpDirectory(std::string path)
@@ -812,33 +792,12 @@ std::string Options::GetDumpDirectory(void)
 }
 
 /******************************************************************************/
-Interface::Type Options::GetInterfaceType(void)
-{
-    return interfaceType;
-}
-
-/******************************************************************************/
-std::string Options::GetPostProcessMode(void)
-{
-    return postProcessMode;
-}
 
 std::string Options::GetOverlayCDOFileName(void)
 {
     return overlayCDOFile;
 }
 
-/******************************************************************************/
-bool Options::IsSubsystemFlow(void)
-{
-    return enableSubsystems;
-}
-
-/******************************************************************************/
-bool Options::GetJsonBifOption(void)
-{
-    return bifToJson;
-}
 
 /******************************************************************************/
 bool Options::IsSsitBif()

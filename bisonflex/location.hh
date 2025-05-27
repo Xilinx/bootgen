@@ -31,7 +31,7 @@
    version 2.2 of Bison.  */
 
 /**
- ** \file ../bisonflex/location.hh
+ ** \file bisonflex/location.hh
  ** Define the BIF::location class.
  */
 
@@ -41,10 +41,10 @@
 # include "position.hh"
 
 /* Line 166 of location.cc  */
-#line 24 "../s/parser/bif.y"
+#line 24 "parser/bif.y"
 namespace BIF {
 /* Line 166 of location.cc  */
-#line 48 "../bisonflex/location.hh"
+#line 48 "bisonflex/location.hh"
 
   /// Abstract a location.
   class location
@@ -175,9 +175,9 @@ namespace BIF {
   }
 
 /* Line 296 of location.cc  */
-#line 24 "../s/parser/bif.y"
+#line 24 "parser/bif.y"
 } // BIF
 /* Line 296 of location.cc  */
-#line 182 "../bisonflex/location.hh"
+#line 182 "bisonflex/location.hh"
 
 #endif /* !YY_YY_BISONFLEX_LOCATION_HH_INCLUDED  */

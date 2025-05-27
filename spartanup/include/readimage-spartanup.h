@@ -34,8 +34,6 @@
 #include "imageheadertable-spartanup.h"
 #include "partitionheadertable-spartanup.h"
 #include "authentication-spartanup.h"
-#include "generatepdi.h"
-
 
 /* Forward Class References */
 class BootGenOptions;
@@ -64,9 +62,7 @@ public:
         iHs.clear();
         pHTs.clear();
         partitionBuffers.clear();
-        pdiReadPartitions.clear();
         aCs.clear();
-        pdiReadImages.clear();
         authenticationVerified = true;
         versalNetSeries = false;
     }
@@ -101,8 +97,6 @@ public:
 	uint32_t ChunkSizeforParitition(std::string partition_name, bool isBootloader);
 	uint32_t GetHashType(uint32_t authheader);
     void DisplayImageInfo();
-    std::list<PdiPartition*> GetPdiPartitions(void);
-    std::list<PdiImage*> GetPdiImages(void);
     uint32_t GetPdiId(void);
     uint32_t GetParentId(void);
     uint8_t GetCreatorId(void);
@@ -121,8 +115,6 @@ protected:
     std::list<std::pair<uint8_t*, uint32_t>> Hashblock_record; 
     std::list<uint32_t> authtype;  
     std::list<uint8_t*> partitionBuffers;
-    std::list<PdiPartition*> pdiReadPartitions;
-    std::list<PdiImage*> pdiReadImages;
     bool authenticationVerified;
 };
 

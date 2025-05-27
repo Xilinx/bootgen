@@ -226,22 +226,6 @@ void SpartanupImageHeaderTable::Build(BootImage& bi, Binary& cache)
             imageHeaderList.push_back(*image);
         }
     }
-#if 0
-    ImageHeader* newImage = bi.PostProcessEnd();
-    if (newImage != NULL)
-    {
-        /* Build the newly added image */
-        newImage->Build(bi, cache);
-
-        /* Push this new Image to image header list maintained */
-        imageHeaderList.push_back(newImage);
-        bi.imageList.push_back(newImage);
-        if (bi.createSubSystemPdis == true)
-        {
-            bi.subSysImageList.back()->imgList.push_back(newImage);
-        }
-    }
-#endif
     bi.options.SetPadHeaderTable(false);
     if (bi.options.DoPadHeaderTable())
     {
@@ -1261,7 +1245,7 @@ void SpartanupImageHeader::ImportBin(BootImage& bi)
                 WriteLittleEndian32(tempBuffer + index + 4 * (3 - i), value[i]);
             }
         }
-        //if (PostProcessCfi(tempBuffer, data.len)) return;
+        
         exec_addr = 0;
     }
     else
@@ -1449,7 +1433,7 @@ void SpartanupImageHeader::ImportBit(BootImage& bi)
         LOG_ERROR("[startup=...] attribute not supported for BIT partition - %s", this->Name.c_str());
     }
 
-    //if (PostProcessCfi(os->Start(), os->Size())) return;
+    
 
     PartitionHeader* hdr = new SpartanupPartitionHeader(this, 0);
     hdr->firstValidIndex = true;
@@ -1472,17 +1456,7 @@ void SpartanupImageHeader::ParseFileToImport(BootImage& bi)
 {
     if (destCpu == DestinationCPU::AIE)
     {
-        static bool warning_given = false;
-        char * bootgen_aie_base_addr = getenv("BOOTGEN_AIE_BASE_ADDR");
-        if (bootgen_aie_base_addr != NULL)
-        {
-            aie_array_base_address = strtoull(bootgen_aie_base_addr, NULL, 16);
-            if (!warning_given)
-            {
-                LOG_WARNING("BOOTGEN_AIE_BASE_ADDR is set to 0x%llx", aie_array_base_address);
-                warning_given = true;
-            }
-        }
+        
         if (bi.convertAieElfToCdo == true)
         {
             CreateAieEnginePartition(bi);
@@ -2047,21 +2021,7 @@ void SpartanupImageHeader::ParseSlaveSlrConfigCdos(BootImage& bi, std::vector<st
             search_for_sync_points();
             cdo_data = cdoseq_to_binary(cdo_seq, &cdo_length, 0);
             CheckIdsInCdo(cdo_seq, cdo_filename);
-            //cdocmd_delete_sequence(cdo_seq);
-
-            /*if (bi.IsPostProcessingEnabled())
-            {
-            if (cdocmd_post_process_cdo(cdo_data, cdo_length, &cdo_data_pp, &cdo_data_pp_length))
-            {
-            LOG_ERROR("PMC CDO post process error");
-            }
-            }
-            if (cdo_data_pp != NULL)
-            {
-                //delete cdo_data;
-                cdo_data = (uint8_t*)cdo_data_pp;
-                cdo_length = cdo_data_pp_length;
-            }*/
+            
             if (cdo_length != 0)
             {
                 actual_cdo_size = cdo_length - sizeof(VersalCdoHeader);
@@ -2262,13 +2222,12 @@ void SpartanupImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> fil
             }
             //cdocmd_delete_sequence(cdo_seq);
 
-            if (bi.IsPostProcessingEnabled())
-            {
+            
                 if (cdocmd_post_process_cdo(cdo_data, cdo_length, &cdo_data_pp, &cdo_data_pp_length))
                 {
                     LOG_ERROR("PMC CDO post process error");
                 }
-            }
+            
             if (cdo_data_pp != NULL)
             {
                 //delete cdo_data;
@@ -2378,27 +2337,19 @@ std::list<std::string> SpartanupImageHeader::GetAieFilesPath(std::string filenam
     std::list <std::string> core_list;
     std::string json_file;
     std::string file_path;
-    std::string aie_dir_names[2] = { "me",  "aie" };
-    for (uint8_t index = 0; index <= 1; index++)
-    {
-        file_path = filename + "//" + aie_dir_names[index] + "//";
-        json_file = file_path + "active_cores.json";
-        std::ifstream aie_json(json_file);
+    file_path = filename + "//" + "aie" + "//";
+    json_file = file_path + "active_cores.json";
+    std::ifstream aie_json(json_file);
 
-        if (aie_json.good())
-        {
-            break;
-        }
-        if (index == 1)
-        {
-            LOG_ERROR("AIE Work \"%s\" directory doesn't have AIE or ME folder", filename.c_str());
-        }
+    if (!aie_json.good())
+    {
+        LOG_ERROR("AIE Work \"%s\" directory doesn't have AIE folder", filename.c_str());
     }
 
     core_list = ParseAieJson(json_file.c_str());
     for (std::list<std::string>::iterator aie_file = core_list.begin(); aie_file != core_list.end(); aie_file++)
     {
-        std::string aie_elf = file_path + (*aie_file) + "/Release/" + (*aie_file);
+        std::string aie_elf = file_path + (*aie_file) + "//" + "/Release/" + "//" + (*aie_file);
         aie_elf_list.push_back(aie_elf);
     }
     return aie_elf_list;

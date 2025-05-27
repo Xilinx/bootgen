@@ -180,7 +180,6 @@ void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
         SetOptionalData(bi.iht_optional_data, bi.iht_optional_data_length);
     }
 
-    bi.PostProcessStart();
 
     /* Sub system Image Header creation */
     if (bi.createSubSystemPdis == true)
@@ -227,20 +226,6 @@ void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
         }
     }
 
-    ImageHeader* newImage = bi.PostProcessEnd();
-    if (newImage != NULL)
-    {
-        /* Build the newly added image */
-        newImage->Build(bi, cache);
-
-        /* Push this new Image to image header list maintained */
-        imageHeaderList.push_back(newImage);
-        bi.imageList.push_back(newImage);
-        if (bi.createSubSystemPdis == true)
-        {
-            bi.subSysImageList.back()->imgList.push_back(newImage);
-        }
-    }
 
     bi.options.SetPadHeaderTable(false);
     if (bi.options.DoPadHeaderTable())
@@ -1313,7 +1298,7 @@ void VersalImageHeader::ImportBin(BootImage& bi)
                 WriteLittleEndian32(tempBuffer + index + 4 * (3 - i), value[i]);
             }
         }
-        if (PostProcessCfi(tempBuffer, data.len)) return;
+        
         exec_addr = 0;
     }
     else
@@ -1501,7 +1486,7 @@ void VersalImageHeader::ImportBit(BootImage& bi)
         LOG_ERROR("[startup=...] attribute not supported for BIT partition - %s", this->Name.c_str());
     }
 
-    if (PostProcessCfi(os->Start(), os->Size())) return;
+    
 
     PartitionHeader* hdr = new VersalPartitionHeader(this, 0);
     hdr->firstValidIndex = true;
@@ -1524,17 +1509,7 @@ void VersalImageHeader::ParseFileToImport(BootImage& bi)
 {
     if (destCpu == DestinationCPU::AIE)
     {
-        static bool warning_given = false;
-        char * bootgen_aie_base_addr = getenv("BOOTGEN_AIE_BASE_ADDR");
-        if (bootgen_aie_base_addr != NULL)
-        {
-            aie_array_base_address = strtoull(bootgen_aie_base_addr, NULL, 16);
-            if (!warning_given)
-            {
-                LOG_WARNING("BOOTGEN_AIE_BASE_ADDR is set to 0x%llx", aie_array_base_address);
-                warning_given = true;
-            }
-        }
+        
         if (bi.convertAieElfToCdo == true)
         {
             CreateAieEnginePartition(bi);
@@ -2097,21 +2072,7 @@ void VersalImageHeader::ParseSlaveSlrConfigCdos(BootImage& bi, std::vector<std::
             search_for_sync_points();
             cdo_data = cdoseq_to_binary(cdo_seq, &cdo_length, 0);
             CheckIdsInCdo(cdo_seq, bi.options.IsVersalNetSeries(), cdo_filename);
-            //cdocmd_delete_sequence(cdo_seq);
-
-            /*if (bi.IsPostProcessingEnabled())
-            {
-            if (cdocmd_post_process_cdo(cdo_data, cdo_length, &cdo_data_pp, &cdo_data_pp_length))
-            {
-            LOG_ERROR("PMC CDO post process error");
-            }
-            }
-            if (cdo_data_pp != NULL)
-            {
-                //delete cdo_data;
-                cdo_data = (uint8_t*)cdo_data_pp;
-                cdo_length = cdo_data_pp_length;
-            }*/
+            
             if (cdo_length != 0)
             {
                 actual_cdo_size = cdo_length - sizeof(VersalCdoHeader);
@@ -2315,13 +2276,12 @@ void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> fileli
                 }
             }
             //cdocmd_delete_sequence(cdo_seq);
-            if (bi.IsPostProcessingEnabled())
+            
+            if (cdocmd_post_process_cdo(cdo_data, cdo_length, &cdo_data_pp, &cdo_data_pp_length))
             {
-                if (cdocmd_post_process_cdo(cdo_data, cdo_length, &cdo_data_pp, &cdo_data_pp_length))
-                {
-                    LOG_ERROR("PMC CDO post process error");
-                }
+                LOG_ERROR("PMC CDO post process error");
             }
+            
             source_cdo_idcode = idcode_from_source(idcode_source);
             binary_cdo_idcode = idcode_from_binary(idcode_binary);
             if (source_cdo_idcode != 0)
@@ -2447,21 +2407,13 @@ std::list<std::string> VersalImageHeader::GetAieFilesPath(std::string filename)
     std::list <std::string> core_list;
     std::string json_file;
     std::string file_path;
-    std::string aie_dir_names[2] = { "me",  "aie" };
-    for (uint8_t index = 0; index <= 1; index++)
-    {
-        file_path = filename + "//" + aie_dir_names[index] + "//";
-        json_file = file_path + "active_cores.json";
-        std::ifstream aie_json(json_file);
+    file_path = filename + "//" + "aie" + "//";
+    json_file = file_path + "active_cores.json";
+    std::ifstream aie_json(json_file);
 
-        if (aie_json.good())
-        {
-            break;
-        }
-        if (index == 1)
-        {
-            LOG_ERROR("AIE Work \"%s\" directory doesn't have AIE or ME folder", filename.c_str());
-        }
+    if (!aie_json.good())
+    {
+        LOG_ERROR("AIE Work \"%s\" directory doesn't have AIE folder", filename.c_str());
     }
 
     core_list = ParseAieJson(json_file.c_str());
@@ -3149,7 +3101,7 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                 }
 
                 uint32_t p1_size = ih_offset, p2_size = file_size - p1_size;
-                //if (getenv("BOOTGEN_SPLIT_SSIT_SLAVE_BOOT_PDI") != NULL)
+                
                 {
                     pad_size = p1_size + ((4 - (p1_size & 3)) & 3);
                 }
@@ -3215,7 +3167,7 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                 memcpy(p_buffer + p_offset, cdoCmd, CDO_CMD_WRITE_KEYHOLE_SIZE);
                 p_offset += CDO_CMD_WRITE_KEYHOLE_SIZE;
 
-                //if (getenv("BOOTGEN_SPLIT_SSIT_SLAVE_BOOT_PDI") != NULL)
+                
                 {
                     memcpy(p_buffer + p_offset, slr_boot_data.bytes + bh_offset, p1_size);
                     p_offset += p1_size;
@@ -3261,16 +3213,6 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                     }
                     delete cdoCmd2;
                 }
-                /*else
-                {
-                    memcpy(p_buffer + p_offset, slr_boot_data.bytes + bh_offset, file_size);
-                    p_offset += file_size;
-                    if ((pad_size - file_size) != 0)
-                    {
-                        memset(p_buffer + p_offset, 0, pad_size - file_size);
-                        p_offset += pad_size - file_size;
-                    }
-                }*/
                 delete cdoCmd;
 
                 /* Add SSIT Wait Slave command */
@@ -3876,106 +3818,100 @@ void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size
 
         if (((partitionhdr_offsets[4] >> vphtPartitionTypeShift) & vphtPartitionTypeMask) == PartitionType::CONFIG_DATA_OBJ)
         {
-            //if (index == (iHT->partitionTotalCount - 1))
+            std::string sync_addresses_filename = StringUtils::RemoveExtension(slr_info->file) + 
+                    "_" + std::to_string(partitionhdr_offsets[5]) + "_sync_offsets.txt";
+            std::ifstream offsetFile(sync_addresses_filename.c_str());
+            std::vector<uint32_t> syncpt_offsets;
+            if (!offsetFile)
             {
-                //LOG_TRACE("Reading SLR Config CDO Sync Addresses - %s", slr_info->file.c_str());
+                offsetFile.close();
+            }
+            else
+            {
+                LOG_TRACE("Reading SLR Config CDO Sync Addresses from - %s", sync_addresses_filename.c_str());
+            }
 
-                std::string sync_addresses_filename = StringUtils::RemoveExtension(slr_info->file) + 
-                     "_" + std::to_string(partitionhdr_offsets[5]) + "_sync_offsets.txt";
-                std::ifstream offsetFile(sync_addresses_filename.c_str());
-                std::vector<uint32_t> syncpt_offsets;
-                if (!offsetFile)
+            while (offsetFile)
+            {
+                std::string word;
+                offsetFile >> word;
+                // If file vacant
+                if (word == "")
                 {
-                    //LOG_TRACE("SLR Config CDO Sync Addresses not found for - %s", slr_info->file.c_str());
-                    offsetFile.close();
+                    return;
                 }
-                else
+                if (word == "sync_offsets")
                 {
-                    LOG_TRACE("Reading SLR Config CDO Sync Addresses from - %s", sync_addresses_filename.c_str());
-                }
-
-                while (offsetFile)
-                {
-                    std::string word;
-                    offsetFile >> word;
-                    // If file vacant
-                    if (word == "")
+                    while (offsetFile)
                     {
-                        return;
+                        offsetFile >> word;
+                        uint32_t offset = std::stoi(word);
+                        syncpt_offsets.push_back(offset);
                     }
-                    if (word == "sync_offsets")
+                }
+            }
+            if(syncpt_offsets.size() != 0)
+                syncpt_offsets.pop_back();
+
+            num_of_sync_points = syncpt_offsets.size();
+            
+            //remove(sync_addresses_filename.c_str());
+            
+            int num_secure_chunks = 0;
+            uint64_t data_chunk = SECURE_32K_CHUNK;
+            size_t offset_shift = 0;
+            
+            uint32_t partition_length = partitionhdr_offsets[6] * 4;
+            uint32_t padLength = (partition_length % 16 != 0) ? 16 - (partition_length % 16) : 0;
+            partition_length += padLength;
+
+            if (partitionhdr_offsets[2] != 0 || partitionhdr_offsets[0] != 0)
+            {
+                data_chunk -= SHA3_LENGTH_BYTES;
+                offset_shift += SHA3_LENGTH_BYTES;
+            }
+            if (partitionhdr_offsets[3] != KeySource::None)
+            {
+                data_chunk -= (SECURE_HDR_SZ + AES_GCM_TAG_SZ);
+                offset_shift += SECURE_HDR_SZ + AES_GCM_TAG_SZ;
+            }
+            
+            if (partition_length <= data_chunk)
+            {
+                // no chunking
+            }
+            else
+            {
+                num_secure_chunks = partition_length / data_chunk;
+                if (partition_length % data_chunk != 0)
+                {
+                    num_secure_chunks++;
+                }
+            }
+            
+            if (num_of_sync_points > 0)
+            {
+                if (info_display)
+                {
+                    LOG_TRACE("SSIT_SYNC_MASTER command detected at following offsets:\n           Count : 0x%X", num_of_sync_points);
+                    LOG_TRACE("   slr_%d:", slr_info->index);
+                    info_display = false;
+                }
+
+                for (int i = 0; i < num_of_sync_points; i++)
+                {
+                    size_t offset = syncpt_offsets[i];
+                    for (int i = 1; i < num_secure_chunks; i++)
                     {
-                        while (offsetFile)
+                        if (offset > (data_chunk * i))
                         {
-                            offsetFile >> word;
-                            uint32_t offset = std::stoi(word);
-                            syncpt_offsets.push_back(offset);
+                            offset += offset_shift;
                         }
                     }
-                }
-                if(syncpt_offsets.size() != 0)
-                    syncpt_offsets.pop_back();
-
-                num_of_sync_points = syncpt_offsets.size();
-				
-				//remove(sync_addresses_filename.c_str());
-                
-                int num_secure_chunks = 0;
-                uint64_t data_chunk = SECURE_32K_CHUNK;
-                size_t offset_shift = 0;
-                
-                uint32_t partition_length = partitionhdr_offsets[6] * 4;
-                uint32_t padLength = (partition_length % 16 != 0) ? 16 - (partition_length % 16) : 0;
-                partition_length += padLength;
-
-                if (partitionhdr_offsets[2] != 0 || partitionhdr_offsets[0] != 0)
-                {
-                    data_chunk -= SHA3_LENGTH_BYTES;
-                    offset_shift += SHA3_LENGTH_BYTES;
-                }
-                if (partitionhdr_offsets[3] != KeySource::None)
-                {
-                    data_chunk -= (SECURE_HDR_SZ + AES_GCM_TAG_SZ);
-                    offset_shift += SECURE_HDR_SZ + AES_GCM_TAG_SZ;
-                }
-                
-                if (partition_length <= data_chunk)
-                {
-                    // no chunking
-				}
-                else
-                {
-                    num_secure_chunks = partition_length / data_chunk;
-                    if (partition_length % data_chunk != 0)
-                    {
-                        num_secure_chunks++;
-                    }
-                }
-                
-                if (num_of_sync_points > 0)
-                {
-                    if (info_display)
-                    {
-                        LOG_TRACE("SSIT_SYNC_MASTER command detected at following offsets:\n           Count : 0x%X", num_of_sync_points);
-                        LOG_TRACE("   slr_%d:", slr_info->index);
-                        info_display = false;
-                    }
-
-					for (int i = 0; i < num_of_sync_points; i++)
-                    {
-                        size_t offset = syncpt_offsets[i];
-                        for (int i = 1; i < num_secure_chunks; i++)
-                        {
-                            if (offset > (data_chunk * i))
-                            {
-                                offset += offset_shift;
-                            }
-                        }
-                        
-                        offset += (partitionhdr_offsets[7] * 4);
-                        slr_info->sync_addresses.push_back(offset);
-                        LOG_TRACE("       offset = 0x%x", offset);
-                    }
+                    
+                    offset += (partitionhdr_offsets[7] * 4);
+                    slr_info->sync_addresses.push_back(offset);
+                    LOG_TRACE("       offset = 0x%x", offset);
                 }
             }
         }

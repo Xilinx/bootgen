@@ -439,15 +439,6 @@ void ZynqMpBootImage::ValidateSecureAttributes(ImageHeader * image,BifOptions * 
 /******************************************************************************/
 void ZynqMpBootImage::ParsePartitionDataToImage(BifOptions* bifoptions, PartitionBifOptions* partitionBifOptions)
 {
-    if (options.GetInterfaceType() != Interface::NONE)
-    {
-        std::string comparison = partitionBifOptions->filename;
-        StringUtils::ToLower(comparison);
-        if (StringUtils::EndsWith(comparison, ".bit") || StringUtils::EndsWith(comparison, ".rbt"))
-        {
-            bitFilename = (partitionBifOptions->filename);
-        }
-    }
     ImageHeader *image = new ZynqMpImageHeader(partitionBifOptions->filename);
     image->SetBootloader(partitionBifOptions->bootloader);
     image->SetAlignment(partitionBifOptions->alignment);

@@ -31,7 +31,7 @@
    version 2.2 of Bison.  */
 
 /**
- ** \file ../bisonflex/stack.hh
+ ** \file bisonflex/stack.hh
  ** Define the BIF::stack class.
  */
 
@@ -41,10 +41,10 @@
 # include <deque>
 
 /* Line 34 of stack.hh  */
-#line 24 "../s/parser/bif.y"
+#line 24 "parser/bif.y"
 namespace BIF {
 /* Line 34 of stack.hh  */
-#line 48 "../bisonflex/stack.hh"
+#line 48 "bisonflex/stack.hh"
   template <class T, class S = std::deque<T> >
   class stack
   {
@@ -127,9 +127,9 @@ namespace BIF {
     unsigned int range_;
   };
 /* Line 116 of stack.hh  */
-#line 24 "../s/parser/bif.y"
+#line 24 "parser/bif.y"
 } // BIF
 /* Line 116 of stack.hh  */
-#line 134 "../bisonflex/stack.hh"
+#line 134 "bisonflex/stack.hh"
 
 #endif /* !YY_YY_BISONFLEX_STACK_HH_INCLUDED  */

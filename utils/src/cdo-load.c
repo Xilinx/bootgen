@@ -28,18 +28,6 @@
 
 #define MAX_LINE_LENGTH 100
 static char slr_id_binary;
-/*
-static int is_ascii_data(void * data, size_t size) {
-    size_t i;
-    for (i = 0; i < size; i++) {
-        int c = ((unsigned char *)data)[i];
-        if (c < 32 || c > 127) {
-            if (c != '\n' && c != '\r' && c != '\t') return 0;
-        }
-    }
-    return 1;
-}
-*/
 char slr_id_from_binary(char ch)
 {
     if (slr_id_binary != 0)

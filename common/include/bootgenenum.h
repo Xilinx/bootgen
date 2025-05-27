@@ -48,19 +48,6 @@ typedef struct
     SlrPdiType type;
 } SlrPdiInfo;
 
-struct Interface
-{
-    typedef enum
-    {
-        NONE,
-        SMAPx8,
-        SMAPx16,
-        SMAPx32,
-        SPI,
-        BPIx8,
-        BPIx16,
-    } Type;
-};
 
 /* Encryption Key Source */
 struct KeySource 

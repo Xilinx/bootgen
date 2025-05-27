@@ -31,7 +31,7 @@
    version 2.2 of Bison.  */
 
 /**
- ** \file ../bisonflex/bif.tab.hpp
+ ** \file bisonflex/bif.tab.hpp
  ** Define the BIF::parser class.
  */
 
@@ -42,7 +42,7 @@
 
 /* "%code requires" blocks.  */
 /* Line 33 of lalr1.cc  */
-#line 37 "../s/parser/bif.y"
+#line 37 "parser/bif.y"
 
        namespace BIF {
         class BisonScanner;
@@ -54,7 +54,7 @@
 
 
 /* Line 33 of lalr1.cc  */
-#line 58 "../bisonflex/bif.tab.hpp"
+#line 58 "bisonflex/bif.tab.hpp"
 
 
 #include <string>
@@ -68,10 +68,10 @@
 #endif
 
 /* Line 33 of lalr1.cc  */
-#line 24 "../s/parser/bif.y"
+#line 24 "parser/bif.y"
 namespace BIF {
 /* Line 33 of lalr1.cc  */
-#line 75 "../bisonflex/bif.tab.hpp"
+#line 75 "bisonflex/bif.tab.hpp"
 
   /// A Bison parser.
   class BisonParser
@@ -82,7 +82,7 @@ namespace BIF {
     union semantic_type
     {
 /* Line 33 of lalr1.cc  */
-#line 76 "../s/parser/bif.y"
+#line 76 "parser/bif.y"
 
     uint32_t token;
     uint64_t number;
@@ -114,7 +114,7 @@ namespace BIF {
 
 
 /* Line 33 of lalr1.cc  */
-#line 118 "../bisonflex/bif.tab.hpp"
+#line 118 "bisonflex/bif.tab.hpp"
     };
 #else
     typedef YYSTYPE semantic_type;
@@ -471,10 +471,10 @@ namespace BIF {
     Options& options;
   };
 /* Line 33 of lalr1.cc  */
-#line 24 "../s/parser/bif.y"
+#line 24 "parser/bif.y"
 } // BIF
 /* Line 33 of lalr1.cc  */
-#line 478 "../bisonflex/bif.tab.hpp"
+#line 478 "bisonflex/bif.tab.hpp"
 
 
 

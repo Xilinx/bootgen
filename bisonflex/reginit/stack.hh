@@ -41,7 +41,7 @@
 # include <deque>
 
 /* Line 34 of stack.hh  */
-#line 24 "../../s/reginit.y"
+#line 24 "../../parser/reginit.y"
 namespace RE {
 /* Line 34 of stack.hh  */
 #line 48 "stack.hh"
@@ -127,7 +127,7 @@ namespace RE {
     unsigned int range_;
   };
 /* Line 116 of stack.hh  */
-#line 24 "../../s/reginit.y"
+#line 24 "../../parser/reginit.y"
 } // RE
 /* Line 116 of stack.hh  */
 #line 134 "stack.hh"

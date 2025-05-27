@@ -92,7 +92,6 @@ public:
 /******************************************************************************/
 class NoneChecksumContext : public ChecksumContext 
 {
-/* Revisit - MP - Is this class required? */
 public:
     virtual Checksum::Type Type() 
     {

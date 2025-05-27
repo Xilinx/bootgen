@@ -26,7 +26,6 @@
 #include "checksum-versal_2ve_2vm.h"
 #include "authentication-versal_2ve_2vm.h"
 #include "authentication.h"
-#include "bifjson.h"
 extern "C" {
 #include "cdo-command.h"
 #include "cdo-overlay.h"
@@ -34,7 +33,7 @@ extern "C" {
 #include "cdo-load.h"
 };
 
-extern void CreateVersalBifJson(Options& options);
+
 /*
 -------------------------------------------------------------------------------
 *****************************************************   F U N C T I O N S   ***
@@ -43,17 +42,12 @@ extern void CreateVersalBifJson(Options& options);
 /******************************************************************************/
 Versal_2ve_2vmBootImage::Versal_2ve_2vmBootImage(Options& options, uint8_t index) : BootImage(options, index)
 {
-    if (options.GetJsonBifOption())
-    {
-        CreateVersalBifJson(options);
-        exit(0);
-    }
     partitionHeaderList.clear();
     options.SetDefaultAlignment(16);
     bootHeader = new Versal_2ve_2vmBootHeader(arch);
     imageHeaderTable = new Versal_2ve_2vmImageHeaderTable();
     partitionHeaderTable = new Versal_2ve_2vmPartitionHeaderTable();
-    currentEncryptCtx = new VersalEncryptionContext();
+    currentEncryptCtx = new Versal_2ve_2vmEncryptionContext();
     currentAuthCtx = new Versal_2ve_2vmAuthenticationContext(Authentication::RSA);
     SetLegacyEncryptionFlag(true);
     partitionOutput = new VersalPartitionOutput();
@@ -64,27 +58,8 @@ Versal_2ve_2vmBootImage::Versal_2ve_2vmBootImage(Options& options, uint8_t index
     currentAuthCtx->hash = hash;
     partitionHeaderTable->firstSection = NULL;
     convertAieElfToCdo = true;
-    postProcessMode = options.GetPostProcessMode();
     current_image_block = 0;
-    createSubSystemPdis = options.IsSubsystemFlow();
-    if (createSubSystemPdis)
-    {
-        LOG_INFO("Subsystem flow is enabled");
-    }
-    char * env_ss = getenv("BOOTGEN_SUBSYSTEM_PDI");
-    if (env_ss != NULL)
-    {
-        LOG_WARNING("Ignoring BOOTGEN_SUBSYSTEM_PDI env variable. Subsystem flow is enabled by default.");
-    }
-    char * env_aie = getenv("BOOTGEN_AIE_ELF_FLOW");
-    if (env_aie != NULL)
-    {
-        if ((strcmp(env_aie, "true") == 0 || strcmp(env_aie, "1") == 0))
-        {
-            convertAieElfToCdo = false;
-            LOG_INFO("BOOTGEN_AIE_ELF_FLOW is enabled");
-        }
-    }
+    createSubSystemPdis = true;
 }
 
 /******************************************************************************/
@@ -413,7 +388,7 @@ void Versal_2ve_2vmBootImage::ParseBootImage(PartitionBifOptions* it)
         // Read hash block 0
         if (importedBh->GetHashBlockLength() != 0)
         {
-            src.seekg(sizeof(VersalBootHeaderStructure));
+            src.seekg(sizeof(Versal_2ve_2vmBootHeaderStructure));
             hashBlockLength = importedBh->GetHashBlockLength();
             hashBlock = (uint32_t*)malloc(hashBlockLength);
             src.read((char*)hashBlock, hashBlockLength);
