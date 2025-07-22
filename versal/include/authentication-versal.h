@@ -114,9 +114,9 @@ typedef struct
     uint32_t            acHeader;                  // 0x000
     uint32_t            spkId;                     // 0x004
     uint8_t             acUdf[UDF_DATA_SIZE];      // 0x008
-    ACKeyECDSA          acPpk;                     // 0x040
+    ACKeyECDSAp          acPpk;                     // 0x040
     uint8_t             ppkSHA3Padding[12];        // 0x444
-    ACKeyECDSA          acSpk;                     // 0x450
+    ACKeyECDSAp          acSpk;                     // 0x450
     uint8_t             spkSHA3Padding[4];         // 0x854
     uint8_t             allignment[8];             // 0x858
     ACSignatureECDSA    acSpkSignature;            // 0x860
@@ -178,7 +178,7 @@ public:
 
     int KeySize()
     {
-        return sizeof(ACKeyECDSA);
+        return sizeof(ACKeyECDSAp);
     }
 
     void CreateSignature(const uint8_t *base, uint8_t* primaryKey, uint8_t *result0);

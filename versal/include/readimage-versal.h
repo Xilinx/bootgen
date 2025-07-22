@@ -91,7 +91,7 @@ public:
     void VerifySPKSignature(uint8_t* aC);
     void VerifyPartitionSignature(void);
     bool VerifySignature(bool nist, uint8_t * data, size_t dataLength, ACKey4096Sha3Padding * acKey, uint8_t* signature);
-    bool VerifyECDSASignature(bool nist, uint8_t * data, size_t dataLength,  ACKeyECDSA *eckey, uint8_t* signature);
+    bool VerifyECDSASignature(bool nist, uint8_t * data, size_t dataLength,  ACKeyECDSAp *eckey, uint8_t* signature);
     bool VerifyECDSAP521Signature(bool nist, uint8_t * data, size_t dataLength, ACKeyECDSAP521 *eckey, uint8_t* signature);
     void Separator(void);
     void DumpPartitions(uint8_t* buffer, uint32_t length, std::string name, uint32_t id = 0, uint32_t index = 0);

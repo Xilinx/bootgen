@@ -47,6 +47,12 @@
 #define RSA_4096_E          0x400
 
 #define VERSAL_ACKEY_STRUCT_SIZE    1028
+typedef struct
+{
+    uint8_t     x[EC_P384_KEY_LENGTH];          // x co-ordinate
+    uint8_t     y[EC_P384_KEY_LENGTH];          // y co-ordinate
+    uint8_t     pad[932];                       // Padding
+} ACKeyECDSAp;
 /*
 -------------------------------------------------------------------------------
 ************************************************************** STRUCTURES *****
@@ -60,12 +66,7 @@ typedef struct
     uint8_t     E[4];                                 // Exponent
 } ACKey4096Sha3Padding;
 
-typedef struct
-{
-    uint8_t     x[EC_P384_KEY_LENGTH];          // x co-ordinate
-    uint8_t     y[EC_P384_KEY_LENGTH];          // y co-ordinate
-    uint8_t     pad[932];                       // Padding
-} ACKeyECDSA;
+
 
 typedef struct
 {

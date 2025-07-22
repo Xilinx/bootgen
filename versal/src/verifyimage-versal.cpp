@@ -57,7 +57,7 @@ void VersalReadImage::VerifyAuthentication(bool verifyImageOption)
 }
 
 /******************************************************************************************************************************/
-bool VersalReadImage::VerifyECDSASignature(bool nist, uint8_t * data, size_t dataLength, ACKeyECDSA *eckey, uint8_t* signature)
+bool VersalReadImage::VerifyECDSASignature(bool nist, uint8_t * data, size_t dataLength, ACKeyECDSAp *eckey, uint8_t* signature)
 {
     uint8_t shaHash[SHA3_LENGTH_BYTES] = { 0 };
     Versalcrypto_hash(shaHash, data, dataLength, nist);
@@ -302,7 +302,7 @@ void VersalReadImage::VerifyHeaderTableSignature()
 
     if ((*(*auth_cert) & 0xF3) == 0x02)
     {
-        signatureVerified = VerifyECDSASignature(true,tempIHBuffer,iHTLength,  (ACKeyECDSA *)(*auth_cert +  AC_SPK_KEY_OFFSET), *auth_cert + AC_BH_SIGN_OFFSET);
+        signatureVerified = VerifyECDSASignature(true,tempIHBuffer,iHTLength,  (ACKeyECDSAp *)(*auth_cert +  AC_SPK_KEY_OFFSET), *auth_cert + AC_BH_SIGN_OFFSET);
     }
     else if((*(*auth_cert) & 0xF3) == 0x22)
     {
@@ -377,7 +377,7 @@ void VersalReadImage::VerifyHeaderTableSignature()
 
     if ((*(*auth_cert) & 0xF3) == 0x02)
     {
-        signatureVerified = VerifyECDSASignature(true, tempBuffer, headersSize, (ACKeyECDSA *)(*auth_cert +  AC_SPK_KEY_OFFSET), *auth_cert +  AC_PARTITION_SIGN_OFFSET);
+        signatureVerified = VerifyECDSASignature(true, tempBuffer, headersSize, (ACKeyECDSAp *)(*auth_cert +  AC_SPK_KEY_OFFSET), *auth_cert +  AC_PARTITION_SIGN_OFFSET);
     }
     else if((*(*auth_cert) & 0xF3) == 0x22)
     {
@@ -423,7 +423,7 @@ void VersalReadImage::VerifySPKSignature(uint8_t* aC)
 
     if ((temp & 0xF3) == 0x02)
     {
-        signatureVerified = VerifyECDSASignature(false,tempBuffer,size,  (ACKeyECDSA *)(aC +  AC_PPK_KEY_OFFSET),  aC +  AC_SPK_SIGN_OFFSET);
+        signatureVerified = VerifyECDSASignature(false,tempBuffer,size,  (ACKeyECDSAp *)(aC +  AC_PPK_KEY_OFFSET),  aC +  AC_SPK_SIGN_OFFSET);
     }
     else if ((temp & 0xF3) == 0x22)
     {
@@ -498,7 +498,7 @@ void VersalReadImage::VerifyPartitionSignature(void)
 
                     if ((*(*auth_cert) & 0xF3) == 0x02)
                     {
-                        signatureVerified = VerifyECDSASignature(false,tempBHBuffer,bHLength,  (ACKeyECDSA *)(*auth_cert +  AC_SPK_KEY_OFFSET),  *auth_cert + AC_BH_SIGN_OFFSET);
+                        signatureVerified = VerifyECDSASignature(false,tempBHBuffer,bHLength,  (ACKeyECDSAp *)(*auth_cert +  AC_SPK_KEY_OFFSET),  *auth_cert + AC_BH_SIGN_OFFSET);
                     }
                     else if ((*(*auth_cert) & 0xF3) == 0x22)
                     {
@@ -572,7 +572,7 @@ void VersalReadImage::VerifyPartitionSignature(void)
                     }
                     if ((*(*auth_cert) & 0xF3) == 0x02)
                     {
-                        signatureVerified = VerifyECDSASignature(nist, tempBuffer, dataBufferLength, (ACKeyECDSA *)(*auth_cert + AC_SPK_KEY_OFFSET), *auth_cert + AC_PARTITION_SIGN_OFFSET);
+                        signatureVerified = VerifyECDSASignature(nist, tempBuffer, dataBufferLength, (ACKeyECDSAp *)(*auth_cert + AC_SPK_KEY_OFFSET), *auth_cert + AC_PARTITION_SIGN_OFFSET);
                     }
                     else if ((*(*auth_cert) & 0xF3) == 0x22)
                     {
@@ -597,7 +597,7 @@ void VersalReadImage::VerifyPartitionSignature(void)
                     /* Verify Signature */
                     if ((*(*auth_cert) & 0xF3) == 0x02)
                     {
-                        signatureVerified = VerifyECDSASignature(true, tempBuffer, chunk0Size, (ACKeyECDSA *)(*auth_cert + AC_SPK_KEY_OFFSET),*auth_cert + AC_PARTITION_SIGN_OFFSET);
+                        signatureVerified = VerifyECDSASignature(true, tempBuffer, chunk0Size, (ACKeyECDSAp *)(*auth_cert + AC_SPK_KEY_OFFSET),*auth_cert + AC_PARTITION_SIGN_OFFSET);
                     }
                     else if ((*(*auth_cert) & 0xF3) == 0x22)
                     {

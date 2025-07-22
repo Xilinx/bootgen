@@ -136,14 +136,14 @@ void Key4096Sha3Padding_versal::Import(const void* acKey, const std::string& nam
 /******************************************************************************/
 void KeyECDSA_versal::Export(void * acKey)
 {
-    ACKeyECDSA* key = (ACKeyECDSA*)acKey;
+    ACKeyECDSAp* key = (ACKeyECDSAp*)acKey;
     if (!Loaded)
     {
         std::string pubsec = (isSecret) ? " (Secret)" : " (Public)";
         LOG_ERROR("%s - $s is not loaded", name.c_str(), pubsec.c_str());
     }
 
-    memset(key, 0, sizeof(ACKeyECDSA));
+    memset(key, 0, sizeof(ACKeyECDSAp));
     memcpy(key->x, x, keySize);
     memcpy(key->y, y, keySize);
     //memset(key->pad, 0, sizeof(key->pad));
@@ -152,7 +152,7 @@ void KeyECDSA_versal::Export(void * acKey)
 /******************************************************************************/
 void KeyECDSA_versal::Import(const void * acKey, const std::string & name0)
 {
-    ACKeyECDSA* key = (ACKeyECDSA*)acKey;
+    ACKeyECDSAp* key = (ACKeyECDSAp*)acKey;
     Loaded = true;
     isSecret = false;
     name = name0;

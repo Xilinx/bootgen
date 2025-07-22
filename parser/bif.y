@@ -249,8 +249,14 @@ metahdr_attr            :   /* empty */
                         |   SSK_FILE EQUAL filename                             { currentBifOptions->metaHdrAttributes.ssk = $3; }
                         |   SPK_SIGNATURE_FILE EQUAL filename                   { currentBifOptions->metaHdrAttributes.spkSignature = $3; }
                         |   PRESIGN EQUAL filename                              { currentBifOptions->metaHdrAttributes.presign = $3; }
-                        |   REVOKE_ID EQUAL expression                          { currentBifOptions->metaHdrAttributes.partitionRevokeId = $3; }
-                        |   SPK_REVOKE_ID EQUAL expression                      { currentBifOptions->metaHdrAttributes.spkRevokeId = $3; }
+                        |   REVOKE_ID EQUAL expression                          { currentBifOptions->metaHdrAttributes.partitionRevokeId = $3;}
+                        |   SPK_REVOKE_ID EQUAL expression                      { currentBifOptions->metaHdrAttributes.spkRevokeId = $3; 
+                                                                                if(options.GetArchType() == Arch::VERSAL)
+                                                                                {
+                                                                                   LOG_ERROR("SPK_REVOKE_ID does not support for versal arch, instead please use revoke_id option.");
+                                                                                }
+                                                                                }
+  
                         |   CHECKSUM EQUAL checkvalue                           { currentBifOptions->metaHdrAttributes.checksum = $3; }
                         |   DPA_CM                                              { currentBifOptions->metaHdrAttributes.dpaCM = DpaCM::DpaCMEnable; }
                         |   BLOCKS EQUAL metahdr_blk
