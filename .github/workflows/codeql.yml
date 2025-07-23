@@ -77,9 +77,10 @@ jobs:
 
     - run: |
          echo "Build bootgen"
-         echo "${pwd}"
+         echo "pwd"
+         pwd
+         echo "which make"
          which make
-         cd bootgen
          make
 
     - name: Perform CodeQL Analysis
