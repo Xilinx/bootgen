@@ -78,7 +78,7 @@ jobs:
     - run: |
          echo "Build bootgen"
          echo "${pwd}"
-         echo "${which make}"
+         which make
          cd bootgen
          make
 
