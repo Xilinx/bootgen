@@ -81,7 +81,7 @@ jobs:
          pwd
          echo "which make"
          which make
-         make -j8 "LIBS=/proj/xhdhdstaff/pmallad/nobkup/bootgen/openssl/openssl111b/lib/libssl.a /proj/xhdhdstaff/pmallad/nobkup/bootgen/openssl/openssl111b/lib/libcrypto.a -ldl -lpthread" "INCLUDE_USER=-I/proj/xhdhdstaff/pmallad/nobkup/bootgen/openssl/openssl111b/include"
+         make -j8 "LIBS=/proj/rdi/staff/spaupe/nobkup/prodcoverity_gradle/HEAD/src/ext/openssl/openssl-1.1.1t/rdi/lib/gcc9.3.0/lnx64.o/libssl.a /proj/rdi/staff/spaupe/nobkup/prodcoverity_gradle/HEAD/src/ext/openssl/openssl-1.1.1t/rdi/lib/gcc9.3.0/lnx64.o/libcrypto.a -ldl -lpthread" "INCLUDE_USER=-I/proj/rdi/staff/spaupe/nobkup/prodcoverity_gradle/HEAD/src/ext/openssl/openssl-1.1.1t/rdi/include"
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
