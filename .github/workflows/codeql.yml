@@ -81,7 +81,7 @@ jobs:
          pwd
          echo "which make"
          which make
-         make
+         make -j8 "LIBS=/proj/xhdhdstaff/pmallad/nobkup/bootgen/openssl/openssl111b/lib/libssl.a /proj/xhdhdstaff/pmallad/nobkup/bootgen/openssl/openssl111b/lib/libcrypto.a -ldl -lpthread" "INCLUDE_USER=-I/proj/xhdhdstaff/pmallad/nobkup/bootgen/openssl/openssl111b/include"
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
