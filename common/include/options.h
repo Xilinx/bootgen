@@ -140,7 +140,7 @@ public:
         }
         if (secHdrIv)
         {
-            delete secHdrIv;
+            free(secHdrIv);
         }
     }
 

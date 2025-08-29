@@ -80,7 +80,7 @@ void BootHeader::Copy(BootHeader* otherHeader)
         uint32_t newBhSize = otherHeader->section->Length;
         uint8_t* newDataPtr = new uint8_t[newBhSize];
                 
-        delete[] section->Data;
+        //delete[] section->Data; // causing a delete mismatch 
         section->Data = newDataPtr;
         section->Length = newBhSize;
     }

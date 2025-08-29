@@ -107,7 +107,7 @@ bool VersalReadImage::VerifyECDSASignature(bool nist, uint8_t * data, size_t dat
 }
 
 /******************************************************************************************************/
-bool VersalReadImage::VerifyECDSAP521Signature(bool nist, uint8_t * data, size_t dataLength, ACKeyECDSAP521 *eckey, uint8_t* signature)
+bool VersalReadImage::VerifyECDSAP521Signature(bool nist, uint8_t * data, size_t dataLength, ACKeyECDSApP521 *eckey, uint8_t* signature)
 {
     uint8_t shaHash[SHA3_LENGTH_BYTES] = { 0 };
     Versalcrypto_hash(shaHash, data, dataLength, nist);
@@ -427,7 +427,7 @@ void VersalReadImage::VerifySPKSignature(uint8_t* aC)
     }
     else if ((temp & 0xF3) == 0x22)
     {
-        signatureVerified = VerifyECDSAP521Signature(false,tempBuffer,size,  (ACKeyECDSAP521 *)(aC +  AC_PPK_KEY_OFFSET),  aC +  AC_SPK_SIGN_OFFSET);
+        signatureVerified = VerifyECDSAP521Signature(false,tempBuffer,size,  (ACKeyECDSApP521 *)(aC +  AC_PPK_KEY_OFFSET),  aC +  AC_SPK_SIGN_OFFSET);
     }
     else if ((temp & 0xF3) == 0x11)
     {
@@ -576,7 +576,7 @@ void VersalReadImage::VerifyPartitionSignature(void)
                     }
                     else if ((*(*auth_cert) & 0xF3) == 0x22)
                     {
-                        signatureVerified = VerifyECDSAP521Signature(nist, tempBuffer, dataBufferLength, (ACKeyECDSAP521 *)(*auth_cert + AC_SPK_KEY_OFFSET), *auth_cert + AC_PARTITION_SIGN_OFFSET);
+                        signatureVerified = VerifyECDSAP521Signature(nist, tempBuffer, dataBufferLength, (ACKeyECDSApP521 *)(*auth_cert + AC_SPK_KEY_OFFSET), *auth_cert + AC_PARTITION_SIGN_OFFSET);
                     }
                     else if ((*(*auth_cert) & 0xF3) == 0x11)
                     {
@@ -601,7 +601,7 @@ void VersalReadImage::VerifyPartitionSignature(void)
                     }
                     else if ((*(*auth_cert) & 0xF3) == 0x22)
                     {
-                        signatureVerified = VerifyECDSAP521Signature(true, tempBuffer, chunk0Size, (ACKeyECDSAP521 *)(*auth_cert + AC_SPK_KEY_OFFSET),*auth_cert + AC_PARTITION_SIGN_OFFSET);
+                        signatureVerified = VerifyECDSAP521Signature(true, tempBuffer, chunk0Size, (ACKeyECDSApP521 *)(*auth_cert + AC_SPK_KEY_OFFSET),*auth_cert + AC_PARTITION_SIGN_OFFSET);
                     }
                     else if ((*(*auth_cert) & 0xF3) == 0x11)
                     {

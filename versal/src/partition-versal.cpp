@@ -560,8 +560,8 @@ void VersalPartition::Build(BootImage& bi, Binary& cache)
             sync_offsets.push_back(offset);
         }
 
-        delete syncpt_offsets;
-        delete buffer;
+        free(syncpt_offsets);
+        free(buffer);
 
         if (num_of_sync_points != 0 && (bi.options.GetOutputFileNames().size())!=0)
         {

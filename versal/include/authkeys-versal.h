@@ -53,6 +53,18 @@ typedef struct
     uint8_t     y[EC_P384_KEY_LENGTH];          // y co-ordinate
     uint8_t     pad[932];                       // Padding
 } ACKeyECDSAp;
+
+typedef struct
+{
+    uint8_t Signature[SIGN_LENGTH_VERSAL];
+} ACSignatureECDSAp;
+
+typedef struct
+{
+    uint8_t     x[EC_P521_KEY_LENGTH2];          // x co-ordinate
+    uint8_t     y[EC_P521_KEY_LENGTH2];          // y co-ordinate
+    uint8_t     pad[896];                       // Padding
+} ACKeyECDSApP521;
 /*
 -------------------------------------------------------------------------------
 ************************************************************** STRUCTURES *****
@@ -68,17 +80,9 @@ typedef struct
 
 
 
-typedef struct
-{
-    uint8_t     x[EC_P521_KEY_LENGTH2];          // x co-ordinate
-    uint8_t     y[EC_P521_KEY_LENGTH2];          // y co-ordinate
-    uint8_t     pad[896];                       // Padding
-} ACKeyECDSAP521;
 
-typedef struct
-{
-    uint8_t Signature[SIGN_LENGTH_VERSAL];
-} ACSignatureECDSA;
+
+
 */
 
 /*

@@ -729,7 +729,7 @@ void VersalImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::stri
         uint8_t*  data= new uint8_t[size + optional_data_padLength];
         memset(data, 0, size + optional_data_padLength);
         memcpy(data, tempData, size);
-        delete[] tempData;
+        free(tempData);
         size += optional_data_padLength;
 
         if (size != 0)
@@ -1656,7 +1656,7 @@ void VersalImageHeader::ImportCdo(BootImage& bi)
     }
     hdr->partition = new VersalPartition(hdr, buffer, size);
     hdr->partitionSize = hdr->transferSize = size;
-    delete[] buffer;
+    free(buffer);
     SetLoadAndExecAddress(hdr);
     partitionHeaderList.push_back(hdr);
 }
@@ -1935,7 +1935,7 @@ void VersalImageHeader::ImportElf(BootImage& bi)
                 memcpy(partition_data + pmc_fw_size + pmc_fw_pad_bytes, cdo_partition, cdo_length);
                 memset(partition_data + pmc_fw_size + pmc_fw_pad_bytes + cdo_length, 0, total_cdo_pad_bytes);
 
-                delete[] cdo_partition;
+                free(cdo_partition);
             }
         }
         /* For all other partitions add each loadable section as a different partition */
@@ -2156,7 +2156,7 @@ void VersalImageHeader::ParseSlaveSlrConfigCdos(BootImage& bi, std::vector<std::
             total_cdo_length = (cdo_padded_buffer_length);
             total_cdo_data = (uint8_t*)realloc(total_cdo_data, total_cdo_length);
             memcpy(total_cdo_data, cdo_padded_buffer, total_cdo_length);
-            delete cdo_padded_buffer;
+            free(cdo_padded_buffer);
         }
 
         VersalCdoHeader* cdo_header = new VersalCdoHeader;
@@ -2533,7 +2533,7 @@ uint64_t VersalImageHeader::ImportAieEngineElfCdo(std::string aie_file)
     }
 
     total_psize += CdoCmdDmaWrite(totalSize, GetAieEngineGlobalAddress(textSecAddr), newData);
-    delete[] newData;
+    free(newData);
 
     for (uint8_t iprog = 0; iprog < elf.programHdrEntryCount; iprog++)
     {
@@ -2769,7 +2769,7 @@ void VersalImageHeader::ImportAieEngineElf(BootImage& bi)
             }
         }
     }
-    delete[] newData;
+    free(newData);
 }
 
 /******************************************************************************/
@@ -3014,7 +3014,7 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
         partHdr->partitionSize = size;
         partHdr->partition = new VersalPartition(partHdr, cdo_buffer, size);
         partitionHeaderList.push_back(partHdr);
-        delete cdo_buffer;
+        free(cdo_buffer);
         delete cdoHeader;
         cdoSections.clear();
     }
@@ -3033,8 +3033,8 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
         cdoHeader->checksum = 0;
 
         size += sizeof(VersalCdoHeader);
-        uint8_t* p_buffer = new uint8_t[size];
-        memcpy(p_buffer, cdoHeader, sizeof(VersalCdoHeader));
+        std::vector<uint8_t> p_buffer(size);
+        memcpy(p_buffer.data(), cdoHeader, sizeof(VersalCdoHeader));
         p_offset += sizeof(VersalCdoHeader);
 
 
@@ -3147,68 +3147,68 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                 /* For DMA alignment - add nop commands to align it to 128-bit (16-byte) */
                 size_t pad_bytes = ((16 - ((p_offset + CDO_CMD_WRITE_KEYHOLE_SIZE) & 15)) & 15);
                 size += (CDO_CMD_WRITE_KEYHOLE_SIZE + pad_size + pad_bytes);
-                p_buffer = (uint8_t*)realloc(p_buffer, size);
+                p_buffer.resize(size);
 
                 if (pad_bytes != 0)
                 {
                     CdoCommandNop* cdoCmd = CdoCmdNoOperation(pad_bytes);
                     LOG_TRACE("NOP - 0x%x", p_offset);
-                    memcpy(p_buffer + p_offset, cdoCmd, CDO_CMD_NOP_SIZE);
+                    memcpy(p_buffer.data() + p_offset, cdoCmd, CDO_CMD_NOP_SIZE);
                     p_offset += CDO_CMD_NOP_SIZE;
                     if (cdoCmd->header.length > 0)
                     {
-                        memset(p_buffer + p_offset, 0, cdoCmd->header.length * sizeof(uint32_t));
+                        memset(p_buffer.data() + p_offset, 0, cdoCmd->header.length * sizeof(uint32_t));
                         p_offset += (cdoCmd->header.length * sizeof(uint32_t));
                     }
                 }
 
                 /* Add Write Key Hole command with SLR Boot PDI data */
                 CdoCommandWriteKeyhole* cdoCmd = CdoCmdWriteKeyHole(pad_size, (*slr_id)->index);
-                memcpy(p_buffer + p_offset, cdoCmd, CDO_CMD_WRITE_KEYHOLE_SIZE);
+                memcpy(p_buffer.data() + p_offset, cdoCmd, CDO_CMD_WRITE_KEYHOLE_SIZE);
                 p_offset += CDO_CMD_WRITE_KEYHOLE_SIZE;
 
                 
                 {
-                    memcpy(p_buffer + p_offset, slr_boot_data.bytes + bh_offset, p1_size);
+                    memcpy(p_buffer.data() + p_offset, slr_boot_data.bytes + bh_offset, p1_size);
                     p_offset += p1_size;
                     if ((pad_size - p1_size) != 0)
                     {
-                        memset(p_buffer + p_offset, 0, pad_size - p1_size);
+                        memset(p_buffer.data() + p_offset, 0, pad_size - p1_size);
                         p_offset += pad_size - p1_size;
                     }
                 
                     /* Add SSIT Sync Slave command */
                     size += sizeof(CdoSsitSlaves);
-                    p_buffer = (uint8_t*)realloc(p_buffer, size);
+                    p_buffer.resize(size);
                     CdoSsitSlaves *ssit_sync_slaves_cmd = CdoCmdWriteSsitSyncSlaves(1 << ((*slr_id)->index - 1) & 0xFF);
-                    memcpy(p_buffer + p_offset, ssit_sync_slaves_cmd, sizeof(CdoSsitSlaves));
+                    memcpy(p_buffer.data() + p_offset, ssit_sync_slaves_cmd, sizeof(CdoSsitSlaves));
                     p_offset += sizeof(CdoSsitSlaves);
                     delete ssit_sync_slaves_cmd;
                     /* Add part 2 write keyhole*/
                     pad_size = p2_size + ((4 - (p2_size & 3)) & 3);
                     pad_bytes = ((16 - ((p_offset + CDO_CMD_WRITE_KEYHOLE_SIZE) & 15)) & 15);
                     size += (CDO_CMD_WRITE_KEYHOLE_SIZE + pad_size + pad_bytes);
-                    p_buffer = (uint8_t*)realloc(p_buffer, size);
+                    p_buffer.resize(size);
                     if (pad_bytes != 0)
                     {
                         CdoCommandNop* cdoCmd = CdoCmdNoOperation(pad_bytes);
                         LOG_TRACE("NOP - 0x%x", p_offset);
-                        memcpy(p_buffer + p_offset, cdoCmd, CDO_CMD_NOP_SIZE);
+                        memcpy(p_buffer.data() + p_offset, cdoCmd, CDO_CMD_NOP_SIZE);
                         p_offset += CDO_CMD_NOP_SIZE;
                         if (cdoCmd->header.length > 0)
                         {
-                            memset(p_buffer + p_offset, 0, cdoCmd->header.length * sizeof(uint32_t));
+                            memset(p_buffer.data() + p_offset, 0, cdoCmd->header.length * sizeof(uint32_t));
                             p_offset += (cdoCmd->header.length * sizeof(uint32_t));
                         }
                     }
                     CdoCommandWriteKeyhole* cdoCmd2 = CdoCmdWriteKeyHole(pad_size, (*slr_id)->index);
-                    memcpy(p_buffer + p_offset, cdoCmd2, CDO_CMD_WRITE_KEYHOLE_SIZE);
+                    memcpy(p_buffer.data() + p_offset, cdoCmd2, CDO_CMD_WRITE_KEYHOLE_SIZE);
                     p_offset += CDO_CMD_WRITE_KEYHOLE_SIZE;
-                    memcpy(p_buffer + p_offset, slr_boot_data.bytes + ih_offset + (SMAP_BUS_WIDTH * 4), p2_size);
+                    memcpy(p_buffer.data() + p_offset, slr_boot_data.bytes + ih_offset + (SMAP_BUS_WIDTH * 4), p2_size);
                     p_offset += p2_size;
                     if ((pad_size - p2_size) != 0)
                     {
-                        memset(p_buffer + p_offset, 0, pad_size - p2_size);
+                        memset(p_buffer.data() + p_offset, 0, pad_size - p2_size);
                         p_offset += pad_size - p2_size;
                     }
                     delete cdoCmd2;
@@ -3217,9 +3217,9 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
 
                 /* Add SSIT Wait Slave command */
                 size += sizeof(CdoSsitSlaves);
-                p_buffer = (uint8_t*)realloc(p_buffer, size);
+                p_buffer.resize(size);
                 CdoSsitSlaves *ssit_wait_slaves_cmd = CdoCmdWriteSsitWaitSlaves(1 << ((*slr_id)->index - 1));
-                memcpy(p_buffer + p_offset, ssit_wait_slaves_cmd, sizeof(CdoSsitSlaves));
+                memcpy(p_buffer.data() + p_offset, ssit_wait_slaves_cmd, sizeof(CdoSsitSlaves));
                 p_offset += sizeof(CdoSsitSlaves);
                 delete ssit_wait_slaves_cmd;
 
@@ -3228,9 +3228,9 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                 {
                     /* Add SSIT Sync Slave command */
                     size += sizeof(CdoSsitSlaves);
-                    p_buffer = (uint8_t*)realloc(p_buffer, size);
+                    p_buffer.resize(size);
                     CdoSsitSlaves *ssit_sync_slaves_cmd = CdoCmdWriteSsitSyncSlaves(((1 << num_of_slrs) - 1) & 0xFF);
-                    memcpy(p_buffer + p_offset, ssit_sync_slaves_cmd, sizeof(CdoSsitSlaves));
+                    memcpy(p_buffer.data() + p_offset, ssit_sync_slaves_cmd, sizeof(CdoSsitSlaves));
                     p_offset += sizeof(CdoSsitSlaves);
                     delete ssit_sync_slaves_cmd;
                 }
@@ -3287,24 +3287,24 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                     pad_size -= +sizeof(CdoCommandHeader);
                 }
                 size += pad_size;
-                p_buffer = (uint8_t*)realloc(p_buffer, size);
+                p_buffer.resize(size);
 
-                memcpy(p_buffer + p_offset, cdo_buffer + sizeof(VersalCdoHeader), file_size);
+                memcpy(p_buffer.data() + p_offset, cdo_buffer + sizeof(VersalCdoHeader), file_size);
                 if ((pad_size - file_size) != 0)
                 {
-                    memset(p_buffer + p_offset + file_size, 0, pad_size - file_size);
+                    memset(p_buffer.data() + p_offset + file_size, 0, pad_size - file_size);
                 }
-                delete[] cdo_buffer;
+                free(cdo_buffer);
                 p_offset += pad_size;
                 if ((*slr_id)->index == slrBootPdiInfo.size())
                 {
                     /* Add SSIT Sync Slave command */
                     size += sizeof(CdoSsitSlaves);
-                    p_buffer = (uint8_t*)realloc(p_buffer, size);
+                    p_buffer.resize(size);
 
                     /* Add SSIT Sync Slave command */
                     CdoSsitSlaves *ssit_sync_slaves_cmd = CdoCmdWriteSsitSyncSlaves(((1 << num_of_slrs) - 1) & 0xFF);
-                    memcpy(p_buffer + p_offset, ssit_sync_slaves_cmd, sizeof(CdoSsitSlaves));
+                    memcpy(p_buffer.data() + p_offset, ssit_sync_slaves_cmd, sizeof(CdoSsitSlaves));
                     p_offset += sizeof(CdoSsitSlaves);
                     delete ssit_sync_slaves_cmd;
                 }
@@ -3312,15 +3312,15 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
         }
 
         size += sizeof(CdoCommandHeader);
-        p_buffer = (uint8_t*)realloc(p_buffer, size);
+        p_buffer.resize(size);
         CdoCommandHeader* cmd_end = CdoCmdCdoEnd();
-        memcpy(p_buffer + p_offset, cmd_end, sizeof(CdoCommandHeader));
+        memcpy(p_buffer.data() + p_offset, cmd_end, sizeof(CdoCommandHeader));
         delete cmd_end;
 
         /* Update CDO header lengths and checksum */
         cdoHeader->length = (size - sizeof(VersalCdoHeader)) / 4;
         cdoHeader->checksum = ~(cdoHeader->remaining_words + cdoHeader->id_word + cdoHeader->version + cdoHeader->length);
-        memcpy(p_buffer, cdoHeader, sizeof(VersalCdoHeader));
+        memcpy(p_buffer.data(), cdoHeader, sizeof(VersalCdoHeader));
 
         SetPartitionType(PartitionType::CONFIG_DATA_OBJ);
         PartitionHeader* partHdr = new VersalPartitionHeader(this, 0);
@@ -3328,16 +3328,15 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
         partHdr->elfEndianess = 0;
         partHdr->firstValidIndex = true;
         partHdr->partitionSize = size;
-        partHdr->partition = new VersalPartition(partHdr, p_buffer, size);
+        partHdr->partition = new VersalPartition(partHdr, p_buffer.data(), size);
         partitionHeaderList.push_back(partHdr);
-        delete[] p_buffer;
         delete cdoHeader;
         cdoSections.clear();
     }
 }
 
 /******************************************************************************/
-size_t GetActualChunkSize(SsitConfigSlrInfo* slr_info)
+size_t GetActualChunkSize(SsitConfigSlrInfo* slr_info, BootImage* bi = nullptr)
 {
     size_t num_bytes = 0;
     static bool chunk_size_info_printed = false;
@@ -3347,7 +3346,36 @@ size_t GetActualChunkSize(SsitConfigSlrInfo* slr_info)
     if (ssit_chunk_size != NULL)
     {
         chunk_size = strtoull(ssit_chunk_size, NULL, 16);
+    } 
+    if (bi != NULL)
+    {
+        // Check for key rolling configuration (not just encryption)
+        for (std::list<ImageHeader*>::iterator imageItr = bi->imageList.begin(); imageItr != bi->imageList.end(); imageItr++)
+        {
+            // Check if this ImageHeader has both encryption AND key rolling enabled
+            if ((*imageItr)->GetEncryptContext() != NULL && (*imageItr)->GetEncryptContext()->Type() == Encryption::AES)
+            {
+                std::vector<uint32_t>& encrBlocks = (*imageItr)->GetEncrBlocksList();
+                uint32_t defEncrBlockSize = (*imageItr)->GetDefaultEncrBlockSize();
+                
+                // Only apply if key rolling is actually configured (not just encryption enabled)
+                if (defEncrBlockSize > 0)
+                {
+                    chunk_size = defEncrBlockSize * 1024; // Convert KB to bytes
+                    LOG_TRACE("Key rolling detected: Using configured block size %d KB for SSIT chunking", defEncrBlockSize);
+                    break;
+                }
+                else if (encrBlocks.size() > 0 && encrBlocks[0] > 0 && (encrBlocks[0] % 16) == 0)
+                {
+                    chunk_size = encrBlocks[0] * 1024; // Convert KB to bytes
+                    LOG_TRACE("Key rolling detected: Using explicit block size %d KB for SSIT chunking", encrBlocks[0]);
+                    break;
+                }
+                // If encryption is enabled but no key rolling config found, keep default chunk size
+            }
+        }
     }
+    
     if (!chunk_size_info_printed)
     {
         LOG_INFO("SSIT chunk size = 0x%x", chunk_size);
@@ -3493,8 +3521,8 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
     cdoHeader->length = 0;
     cdoHeader->checksum = 0;
     size += sizeof(VersalCdoHeader);
-    uint8_t* p_buffer = new uint8_t[size];
-    memcpy(p_buffer, cdoHeader, sizeof(VersalCdoHeader));
+    std::vector<uint8_t> p_buffer(size);
+    memcpy(p_buffer.data(), cdoHeader, sizeof(VersalCdoHeader));
     p_offset += sizeof(VersalCdoHeader);
 
     /* Initialize the individual SLR config structures */
@@ -3520,7 +3548,7 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
     }
 
     /* Parse slave SLR config files to get SLR data, identify sync points, file sizes and get total file size */
-    ParseSlrConfigFiles(&slr_total_file_size);
+    ParseSlrConfigFiles(&slr_total_file_size, &bi);
 
     /* 1. Create DMA write keyhole command for chunk from each slave SLR in a round robin fashion.
        2. Continue the above process till a sync point is found in the current chunk.
@@ -3539,24 +3567,24 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
             if (((*slr_info)->sync_points == common_sync_point) && ((*slr_info)->index != SlrId::MASTER) && (last_sync_point == current_sync_point))
             {
                 /* Slave SLRs processing */
-                size_t chunk_size = GetActualChunkSize(*slr_info);
-                
+                size_t chunk_size = GetActualChunkSize(*slr_info, &bi);
+
                 if(chunk_size != 0)
                 {
                     (*slr_info)->num_chunks++;
                     /* For DMA alignment - add nop commands to align it to 128-bit (16-byte) */
                     size_t pad_bytes = ((16 - ((p_offset + CDO_CMD_WRITE_KEYHOLE_SIZE) & 15)) & 15);
                     size += (chunk_size + CDO_CMD_WRITE_KEYHOLE_SIZE + pad_bytes);
-                    p_buffer = (uint8_t*)realloc(p_buffer, size);
+                    p_buffer.resize(size);
 
                     if (pad_bytes != 0)
                     {
                         CdoCommandNop* cdoCmd = CdoCmdNoOperation(pad_bytes);
-                        memcpy(p_buffer + p_offset, cdoCmd, CDO_CMD_NOP_SIZE);
+                        memcpy(p_buffer.data() + p_offset, cdoCmd, CDO_CMD_NOP_SIZE);
                         p_offset += CDO_CMD_NOP_SIZE;
                         if (cdoCmd->header.length > 0)
                         {
-                            memset(p_buffer + p_offset, 0, cdoCmd->header.length * sizeof(uint32_t));
+                            memset(p_buffer.data() + p_offset, 0, cdoCmd->header.length * sizeof(uint32_t));
                             p_offset += (cdoCmd->header.length * sizeof(uint32_t));
                         }
                     }
@@ -3568,10 +3596,10 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
 
                     /* Add write keyhole command for slave SLRs and master config */
                     CdoCommandWriteKeyhole* cdoCmd = CdoCmdWriteKeyHole(chunk_size, (*slr_info)->index);
-                    memcpy(p_buffer + p_offset, cdoCmd, CDO_CMD_WRITE_KEYHOLE_SIZE);
+                    memcpy(p_buffer.data() + p_offset, cdoCmd, CDO_CMD_WRITE_KEYHOLE_SIZE);
                     delete cdoCmd;
                     p_offset += CDO_CMD_WRITE_KEYHOLE_SIZE;
-                    memcpy(p_buffer + p_offset, (*slr_info)->data + (*slr_info)->offset, chunk_size);
+                    memcpy(p_buffer.data() + p_offset, (*slr_info)->data + (*slr_info)->offset, chunk_size);
 
                     p_offset += chunk_size;
                     total_slr_chunk_size += chunk_size;
@@ -3625,17 +3653,17 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
                         pad_bytes = ((16 - (p_offset & 15)) & 15);
 
                         size += (master_chunk_size+ pad_bytes);
-                        p_buffer = (uint8_t*)realloc(p_buffer, size);
+                        p_buffer.resize(size);
 
                         /* For master SLR, just copy the CDO contents to chunk. No need to create seperate DMA commands like slave SLRs */
                         if (pad_bytes != 0)
                         {
                             CdoCommandNop* cdoCmd = CdoCmdNoOperation(pad_bytes);
-                            memcpy(p_buffer + p_offset, cdoCmd, CDO_CMD_NOP_SIZE);
+                            memcpy(p_buffer.data() + p_offset, cdoCmd, CDO_CMD_NOP_SIZE);
                             p_offset += CDO_CMD_NOP_SIZE;
                             if (cdoCmd->header.length > 0)
                             {
-                                memset(p_buffer + p_offset, 0, cdoCmd->header.length * sizeof(uint32_t));
+                                memset(p_buffer.data() + p_offset, 0, cdoCmd->header.length * sizeof(uint32_t));
                                 p_offset += (cdoCmd->header.length * sizeof(uint32_t));
                             }
                         }
@@ -3648,11 +3676,11 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
 
                         /* As we strip the CDO header, we are replacing that with NOP commands to ensure other alignments are not disturbed for only the first chunk */
                         CdoCommandNop* cdoCmd = CdoCmdNoOperation(sizeof(VersalCdoHeader));
-                        memcpy(p_buffer + p_offset, cdoCmd, CDO_CMD_NOP_SIZE);
-                        memset(p_buffer + p_offset + CDO_CMD_NOP_SIZE, 0, sizeof(VersalCdoHeader) - CDO_CMD_NOP_SIZE);
+                        memcpy(p_buffer.data() + p_offset, cdoCmd, CDO_CMD_NOP_SIZE);
+                        memset(p_buffer.data() + p_offset + CDO_CMD_NOP_SIZE, 0, sizeof(VersalCdoHeader) - CDO_CMD_NOP_SIZE);
                         if (part_size > sizeof(VersalCdoHeader))
                         {
-                            memcpy(p_buffer + p_offset + sizeof(VersalCdoHeader), part_data + sizeof(VersalCdoHeader), part_size - sizeof(VersalCdoHeader));
+                            memcpy(p_buffer.data() + p_offset + sizeof(VersalCdoHeader), part_data + sizeof(VersalCdoHeader), part_size - sizeof(VersalCdoHeader));
                         }
                         else
                         {
@@ -3683,14 +3711,14 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
     }
 
     size += sizeof(CdoCommandHeader);
-    p_buffer = (uint8_t*)realloc(p_buffer, size);
+    p_buffer.resize(size);
     CdoCommandHeader* cmd_end = CdoCmdCdoEnd();
-    memcpy(p_buffer + p_offset, cmd_end, sizeof(CdoCommandHeader));
+    memcpy(p_buffer.data() + p_offset, cmd_end, sizeof(CdoCommandHeader));
 
     /* Update CDO header lengths and checksum */
     cdoHeader->length = (size - sizeof(VersalCdoHeader)) / 4;
     cdoHeader->checksum = ~(cdoHeader->remaining_words + cdoHeader->id_word + cdoHeader->version + cdoHeader->length);
-    memcpy(p_buffer, cdoHeader, sizeof(VersalCdoHeader));
+    memcpy(p_buffer.data(), cdoHeader, sizeof(VersalCdoHeader));
 
     SetPartitionType(PartitionType::CONFIG_DATA_OBJ);
     PartitionHeader* partHdr =  new VersalPartitionHeader(this, 0);
@@ -3698,10 +3726,9 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
     partHdr->elfEndianess = 0;
     partHdr->firstValidIndex = true;
     partHdr->partitionSize = size;
-    partHdr->partition = new VersalPartition(partHdr, p_buffer, size);
+    partHdr->partition = new VersalPartition(partHdr, p_buffer.data(), size);
     partitionHeaderList.push_back(partHdr);
 
-    delete[] p_buffer;
     delete cmd_end;
 
     for (std::vector<SsitConfigSlrInfo*>::iterator slr_info = configSlrsInfo.begin(); slr_info != configSlrsInfo.end(); slr_info++)
@@ -3724,7 +3751,7 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
 }
 
 /******************************************************************************/
-void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size)
+void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size,  BootImage* bi = nullptr)
 {
     uint8_t num_of_sync_points = 0;
     bool info_display = true;
@@ -3860,6 +3887,53 @@ void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size
             int num_secure_chunks = 0;
             uint64_t data_chunk = SECURE_32K_CHUNK;
             size_t offset_shift = 0;
+             
+                // Auto-detect encryption block size ONLY if this SLR has both encryption AND key rolling enabled
+                if (bi != NULL && partitionhdr_offsets[3] != KeySource::None)
+                {
+                    // Check if this specific SLR has key rolling enabled by looking at its encryption configuration
+                    bool key_rolling_found = false;
+                    for (std::list<ImageHeader*>::iterator imageItr = bi->imageList.begin(); imageItr != bi->imageList.end(); imageItr++)
+                    {
+                        if ((*imageItr)->GetEncryptContext() != NULL && (*imageItr)->GetEncryptContext()->Type() == Encryption::AES)
+                        {
+                            std::vector<uint32_t>& encrBlocks = (*imageItr)->GetEncrBlocksList();
+                            uint32_t defEncrBlockSize = (*imageItr)->GetDefaultEncrBlockSize();
+                            
+                            // Only change chunk size if key rolling is actually configured
+                            if (defEncrBlockSize > 0)
+                            {
+                                data_chunk = defEncrBlockSize * 1024; // Convert KB to bytes
+                                LOG_TRACE("SLR-%d: Key rolling detected, using configured block size %d KB for offset calculation", slr_info->index, defEncrBlockSize);
+                                key_rolling_found = true;
+                                break;
+                            }
+                            else if (encrBlocks.size() > 0 && encrBlocks[0] > 0 && (encrBlocks[0] % 16) == 0)
+                            {
+                                data_chunk = encrBlocks[0] * 1024; // Convert KB to bytes
+                                LOG_TRACE("SLR-%d: Key rolling detected, using explicit block size %d KB for offset calculation", slr_info->index, encrBlocks[0]);
+                                key_rolling_found = true;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // If encryption enabled but no key rolling configured, explicitly keep default 32KB
+                    if (!key_rolling_found)
+                    {
+                        LOG_TRACE("SLR-%d: Encryption enabled but no key rolling configured, using default 32KB chunks", slr_info->index);
+                        // data_chunk already defaults to SECURE_32K_CHUNK, so no change needed
+                    }
+                }
+                else
+                {
+                    // Check SSIT chunk size environment variable
+                    char * ssit_chunk_size = getenv("BOOTGEN_SSIT_CHUNK_SIZE");
+                    if (ssit_chunk_size != NULL)
+                    {
+                        data_chunk = strtoull(ssit_chunk_size, NULL, 16);
+                    }
+                }
             
             uint32_t partition_length = partitionhdr_offsets[6] * 4;
             uint32_t padLength = (partition_length % 16 != 0) ? 16 - (partition_length % 16) : 0;
@@ -3899,15 +3973,22 @@ void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size
                 }
 
                 for (int i = 0; i < num_of_sync_points; i++)
-                {
-                    size_t offset = syncpt_offsets[i];
-                    for (int i = 1; i < num_secure_chunks; i++)
                     {
-                        if (offset > (data_chunk * i))
+                        size_t offset = syncpt_offsets[i];
+                        // Adjust offset for each chunk boundary crossed
+                        for (int j = 1; j <= num_secure_chunks; j++)
                         {
-                            offset += offset_shift;
+                            // Check if sync point offset is beyond this chunk boundary
+                            if (offset >= (data_chunk * j))
+                            {
+                                // Add offset shift for secure headers/tags for this chunk
+                                offset += offset_shift;
+                            }
+                            else
+                            {
+                                break; // No more chunks to check
+                            }
                         }
-                    }
                     
                     offset += (partitionhdr_offsets[7] * 4);
                     slr_info->sync_addresses.push_back(offset);
@@ -3923,7 +4004,7 @@ void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size
 }
 
 /******************************************************************************/
-void VersalImageHeader::ParseSlrConfigFiles(size_t* slr_total_file_size)
+void VersalImageHeader::ParseSlrConfigFiles(size_t* slr_total_file_size, BootImage* bi)
 {
     uint32_t slr_sync_points[4] = { 0, 0, 0, 0 };
     uint32_t* syncpt_offsets = NULL;
@@ -3956,7 +4037,7 @@ void VersalImageHeader::ParseSlrConfigFiles(size_t* slr_total_file_size)
             CdoCommandNop* cdoCmd = CdoCmdNoOperation(sizeof(VersalCdoHeader));
             memcpy((*slr_info)->data, cdoCmd, CDO_CMD_NOP_SIZE);
             memset((*slr_info)->data + CDO_CMD_NOP_SIZE, 0, sizeof(VersalCdoHeader) - CDO_CMD_NOP_SIZE);
-            delete syncpt_offsets;
+            free(syncpt_offsets);
 
             /* Add the size to accomodate the NOPs added at the start of each master chunk
                Since the master chunks are read using the cdoseq_to_binary, each chunk comes with a CDO header
@@ -3978,7 +4059,7 @@ void VersalImageHeader::ParseSlrConfigFiles(size_t* slr_total_file_size)
             fl.seekg(0, std::ios::beg);
             fl.read((char*)(*slr_info)->data, (*slr_info)->size);
             fl.close();
-            GetPartitionOffsets((*slr_info), (*slr_info)->data, (*slr_info)->size);
+            GetPartitionOffsets((*slr_info), (*slr_info)->data, (*slr_info)->size, bi);
             slr_sync_points[(*slr_info)->index] = (*slr_info)->sync_addresses.size();
 
             num_of_slrs++;
@@ -4512,8 +4593,8 @@ void VersalImageHeader::CreateWriteImageStorePartition()
     cdoHeader->length = 0;
     cdoHeader->checksum = 0;
     size += sizeof(VersalCdoHeader);
-    uint8_t* p_buffer = new uint8_t[size];
-    memcpy(p_buffer, cdoHeader, sizeof(VersalCdoHeader));
+    std::vector<uint8_t> p_buffer(size);
+    memcpy(p_buffer.data(), cdoHeader, sizeof(VersalCdoHeader));
     p_offset += sizeof(VersalCdoHeader);
 
     CdoCommandWriteImageStore* cdoCmd = new CdoCommandWriteImageStore;
@@ -4525,24 +4606,24 @@ void VersalImageHeader::CreateWriteImageStorePartition()
     memcpy(cdoCmd->data, tempBuffer, p_size_pad);
 
     size += CDO_CMD_WRITE_IMAGE_STORE_SIZE;
-    p_buffer = (uint8_t*)realloc(p_buffer, size);
-    memcpy(p_buffer + p_offset, cdoCmd, CDO_CMD_WRITE_IMAGE_STORE_SIZE);
+    p_buffer.resize(size);
+    memcpy(p_buffer.data() + p_offset, cdoCmd, CDO_CMD_WRITE_IMAGE_STORE_SIZE);
     p_offset += CDO_CMD_WRITE_IMAGE_STORE_SIZE;
 
     size += p_size_pad;
-    p_buffer = (uint8_t*)realloc(p_buffer, size);
-    memcpy(p_buffer + p_offset, cdoCmd->data, p_size_pad);
+    p_buffer.resize(size);
+    memcpy(p_buffer.data() + p_offset, cdoCmd->data, p_size_pad);
     p_offset += p_size_pad;
 
     size += sizeof(CdoCommandHeader);
-    p_buffer = (uint8_t*)realloc(p_buffer, size);
+    p_buffer.resize(size);
     CdoCommandHeader* cmd_end = CdoCmdCdoEnd();
-    memcpy(p_buffer + p_offset, cmd_end, sizeof(CdoCommandHeader));
+    memcpy(p_buffer.data() + p_offset, cmd_end, sizeof(CdoCommandHeader));
 
     /* Update CDO header lengths and checksum */
     cdoHeader->length = (size - sizeof(VersalCdoHeader)) / 4;
     cdoHeader->checksum = ~(cdoHeader->remaining_words + cdoHeader->id_word + cdoHeader->version + cdoHeader->length);
-    memcpy(p_buffer, cdoHeader, sizeof(VersalCdoHeader));
+    memcpy(p_buffer.data(), cdoHeader, sizeof(VersalCdoHeader));
 
     SetPartitionType(PartitionType::CONFIG_DATA_OBJ);
     PartitionHeader* partHdr = new VersalPartitionHeader(this, imageStorePdiInfo->id);
@@ -4552,6 +4633,8 @@ void VersalImageHeader::CreateWriteImageStorePartition()
     partHdr->loadAddress = 0xFFFFFFFFFFFFFFFF;
     partHdr->execAddress = 0;
     partHdr->partitionSize = size;
-    partHdr->partition = new VersalPartition(partHdr, p_buffer, size);
+    uint8_t* buffer_copy = new uint8_t[size];
+    memcpy(buffer_copy, p_buffer.data(), size);
+    partHdr->partition = new VersalPartition(partHdr, buffer_copy, size);
     partitionHeaderList.push_back(partHdr);
 }

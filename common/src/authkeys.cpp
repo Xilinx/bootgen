@@ -68,7 +68,20 @@ Key::Key(const Key& otherKey)
     E = new uint8_t [WORD_SIZE_IN_BYTES];
     P = new uint8_t [keySize/2];
     Q = new uint8_t [keySize/2];
-    memcpy(this,&otherKey,sizeof(Key)); 
+    
+    // Copy individual members instead of using memcpy on the entire object
+    Loaded = otherKey.Loaded;
+    isSecret = otherKey.isSecret;
+    name = otherKey.name;
+    lmsOnly = otherKey.lmsOnly;
+    
+    // Copy the array contents, not the pointers
+    memcpy(N, otherKey.N, keySize);
+    memcpy(N_ext, otherKey.N_ext, keySize);
+    memcpy(D, otherKey.D, keySize);
+    memcpy(E, otherKey.E, WORD_SIZE_IN_BYTES);
+    memcpy(P, otherKey.P, keySize/2);
+    memcpy(Q, otherKey.Q, keySize/2);
 }
 
 /******************************************************************************/

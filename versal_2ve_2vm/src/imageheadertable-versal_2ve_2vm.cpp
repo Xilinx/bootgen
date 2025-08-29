@@ -2308,7 +2308,7 @@ uint64_t Versal_2ve_2vmImageHeader::ImportAieEngineElfCdo(std::string aie_file)
     }
 
     total_psize += CdoCmdDmaWrite(totalSize, GetAieEngineGlobalAddress(textSecAddr), newData);
-    delete[] newData;
+    free(newData);
 
     for (uint8_t iprog = 0; iprog < elf.programHdrEntryCount; iprog++)
     {
@@ -2544,7 +2544,7 @@ void Versal_2ve_2vmImageHeader::ImportAieEngineElf(BootImage& bi)
             }
         }
     }
-    delete[] newData;
+    free(newData);
 }
 
 /******************************************************************************/
@@ -3172,8 +3172,8 @@ void Versal_2ve_2vmImageHeader::CreateWriteImageStorePartition()
     cdoHeader->length = 0;
     cdoHeader->checksum = 0;
     size += sizeof(VersalCdoHeader);
-    uint8_t* p_buffer = new uint8_t[size];
-    memcpy(p_buffer, cdoHeader, sizeof(VersalCdoHeader));
+    std::vector<uint8_t> p_buffer(size);
+    memcpy(p_buffer.data(), cdoHeader, sizeof(VersalCdoHeader));
     p_offset += sizeof(VersalCdoHeader);
 
     CdoCommandWriteImageStore* cdoCmd = new CdoCommandWriteImageStore;
@@ -3185,24 +3185,24 @@ void Versal_2ve_2vmImageHeader::CreateWriteImageStorePartition()
     memcpy(cdoCmd->data, tempBuffer, p_size_pad);
 
     size += CDO_CMD_WRITE_IMAGE_STORE_SIZE;
-    p_buffer = (uint8_t*)realloc(p_buffer, size);
-    memcpy(p_buffer + p_offset, cdoCmd, CDO_CMD_WRITE_IMAGE_STORE_SIZE);
+    p_buffer.resize(size);
+    memcpy(p_buffer.data() + p_offset, cdoCmd, CDO_CMD_WRITE_IMAGE_STORE_SIZE);
     p_offset += CDO_CMD_WRITE_IMAGE_STORE_SIZE;
 
     size += p_size_pad;
-    p_buffer = (uint8_t*)realloc(p_buffer, size);
-    memcpy(p_buffer + p_offset, cdoCmd->data, p_size_pad);
+    p_buffer.resize(size);
+    memcpy(p_buffer.data() + p_offset, cdoCmd->data, p_size_pad);
     p_offset += p_size_pad;
 
     size += sizeof(CdoCommandHeader);
-    p_buffer = (uint8_t*)realloc(p_buffer, size);
+    p_buffer.resize(size);
     CdoCommandHeader* cmd_end = CdoCmdCdoEnd();
-    memcpy(p_buffer + p_offset, cmd_end, sizeof(CdoCommandHeader));
+    memcpy(p_buffer.data() + p_offset, cmd_end, sizeof(CdoCommandHeader));
 
     /* Update CDO header lengths and checksum */
     cdoHeader->length = (size - sizeof(VersalCdoHeader)) / 4;
     cdoHeader->checksum = ~(cdoHeader->remaining_words + cdoHeader->id_word + cdoHeader->version + cdoHeader->length);
-    memcpy(p_buffer, cdoHeader, sizeof(VersalCdoHeader));
+    memcpy(p_buffer.data(), cdoHeader, sizeof(VersalCdoHeader));
 
     SetPartitionType(PartitionType::CONFIG_DATA_OBJ);
     PartitionHeader* partHdr = new Versal_2ve_2vmPartitionHeader(this, imageStorePdiInfo->id);
@@ -3212,6 +3212,8 @@ void Versal_2ve_2vmImageHeader::CreateWriteImageStorePartition()
     partHdr->loadAddress = 0xFFFFFFFFFFFFFFFF;
     partHdr->execAddress = 0;
     partHdr->partitionSize = size;
-    partHdr->partition = new Versal_2ve_2vmPartition(partHdr, p_buffer, size);
+    uint8_t* buffer_copy = new uint8_t[size];
+    memcpy(buffer_copy, p_buffer.data(), size);
+    partHdr->partition = new Versal_2ve_2vmPartition(partHdr, buffer_copy, size);
     partitionHeaderList.push_back(partHdr);
 }

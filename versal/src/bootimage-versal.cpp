@@ -1840,13 +1840,13 @@ void VersalBootImage::BuildAndLink(Binary* cache)
             ImageBifOptions *imgOptions = new ImageBifOptions();
             /* If Subsystems are not specified in BIF - create one image header for PLM and other image header for subsytem and add all partitions to it */
             imgOptions->SetImageName("default_subsys");
-            SubSysImageHeader* sub_sys_image = new VersalSubSysImageHeader(imgOptions);
+            VersalSubSysImageHeader* sub_sys_image = new VersalSubSysImageHeader(imgOptions);
             for (std::list<ImageHeader*>::iterator image = imageList.begin(); image != imageList.end(); image++)
             {
                 if ((*image)->IsBootloader())
                 {
                     imgOptions->SetImageName("pmc_subsys");
-                    SubSysImageHeader* plm_header = new VersalSubSysImageHeader(imgOptions);
+                    VersalSubSysImageHeader* plm_header = new VersalSubSysImageHeader(imgOptions);
                     plm_header->imgList.push_back((*image));
                     plm_header->SetSubSystemName("pmc_subsys");
                     plm_header->SetSubSystemId(0x1c000001);

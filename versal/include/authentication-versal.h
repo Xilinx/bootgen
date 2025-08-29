@@ -119,9 +119,9 @@ typedef struct
     ACKeyECDSAp          acSpk;                     // 0x450
     uint8_t             spkSHA3Padding[4];         // 0x854
     uint8_t             allignment[8];             // 0x858
-    ACSignatureECDSA    acSpkSignature;            // 0x860
-    ACSignatureECDSA    acHeaderSignature;         // 0xA60
-    ACSignatureECDSA    acPartitionSignature;      // 0xC60
+    ACSignatureECDSAp    acSpkSignature;            // 0x860
+    ACSignatureECDSAp    acHeaderSignature;         // 0xA60
+    ACSignatureECDSAp    acPartitionSignature;      // 0xC60
 } AuthCertificateECDSAStructure;
 
 typedef struct
@@ -129,14 +129,14 @@ typedef struct
     uint32_t            acHeader;                  // 0x000
     uint32_t            spkId;                     // 0x004
     uint8_t             acUdf[UDF_DATA_SIZE];      // 0x008
-    ACKeyECDSAP521      acPpk;                     // 0x040
+    ACKeyECDSApP521      acPpk;                     // 0x040
     uint8_t             ppkSHA3Padding[12];        // 0x444
-    ACKeyECDSAP521      acSpk;                     // 0x450
+    ACKeyECDSApP521      acSpk;                     // 0x450
     uint8_t             spkSHA3Padding[4];         // 0x854
     uint8_t             allignment[8];             // 0x858
-    ACSignatureECDSA    acSpkSignature;            // 0x860
-    ACSignatureECDSA    acHeaderSignature;         // 0xA60
-    ACSignatureECDSA    acPartitionSignature;      // 0xC60
+    ACSignatureECDSAp    acSpkSignature;            // 0x860
+    ACSignatureECDSAp    acHeaderSignature;         // 0xA60
+    ACSignatureECDSAp    acPartitionSignature;      // 0xC60
 } AuthCertificateECDSAp521Structure;
 
 /* Authenticated-Jtag Image Structure */
@@ -207,7 +207,7 @@ public:
 
     int KeySize()
     {
-        return sizeof(ACKeyECDSAP521);
+        return sizeof(ACKeyECDSApP521);
     }
 
     void CreateSignature(const uint8_t *base, uint8_t* primaryKey, uint8_t *result0);
