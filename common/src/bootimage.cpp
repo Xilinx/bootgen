@@ -157,10 +157,7 @@ void BIF_File::Process(Options& options)
         if (currentbi != NULL)
         {
             currentbi->Add(*bifoptions);
-            if ((*bifoptions)->GetBhRsa() == BhRsa::BhRsaEnable && !currentbi->authOnPartitionFound && !(*bifoptions)->GetHeaderAC())
-            {
-                //LOG_ERROR("bh_auth_enable can be used only when atleast one Partition(or)Meta Header is authenticated.");
-            }
+        
             if (((*bifoptions)->pdiType != PartitionType::SLR_SLAVE_BOOT) && ((*bifoptions)->pdiType != PartitionType::SLR_SLAVE_CONFIG))
             {
                 if ((*bifoptions)->pdiType == PartitionType::SLR_SLAVE)
@@ -190,11 +187,7 @@ void BIF_File::Output(Options& options, uint8_t index)
     std::string fName = "";
     BootImage* bi = bootImages.at(index);
     {
-        if (options.GetInterfaceType() != Interface::NONE)
-        {
-            ParseFpgaFile(options);
-            return;
-        }
+
 
         if (options.GetAuthKeyGeneration() != GenAuthKeys::None)
         {
@@ -807,98 +800,6 @@ std::vector<std::string>& BootImage::GetEncryptionKeyFileVec()
 void BootImage::InsertEncryptionKeyFile(std::string filename)
 {
     encryptionKeyFileVec.push_back(filename);
-}
-
-/******************************************************************************/
-void BIF_File::ParseFpgaFile(Options& options)
-{
-    uint32_t size = 0;
-    uint8_t* buffer = NULL;
-
-    std::list<std::string> outFilename = options.GetOutputFileNames();
-    std::string fpga_file = bootImages.front()->bitFilename.c_str();
-
-    if (StringUtils::EndsWith(fpga_file, ".bit") || StringUtils::EndsWith(fpga_file, ".rbt"))
-    {
-        std::ifstream stream(fpga_file, std::ios_base::binary);
-        if (!stream)
-        {
-            LOG_ERROR("Cannot read BIT file - %s ", fpga_file.c_str());
-        }
-
-        BitFile *bit = new FpgaBitFile(stream);
-        bit->ParseBitFpga();
-
-        //bit->SetEncryptionType(Encrypt->Type());
-
-        /* The endianess is different (Big Endian) in case of Zynq MP/FPGA
-        encryption cases. All other cases the bitstream is copied as
-        Little Endian */
-        OutputStream *os = bit->GetOutputStreamType();
-
-        /* If the Zynq/FPGA bitstream partition is encrypted, then we need
-        to strip the normal BIT header (sync data, etc) before encryption.
-        All other cases, just copy the entire bitstream as is */
-        if (bit->GetBitStripFlag())
-        {
-            bit->Strip(os);
-        }
-        else
-        {
-            bit->Copy(os);
-        }
-
-        /* Bitstream sizes should be word aligned.
-        Otherwise bitstream is invalid */
-        if (os->Size() % 4)
-        {
-            LOG_DEBUG(DEBUG_STAMP, "BIT stream %s does not have a word aligned number of bytes (0xX)", fpga_file.c_str(), (uint32_t)os->Size());
-            LOG_ERROR("BIT file parsing error !!!");
-        }
-
-        /* As bitstreams are configured in the PL section
-        There should be no load / start-up (execution) addresses in case of
-        bitstreams.
-        if (this->Startup.IsSet())
-        {
-        LOG_ERROR("[startup=...] attribute not supported for BIT partition - %s", this->Name.c_str());
-        }
-        */
-
-        if (bit->GetBitPadFlag(options.GetLegacyFlag()))
-        {
-            /* Pad the bit stream with NOPS to get a chunk useful for DMA
-            Bit streams must have the length 32 byte aligned because of a HW bug in the PCAP DMA engine.
-            This increases the os to a multiple of 32 bytes */
-            while (os->Size() % 32)
-            {
-                os->WriteLong(BITSTREAM_NOP);
-            }
-        }
-        size = os->Size();
-        buffer = new uint8_t[size];
-        memcpy(buffer, os->Start(), size);
-    }
-    else
-    {
-        // SREC files
-        ByteFile data(fpga_file);
-        size = data.len;
-        buffer = new uint8_t[size];
-        memcpy(buffer, data.bytes, size);
-        // For non-bit files, interface is none
-        options.SetInterfaceType(Interface::NONE);
-    }
-    
-
-    for (std::list<std::string>::iterator filename = outFilename.begin();filename != outFilename.end(); filename++)
-    {
-        OutputFile* file = OutputFile::Factory(*filename);
-        file->OutputInterface(options, buffer, size);
-        delete file;
-    }
-    delete[] buffer;
-    return;
 }
 
 /******************************************************************************/

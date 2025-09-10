@@ -126,7 +126,6 @@ void Versal_2ve_2vmReadImage::ReadPartitions()
         uint32_t part_sec_index = 0;
         uint32_t part_sec_count = 0;
         uint32_t part_index = 0;
-        PdiImage* pImg = new PdiImage((*iH)->imageName, (*iH)->imageId);
 
         for (cnt_index = 0; cnt_index < (*iH)->dataSectionCount; cnt_index++)
         {
@@ -191,7 +190,6 @@ void Versal_2ve_2vmReadImage::ReadPartitions()
                          if (dumpType == DumpOption::PLM)
                         {
                             delete[] buffer;
-                            delete pImg;
                             fclose(binFile);
                             return;
                         }
@@ -220,7 +218,6 @@ void Versal_2ve_2vmReadImage::ReadPartitions()
                             {
                                 // if dump boot files, the return from here
                                 delete[] buffer;
-                                delete pImg;
                                 fclose(binFile);
                                 return;
                             }
@@ -239,7 +236,7 @@ void Versal_2ve_2vmReadImage::ReadPartitions()
             pHT++;
             delete[] buffer;
         }
-        //pdiReadImages.push_back(pImg);
+
     }
     fclose(binFile);
 }
@@ -364,11 +361,6 @@ void Versal_2ve_2vmReadImage::ReadHeaderTableDetails()
     }
 
 
-    if (bH && bH->reginit[0] != 0xFFFFFFFF)
-    {
-        /*PdiPartition* pRegInit = new VersalPdiPartition(PartitionType::REG_INIT, (uint8_t*)bH->reginit, MAX_REG_INIT_VERSAL);
-        pdiReadPartitions.push_back(pRegInit);*/
-    }
 
     if ((dumpType == DumpOption::BH) || (dumpType == DumpOption::BOOT_FILES))
     {
@@ -694,19 +686,6 @@ void Versal_2ve_2vmReadImage::ReadBinaryFile(DumpOption::Type dump, std::string 
     }
     ReadPartitions();
 }
-#if 0
-/******************************************************************************/
-std::list<PdiPartition*> Versal_2ve_2vmReadImage::GetPdiPartitions(void)
-{
-    return pdiReadPartitions;
-}
-
-/******************************************************************************/
-std::list<PdiImage*> Versal_2ve_2vmReadImage::GetPdiImages(void)
-{
-    return pdiReadImages;
-}
-#endif
 /******************************************************************************/
 uint32_t Versal_2ve_2vmReadImage::GetPdiId(void)
 {

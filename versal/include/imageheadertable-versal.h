@@ -294,7 +294,7 @@ public:
     std::string GetKekIV(void);
 
 private:
-    void ParseSlrConfigFiles(size_t* slr_total_file_size);
+    void ParseSlrConfigFiles(size_t* slr_total_file_size, BootImage* bi = nullptr);
     void CheckSyncPointInChunk(SsitConfigSlrInfo* slr_info, size_t size);
     uint32_t FindCurrentSyncPoint(void);
     void CheckIdsInCdo(CdoSequence * cdo_seq, bool isVersalNetSeries, std::string cdo_filename);

@@ -134,62 +134,11 @@ void BinFile::Fill(Binary::Address_t start, Binary::Address_t end, bool doFill, 
 }
 
 /******************************************************************************/
-static uint8_t reverseBits(unsigned int num)
-{
-    uint8_t reverse_num = 0;
-    int i;
-    for (i = 0; i < 8; i++)
-    {
-        if ((num & (1 << i)))
-            reverse_num |= 1 << ((8 - 1) - i);
-    }
-    return reverse_num;
-}
-
-/******************************************************************************/
 void BinFile::Write(Binary::Address_t start, Binary::Length_t length, const uint8_t *buffer)
 {
     uint8_t* writedata = new uint8_t[length];
     memcpy(writedata, buffer, length);
 
-    /* Only applicable to Data Records 
-    To match the BIN file generation in different interface formats according to write_cfgmem of Vivado */
-    // SMAPx32
-    if ((interfaceType != Interface::NONE) && (interfaceType != Interface::SPI))
-    {
-        for (uint64_t i = 0; i<length; i++)
-        {
-            writedata[i] = reverseBits(buffer[i]);
-        }
-    }
-
-    // SMAPx8
-    if ((interfaceType == Interface::SMAPx8) || (interfaceType == Interface::SMAPx16) ||
-        (interfaceType == Interface::BPIx8) || (interfaceType == Interface::BPIx16) ||
-        (interfaceType == Interface::SPI))
-    {
-        for (uint64_t j = 0; j<length; j = j + 4)
-        {
-            uint32_t test = ReadLittleEndian32(writedata + j);
-            if (encrypted)
-            {
-                WriteLittleEndian32(writedata + j, test);
-            }
-            else
-            {
-                WriteBigEndian32(writedata + j, test);
-            }
-        }
-    }
-    // SMAPx16
-    if ((interfaceType == Interface::SMAPx16) || (interfaceType == Interface::BPIx16))
-    {
-        for (uint64_t j = 0; j<length; j = j + 2)
-        {
-            uint16_t test = ReadLittleEndian16(writedata + j);
-            WriteBigEndian16(writedata + j, test);
-        }
-    }
 
     if (qspiDualMode == QspiMode::PARALLEL_GQSPI)
     {

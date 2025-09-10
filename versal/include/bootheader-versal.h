@@ -44,8 +44,7 @@
 
 #define DEFAULT_RESERVED_VERSAL 0
 #define SMAP_BUS_WIDTH          4
-//#define ROM_BH_RESERVED       17
-#define ROM_BH_RESERVED         15 // For VersalNet
+#define ROM_BH_RESERVED         15
 #define PLM_BH_RESERVED         24
 #define SHA3_PAD_SIZE_VERSAL    19
 #define MAX_REG_INIT_VERSAL     512

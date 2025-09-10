@@ -47,6 +47,24 @@
 #define RSA_4096_E          0x400
 
 #define VERSAL_ACKEY_STRUCT_SIZE    1028
+typedef struct
+{
+    uint8_t     x[EC_P384_KEY_LENGTH];          // x co-ordinate
+    uint8_t     y[EC_P384_KEY_LENGTH];          // y co-ordinate
+    uint8_t     pad[932];                       // Padding
+} ACKeyECDSAp;
+
+typedef struct
+{
+    uint8_t Signature[SIGN_LENGTH_VERSAL];
+} ACSignatureECDSAp;
+
+typedef struct
+{
+    uint8_t     x[EC_P521_KEY_LENGTH2];          // x co-ordinate
+    uint8_t     y[EC_P521_KEY_LENGTH2];          // y co-ordinate
+    uint8_t     pad[896];                       // Padding
+} ACKeyECDSApP521;
 /*
 -------------------------------------------------------------------------------
 ************************************************************** STRUCTURES *****
@@ -60,24 +78,11 @@ typedef struct
     uint8_t     E[4];                                 // Exponent
 } ACKey4096Sha3Padding;
 
-typedef struct
-{
-    uint8_t     x[EC_P384_KEY_LENGTH];          // x co-ordinate
-    uint8_t     y[EC_P384_KEY_LENGTH];          // y co-ordinate
-    uint8_t     pad[932];                       // Padding
-} ACKeyECDSA;
 
-typedef struct
-{
-    uint8_t     x[EC_P521_KEY_LENGTH2];          // x co-ordinate
-    uint8_t     y[EC_P521_KEY_LENGTH2];          // y co-ordinate
-    uint8_t     pad[896];                       // Padding
-} ACKeyECDSAP521;
 
-typedef struct
-{
-    uint8_t Signature[SIGN_LENGTH_VERSAL];
-} ACSignatureECDSA;
+
+
+
 */
 
 /*

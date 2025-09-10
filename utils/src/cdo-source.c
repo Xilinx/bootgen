@@ -171,23 +171,6 @@ char* marker_list[] = {
     "PMC_DATA_SLR_1",
     "PMC_DATA_SLR_2",
     "PMC_DATA_SLR_3"
-    /* "PMC_METADATA",
-    "DEVICE_TOPOLOGY",
-    "SUBSYSTEM_DEFINITION",
-    "SECURE_LOCKDOWN",
-    "PMC_XPPU",
-    "PMC_XMPU",
-    "PMC_XPPU_NPI",
-    "PMC_EM",
-    "LPD_METADATA",
-    "LPD_XPPU",
-    "IPI",
-    "OCM_XMPU",
-    "XRAM_DATA",
-    "LPD_EM",
-    "FPD_METADATA",
-    "FPD_XMPU",
-    "FPD_EM", */
 };
 int marker_count[sizeof(marker_list) / sizeof(marker_list[0])];
 

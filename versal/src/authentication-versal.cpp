@@ -1075,7 +1075,7 @@ void ECDSAAuthenticationAlgorithm::RearrangeEndianess(uint8_t *array, uint32_t s
         return;
     }
 
-    //SH - Revisit find a way to correct this for common code calling of ecdsa RearrangeEndianess 
+    
     if (size != UDF_DATA_SIZE && (size != EC_P384_KEY_LENGTH))
     {
         return;
@@ -1101,7 +1101,7 @@ void ECDSAP521AuthenticationAlgorithm::RearrangeEndianess(uint8_t *array, uint32
         return;
     }
 
-    //SH - Revisit find a way to correct this for common code calling of ecdsa RearrangeEndianess 
+    
     if (size != UDF_DATA_SIZE && size != EC_P521_KEY_LENGTH1 && size != EC_P521_KEY_LENGTH2) 
     {
         return;

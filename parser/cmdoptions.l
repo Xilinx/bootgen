@@ -45,13 +45,6 @@
 
 0[xX][0-9A-Fa-f]+       yylval->number=strtoul(yytext+2,NULL,16); return tok::HEXVALUE;
 
-\-interface                 return tok::_INTERFACE;
-    smapx8                  return tok::SMAPx8;
-    smapx16                 return tok::SMAPx16;
-    smapx32                 return tok::SMAPx32;
-    spi                     return tok::SPI;
-    bpix8                   return tok::BPIx8;
-    bpix16                  return tok::BPIx16;
 
 \-image                     return tok::_IMAGE;
 \-fill                      return tok::_FILL;
@@ -133,7 +126,6 @@
     versal                  return tok::VERSAL;
     fpga                    return tok::FPGA;
     versalnet               return tok::VERSALNET;
-    psx                     return tok::VERSALNET;
     telluride               return tok::TELLURIDE;
     versal_2ve_2vm          return tok::VERSAL_2VE_2VM;
     lassen                  return tok::LASSEN;
@@ -151,15 +143,12 @@
     ac                      return tok::READ_AC;
 
 -enable_auth_opt            return tok::_AUTH_OPTIMIZATION;
--bif_to_json                return tok::_BIF_TO_JSON;
 \-verify_kdf                return tok::_VERIFYKDF;
 \-verify                    return tok::_VERIFY;
 \-encryption_dump           return tok::_ZYNQMPENCRDUMP;
 \-noauthblocks              return tok::_NOAUTHBLOCKS;
 \-zynqmpes1                 return tok::_ZYNQMPES1;
-\-post_process              return tok::_POST_PROCESS;
 \-overlay_cdo               return tok::_OVERLAYCDO;
-\-enable_subsystems         return tok::_ENABLE_SUBSYSTEMS;
 \-out_type                  return tok::_OUT_TYPE;
 
 \-h                         return tok::_H;
@@ -187,7 +176,6 @@ process_bitstream           return tok::HPROCESSBIT;
 nonbooting                  return tok::HNONBOOTING;
 encryption_dump             return tok::HENCRDUMP;
 verify                      return tok::HVERIFY;
-post_process                return tok::HPOSTPROCESS;
 verify_kdf                  return tok::HVERIFYKDF;
 securedebugimage            return tok::HSECUREDEBUG;
 authenticatedjtag           return tok::HSECUREDEBUG;

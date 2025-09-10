@@ -136,14 +136,14 @@ void Key4096Sha3Padding_versal::Import(const void* acKey, const std::string& nam
 /******************************************************************************/
 void KeyECDSA_versal::Export(void * acKey)
 {
-    ACKeyECDSA* key = (ACKeyECDSA*)acKey;
+    ACKeyECDSAp* key = (ACKeyECDSAp*)acKey;
     if (!Loaded)
     {
         std::string pubsec = (isSecret) ? " (Secret)" : " (Public)";
         LOG_ERROR("%s - $s is not loaded", name.c_str(), pubsec.c_str());
     }
 
-    memset(key, 0, sizeof(ACKeyECDSA));
+    memset(key, 0, sizeof(ACKeyECDSAp));
     memcpy(key->x, x, keySize);
     memcpy(key->y, y, keySize);
     //memset(key->pad, 0, sizeof(key->pad));
@@ -152,7 +152,7 @@ void KeyECDSA_versal::Export(void * acKey)
 /******************************************************************************/
 void KeyECDSA_versal::Import(const void * acKey, const std::string & name0)
 {
-    ACKeyECDSA* key = (ACKeyECDSA*)acKey;
+    ACKeyECDSAp* key = (ACKeyECDSAp*)acKey;
     Loaded = true;
     isSecret = false;
     name = name0;
@@ -173,14 +173,14 @@ void KeyECDSA_versal::Import(const void * acKey, const std::string & name0)
 /******************************************************************************/
 void KeyECDSAp521_versal::Export(void * acKey)
 {
-    ACKeyECDSAP521* key = (ACKeyECDSAP521*)acKey;
+    ACKeyECDSApP521* key = (ACKeyECDSApP521*)acKey;
     if (!Loaded)
     {
         std::string pubsec = (isSecret) ? " (Secret)" : " (Public)";
         LOG_ERROR("%s - $s is not loaded", name.c_str(), pubsec.c_str());
     }
 
-    memset(key, 0, sizeof(ACKeyECDSAP521));
+    memset(key, 0, sizeof(ACKeyECDSApP521));
     if (keySizeX == EC_P521_KEY_LENGTH1)
     {
         memcpy((key->x) + 1, x, keySizeX);
@@ -204,7 +204,7 @@ void KeyECDSAp521_versal::Export(void * acKey)
 /******************************************************************************/
 void KeyECDSAp521_versal::Import(const void * acKey, const std::string & name0)
 {
-    ACKeyECDSAP521* key = (ACKeyECDSAP521*)acKey;
+    ACKeyECDSApP521* key = (ACKeyECDSApP521*)acKey;
     Loaded = true;
     isSecret = false;
     name = name0;

@@ -298,11 +298,6 @@ void SpartanupReadImage::ReadHeaderTableDetails()
         bH = NULL;
     }
 
-    if (bH && bH->reginit[0] != 0xFFFFFFFF)
-    {
-        PdiPartition* pRegInit = new VersalPdiPartition(PartitionType::REG_INIT, (uint8_t*)bH->reginit, MAX_REG_INIT_VERSAL);
-        pdiReadPartitions.push_back(pRegInit);
-    }
 
     if ((dumpType == DumpOption::BH) || (dumpType == DumpOption::BOOT_FILES))
     {
@@ -420,18 +415,6 @@ void SpartanupReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
         DisplayHeaderTableDetails(readType);
     }
     ReadPartitions();
-}
-
-/******************************************************************************/
-std::list<PdiPartition*> SpartanupReadImage::GetPdiPartitions(void)
-{
-    return pdiReadPartitions;
-}
-
-/******************************************************************************/
-std::list<PdiImage*> SpartanupReadImage::GetPdiImages(void)
-{
-    return pdiReadImages;
 }
 
 /******************************************************************************/

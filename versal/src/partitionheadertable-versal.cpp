@@ -1265,7 +1265,7 @@ void VersalPartitionHeaderTable::ConfigureMetaHdrAuthenticationContext(BootImage
     {
         biAuth->SetSPKSignatureFile(bi.bifOptions->metaHdrAttributes.spkSignature);
     }
-    biAuth->spkIdentification = bi.bifOptions->metaHdrAttributes.spkRevokeId;
+    biAuth->spkIdentification = bi.bifOptions->metaHdrAttributes.partitionRevokeId;
 
     //biAuth->SetPresignFile(bi.bifOptions->GetHeaderSignatureFile());
     if (bi.bifOptions->metaHdrAttributes.presign != "")

@@ -412,14 +412,6 @@ void FpgaPartitionOutput::GeneratePartitionFiles(BootImage& bi, Binary& cache)
 void OutputFile::OutputInterface(Options& options, uint8_t* buffer, uint32_t size)
 {
     encrypted = false;
-    interfaceType = options.GetInterfaceType();
-    if (interfaceType != Interface::NONE)
-    {
-        if (options.GetEncryptedKeySource() != KeySource::None)
-        {
-            encrypted = true;
-        }
-    }
 
     /* If overwrite flag not enabled, throw error if already exists */
     if (!options.DoOverwrite())

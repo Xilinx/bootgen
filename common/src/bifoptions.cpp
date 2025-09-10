@@ -337,7 +337,6 @@ void BifOptions::Add(PartitionBifOptions* currentPartitionBifOptions, ImageBifOp
 }
 
 /******************************************************************************/
-/* MP - Revisit - can this be merged with ::Add */
 void BifOptions::AddFiles(int type, std::string filename)
 {
     //filespec->Dump();
@@ -627,15 +626,11 @@ void BifOptions::SetPufMode(PufMode::Type type)
 void BifOptions::SetShutterValue(uint32_t value)
 {
     shutterVal = value;
-    char * skip_puf_gvf_check = getenv("BOOTGEN_SKIP_PUF_GVF_CHECK");
-    if (skip_puf_gvf_check == NULL)
+    if (arch == Arch::VERSAL)
     {
-        if (arch == Arch::VERSAL)
+        if ((shutterVal & 0x80000000) == 0)
         {
-            if ((shutterVal & 0x80000000) == 0)
-            {
-                LOG_ERROR("The PUF shutter value specified in the BIF file indicates that the Global Variation Filter was not enabled during PUF registration/provisioning.\n\t   The Global Variation Filter must be used during PUF registration/provisioning to avoid PUF key encryption keys with lower than expected entropy ");
-            }
+            LOG_ERROR("The PUF shutter value specified in the BIF file indicates that the Global Variation Filter was not enabled during PUF registration/provisioning.\n\t   The Global Variation Filter must be used during PUF registration/provisioning to avoid PUF key encryption keys with lower than expected entropy ");
         }
     }
 }

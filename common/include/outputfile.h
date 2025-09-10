@@ -65,7 +65,6 @@ public:
         , encrypted(false)
         , splitOffset(0)
         , mode(OutputMode::OUT_NORMAL)
-        , interfaceType(Interface::NONE)
     {
     }
 
@@ -94,7 +93,6 @@ public:
     bool encrypted;
     uint32_t splitOffset;
     uint8_t fileIndex;
-    Interface::Type interfaceType;
 
 private:
     std::string bootFile;

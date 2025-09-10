@@ -74,13 +74,13 @@ void ShowCommonHelp(int,bool);
 %token _ARCH ZYNQ ZYNQMP VERSAL _R FPGA VERSALNET TELLURIDE VERSAL_2VE_2VM LASSEN LASSEN_DL9 SPARTANUP
 %token _DUAL_QSPI_MODE _DUAL_OSPI_MODE PARALLEL STACKED
 %token _W ON OFF
-%token _NOAUTHBLOCKS _ZYNQMPES1 _POST_PROCESS _OVERLAYCDO _ENABLE_SUBSYSTEMS
+%token _NOAUTHBLOCKS _ZYNQMPES1 _OVERLAYCDO
 %token _EFUSEPPKBITS _GENERATE_HASHES _PADIMAGEHEADER _SPKSIGNATURE _GENERATE_KEYS PEM RSA ECDSAP521 AUTH GREY METAL LMS _EFUSEPUFBITS
 %token _SECUREDEBUG ECDSA _AUTHJTAG
 %token _ENCRYPT BBRAM EFUSE _P_TOK
 %token _INTERFACE SMAPx8 SMAPx16 SMAPx32 SPI BPIx8 BPIx16
 %token _READ READ_BH READ_IHT READ_IH READ_PHT READ_AC
-%token _VERIFY _VERIFYKDF _BIF_TO_JSON _AUTH_OPTIMIZATION
+%token _VERIFY _VERIFYKDF _AUTH_OPTIMIZATION
 %token _ZYNQMPENCRDUMP
 %token <number> HEXVALUE
 %token <cstring> IDENTIFIER FILENAME QFILENAME HEXSTRING
@@ -146,13 +146,8 @@ option          : _IMAGE filename                   { options.SetBifFilename($2)
                 | _DUMP dumpOptions
                 | _DUMP_DIR filename                { options.SetDumpDirectory($2); }
                 | _VERIFYKDF filename               { options.SetKDFTestVectorFile($2); }
-                | _BIF_TO_JSON                      { options.GenerateJsonBif(); }
                 | _AUTH_OPTIMIZATION                { options.SetAuthOptimization();}
-                | _INTERFACE intefaceOptions
-                | _POST_PROCESS charstring          { options.SetPostProcessMode($2); }
                 | _OVERLAYCDO filename              { options.SetOverlayCDOFileName($2); }
-                | _ENABLE_SUBSYSTEMS                { options.EnableSubsystemFlow(true); }
-                | _ENABLE_SUBSYSTEMS HEXSTRING      { options.EnableSubsystemFlow((bool)(strcmp($2,"0"))); }
                 | _OUT_TYPE outputType
                 ;
 
@@ -201,7 +196,6 @@ helpoption      : /* empty */                       { ShowHelp(); exit(0); }
                 | HNONBOOTING                       { ShowCmdHelp(CO::BisonParser::token::HNONBOOTING); exit(0); }
                 | HENCRDUMP                         { ShowCmdHelp(CO::BisonParser::token::HENCRDUMP); exit(0); }
                 | HVERIFY                           { ShowCmdHelp(CO::BisonParser::token::HVERIFY); exit(0); }
-                | HPOSTPROCESS                      { ShowCmdHelp(CO::BisonParser::token::HPOSTPROCESS); exit(0); }
                 | HVERIFYKDF                        { ShowCmdHelp(CO::BisonParser::token::HVERIFYKDF); exit(0); }
                 | HREAD                             { ShowCmdHelp(CO::BisonParser::token::HREAD); exit(0); }
                 | HSECUREDEBUG                      { ShowCmdHelp(CO::BisonParser::token::HSECUREDEBUG); exit(0); }
@@ -403,13 +397,6 @@ dumpOptions     : READ_BH                           { options.SetDumpOption(Dump
 encrDumpOptions : /* empty */                       { options.SetEncryptionDump(true,"aes_log.txt"); }
                 | filename                          { options.SetEncryptionDump(true,$1); }
 
-intefaceOptions : SMAPx8                            { options.SetInterfaceType(Interface::SMAPx8); }
-                | SMAPx16                           { options.SetInterfaceType(Interface::SMAPx16); }
-                | SMAPx32                           { options.SetInterfaceType(Interface::SMAPx32); }
-                | SPI                               { options.SetInterfaceType(Interface::SPI); }
-                | BPIx8                             { options.SetInterfaceType(Interface::BPIx8); }
-                | BPIx16                            { options.SetInterfaceType(Interface::BPIx16); }
-                ;
 
 %%
 

@@ -25,7 +25,6 @@
 #include "binary-spartanup.h"
 #include "checksum-spartanup.h"
 #include "authentication-spartanup.h"
-#include "bifjson.h"
 extern "C" {
 #include "cdo-command.h"
 #include "cdo-overlay.h"
@@ -33,7 +32,6 @@ extern "C" {
 #include "cdo-load.h"
 };
 
-extern void CreateVersalBifJson(Options& options);
 /*
 -------------------------------------------------------------------------------
 *****************************************************   F U N C T I O N S   ***
@@ -42,11 +40,6 @@ extern void CreateVersalBifJson(Options& options);
 /******************************************************************************/
 SpartanBootImage::SpartanBootImage(Options& options, uint8_t index) : BootImage(options, index)
 {
-    if (options.GetJsonBifOption())
-    {
-        CreateVersalBifJson(options);
-        exit(0);
-    }
     partitionHeaderList.clear();
     options.SetDefaultAlignment(16);
     bootHeader = new SpartanupBootHeader(arch);
@@ -70,27 +63,8 @@ SpartanBootImage::SpartanBootImage(Options& options, uint8_t index) : BootImage(
     currentAuthCtx->hash = hash;
     partitionHeaderTable->firstSection = NULL;
     convertAieElfToCdo = true;
-    postProcessMode = options.GetPostProcessMode();
     current_image_block = 0;
-    createSubSystemPdis = options.IsSubsystemFlow();
-    if (createSubSystemPdis)
-    {
-        LOG_INFO("Subsystem flow is enabled");
-    }
-    char * env_ss = getenv("BOOTGEN_SUBSYSTEM_PDI");
-    if (env_ss != NULL)
-    {
-        LOG_WARNING("Ignoring BOOTGEN_SUBSYSTEM_PDI env variable. Subsystem flow is enabled by default.");
-    }
-    char * env_aie = getenv("BOOTGEN_AIE_ELF_FLOW");
-    if (env_aie != NULL)
-    {
-        if ((strcmp(env_aie, "true") == 0 || strcmp(env_aie, "1") == 0))
-        {
-            convertAieElfToCdo = false;
-            LOG_INFO("BOOTGEN_AIE_ELF_FLOW is enabled");
-        }
-    }
+    createSubSystemPdis = true;
 }
 
 /******************************************************************************/

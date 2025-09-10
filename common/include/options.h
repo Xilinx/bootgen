@@ -119,14 +119,11 @@ public:
         , dumpOption(DumpOption::NONE)
         , dumpPath("")
         , deviceKeyStored(false)
-        , interfaceType(Interface::NONE)
-        , enableSubsystems(true)
-        , bifToJson(false)
         , versalNetSeries(false)
         , dl9Series(false)
         , outType(File::Unknown)
         , authOptimizationEnabled(false)
-        , verifyKDFOption(false)
+        
     {
         cmdEncryptOptions = new CommndLineEncryptOptions();
     };
@@ -143,7 +140,7 @@ public:
         }
         if (secHdrIv)
         {
-            delete secHdrIv;
+            free(secHdrIv);
         }
     }
 
@@ -197,11 +194,7 @@ public:
     void SetReadImageFile(std::string);
     void SetSecureDebugAuthType(Authentication::Type type);
     void SetSecureDebugImageFile(std::string);
-    void SetInterfaceType(Interface::Type);
-    void SetPostProcessMode(std::string);
     void SetOverlayCDOFileName (std::string);
-    void EnableSubsystemFlow(bool flag);
-    void GenerateJsonBif(void);
     void SetOutType (File::Type);
     void SetAuthOptimization(void);
     
@@ -247,16 +240,11 @@ public:
     std::string GetReadImageFile(void);
     ReadImageOption::Type GetReadImageOption(void);
     bool GetVerifyImageOption();
-    bool GetVerifyKDFOption();
     DumpOption::Type GetDumpOption(void);
     std::string GetDumpDirectory(void);
     Authentication::Type GetSecureDebugAuthType(void);
     std::string GetSecureDebugImageFile(void);
-    Interface::Type GetInterfaceType(void);
-    std::string GetPostProcessMode(void);
     std::string GetOverlayCDOFileName (void);
-    bool IsSubsystemFlow(void);
-    bool GetJsonBifOption(void);
     bool IsSsitBif(void);
     bool IsVersalNetSeries(void) { return versalNetSeries; }
     bool IsDl9Series(void) { return dl9Series; }
@@ -277,7 +265,6 @@ public:
     std::string spkSignatureFileName;
     std::string devicePackageName;
     std::string kdfTestVectorFile;
-    bool verifyKDFOption;
     std::list<std::string> outputFileNames;
     LogLevel::Type logLevel;
     QspiMode::Type dualQspiMode;
@@ -317,11 +304,7 @@ public:
     std::string fsblFilename;
     Authentication::Type secureDebugAuthType;
     std::string secureDebugImageFilename;
-    Interface::Type interfaceType;
-    std::string postProcessMode;
     std::string overlayCDOFile;
-    bool enableSubsystems;
-    bool bifToJson;
 	File::Type outType;
 private:
     bool versalNetSeries;

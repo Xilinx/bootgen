@@ -41,7 +41,7 @@
 # include <deque>
 
 /* Line 34 of stack.hh  */
-#line 24 "../../s/cmdoptions.y"
+#line 24 "../../parser/cmdoptions.y"
 namespace CO {
 /* Line 34 of stack.hh  */
 #line 48 "stack.hh"
@@ -127,7 +127,7 @@ namespace CO {
     unsigned int range_;
   };
 /* Line 116 of stack.hh  */
-#line 24 "../../s/cmdoptions.y"
+#line 24 "../../parser/cmdoptions.y"
 } // CO
 /* Line 116 of stack.hh  */
 #line 134 "stack.hh"

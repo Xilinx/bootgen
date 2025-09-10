@@ -216,14 +216,12 @@ void VersalReadImage::ReadPartitions()
         uint32_t part_sec_index = 0;
         uint32_t part_sec_count = 0;
         uint32_t part_index = 0;
-        PdiImage* pImg = new PdiImage((*iH)->imageName, (*iH)->imageId);
 
         for (cnt_index = 0; cnt_index < (*iH)->dataSectionCount; cnt_index++)
         {
             uint32_t length = (*pHT)->encryptedPartitionLength * 4;
             uint8_t* buffer = new uint8_t[length];
-            uint32_t id = (*pHT)->puid & 0xFFFF;
-            uint32_t partType = (((*pHT)->partitionAttributes >> vphtPartitionTypeShift) & vphtPartitionTypeMask);
+
             offset = (*pHT)->partitionWordOffset * 4;
             if ((*pHT)->dataSectionCount > 0)
             {
@@ -259,7 +257,6 @@ void VersalReadImage::ReadPartitions()
                     if (bH && bH->sourceOffset == offset)
                     {
                         length = bH->totalPlmLength;
-                        partType = PartitionType::BOOTLOADER;
                     }
                     if ((dumpType == DumpOption::PLM) || (dumpType == DumpOption::BOOT_FILES))
                     {
@@ -267,19 +264,10 @@ void VersalReadImage::ReadPartitions()
                         if (dumpType == DumpOption::PLM)
                         {
                             delete[] buffer;
-                            delete pImg;
                             fclose(binFile);
                             return;
                         }
-                    }
-                    else
-                    {
-                        PdiPartition* p0 = new VersalPdiPartition((PartitionType::Type)partType, buffer, length, id);
-                        p0->SetType((PartitionType::Type)partType);
-                        p0->SetImageName((*iH)->imageName);
-                        p0->SetImageId((*iH)->imageId);
-                        pImg->AddPartition(p0);
-                        pdiReadPartitions.push_back(p0);
+                   
                     }
                 }
                 /* For extracting PMC DATA, Bootloader - compare address offset from BH and PHT */
@@ -294,19 +282,9 @@ void VersalReadImage::ReadPartitions()
                             {
                                 // if dump boot files, the return from here
                                 delete[] buffer;
-                                delete pImg;
                                 fclose(binFile);
                                 return;
                             }
-                        }
-                        else
-                        {
-                            PdiPartition* pPmcData = new VersalPdiPartition(PartitionType::PMC_CDO, buffer + bH->totalPlmLength, bH->totalPmcCdoLength, 0);
-                            pPmcData->SetImageName((*iH)->imageName);
-                            pPmcData->SetImageId((*iH)->imageId);
-                            pPmcData->SetType(PartitionType::CONFIG_DATA_OBJ);
-                            pdiReadPartitions.push_back(pPmcData);
-                            pImg->AddPartition(pPmcData);
                         }
                     }
                     if (bH && bH->totalPmcCdoLength == 0 && dumpType == DumpOption::PMC_CDO)
@@ -322,7 +300,7 @@ void VersalReadImage::ReadPartitions()
             pHT++;
             delete[] buffer;
         }
-        pdiReadImages.push_back(pImg);
+
     }
     fclose(binFile);
 }
@@ -357,11 +335,6 @@ void VersalReadImage::ReadHeaderTableDetails()
         bH = NULL;
     }
 
-    if (bH && bH->reginit[0] != 0xFFFFFFFF)
-    {
-        PdiPartition* pRegInit = new VersalPdiPartition(PartitionType::REG_INIT, (uint8_t*)bH->reginit, MAX_REG_INIT_VERSAL);
-        pdiReadPartitions.push_back(pRegInit);
-    }
 
     if ((dumpType == DumpOption::BH) || (dumpType == DumpOption::BOOT_FILES))
     {
@@ -531,18 +504,6 @@ void VersalReadImage::ReadBinaryFile(DumpOption::Type dump, std::string path)
         DisplayHeaderTableDetails(readType);
     }
     ReadPartitions();
-}
-
-/******************************************************************************/
-std::list<PdiPartition*> VersalReadImage::GetPdiPartitions(void)
-{
-    return pdiReadPartitions;
-}
-
-/******************************************************************************/
-std::list<PdiImage*> VersalReadImage::GetPdiImages(void)
-{
-    return pdiReadImages;
 }
 
 /******************************************************************************/
