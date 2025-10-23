@@ -1397,7 +1397,7 @@ namespace CO {
   case 193:
 /* Line 670 of lalr1.cc  */
 #line 329 "../../parser/cmdoptions.y"
-    { options.SetArchType(Arch::SPARTANUP); }
+    { options.SetArchType(Arch::SPARTANUPV2); }
     break;
 
   case 194:

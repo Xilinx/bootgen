@@ -59,10 +59,17 @@
 -------------+----------------------------------------------------------------+\n\
  SYNOPSIS    | -arch [arguments]                                              |\n\
 -------------+----------------------------------------------------------------+\n\
- ARGUMENTS   | *zynq   : Image is targeted for ZYNQ architecture              |\n\
-             |  zynqmp : Image is targeted for ZYNQ MP SoC architecture       |\n\
-             |  versal : Image is targeted for VERSAL ACAP architecture       |\n\
-             |  fpga   : Image is targeted for other FPGA architectures       |\n\
+ ARGUMENTS   | *zynq           : Image is targeted for ZYNQ-7000 architecture |\n\
+             |  zynqmp         : Image is targeted for ZYNQ MPSoC architecture|\n\
+             |  versal         : Image is targeted for VERSAL ADAPTIVE SoC    |\n\
+             |                   architecture                                 |\n\
+             |  fpga           : Image is targeted for other FPGA             |\n\
+             |                   architectures                                |\n\
+             |  versal_2ve_2vm : Image is targeted for                        |\n\
+             |                   VERSAL AI EDGE SERIES GEN2 and               |\n\
+             |                   PRIME SERIES GEN2 architectures              |\n\
+             |  spartanup      : Image is targeted for SPARTAN ULTRASCALE+    |\n\
+             |                   architecture                                 |\n\
 -------------+----------------------------------------------------------------+\n\
  USAGE       | bootgen -arch zynq -image test.bif -o boot.bin                 |\n\
 -------------+----------------------------------------------------------------+\n\

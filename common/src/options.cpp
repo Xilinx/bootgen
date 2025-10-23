@@ -368,6 +368,20 @@ void Options::SetArchType(Arch::Type type)
 }
 
 /******************************************************************************/
+void Options::SetDl9Series(uint32_t idcode)
+{
+    IdCodeManager manager;
+    if(!(manager.findIdCode(idcode))){
+        LOG_WARNING("default set as dl9 ");
+        dl9Series = true;
+    }
+    else
+    {
+        dl9Series = false;
+    }
+}
+
+/******************************************************************************/
 void Options::SetGenerateHashes(bool flag)
 {
     generateHashes = flag;

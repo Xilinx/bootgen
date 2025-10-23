@@ -514,8 +514,9 @@ static uint32_t ComputeWordChecksum(void* firstWordPtr, size_t length)
 void VersalAuthenticationContext::SetHashinOptionalData(BootImage& bi)
 {
     uint32_t sectn_size_id = 0;
+    uint16_t checksumSize =  sizeof(uint32_t);
     /* Optional Data Header + Optional Data Actual size (32 bit(4Bytes) partition Number + Hash Length in bytes) + Checksum */
-    uint16_t sectn_length = sizeof(uint32_t) + (bi.hashTable.size() * (sizeof(uint32_t) + SHA3_LENGTH_BYTES)) + sizeof(uint32_t);
+    uint16_t sectn_length = sizeof(uint32_t) + (bi.hashTable.size() * (sizeof(uint32_t) + SHA3_LENGTH_BYTES)) + checksumSize;
     /* Data ID for Hash block is fixed to 3 */
     sectn_size_id = (uint32_t)((sectn_length / 4) << 16) | DATA_ID_PARTITION_HASHES;
 
@@ -524,16 +525,22 @@ void VersalAuthenticationContext::SetHashinOptionalData(BootImage& bi)
     for (size_t i = 0; i < bi.hashTable.size(); i++)
     {
         uint32_t partition_num = bi.hashTable[i].first;
+        /* In case of partial pdi as partition number starts from 0, increment it by 1 and store*/
+        /* Skip this increment for metaheader hash index, store it as 0 in either cases (full/partial)*/
+        if(!bi.IsBootloaderFound() && i != (bi.hashTable.size()-1))
+        {
+            partition_num++;
+        }
         memcpy(bi.iht_optional_data + (bi.copied_iht_optional_data_length / 4), &partition_num, sizeof(uint32_t));
         bi.copied_iht_optional_data_length += sizeof(uint32_t);
         memcpy(bi.iht_optional_data + (bi.copied_iht_optional_data_length / 4), bi.hashTable[i].second, SHA3_LENGTH_BYTES);
         bi.copied_iht_optional_data_length += SHA3_LENGTH_BYTES;
     }
 
-    uint32_t checksum = ComputeWordChecksum(bi.iht_optional_data + ((bi.copied_iht_optional_data_length - sectn_length + sizeof(uint32_t)) / 4),
-        sectn_length - sizeof(uint32_t));
-    memcpy(bi.iht_optional_data + (bi.copied_iht_optional_data_length / 4), &checksum, sizeof(uint32_t));
-    bi.copied_iht_optional_data_length += sizeof(uint32_t);
+    uint32_t checksum = ComputeWordChecksum(bi.iht_optional_data + ((bi.copied_iht_optional_data_length - sectn_length + checksumSize) / 4),
+        sectn_length - checksumSize);
+    memcpy(bi.iht_optional_data + (bi.copied_iht_optional_data_length / 4), &checksum, checksumSize);
+    bi.copied_iht_optional_data_length += checksumSize;
 
     if (bi.copied_iht_optional_data_length != 0)
     {

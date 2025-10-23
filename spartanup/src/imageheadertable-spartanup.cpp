@@ -2028,7 +2028,7 @@ void SpartanupImageHeader::ParseSlaveSlrConfigCdos(BootImage& bi, std::vector<st
             }
             else
             {
-                LOG_ERROR("Incorrect CDO length read from : %s", cdo_filename);
+                LOG_WARNING("Incorrect CDO length read from : %s", cdo_filename);
             }
 
             total_cdo_length += (actual_cdo_size);
@@ -2241,7 +2241,7 @@ void SpartanupImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> fil
             }
             else
             {
-                LOG_ERROR("Incorrect cdo length read from : %s", cdo_filename);
+                LOG_WARNING("Incorrect CDO length read from : %s", cdo_filename);
             }
 
             total_cdo_length += (actual_cdo_size);
