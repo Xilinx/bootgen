@@ -86,7 +86,7 @@ class PartitionBifOptions
 public:
     PartitionBifOptions();
 
-    void SetArchType(Arch::Type type, bool versalNetSeries, bool dl9Series);
+    void SetArchType(Arch::Type type, bool versalNetSeries, uint32_t idcode);
     void SetEncryptionBlocks(uint32_t size, uint32_t num = 1);
     void SetDefaultEncryptionBlockSize(uint32_t blk);
     void SetDestCpu(DestinationCPU::Type);

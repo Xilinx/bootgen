@@ -3090,6 +3090,11 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                 pad_size = file_size + ((4 - (file_size & 3)) & 3);
                 uint32_t bh_offset = 0;
                 uint32_t ih_offset = ((VersalBootHeaderStructure *)(slr_boot_data.bytes))->imageHeaderByteOffset;
+                
+                if (ih_offset & 3) {
+                    ih_offset = (ih_offset + 3) & ~3; 
+                }
+                
                 /* Remove the 16-bytes of SMAP bus width from start of PDI */
                 uint32_t smap_data = (slr_boot_data.bytes[0]) + (slr_boot_data.bytes[1] << 8) + (slr_boot_data.bytes[2] << 16) + (slr_boot_data.bytes[3] << 24);
                 if ((smap_data == 0xDD000000) || (smap_data == 0x00DD0000) || (smap_data == 0x000000DD))

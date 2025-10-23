@@ -165,6 +165,7 @@ int LmsVerify(const char *keyname, const unsigned char *buffer, size_t buffer_le
 		return 0;
 	}
 	sprintf(private_key_filename, "%s", keyname);
+	struct hss_extra_info info = { 0 };
 
 	/* Read in the auxilliary file */
 	size_t aux_filename_len = strlen(keyname) + sizeof(".aux") + 1;
@@ -193,9 +194,10 @@ int LmsVerify(const char *keyname, const unsigned char *buffer, size_t buffer_le
 												/* private key */
 		0,                          /* Use minimal memory */
 		aux_data, len_aux_data,     /* The auxiliary data */
-		0);                         /* Use the defaults for extra info */
+		&info);                         /* Use the defaults for extra info */
 	if (!w) {
 		printf("[ERROR]  : Error loading private key\n");
+		*err = info.error_code;
 		free(aux_data);
 		hss_free_working_key(w);
 		free(aux_filename);
@@ -229,7 +231,7 @@ int LmsVerify(const char *keyname, const unsigned char *buffer, size_t buffer_le
 	}
 
 	//printf("Signing the buffer\n");
-	struct hss_extra_info info = { 0 };
+	
 	bool success = hss_generate_signature(w,
 		update_private_key, private_key_filename,
 		buffer, buffer_len,

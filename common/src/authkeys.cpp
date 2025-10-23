@@ -776,6 +776,7 @@ void Key::GenerateLmsKeys(KeyGenerationStruct* keygen, std::vector<LmsKeyParam> 
             }
         }
     }
+    LOG_WARNING("Be careful when version controlling, backing up, and restoring LMS private keys. The private key file contains state. Re-using private key state leads to loss of authenticity. For more information, see NIST SP800-208 Sec. 9.1 https://csrc.nist.gov/pubs/sp/800/208/final.");
 }
 
 /******************************************************************************/

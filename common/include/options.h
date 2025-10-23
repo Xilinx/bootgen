@@ -196,6 +196,7 @@ public:
     void SetSecureDebugImageFile(std::string);
     void SetOverlayCDOFileName (std::string);
     void SetOutType (File::Type);
+     void SetDl9Series(uint32_t);
     void SetAuthOptimization(void);
     
     bool IsAuthOptimizationEnabled(void);
@@ -313,3 +314,15 @@ private:
 };
 
 #endif
+class IdCodeManager {
+public:
+    IdCodeManager() : idCodes{0x04E81093, 0x04E82093, 0x04E80093} {}
+    ~IdCodeManager() = default;
+
+    bool findIdCode(int idCode) const {
+        return std::find(idCodes.begin(), idCodes.end(), idCode) != idCodes.end();
+    }
+
+private:
+    std::vector<int> idCodes;
+};

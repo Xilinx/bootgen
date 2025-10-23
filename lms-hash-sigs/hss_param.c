@@ -153,7 +153,11 @@ bool hss_get_parameter_set( unsigned *levels,
     for (level=0; level < MAX_HSS_LEVELS; level++) {
         unsigned char c = private_key[PRIVATE_KEY_PARAM_SET + 2*level];
         unsigned char d = private_key[PRIVATE_KEY_PARAM_SET + 2*level + 1];
-        if (c == PARM_SET_END && d == PARM_SET_END) break;
+        if (c == PARM_SET_END && d == PARM_SET_END) {
+            printf("Private key expired\n");
+            error_code = hss_error_private_key_expired;
+            break;
+        }
             /* Decode this level's parameter set */
         param_set_t lm = c;
         param_set_t ots = d;

@@ -1052,7 +1052,7 @@ void LMSAuthenticationAlgorithm::CreateSignature(const uint8_t* buffer, size_t b
         hss_sign = new uint8_t[result0_len];
         memset(hss_sign, 0, result0_len);
     }
-
+    LOG_WARNING("Be careful when version controlling, backing up, and restoring LMS private keys. The private key file contains state. Re-using private key state leads to loss of authenticity. For more information, see NIST SP800-208 Sec. 9.1 https://csrc.nist.gov/pubs/sp/800/208/final.");
     uint32_t err = 0;
     if (!LmsSign(keyFile, buffer, buf_len, hss_sign, &sig_len, &err))
     {

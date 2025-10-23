@@ -229,7 +229,7 @@ file_list               :   /* empty */
                         ;
 
 metahdr_spec            :   METAHEADER OBRACE                                    { currentPartitionBifOptions = new PartitionBifOptions();
-                                                                                   currentPartitionBifOptions->SetArchType(options.GetArchType(), options.IsVersalNetSeries(), options.IsDl9Series()); }
+                                                                                   currentPartitionBifOptions->SetArchType(options.GetArchType(), options.IsVersalNetSeries(), currentBifOptions->GetIdCode()); }
                             metahdr_attr_list EBRACE
                         ;
 
@@ -285,7 +285,8 @@ metahdr_blk_attr        :   expression                                          
 
 new_pdi_spec            :   ID EQUAL expression                                 { currentBifOptions->SetPdiId($3); }
                         |   PARENT_ID EQUAL expression                          { currentBifOptions->SetParentId($3); }
-                        |   ID_CODE EQUAL expression                            { currentBifOptions->SetIdCode($3); }
+                        |   ID_CODE EQUAL expression                            { currentBifOptions->SetIdCode($3); 
+                                                                                  options.SetDl9Series($3); }
                         |   EXT_ID_CODE EQUAL expression                        { currentBifOptions->SetExtendedIdCode($3); }
                         |   other_file_attr EQUAL filename                      { currentBifOptions->AddFiles($1, $3); }
                         |   KEYSRC_ENCRYPTION EQUAL key_src                     { currentBifOptions->SetEncryptionKeySource($3); }
@@ -427,20 +428,20 @@ fsbl_attr               :   core                                                
                         ;
 
 file_spec               :   OBRACKET                                            { currentPartitionBifOptions = new PartitionBifOptions();
-                                                                                  currentPartitionBifOptions->SetArchType(options.GetArchType(),options.IsVersalNetSeries(), options.IsDl9Series()); }
+                                                                                  currentPartitionBifOptions->SetArchType(options.GetArchType(),options.IsVersalNetSeries(),  currentBifOptions->GetIdCode()); }
                             attribute_list EBRACKET 
                             filename                                            { currentPartitionBifOptions->filename = $5;
                                                                                   currentPartitionBifOptions->filelist.push_back($5);
                                                                                   currentBifOptions->Add(currentPartitionBifOptions, currentImageBifOptions);
                                                                                 }
                         |   filename                                            { currentPartitionBifOptions = new PartitionBifOptions();
-                                                                                  currentPartitionBifOptions->SetArchType(options.GetArchType(), options.IsVersalNetSeries(), options.IsDl9Series());
+                                                                                  currentPartitionBifOptions->SetArchType(options.GetArchType(), options.IsVersalNetSeries(),  currentBifOptions->GetIdCode());
                                                                                   currentPartitionBifOptions->filename = $1; 
                                                                                   currentPartitionBifOptions->filelist.push_back($1);
                                                                                   currentBifOptions->Add(currentPartitionBifOptions, currentImageBifOptions);
                                                                                 };
 new_file_spec           :   OBRACE                                              { currentPartitionBifOptions = new PartitionBifOptions();
-                                                                                  currentPartitionBifOptions->SetArchType(options.GetArchType(), options.IsVersalNetSeries(), options.IsDl9Series()); }
+                                                                                  currentPartitionBifOptions->SetArchType(options.GetArchType(), options.IsVersalNetSeries(),  currentBifOptions->GetIdCode()); }
                             new_attribute_list EBRACE
                         ;
 

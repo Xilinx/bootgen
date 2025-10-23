@@ -326,7 +326,7 @@ archOptions     : ZYNQ                              { options.SetArchType(Arch::
                 | FPGA                              { options.SetArchType(Arch::FPGA); }
                 | VERSALNET                         { options.SetArchType(Arch::VERSALNET); }
                 | VERSAL_2VE_2VM                    { options.SetArchType(Arch::VERSALGEN2); } 
-                | SPARTANUP                         { options.SetArchType(Arch::SPARTANUP); }
+                | SPARTANUP                         { options.SetArchType(Arch::SPARTANUPV2); }
                 | TELLURIDE                         { LOG_WARNING("usage of '-arch telluride' will be deprecated, Please use '-arch versal_2ve_2vm' instead.");
                                                       options.SetArchType(Arch::VERSALGEN2); }
                 | LASSEN                            { LOG_WARNING("usage of '-arch lassen' will be deprecated, Please use '-arch spartanup' instead."); 

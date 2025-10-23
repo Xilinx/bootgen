@@ -1264,11 +1264,18 @@ void PartitionBifOptions::SetEncryptionKeySource(KeySource::Type type)
 }
 
 /******************************************************************************/
-void PartitionBifOptions::SetArchType(Arch::Type type, bool versalNet, bool dl9)
+void PartitionBifOptions::SetArchType(Arch::Type type, bool versalNet,  uint32_t idcode)
 {
     arch = type;
     versalNetSeries = versalNet;
-    dl9Series = dl9;
+    IdCodeManager manager;
+    if(!manager.findIdCode(idcode))
+    {
+        dl9Series = true;
+    }else
+    {
+        dl9Series = false;
+    }
 }
 
 /******************************************************************************/
