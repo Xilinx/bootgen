@@ -26,6 +26,16 @@
  #include "authentication.h"
  #include "encryption.h"
  typedef BIF::BisonParser::token tok;
+ #include <iostream>
+ #include <fstream>
+ #include <string>
+ #include <stack>
+ static std::stack<YY_BUFFER_STATE> buffer_stack;
+ static std::stack<std::ifstream*> stream_stack;
+ static std::stack<std::string> filename_stack;
+ static std::stack<std::string> scanner_filename_stack; // Track scanner filenames
+ static const int MAX_INCLUDE_DEPTH = 50; // Prevent infinite recursion
+ bool includefound = false; // Define the global variable
 %}
 
 /* see http://www.lysator.liu.se/c/ANSI-C-grammar-l.html */
@@ -71,7 +81,106 @@ image                                                               return tok::
 metaheader                                                          return tok::METAHEADER;
 section                                                             return tok::BIF_SECTION;
 lockstep                                                            return tok::LOCKSTEP;
-include                                                             return tok::INCLUDE;
+include[ \t]*:[ \t]*(\"([^\"]+)\"|([^ \t\n]+)) {
+    char filename[256];
+    includefound = true;
+    // Check if filename is quoted or unquoted
+    if (strchr(yytext, '"') != NULL) {
+        // Quoted filename
+        sscanf(yytext, "include : \"%255[^\"]\"", filename);
+    } else {
+        // Unquoted filename - extract everything after the colon and whitespace
+        char* colon_pos = strchr(yytext, ':');
+        if (colon_pos) {
+            char* start = colon_pos + 1;
+            // Skip whitespace
+            while (*start && (*start == ' ' || *start == '\t')) {
+                start++;
+            }
+            strncpy(filename, start, 255);
+            filename[255] = '\0';
+            // Remove trailing whitespace
+            int len = strlen(filename);
+            while (len > 0 && (filename[len-1] == ' ' || filename[len-1] == '\t' || filename[len-1] == '\n')) {
+                filename[--len] = '\0';
+            }
+        } else {
+            std::cerr << "Error: Malformed include statement\n";
+            return 0;
+        }
+    }
+
+    // Check for maximum include depth
+    if (buffer_stack.size() >= MAX_INCLUDE_DEPTH) {
+        std::cerr << "Error: Maximum include depth (" << MAX_INCLUDE_DEPTH << ") exceeded at file '" << filename << "'\n";
+        return 0; // Signal error/EOF
+    }
+    
+    // Check for circular includes
+    std::stack<std::string> temp_stack = filename_stack;
+    while (!temp_stack.empty()) {
+        if (temp_stack.top() == std::string(filename)) {
+            std::cerr << "Error: Circular include detected for file '" << filename << "'\n";
+            return 0; // Signal error/EOF
+        }
+        temp_stack.pop();
+    }
+
+    std::ifstream* new_stream = new std::ifstream(filename);
+    if (new_stream->is_open()) {
+        // Push current state onto stacks
+        buffer_stack.push(YY_CURRENT_BUFFER);
+        stream_stack.push(new_stream);
+        filename_stack.push(std::string(filename));
+        scanner_filename_stack.push(this->filename);
+        
+        // Create new buffer and switch to it
+        YY_BUFFER_STATE new_buffer = yy_create_buffer(new_stream, YY_BUF_SIZE);
+        yy_switch_to_buffer(new_buffer);
+        
+        // Update the scanner filename for location tracking
+        this->filename = std::string(filename);
+        
+        // Step to reset location for the new file
+        yylloc->step();
+    } else {
+        std::cerr << "Error: Could not open file '" << filename << "' for inclusion\n";
+        delete new_stream;
+        return 0; // Signal error/EOF
+    }   
+}
+[ \t\n]+ ;  // Ignore whitespace
+<<EOF>> {
+    if (!buffer_stack.empty()) {
+        // Clean up current buffer
+        yy_delete_buffer(YY_CURRENT_BUFFER);
+        
+        // Clean up current stream if it exists
+        if (!stream_stack.empty()) {
+            std::ifstream* current_stream = stream_stack.top();
+            stream_stack.pop();
+            current_stream->close();
+            delete current_stream;
+        }
+        
+        // Pop filename stack if it exists
+        if (!filename_stack.empty()) {
+            filename_stack.pop();
+        }
+        
+        // Restore previous scanner filename
+        if (!scanner_filename_stack.empty()) {
+            this->filename = scanner_filename_stack.top();
+            scanner_filename_stack.pop();
+        }
+        
+        // Switch back to previous buffer
+        yy_switch_to_buffer(buffer_stack.top());
+        buffer_stack.pop();
+    } else {
+        return 0; // Done
+    }   
+}
 tcmboot                                                             return tok::TCM_BOOT;
 optionaldata                                                        return tok::OPTIONAL_DATA;
 
@@ -368,5 +477,36 @@ loop:
     {
         unput(c1);
         goto loop;
+    }
+}
+// Cleanup function to handle any remaining streams
+void BIF::FlexScanner::cleanup_include_stacks()
+{
+    // Clean up any remaining streams
+    while (!stream_stack.empty()) {
+        std::ifstream* stream = stream_stack.top();
+        stream_stack.pop();
+        if (stream) {
+            stream->close();
+            delete stream;
+        }
+    }
+    
+    // Clean up any remaining buffers
+    while (!buffer_stack.empty()) {
+        YY_BUFFER_STATE buffer = buffer_stack.top();
+        buffer_stack.pop();
+        if (buffer) {
+            yy_delete_buffer(buffer);
+        }
+    }
+    
+    // Clean up filename stacks
+    while (!filename_stack.empty()) {
+        filename_stack.pop();
+    }
+    
+    while (!scanner_filename_stack.empty()) {
+        scanner_filename_stack.pop();
     }
 }

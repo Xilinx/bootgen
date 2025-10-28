@@ -39,6 +39,8 @@
 // Include Bison for types / tokens
 #include "bif.tab.hpp"
 
+extern bool includefound;
+
 
 /*
 -------------------------------------------------------------------------------
@@ -52,12 +54,17 @@ namespace BIF
     {
         public:
             // save the pointer to yylval so we can change it, and invoke scanner
+            // Constructor and destructor
+            FlexScanner() { includefound = false; }
+            ~FlexScanner() { cleanup_include_stacks(); }
             int yylex(BIF::BisonParser::semantic_type * lval, BIF::BisonParser::location_type* loc) { 
                 yylval = lval; 
                 yylloc = loc;
                 return yylex(); 
             }
             void comment();
+            void cleanup_include_stacks();
+            void reset_includefound() { includefound = false; }
             std::string filename;
 
         private:

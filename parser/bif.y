@@ -210,7 +210,19 @@ bif                     :   group_list;
 group_list              :   /* empty */ 
                         |   group_list bifoptions
                         ;
-               
+bifoptions              :   INCLUDE COLON filename                              { options.includeBifOptionsList.push_back($3); }
+                        |   WORD                                                { if (!includefound)
+                                                                                      {currentBifOptions = new BifOptions(options.GetArchType(), options.IsVersalNetSeries(), options.IsDl9Series(), $1);}
+                                                                                  else{
+                                                                                    if (!currentBifOptions) {
+                                                                                    currentBifOptions = new BifOptions(options.GetArchType(), options.IsVersalNetSeries(), options.IsDl9Series(), $1);
+                                                                                    options.bifOptions = currentBifOptions;
+                                                                                    options.bifOptionsList.push_back(currentBifOptions);}
+                                                                                  } }
+                            COLON 
+                            OBRACE file_list EBRACE                             { if (!includefound){options.bifOptions = currentBifOptions;
+                                                                                  options.bifOptionsList.push_back(currentBifOptions);} }    
+
 bifoptions              :   INCLUDE COLON filename                              { options.includeBifOptionsList.push_back($3); }
                         |   WORD                                                { currentBifOptions = new BifOptions(options.GetArchType(), options.IsVersalNetSeries(), options.IsDl9Series(), $1); }
                             COLON 
