@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdio.h>
 #include "hss.h"
 #include "hss_internal.h"
 #include "endian.h"
