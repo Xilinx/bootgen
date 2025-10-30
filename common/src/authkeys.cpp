@@ -170,6 +170,7 @@ void Key::Parse(const std::string& filename, bool isSecret0)
             LOG_ERROR("Unsupported key file - %s\n           Supported key formats: AMD Format & OpenSSL format", basefile.c_str());
         }
         fclose(f);
+        f = NULL;
 
         if(errCode != 0)
         {
@@ -195,7 +196,10 @@ void Key::Parse(const std::string& filename, bool isSecret0)
     }
     catch(...) 
     {
-        fclose(f);
+        if (f!=NULL)
+        {
+            fclose(f);
+        }
         throw;
     }
 }
