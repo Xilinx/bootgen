@@ -26,6 +26,22 @@ struct bignum_st {
 };
 
 /* Used for montgomery multiplication */
+/*
+ * The layout of this structure was changed in openSSL commit 3f540b6d.
+ */
+#if OPENSSL_VERSION_NUMBER >= 0x30600000L
+struct bn_mont_ctx_st {
+    BIGNUM RR;                  /* used to convert to montgomery form */
+    BIGNUM N;                   /* The modulus */
+    BIGNUM Ni;                  /* R*(1/R mod N) - N*Ni = 1 (Ni is only
+                                 * stored for bignum algorithm) */
+    BN_ULONG n0[2];             /* least significant word(s) of Ni; (type
+                                 * changed with 0.9.9, was "BN_ULONG n0;"
+                                 * before) */
+    int ri;                     /* number of bits in R */
+    int flags;
+};
+#else
 struct bn_mont_ctx_st {
     int ri;                     /* number of bits in R */
     BIGNUM RR;                  /* used to convert to montgomery form */
@@ -37,5 +53,6 @@ struct bn_mont_ctx_st {
                                  * before) */
     int flags;
 };
+#endif
 
 #endif
