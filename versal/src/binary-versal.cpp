@@ -38,11 +38,8 @@
 /******************************************************************************/
 VersalBinary::~VersalBinary()
 {
-    for (SectionList::iterator i = Sections.begin(); i != Sections.end(); i++)
-    {
-        delete *i;
-    }
-    Sections.clear();
+    // NOTE: Base Binary destructor already clears Sections - do NOT clear here!
+    // Clearing in both derived and base destructor causes double-free
 }
 
 /******************************************************************************/

@@ -29,6 +29,7 @@
 #include <string>
 #include <list>
 #include <string.h>
+#include <memory>
 #include "binary.h"
 //#include "baseclass.h"
 #include "bootgenenum.h"
@@ -118,13 +119,14 @@ public:
 
     uint32_t getCertificateSize(void) { return certSize; }
     void AddAuthCertSizeToTotalFSBLSize(PartitionHeader* header);
-    Section* CreateCertificate(BootImage& bi, Binary& cache, Section* dataSection);
+    Section* CreateCertificate(BootImage& bi, Binary& cache, Section* dataSection, bool isBootloader);
     void GenerateIHTHash(BootImage& bi, uint8_t* sha_hash_padded);
     void GenerateBHHash(BootImage& bi, uint8_t* sha_hash_padded);
     void GenerateSPKHash(uint8_t * sha_hash_padded);
     void GeneratePPKHash(const std::string& filename);
     void CopyPartitionSignature(BootImage& bi, std::list<Section*> sections, uint8_t* signatureBlock, Section* acSection);
     static void GetPresign(const std::string& presignFilename, uint8_t* signature, uint32_t index);
+    static void GetPresign(const std::string& presignFilename, uint16_t signatureLength, uint8_t* signature, uint32_t index);
     void SetSPKSignatureFile(const std::string& filename);
     void SetBHSignatureFile(const std::string& filename);
     void GenerateSPKSignature(const std::string& filename);
@@ -133,7 +135,7 @@ public:
     void CreateSPKSignature(BootImage& bi);
     void CreateAuthJtagImage(uint8_t * buffer, AuthJtagInfo authJtagAttributes);
     void SetKeyLength(Authentication::Type type);
-    AuthenticationAlgorithm* GetAuthenticationAlgorithm(Authentication::Type type);
+    std::unique_ptr<AuthenticationAlgorithm> GetAuthenticationAlgorithm(Authentication::Type type);
     uint32_t GetCertificateSize();
     uint32_t GetTotalHashBlockSignSize(void);
 private:

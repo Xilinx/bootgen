@@ -180,7 +180,7 @@ protected:
         {
             LOG_ERROR("Section was not allocated");
         }
-        return (RegisterInitTable*)(section->Data + GetBootHeaderSize());
+        return (RegisterInitTable*)(section->Data.get() + GetBootHeaderSize());
     }
 };
 

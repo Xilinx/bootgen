@@ -31,11 +31,20 @@
 #include "string.h"
 #include "options.h"
 #include <limits>
+#include <memory>
 #include "partitionheadertable-versal.h"
 #include "imageheadertable-versal.h"
 #include "Keccak-compact-versal.h"
 #include "encryptutils.h"
 #include <openssl/rand.h>
+extern "C" {
+#include "cdo-npi.h"
+#include "cdo-source.h"
+#include "cdo-command.h"
+#include "cdo-binary.h"
+#include "cdo-load.h"
+#include "cdo-overlay.h"
+};
 
 /*
 -------------------------------------------------------------------------------
@@ -46,33 +55,33 @@
 VersalAuthenticationContext::VersalAuthenticationContext(Authentication::Type type)
 {
     signatureLength = SIGN_LENGTH_VERSAL;
-    spksignature = new uint8_t[signatureLength];
-    bHsignature = new uint8_t[signatureLength];
+    spksignature = std::make_unique<uint8_t[]>(signatureLength);
+    bHsignature = std::make_unique<uint8_t[]>(signatureLength);
     spkSignLoaded = false;
     memset(udf_data, 0, UDF_DATA_SIZE);
-    memset(bHsignature, 0, signatureLength);
+    memset(bHsignature.get(), 0, signatureLength);
     bhSignLoaded = false;
     certSize = sizeof(AuthCertificate4096Sha3PaddingStructure);
     hashType = AuthHash::Sha3;
     authAlgorithm = GetAuthenticationAlgorithm(type);
     if (type == Authentication::RSA)
     {
-        primaryKey = new Key4096Sha3Padding_versal("Primary Key");
-        secondaryKey = new Key4096Sha3Padding_versal("Secondary Key");
+        primaryKey = std::make_unique<Key4096Sha3Padding_versal>("Primary Key");
+        secondaryKey = std::make_unique<Key4096Sha3Padding_versal>("Secondary Key");
         primaryKey->authType = Authentication::RSA;
         secondaryKey->authType = Authentication::RSA;
     }
     else if (type == Authentication::ECDSA)
     {
-        primaryKey = new KeyECDSA_versal("Primary Key");
-        secondaryKey = new KeyECDSA_versal("Secondary Key");
+        primaryKey = std::make_unique<KeyECDSA_versal>("Primary Key");
+        secondaryKey = std::make_unique<KeyECDSA_versal>("Secondary Key");
         primaryKey->authType = Authentication::ECDSA;
         secondaryKey->authType = Authentication::ECDSA;
     }
     else
     {
-        primaryKey = new KeyECDSAp521_versal("Primary Key");
-        secondaryKey = new KeyECDSAp521_versal("Secondary Key");
+        primaryKey = std::make_unique<KeyECDSAp521_versal>("Primary Key");
+        secondaryKey = std::make_unique<KeyECDSAp521_versal>("Secondary Key");
         primaryKey->authType = Authentication::ECDSAp521;
         secondaryKey->authType = Authentication::ECDSAp521;
     }
@@ -82,8 +91,8 @@ VersalAuthenticationContext::VersalAuthenticationContext(Authentication::Type ty
 VersalAuthenticationContext::VersalAuthenticationContext(const AuthenticationContext* refAuthContext, Authentication::Type authtype)
 {
     signatureLength = SIGN_LENGTH_VERSAL;
-    spksignature = new uint8_t[signatureLength];
-    bHsignature = new uint8_t[signatureLength];
+    spksignature = std::make_unique<uint8_t[]>(signatureLength);
+    bHsignature = std::make_unique<uint8_t[]>(signatureLength);
 
     authAlgorithm = GetAuthenticationAlgorithm(authtype);
     hashType = AuthHash::Sha3;
@@ -98,22 +107,22 @@ VersalAuthenticationContext::VersalAuthenticationContext(const AuthenticationCon
 
     if (authtype == Authentication::RSA)
     {
-        primaryKey = new Key4096Sha3Padding_versal("Primary Key");
-        secondaryKey = new Key4096Sha3Padding_versal("Secondary Key");
+        primaryKey = std::make_unique<Key4096Sha3Padding_versal>("Primary Key");
+        secondaryKey = std::make_unique<Key4096Sha3Padding_versal>("Secondary Key");
         primaryKey->authType = Authentication :: RSA;
         secondaryKey->authType = Authentication :: RSA;
     }
     else if(authtype == Authentication::ECDSA)
     {
-        primaryKey = new KeyECDSA_versal("Primary Key");
-        secondaryKey = new KeyECDSA_versal("Secondary Key");
+        primaryKey = std::make_unique<KeyECDSA_versal>("Primary Key");
+        secondaryKey = std::make_unique<KeyECDSA_versal>("Secondary Key");
         primaryKey->authType = Authentication :: ECDSA;
         secondaryKey->authType = Authentication :: ECDSA;
     }
     else
     {
-        primaryKey = new KeyECDSAp521_versal("Primary Key");
-        secondaryKey = new KeyECDSAp521_versal("Secondary Key");
+        primaryKey = std::make_unique<KeyECDSAp521_versal>("Primary Key");
+        secondaryKey = std::make_unique<KeyECDSAp521_versal>("Secondary Key");
         primaryKey->authType = Authentication :: ECDSAp521;
         secondaryKey->authType = Authentication :: ECDSAp521;
     }
@@ -131,7 +140,8 @@ VersalAuthenticationContext::VersalAuthenticationContext(const AuthenticationCon
     }
     else
     {
-        primaryKey = refAuthContext->primaryKey;
+        // Non-owning reference to refAuthContext's primaryKey
+        primaryKey.reset(refAuthContext->primaryKey.get());
     }
 
     if (spkFile != "" || sskFile != "")
@@ -147,7 +157,8 @@ VersalAuthenticationContext::VersalAuthenticationContext(const AuthenticationCon
     }
     else
     {
-        secondaryKey = refAuthContext->secondaryKey;
+        // Non-owning reference to refAuthContext's secondaryKey
+        secondaryKey.reset(refAuthContext->secondaryKey.get());
     }
     if (spkSignFile != "")
     {
@@ -155,7 +166,7 @@ VersalAuthenticationContext::VersalAuthenticationContext(const AuthenticationCon
     }
     else
     {
-        memcpy(spksignature, refAuthContext->spksignature, signatureLength);
+        memcpy(spksignature.get(), refAuthContext->spksignature.get(), signatureLength);
     }
 
     if (bhSignFile != "")
@@ -164,7 +175,7 @@ VersalAuthenticationContext::VersalAuthenticationContext(const AuthenticationCon
     }
     else
     {
-        memcpy(bHsignature, refAuthContext->bHsignature, signatureLength);
+        memcpy(bHsignature.get(), refAuthContext->bHsignature.get(), signatureLength);
     }
     memcpy(udf_data, refAuthContext->udf_data, sizeof(udf_data));
     bhSignLoaded = refAuthContext->bhSignLoaded;
@@ -179,30 +190,30 @@ VersalAuthenticationContext::VersalAuthenticationContext(const AuthenticationCon
 VersalAuthenticationContext::VersalAuthenticationContext(const AuthCertificate4096Sha3PaddingStructure* existingCert, Authentication::Type authtype)
 {
     signatureLength = SIGN_LENGTH_VERSAL;
-    spksignature = new uint8_t[signatureLength];
+    spksignature = std::make_unique<uint8_t[]>(signatureLength);
     spkSignLoaded = true;
-    bHsignature = new uint8_t[signatureLength];
+    bHsignature = std::make_unique<uint8_t[]>(signatureLength);
     bhSignLoaded = true;
     authAlgorithm = GetAuthenticationAlgorithm(authtype);
 
     if (authtype == Authentication::RSA)
     {
-        primaryKey = new Key4096Sha3Padding_versal("Primary Key");
-        secondaryKey = new Key4096Sha3Padding_versal("Secondary Key");
+        primaryKey = std::make_unique<Key4096Sha3Padding_versal>("Primary Key");
+        secondaryKey = std::make_unique<Key4096Sha3Padding_versal>("Secondary Key");
         primaryKey->authType = Authentication::RSA;
         secondaryKey->authType = Authentication::RSA;
     }
     else if (authtype == Authentication::ECDSA)
     {
-        primaryKey = new KeyECDSA_versal("Primary Key");
-        secondaryKey = new KeyECDSA_versal("Secondary Key");
+        primaryKey = std::make_unique<KeyECDSA_versal>("Primary Key");
+        secondaryKey = std::make_unique<KeyECDSA_versal>("Secondary Key");
         primaryKey->authType = Authentication::ECDSA;
         secondaryKey->authType = Authentication::ECDSA;
     }
     else
     {
-        primaryKey = new KeyECDSAp521_versal("Primary Key");
-        secondaryKey = new KeyECDSAp521_versal("Secondary Key");
+        primaryKey = std::make_unique<KeyECDSAp521_versal>("Primary Key");
+        secondaryKey = std::make_unique<KeyECDSAp521_versal>("Secondary Key");
         primaryKey->authType = Authentication::ECDSAp521;
         secondaryKey->authType = Authentication::ECDSAp521;
     }
@@ -211,37 +222,37 @@ VersalAuthenticationContext::VersalAuthenticationContext(const AuthCertificate40
     secondaryKey->Import(&existingCert->acSpk, "Secondary Key");
     hashType = AuthHash::Sha3;
 
-    authAlgorithm->RearrangeEndianess(primaryKey->N, sizeof(existingCert->acPpk.N));
-    authAlgorithm->RearrangeEndianess(primaryKey->N_ext, sizeof(existingCert->acPpk.N_extension));
-    authAlgorithm->RearrangeEndianess(primaryKey->E, sizeof(existingCert->acPpk.E));
+    authAlgorithm->RearrangeEndianess(primaryKey->N.get(), sizeof(existingCert->acPpk.N));
+    authAlgorithm->RearrangeEndianess(primaryKey->N_ext.get(), sizeof(existingCert->acPpk.N_extension));
+    authAlgorithm->RearrangeEndianess(primaryKey->E.get(), sizeof(existingCert->acPpk.E));
 
-    authAlgorithm->RearrangeEndianess(secondaryKey->N, sizeof(existingCert->acSpk.N));
-    authAlgorithm->RearrangeEndianess(secondaryKey->N_ext, sizeof(existingCert->acSpk.N_extension));
-    authAlgorithm->RearrangeEndianess(secondaryKey->E, sizeof(existingCert->acSpk.E));
-    memcpy(spksignature, existingCert->acSpkSignature.Signature, signatureLength);
-    memcpy(bHsignature, existingCert->acHeaderSignature.Signature, signatureLength);
+    authAlgorithm->RearrangeEndianess(secondaryKey->N.get(), sizeof(existingCert->acSpk.N));
+    authAlgorithm->RearrangeEndianess(secondaryKey->N_ext.get(), sizeof(existingCert->acSpk.N_extension));
+    authAlgorithm->RearrangeEndianess(secondaryKey->E.get(), sizeof(existingCert->acSpk.E));
+    memcpy(spksignature.get(), existingCert->acSpkSignature.Signature, signatureLength);
+    memcpy(bHsignature.get(), existingCert->acHeaderSignature.Signature, signatureLength);
     memcpy(udf_data, existingCert->acUdf, UDF_DATA_SIZE);
     spkIdentification = existingCert->spkId;
     certSize = sizeof(AuthCertificate4096Sha3PaddingStructure);
 }
 
 /******************************************************************************/
-AuthenticationAlgorithm* VersalAuthenticationContext::GetAuthenticationAlgorithm(Authentication::Type type)
+std::unique_ptr<AuthenticationAlgorithm> VersalAuthenticationContext::GetAuthenticationAlgorithm(Authentication::Type type)
 {
     if (type == Authentication::ECDSA)
     {
         SetAuthenticationKeyLength(EC_P384_KEY_LENGTH);
-        return new ECDSAAuthenticationAlgorithm();
+        return std::make_unique<ECDSAAuthenticationAlgorithm>();
     }
     else if (type == Authentication::ECDSAp521)
     {
         //SetAuthenticationKeyLength(EC_P521_KEY_LENGTH);
-        return new ECDSAP521AuthenticationAlgorithm();
+        return std::make_unique<ECDSAP521AuthenticationAlgorithm>();
     }
     else 
     {
         SetAuthenticationKeyLength(RSA_4096_KEY_LENGTH);
-        return new RSA4096Sha3PaddingAuthenticationAlgorithm();
+        return std::make_unique<RSA4096Sha3PaddingAuthenticationAlgorithm>();
     }
 }
 
@@ -254,29 +265,8 @@ uint32_t VersalAuthenticationContext::GetCertificateSize(void)
 /******************************************************************************/
 VersalAuthenticationContext::~VersalAuthenticationContext()
 {
-    if (spksignature != NULL)
-    {
-        delete[] spksignature;
-        spksignature = nullptr;
-    }
-
-    if (bHsignature != NULL)
-    {
-        delete[] bHsignature;
-        bHsignature = nullptr;
-    }
-
-    if (primaryKey != NULL)
-    {
-        delete primaryKey;
-        primaryKey = nullptr;
-    }
-
-    if (secondaryKey != NULL)
-    {
-        delete secondaryKey;
-        secondaryKey = nullptr;
-    }
+    // spksignature, bHsignature, primaryKey, secondaryKey, hash, authAlgorithm
+    // are all automatically destroyed when the object goes out of scope
 }
 
 /******************************************************************************/
@@ -318,24 +308,23 @@ RSA4096Sha3PaddingAuthenticationAlgorithm::~RSA4096Sha3PaddingAuthenticationAlgo
 /******************************************************************************/
 static void FillSha3Padding(uint8_t* pad, uint32_t sha3PadLength)
 {
-    uint8_t *sha3 = new uint8_t[sha3PadLength];
-    memset(sha3, 0, sha3PadLength);
+    auto sha3 = std::make_unique<uint8_t[]>(sha3PadLength);
+    memset(sha3.get(), 0, sha3PadLength);
     sha3[0] = 0x6;
     sha3[(sha3PadLength)-1] |= 0x80;
-    memcpy(pad, sha3, sha3PadLength);
-    delete[] sha3;
+    memcpy(pad, sha3.get(), sha3PadLength);
 }
 
 /******************************************************************************/
 uint8_t* RSA4096Sha3PaddingAuthenticationAlgorithm::AttachSHA3Padding(uint8_t* data, const Binary::Length_t datalength)
 {
     uint8_t sha3padding = SHA3_PAD_LENGTH - (datalength % SHA3_PAD_LENGTH);
-    uint8_t *dataSha3 = new uint8_t[datalength + sha3padding];
-    memset(dataSha3, 0, datalength + sha3padding);
-    memcpy(dataSha3, data, datalength);
+    auto dataSha3 = std::make_unique<uint8_t[]>(datalength + sha3padding);
+    memset(dataSha3.get(), 0, datalength + sha3padding);
+    memcpy(dataSha3.get(), data, datalength);
     dataSha3[datalength] = 0x6;
     dataSha3[(datalength + sha3padding) - 1] |= 0x80;
-    return dataSha3;
+    return dataSha3.release();
 }
 
 /******************************************************************************/
@@ -346,8 +335,8 @@ int RSA4096Sha3PaddingAuthenticationAlgorithm::MaskGenerationFunction(unsigned c
     unsigned char md[SHA3_LENGTH_BYTES];
     int mdlen = SHA3_LENGTH_BYTES;
     int rv = -1;
-    uint8_t* c = new uint8_t[52];
-    uint8_t* cSha3Pad = NULL;
+    auto c = std::make_unique<uint8_t[]>(52);
+    std::unique_ptr<uint8_t[]> cSha3Pad;
     if (mdlen < 0)
         goto err;
     for (i = 0; outlen < len; i++)
@@ -357,34 +346,34 @@ int RSA4096Sha3PaddingAuthenticationAlgorithm::MaskGenerationFunction(unsigned c
         cnt[2] = (unsigned char)((i >> 8)) & 255;
         cnt[3] = (unsigned char)(i & 255);
 
-        memcpy(c, seed, seedlen);
-        memcpy(c + seedlen, cnt, 4);
-        cSha3Pad = AttachSHA3Padding(c, (seedlen + 4));
+        memcpy(c.get(), seed, seedlen);
+        memcpy(c.get() + seedlen, cnt, 4);
+        cSha3Pad.reset(AttachSHA3Padding(c.get(), (seedlen + 4)));
         if (outlen + mdlen <= len)
         {
-            Versalcrypto_hash(mask + outlen, cSha3Pad, 104, false);
+            Versalcrypto_hash(mask + outlen, cSha3Pad.get(), 104, false);
             outlen += mdlen;
         }
         else
         {
-            Versalcrypto_hash(md, cSha3Pad, 104, false);
+            Versalcrypto_hash(md, cSha3Pad.get(), 104, false);
             memcpy(mask + outlen, md, len - outlen);
             outlen = len;
         }
     }
     rv = 0;
-    delete[] c;
-    delete[] cSha3Pad;
 err:
     return rv;
 }
 
 /******************************************************************************/
-Section* VersalAuthenticationContext::CreateCertificate(BootImage& bi, Binary& cache, Section* dataSection)
+Section* VersalAuthenticationContext::CreateCertificate(BootImage& bi, Binary& cache, Section* dataSection, bool isBootloader)
 {
     LOG_INFO("Creating Authentication Certificate for section - %s", dataSection->Name.c_str());
+    
     hashType = bi.GetAuthHashAlgo();
-    hash = bi.hash;
+    hash = bi.hash.get();  // Non-owning pointer to bi.hash
+    ownsHash = false;
     hashLength = hash->GetHashLength();
     std::string hashExtension = hash->GetHashFileExtension();
 
@@ -450,11 +439,12 @@ Section* VersalAuthenticationContext::CreateCertificate(BootImage& bi, Binary& c
     {
         name = GetCertificateName(name);
     }
-    Section* acSection = new Section(name + hashExtension, certSize);
+    auto acSection_ptr = std::make_unique<Section>(name + hashExtension, certSize);
+    Section* acSection = acSection_ptr.get();
     acSection->isCertificate = true;
     acSection->index = dataSection->index;
-    cache.Sections.push_back(acSection);
-    uint8_t* authCert = acSection->Data;
+    cache.Sections.push_back(std::move(acSection_ptr));
+    uint8_t* authCert = acSection->Data.get();
     LOG_TRACE("Creating new section for certificate - %s", acSection->Name.c_str());
 
     uint32_t x = sizeof(AuthCertificate4096Sha3PaddingStructure);
@@ -492,6 +482,7 @@ Section* VersalAuthenticationContext::CreateCertificate(BootImage& bi, Binary& c
     memset(authCert+AC_ALLIGNMENT_OFFSET, 0, AC_ALLIGNMENT_SIZE);
 
     CopySPKSignature(authCert+AC_SPK_SIGN_OFFSET);
+    
     certIndex++;
     return acSection;
 }
@@ -520,26 +511,26 @@ void VersalAuthenticationContext::SetHashinOptionalData(BootImage& bi)
     /* Data ID for Hash block is fixed to 3 */
     sectn_size_id = (uint32_t)((sectn_length / 4) << 16) | DATA_ID_PARTITION_HASHES;
 
-    memcpy(bi.iht_optional_data + (bi.copied_iht_optional_data_length / 4), &sectn_size_id, sizeof(uint32_t));
+    memcpy(bi.iht_optional_data.get() + (bi.copied_iht_optional_data_length / 4), &sectn_size_id, sizeof(uint32_t));
     bi.copied_iht_optional_data_length += sizeof(uint32_t);
     for (size_t i = 0; i < bi.hashTable.size(); i++)
     {
         uint32_t partition_num = bi.hashTable[i].first;
         /* In case of partial pdi as partition number starts from 0, increment it by 1 and store*/
         /* Skip this increment for metaheader hash index, store it as 0 in either cases (full/partial)*/
-        if(!bi.IsBootloaderFound() && i != (bi.hashTable.size()-1))
+        if(!bi.IsBootloaderFound() && i != (bi.hashTable.size()-1) && !spkSignLoaded)
         {
             partition_num++;
         }
-        memcpy(bi.iht_optional_data + (bi.copied_iht_optional_data_length / 4), &partition_num, sizeof(uint32_t));
+        memcpy(bi.iht_optional_data.get() + (bi.copied_iht_optional_data_length / 4), &partition_num, sizeof(uint32_t));
         bi.copied_iht_optional_data_length += sizeof(uint32_t);
-        memcpy(bi.iht_optional_data + (bi.copied_iht_optional_data_length / 4), bi.hashTable[i].second, SHA3_LENGTH_BYTES);
+        memcpy(bi.iht_optional_data.get() + (bi.copied_iht_optional_data_length / 4), bi.hashTable[i].second.get(), SHA3_LENGTH_BYTES);
         bi.copied_iht_optional_data_length += SHA3_LENGTH_BYTES;
     }
 
-    uint32_t checksum = ComputeWordChecksum(bi.iht_optional_data + ((bi.copied_iht_optional_data_length - sectn_length + checksumSize) / 4),
+    uint32_t checksum = ComputeWordChecksum(bi.iht_optional_data.get() + ((bi.copied_iht_optional_data_length - sectn_length + checksumSize) / 4),
         sectn_length - checksumSize);
-    memcpy(bi.iht_optional_data + (bi.copied_iht_optional_data_length / 4), &checksum, checksumSize);
+    memcpy(bi.iht_optional_data.get() + (bi.copied_iht_optional_data_length / 4), &checksum, checksumSize);
     bi.copied_iht_optional_data_length += checksumSize;
 
     if (bi.copied_iht_optional_data_length != 0)
@@ -551,8 +542,8 @@ void VersalAuthenticationContext::SetHashinOptionalData(BootImage& bi)
         }
     }
 
-    memcpy(bi.imageHeaderTable->section->Data + sizeof(VersalImageHeaderTableStructure) + (bi.copied_iht_optional_data_length - sectn_length),
-        bi.iht_optional_data + (bi.copied_iht_optional_data_length - sectn_length) / 4, sectn_length);
+    memcpy(bi.imageHeaderTable->section->Data.get() + sizeof(VersalImageHeaderTableStructure) + (bi.copied_iht_optional_data_length - sectn_length),
+        bi.iht_optional_data.get() + (bi.copied_iht_optional_data_length - sectn_length) / 4, sectn_length);
     //bi.copied_iht_optional_data_length += sectn_length;
     LOG_TRACE("Partition Hash processed to optional data");
 
@@ -562,26 +553,56 @@ void VersalAuthenticationContext::SetHashinOptionalData(BootImage& bi)
 void VersalAuthenticationContext::Link(BootImage& bi, std::list<Section*> sections, AuthenticationCertificate* cert)
 {
     /* Copy bhSignature when bootloader */
-    memset(cert->section->Data + AC_BH_SIGN_OFFSET, 0, signatureLength); /*check*/
+    memset(cert->section->Data.get() + AC_BH_SIGN_OFFSET, 0, signatureLength); /*check*/
     if (sections.front()->isBootloader)
     {
-        CopybHSignature(bi, cert->section->Data + AC_BH_SIGN_OFFSET);
+        CopybHSignature(bi, cert->section->Data.get() + AC_BH_SIGN_OFFSET);
     }
 
     /*  Copy meta header Signature when headers */
     /* With authentication optimization */
-    if(bi.options.IsAuthOptimizationEnabled()){
+    if(bi.options.IsAuthOptimizationEnabled())
+    {
         if (sections.front()->Name == "Headers")
         {
-            CopyPartitionSignature(bi, sections, cert->section->Data + AC_PARTITION_SIGN_OFFSET, cert->section);
+            if(spkSignLoaded)
+            {
+                size_t size = 0;
+                uint8_t* tempData = (uint8_t*)file_to_buf("allHashes.bin", &size);
+                uint8_t count = size/(sizeof(uint32_t) + hashLength);
+                LOG_TRACE("Reached Here!! count %d", count);
+                for(uint32_t i=0; i<count; i++)
+                {
+                    uint32_t *hashIndex = new uint32_t[1];;
+                    memcpy(hashIndex, tempData + (i*(sizeof(uint32_t) + hashLength)), sizeof(uint32_t));
+                    auto hash = std::make_unique<uint8_t[]>(hashLength);
+                    memcpy(hash.get(), tempData + (i*(sizeof(uint32_t) + hashLength)) + sizeof(uint32_t), hashLength);
+                    bi.hashTable.push_back(std::make_pair(*hashIndex, std::move(hash)));
+                    LOG_TRACE("hash table entry %d", bi.hashTable[i].first);
+                    LOG_DUMP_BYTES(bi.hashTable[i].second.get(),hashLength);
+                }
+
+            }
+           
+            if(presignFile == "")
+            {
+                CopyPartitionSignature(bi, sections, cert->section->Data.get() + AC_PARTITION_SIGN_OFFSET, cert->section);
+            }
+            
+            for(uint32_t i=0; i<bi.hashTable.size(); i++)
+            {
+                LOG_TRACE("hash table entry %d", bi.hashTable[i].first);
+                LOG_DUMP_BYTES(bi.hashTable[i].second.get(), hashLength);
+            }
+            
             SetHashinOptionalData(bi); 
-            CopyIHTSignature(bi, cert->section->Data + AC_BH_SIGN_OFFSET);
+            CopyIHTSignature(bi, cert->section->Data.get() + AC_BH_SIGN_OFFSET);
         }
 
         if (presignFile == "")
         {
             if(sections.front()->Name != "Headers"){
-                CopyPartitionSignature(bi, sections, cert->section->Data + AC_PARTITION_SIGN_OFFSET, cert->section);
+                CopyPartitionSignature(bi, sections, cert->section->Data.get() + AC_PARTITION_SIGN_OFFSET, cert->section);
             }
         }
         else
@@ -591,7 +612,7 @@ void VersalAuthenticationContext::Link(BootImage& bi, std::list<Section*> sectio
             {
                 index = cert->section->index;
             }
-            GetPresign(presignFile, cert->section->Data + AC_PARTITION_SIGN_OFFSET, index);
+            GetPresign(presignFile, cert->section->Data.get() + AC_PARTITION_SIGN_OFFSET, index);
             acIndex++;
         }
     }
@@ -600,12 +621,12 @@ void VersalAuthenticationContext::Link(BootImage& bi, std::list<Section*> sectio
     {
         if (sections.front()->Name == "Headers")
         {
-            CopyIHTSignature(bi, cert->section->Data + AC_BH_SIGN_OFFSET);
+            CopyIHTSignature(bi, cert->section->Data.get() + AC_BH_SIGN_OFFSET);
         }
 
         if (presignFile == "")
         {
-            CopyPartitionSignature(bi, sections, cert->section->Data + AC_PARTITION_SIGN_OFFSET, cert->section);
+            CopyPartitionSignature(bi, sections, cert->section->Data.get() + AC_PARTITION_SIGN_OFFSET, cert->section);
         }
         else
         {
@@ -614,7 +635,7 @@ void VersalAuthenticationContext::Link(BootImage& bi, std::list<Section*> sectio
             {
                 index = cert->section->index;
             }
-            GetPresign(presignFile, cert->section->Data + AC_PARTITION_SIGN_OFFSET, index);
+            GetPresign(presignFile, cert->section->Data.get() + AC_PARTITION_SIGN_OFFSET, index);
             acIndex++;
         }
    }
@@ -624,37 +645,37 @@ void VersalAuthenticationContext::Link(BootImage& bi, std::list<Section*> sectio
 /******************************************************************************/
 void VersalAuthenticationContext::CopybHSignature(BootImage& bi, uint8_t* ptr)
 {
-    uint8_t* sha_hash_padded = new uint8_t[signatureLength];
-    uint8_t* bHsignaturetmp = new uint8_t[signatureLength];
-    memset(bHsignaturetmp, 0, signatureLength);
-    memset(sha_hash_padded, 0, signatureLength);
+    auto sha_hash_padded = std::make_unique<uint8_t[]>(signatureLength);
+    auto bHsignaturetmp = std::make_unique<uint8_t[]>(signatureLength);
+    memset(bHsignaturetmp.get(), 0, signatureLength);
+    memset(sha_hash_padded.get(), 0, signatureLength);
 
-    GenerateBHHash(bi, sha_hash_padded);
+    GenerateBHHash(bi, sha_hash_padded.get());
     if (bi.options.DoGenerateHashes())
     {
         std::string hashfilename = "bootheader" + hash->GetHashFileExtension();
-        WritePaddedSHAFile(sha_hash_padded, hashfilename);
+        WritePaddedSHAFile(sha_hash_padded.get(), hashfilename);
     }
 
     if (primaryKey->Loaded && primaryKey->isSecret)
     {
         LOG_TRACE("Creating Boot Header Signature");
-        authAlgorithm->RearrangeEndianess(sha_hash_padded, signatureLength);
-        authAlgorithm->CreateSignature(sha_hash_padded, (uint8_t*)secondaryKey, bHsignaturetmp);
-        authAlgorithm->RearrangeEndianess(bHsignaturetmp, signatureLength);
+        authAlgorithm->RearrangeEndianess(sha_hash_padded.get(), signatureLength);
+        authAlgorithm->CreateSignature(sha_hash_padded.get(), (uint8_t*)secondaryKey.get(), bHsignaturetmp.get());
+        authAlgorithm->RearrangeEndianess(bHsignaturetmp.get(), signatureLength);
 
         if (bhSignLoaded)
         {
-            if (memcmp(bHsignature, bHsignaturetmp, signatureLength) != 0)
+            if (memcmp(bHsignature.get(), bHsignaturetmp.get(), signatureLength) != 0)
             {
                 LOG_ERROR("Authentication Error !!!\n           Loaded BH Signature does not match calculated BH Signature");
             }
         }
-        memcpy(ptr, bHsignaturetmp, signatureLength);
+        memcpy(ptr, bHsignaturetmp.get(), signatureLength);
     }
     else if (bhSignLoaded)
     {
-        memcpy(ptr, bHsignature, signatureLength);
+        memcpy(ptr, bHsignature.get(), signatureLength);
     }
     else if (bi.options.DoGenerateHashes() && !bhSignLoaded)
     {
@@ -670,32 +691,22 @@ void VersalAuthenticationContext::CopybHSignature(BootImage& bi, uint8_t* ptr)
         LOG_ERROR("Authentication Error !!!\n          Either Secret Key Pair or BH signature file must be specified in BIF file");
     }
 
-    // Clean up
-    if (sha_hash_padded)
-    {
-        delete[] sha_hash_padded;
-    }
-
-    if (bHsignaturetmp)
-    {
-        delete[] bHsignaturetmp;
-    }
     LOG_TRACE("Boot Header Signature copied into Authentication Certificate");
 }
 
 /******************************************************************************/
 void VersalAuthenticationContext::CopyIHTSignature(BootImage & bi, uint8_t * ptr)
 {
-    uint8_t* sha_hash_padded = new uint8_t[signatureLength];
-    uint8_t* signaturetmp = new uint8_t[signatureLength];
-    memset(signaturetmp, 0, signatureLength);
-    memset(sha_hash_padded, 0, signatureLength);
+    auto sha_hash_padded = std::make_unique<uint8_t[]>(signatureLength);
+    auto signaturetmp = std::make_unique<uint8_t[]>(signatureLength);
+    memset(signaturetmp.get(), 0, signatureLength);
+    memset(sha_hash_padded.get(), 0, signatureLength);
 
-    GenerateIHTHash(bi, sha_hash_padded);
+    GenerateIHTHash(bi, sha_hash_padded.get());
     if (bi.options.DoGenerateHashes())
     {
         std::string hashfilename = "imageheadertable" + hash->GetHashFileExtension();
-        WritePaddedSHAFile(sha_hash_padded, hashfilename);
+        WritePaddedSHAFile(sha_hash_padded.get(), hashfilename);
     }
 
     if (primaryKey->Loaded && primaryKey->isSecret)
@@ -703,12 +714,12 @@ void VersalAuthenticationContext::CopyIHTSignature(BootImage & bi, uint8_t * ptr
         LOG_TRACE("Creating Image Header Table Signature");
         if (authAlgorithm->Type() != Authentication::ECDSA)
         {
-            authAlgorithm->RearrangeEndianess(sha_hash_padded, signatureLength);
+            authAlgorithm->RearrangeEndianess(sha_hash_padded.get(), signatureLength);
         }
-        authAlgorithm->CreateSignature(sha_hash_padded, (uint8_t*)secondaryKey, signaturetmp);
+        authAlgorithm->CreateSignature(sha_hash_padded.get(), (uint8_t*)secondaryKey.get(), signaturetmp.get());
         if (authAlgorithm->Type() != Authentication::ECDSA)
         {
-            authAlgorithm->RearrangeEndianess(signaturetmp, signatureLength);
+            authAlgorithm->RearrangeEndianess(signaturetmp.get(), signatureLength);
         }
         /* if (bhSignLoaded)
         {
@@ -717,12 +728,12 @@ void VersalAuthenticationContext::CopyIHTSignature(BootImage & bi, uint8_t * ptr
         LOG_ERROR("Authentication Error !!!\n           Loaded BH Signature does not match calculated BH Signature");
         }
         } */
-        memcpy(ptr, signaturetmp, signatureLength);
+        memcpy(ptr, signaturetmp.get(), signatureLength);
     }
     else if (bi.bifOptions->GetHeaderSignatureFile() != "")
     {
-        GetPresign(bi.bifOptions->GetHeaderSignatureFile(), signaturetmp, 0);
-        memcpy(ptr, signaturetmp, signatureLength);
+        GetPresign(bi.bifOptions->GetHeaderSignatureFile(), signaturetmp.get(), 0);
+        memcpy(ptr, signaturetmp.get(), signatureLength);
     }
     else if (bi.options.DoGenerateHashes() && (bi.bifOptions->GetHeaderSignatureFile() == ""))
     {
@@ -738,15 +749,6 @@ void VersalAuthenticationContext::CopyIHTSignature(BootImage & bi, uint8_t * ptr
         LOG_ERROR("Authentication Error !!!\n          Either Secret Key Pair or BH signature file must be specified in BIF file");
     }
 
-    // Clean up
-    if (sha_hash_padded)
-    {
-        delete[] sha_hash_padded;
-    }
-    if (signaturetmp)
-    {
-        delete[] signaturetmp;
-    }
     LOG_TRACE("Image Header Table Signature copied into Authentication Certificate");
 }
 
@@ -754,7 +756,7 @@ void VersalAuthenticationContext::CopyIHTSignature(BootImage & bi, uint8_t * ptr
 void RSA4096Sha3PaddingAuthenticationAlgorithm::CreateSignature(const uint8_t* base, uint8_t* primaryKey, uint8_t* result0)
 {
     AuthenticationContext::SetAuthenticationKeyLength(RSA_4096_KEY_LENGTH);
-    RSA_Exponentiation(base, ((VersalKey*) primaryKey)->N, ((VersalKey*) primaryKey)->N_ext, ((VersalKey*) primaryKey)->D, result0);
+    RSA_Exponentiation(base, ((VersalKey*) primaryKey)->N.get(), ((VersalKey*) primaryKey)->N_ext.get(), ((VersalKey*) primaryKey)->D.get(), result0);
 }
 
 /******************************************************************************/
@@ -773,11 +775,10 @@ void ECDSAP521AuthenticationAlgorithm::CreateSignature(const uint8_t* base, uint
 void VersalAuthenticationContext::GenerateIHTHash(BootImage& bi, uint8_t* sha_hash_padded)
 {
     LOG_TRACE("Calculating Image Header Table Hash");
-    uint8_t* tmpIht = bi.imageHeaderTable->section->Data;
-    uint8_t* sha_hash = new uint8_t[hashLength];
-    hash->CalculateVersalHash(true,tmpIht, bi.imageHeaderTable->section->Length, sha_hash);
-    authAlgorithm->CreatePadding(sha_hash_padded, sha_hash, hashLength);
-    delete[] sha_hash;
+    uint8_t* tmpIht = bi.imageHeaderTable->section->Data.get();
+    auto sha_hash = std::make_unique<uint8_t[]>(hashLength);
+    hash->CalculateVersalHash(true,tmpIht, bi.imageHeaderTable->section->Length, sha_hash.get());
+    authAlgorithm->CreatePadding(sha_hash_padded, sha_hash.get(), hashLength);
 }
 
 /******************************************************************************/
@@ -785,18 +786,17 @@ void VersalAuthenticationContext::GenerateBHHash(BootImage& bi, uint8_t* sha_has
 {
     LOG_TRACE("Calculating the Boot Header Hash");
     /* Donot include SMAP data to calculate BH hash */
-    uint8_t* tmpBh = bi.bootHeader->section->Data + 0x10;
-    uint8_t* sha_hash = new uint8_t[hashLength];
-    hash->CalculateVersalHash(false, tmpBh, bi.bootHeader->section->Length, sha_hash);
-    authAlgorithm->CreatePadding(sha_hash_padded, sha_hash, hashLength);
-    delete[] sha_hash;
+    uint8_t* tmpBh = bi.bootHeader->section->Data.get() + 0x10;
+    auto sha_hash = std::make_unique<uint8_t[]>(hashLength);
+    hash->CalculateVersalHash(false, tmpBh, bi.bootHeader->section->Length, sha_hash.get());
+    authAlgorithm->CreatePadding(sha_hash_padded, sha_hash.get(), hashLength);
 }
 
 /******************************************************************************/
 void VersalAuthenticationContext::GenerateSPKHash(uint8_t* sha_hash_padded)
 {
     LOG_TRACE("Calculating the SPK Hash");
-    uint8_t* spkFull = new uint8_t[VERSAL_ACKEY_STRUCT_SIZE];
+    auto spkFull = std::make_unique<uint8_t[]>(VERSAL_ACKEY_STRUCT_SIZE);
     uint8_t spkSHA3Padding[4] = { 0,0,0,0 };
     FillSha3Padding(spkSHA3Padding, sizeof(spkSHA3Padding));
 
@@ -804,29 +804,27 @@ void VersalAuthenticationContext::GenerateSPKHash(uint8_t* sha_hash_padded)
     {
         ParseSPKeyFile(spkFile);
     }
-    secondaryKey->Export(spkFull);
+    secondaryKey->Export(spkFull.get());
     hashLength = hash->GetHashLength();
-    uint8_t* shaHash = new uint8_t[hashLength];
+    auto shaHash = std::make_unique<uint8_t[]>(hashLength);
 
     uint32_t acHdr = authAlgorithm->GetAuthHeader();
     acHdr |= ((hashType == AuthHash::Sha2) ? 0 : 1) << AC_HDR_SHA_2_3_BIT_SHIFT;
 
-    uint8_t* tempBuffer = new uint8_t[VERSAL_ACKEY_STRUCT_SIZE + sizeof(acHdr) + sizeof(spkIdentification) + sizeof(spkSHA3Padding)];
+    auto tempBuffer = std::make_unique<uint8_t[]>(VERSAL_ACKEY_STRUCT_SIZE + sizeof(acHdr) + sizeof(spkIdentification) + sizeof(spkSHA3Padding));
 
-    WriteLittleEndian32(tempBuffer, acHdr);
-    WriteLittleEndian32(tempBuffer + sizeof(acHdr), spkIdentification);
+    WriteLittleEndian32(tempBuffer.get(), acHdr);
+    WriteLittleEndian32(tempBuffer.get() + sizeof(acHdr), spkIdentification);
 
-    authAlgorithm->RearrangeEndianess(spkFull+ RSA_4096_N, RSA_4096_N_SIZE);
-    authAlgorithm->RearrangeEndianess(spkFull+ RSA_4096_N_EXT, RSA_4096_N_EXT_SIZE);
-    authAlgorithm->RearrangeEndianess(spkFull+RSA_4096_E, RSA_4096_E_SIZE);
-    memcpy(tempBuffer + sizeof(acHdr) + sizeof(spkIdentification), (uint8_t*)spkFull, VERSAL_ACKEY_STRUCT_SIZE);
+    authAlgorithm->RearrangeEndianess(spkFull.get()+ RSA_4096_N, RSA_4096_N_SIZE);
+    authAlgorithm->RearrangeEndianess(spkFull.get()+ RSA_4096_N_EXT, RSA_4096_N_EXT_SIZE);
+    authAlgorithm->RearrangeEndianess(spkFull.get()+RSA_4096_E, RSA_4096_E_SIZE);
+    memcpy(tempBuffer.get() + sizeof(acHdr) + sizeof(spkIdentification), (uint8_t*)spkFull.get(), VERSAL_ACKEY_STRUCT_SIZE);
 
-    memcpy(tempBuffer + sizeof(acHdr) + sizeof(spkIdentification) + VERSAL_ACKEY_STRUCT_SIZE, spkSHA3Padding, sizeof(spkSHA3Padding));
-    hash->CalculateVersalHash(false,(uint8_t*)tempBuffer, VERSAL_ACKEY_STRUCT_SIZE + sizeof(acHdr) + sizeof(spkIdentification) + sizeof(spkSHA3Padding), shaHash);
+    memcpy(tempBuffer.get() + sizeof(acHdr) + sizeof(spkIdentification) + VERSAL_ACKEY_STRUCT_SIZE, spkSHA3Padding, sizeof(spkSHA3Padding));
+    hash->CalculateVersalHash(false,(uint8_t*)tempBuffer.get(), VERSAL_ACKEY_STRUCT_SIZE + sizeof(acHdr) + sizeof(spkIdentification) + sizeof(spkSHA3Padding), shaHash.get());
     // Create PKCS padding
-    authAlgorithm->CreatePadding(sha_hash_padded, shaHash, hashLength);
-    delete[] shaHash;
-    delete[] tempBuffer;
+    authAlgorithm->CreatePadding(sha_hash_padded, shaHash.get(), hashLength);
 }
 
 /******************************************************************************/
@@ -834,7 +832,7 @@ void VersalAuthenticationContext::CopySPKSignature(uint8_t* ptr)
 {
     CreateSPKSignature();
     LOG_TRACE("Copying the SPK signature into the Authentication Certificate");
-    memcpy(ptr, spksignature, signatureLength);
+    memcpy(ptr, spksignature.get(), signatureLength);
 }
 
 /******************************************************************************/
@@ -855,23 +853,23 @@ std::string VersalAuthenticationContext::GetCertificateName(std::string name)
 void VersalAuthenticationContext::GeneratePPKHash(const std::string& filename)
 {
     int ppkSize = VERSAL_ACKEY_STRUCT_SIZE;
-    uint8_t* ppkTemp = new uint8_t[ppkSize];
+    auto ppkTemp = std::make_unique<uint8_t[]>(ppkSize);
     hashLength = hash->GetHashLength();
-    primaryKey->Export(ppkTemp);
-    authAlgorithm->RearrangeEndianess(ppkTemp + RSA_4096_N, RSA_4096_N_SIZE);
-    authAlgorithm->RearrangeEndianess(ppkTemp + RSA_4096_N_EXT, RSA_4096_N_EXT_SIZE);
-    authAlgorithm->RearrangeEndianess(ppkTemp + RSA_4096_E, RSA_4096_E_SIZE);
+    primaryKey->Export(ppkTemp.get());
+    authAlgorithm->RearrangeEndianess(ppkTemp.get() + RSA_4096_N, RSA_4096_N_SIZE);
+    authAlgorithm->RearrangeEndianess(ppkTemp.get() + RSA_4096_N_EXT, RSA_4096_N_EXT_SIZE);
+    authAlgorithm->RearrangeEndianess(ppkTemp.get() + RSA_4096_E, RSA_4096_E_SIZE);
 
     uint8_t ppkSHA3Padding[12] = { 0 };
     FillSha3Padding(ppkSHA3Padding, sizeof(ppkSHA3Padding));
 
-    uint8_t* tempBuffer = new uint8_t[ppkSize + sizeof(ppkSHA3Padding)];
-    memcpy(tempBuffer, (uint8_t*)ppkTemp, ppkSize);
-    memcpy(tempBuffer + ppkSize, ppkSHA3Padding, sizeof(ppkSHA3Padding));
+    auto tempBuffer = std::make_unique<uint8_t[]>(ppkSize + sizeof(ppkSHA3Padding));
+    memcpy(tempBuffer.get(), (uint8_t*)ppkTemp.get(), ppkSize);
+    memcpy(tempBuffer.get() + ppkSize, ppkSHA3Padding, sizeof(ppkSHA3Padding));
 
-    uint8_t* ppkHash = new uint8_t[hashLength];
+    auto ppkHash = std::make_unique<uint8_t[]>(hashLength);
 
-    hash->CalculateVersalHash(false,tempBuffer, ppkSize + sizeof(ppkSHA3Padding), ppkHash);
+    hash->CalculateVersalHash(false,tempBuffer.get(), ppkSize + sizeof(ppkSHA3Padding), ppkHash.get());
 
     FILE* filePtr;
     if ((filePtr = fopen(filename.c_str(), "w")) == NULL)
@@ -889,14 +887,13 @@ void VersalAuthenticationContext::GeneratePPKHash(const std::string& filename)
 
     fclose(filePtr);
     LOG_INFO("Efuse PPK bits written to file %s successfully", filename.c_str());
-
-    delete[] tempBuffer;
 }
 
 /******************************************************************************/
 void RSA4096Sha3PaddingAuthenticationAlgorithm::CreatePadding(uint8_t * signature, uint8_t * hash, uint8_t hashLength)
 {
     /* RSA PSS Padding */
+
     char* rsaLocalENV = getenv("TEST_RSA_LOCAL");
     int hLen = hashLength;
     uint8_t padding1[PAD1_LENGTH];
@@ -912,15 +909,16 @@ void RSA4096Sha3PaddingAuthenticationAlgorithm::CreatePadding(uint8_t * signatur
     {
         emLen--;
     }
-    uint8_t *salt = NULL;
-    salt = new uint8_t[SALT_LENGTH];
+    auto salt = std::make_unique<uint8_t[]>(SALT_LENGTH);
+
 
     if (rsaLocalENV != NULL) {
         uint8_t defsalt[SALT_LENGTH] = { 0x71, 0x5d, 0x74, 0xeb, 0x06, 0xcb, 0x2f, 0xfa, 0xed, 0x09, 0x3d, 0xd3, 0x9b, 0xa0, 0xb8, 0x57, 0xa3, 0x01, 0xcd, 0xd7, 0x52, 0x2a, 0x82, 0xc9, 0x71, 0x06, 0x8a, 0x6b, 0xb1, 0x99, 0x83, 0x52, 0x49, 0x49, 0x2b, 0xdb, 0xc8, 0x50, 0x20, 0x5e, 0x44, 0xb2, 0xc8, 0xbe, 0xbf, 0x77, 0x98, 0x22 };
-        memcpy(salt, defsalt, SALT_LENGTH);
+        memcpy(salt.get(), defsalt, SALT_LENGTH);
     }
-    else {
-        RAND_bytes(salt, SALT_LENGTH);
+    else 
+    {
+        RAND_bytes(salt.get(), SALT_LENGTH);
     }
 
     //calculate mHash - hash on message(m)
@@ -932,13 +930,13 @@ void RSA4096Sha3PaddingAuthenticationAlgorithm::CreatePadding(uint8_t * signatur
     memset(mPad, 0, 104);
     memcpy(mPad, padding1, PAD1_LENGTH);
     memcpy(mPad + PAD1_LENGTH, mHash, 48);
-    memcpy(mPad + PAD1_LENGTH + 48, salt, SALT_LENGTH);
+    memcpy(mPad + PAD1_LENGTH + 48, salt.get(), SALT_LENGTH);
 
     //calculate hash on mPad
-    uint8_t *m1;
+    std::unique_ptr<uint8_t[]> m1;
     uint8_t mPadHash[48];
-    m1 = AttachSHA3Padding(mPad, 104);
-    Versalcrypto_hash(mPadHash, m1, 208, false);
+    m1.reset(AttachSHA3Padding(mPad, 104));
+    Versalcrypto_hash(mPadHash, m1.get(), 208, false);
     int maskedDBLen = emLen - hLen - 1; //463
     uint8_t mask[463] = { 0 };
     if (MaskGenerationFunction(mask, maskedDBLen, mPadHash, 48, EVP_sha384()) == -1)
@@ -946,11 +944,10 @@ void RSA4096Sha3PaddingAuthenticationAlgorithm::CreatePadding(uint8_t * signatur
         LOG_ERROR("Internal Error : Mask generation failed during authentication.");
     }
     //DB Padding
-    uint8_t *DB;
-    DB = new uint8_t[463];
-    memset(DB, 0x0, 463);
-    memcpy(DB, padding2, PAD2_LENGTH);
-    memcpy(DB + PAD2_LENGTH, salt, 48);
+    auto DB = std::make_unique<uint8_t[]>(463);
+    memset(DB.get(), 0x0, 463);
+    memcpy(DB.get(), padding2, PAD2_LENGTH);
+    memcpy(DB.get() + PAD2_LENGTH, salt.get(), 48);
     uint8_t EM[512] = { 0 };
 
     for (int i = 0; i < 463; i++)
@@ -968,9 +965,6 @@ void RSA4096Sha3PaddingAuthenticationAlgorithm::CreatePadding(uint8_t * signatur
     memcpy(EM + 463, mPadHash, 48);
     EM[512 - 1] = 0xbc;
     memcpy(signature, EM, 512);
-    delete[] m1;
-    delete[] DB;
-    delete[] salt;
 }
 
 /******************************************************************************/
@@ -990,7 +984,7 @@ void VersalAuthenticationContext::CopyPartitionSignature(BootImage& bi, std::lis
 {
     LOG_TRACE("Copying the partition (%s) signature into Authentication Certificate", acSection->Name.c_str());
     /* calculate hash first */
-    uint8_t* shaHash = new uint8_t[hashLength];
+    auto shaHash = std::make_unique<uint8_t[]>(hashLength);
     std::list<Section*>::iterator section = sections.begin();
     size_t hashSecLen = (*section)->Length;
 
@@ -1009,44 +1003,54 @@ void VersalAuthenticationContext::CopyPartitionSignature(BootImage& bi, std::lis
         (*section)->partitionNum = 0x00;
     }
 
-    uint8_t *partitionAc = new uint8_t[hashSecLen + signSecLength];
+    auto partitionAc = std::make_unique<uint8_t[]>(hashSecLen + signSecLength);
 
     /* Update with authentication certificate except the last 256 bytes - which is the partition signature that we are calculating now.
     Once calculated, the partition signature will sit there */
-    memcpy(partitionAc, acSection->Data, signSecLength);
+    memcpy(partitionAc.get(), acSection->Data.get(), signSecLength);
 
     /* Update with Partition */
-    memcpy(partitionAc + signSecLength, (*section)->Data, hashSecLen);
+    memcpy(partitionAc.get() + signSecLength, (*section)->Data.get(), hashSecLen);
 
     /* Calculate the final hash */
-    Versalcrypto_hash(shaHash, partitionAc, hashSecLen + signSecLength, !((*section)->isBootloader && !bi.options.IsVersalNetSeries()));
+    Versalcrypto_hash(shaHash.get(), partitionAc.get(), hashSecLen + signSecLength, !((*section)->isBootloader && !bi.options.IsVersalNetSeries()));
     LOG_TRACE("Hash of %s (LE):", acSection->Name.c_str());
-    LOG_DUMP_BYTES(shaHash, hashLength);
+    LOG_DUMP_BYTES(shaHash.get(), hashLength);
     if (bi.options.IsAuthOptimizationEnabled() && !((*section)->isBootloader))
     {
-        uint8_t* hash = new uint8_t[hashLength];
-        bi.hashTable.push_back(std::pair<uint32_t, uint8_t*>((*section)->partitionNum, hash));
-        memcpy(hash, shaHash, hashLength);
+        auto hash = std::make_unique<uint8_t[]>(hashLength);
+        memcpy(hash.get(), shaHash.get(), hashLength);
+        bi.hashTable.push_back(std::make_pair((*section)->partitionNum, std::move(hash)));  // Transfer ownership
     }
     /* Create the PKCS padding for the hash */
-    uint8_t* shaHashPadded = new uint8_t[signatureLength];
-    memset(shaHashPadded, 0, signatureLength);
-    authAlgorithm->CreatePadding(shaHashPadded, shaHash, hashLength);
+    auto shaHashPadded = std::make_unique<uint8_t[]>(signatureLength);
+    memset(shaHashPadded.get(), 0, signatureLength);
+    authAlgorithm->CreatePadding(shaHashPadded.get(), shaHash.get(), hashLength);
 
     /* Generate hashes, if requested from command line option "-generate_hashes" */
     if (bi.options.DoGenerateHashes())
     {
         std::string hashfilename = acSection->Name;
-        WritePaddedSHAFile(shaHashPadded, hashfilename);
-    }
-    authAlgorithm->RearrangeEndianess(shaHashPadded, signatureLength);
+        WritePaddedSHAFile(shaHashPadded.get(), hashfilename);
+        if(!((*section)->isBootloader) && (*section)->Name != "Headers")
+        {
+            
+            std::string allhashfilename = "allHashes.bin";
+            WriteHashFile(shaHash.get(), allhashfilename, false);
+        }
+        
+        if((*section)->Name == "Headers" && bi.bifOptions->GetHeaderSignatureFile() != "")
+        {
+            LOG_TRACE("Dump header hash");
+            std::string allhashfilename = "allHashes.bin";
+            WriteHashFile(shaHash.get(), allhashfilename, true);
+        }
+   }
+    authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
     /* Now sign the hash */
-    authAlgorithm->CreateSignature(shaHashPadded, (uint8_t*)secondaryKey, signatureBlock);
+    authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)secondaryKey.get(), signatureBlock);
     authAlgorithm->RearrangeEndianess(signatureBlock, signatureLength);
     LOG_TRACE("The partition signature is copied into Authentication Certificate");
-    /* Delete the temporarily created arrays */
-    delete[] shaHash;
-    delete[] shaHashPadded;
     acIndex++;
 }
 
@@ -1130,8 +1134,8 @@ void ECDSAAuthenticationAlgorithm::ECDSASignature(const uint8_t *base, EC_KEY *e
     EC_KEY_set_group(eckeyN, ecgroup);
     EC_KEY_set_asn1_flag(eckeyN, OPENSSL_EC_NAMED_CURVE);
 
-    const BIGNUM* prv = BN_new();
-    prv = EC_KEY_get0_private_key(eckeyU);
+    // Get private/public keys (don't allocate new BIGNUM - would leak!)
+    const BIGNUM* prv = EC_KEY_get0_private_key(eckeyU);
     const EC_POINT *pub = EC_KEY_get0_public_key(eckeyU);
 
     /* add the private & public key to the EC_KEY structure */
@@ -1183,8 +1187,8 @@ void ECDSAP521AuthenticationAlgorithm::ECDSASignature(const uint8_t *base, EC_KE
     EC_KEY_set_group(eckeyN, ecgroup);
     EC_KEY_set_asn1_flag(eckeyN, OPENSSL_EC_NAMED_CURVE);
 
-    const BIGNUM* prv = BN_new();
-    prv = EC_KEY_get0_private_key(eckeyU);
+    // Get private/public keys (don't allocate new BIGNUM - would leak!)
+    const BIGNUM* prv = EC_KEY_get0_private_key(eckeyU);
     const EC_POINT *pub = EC_KEY_get0_public_key(eckeyU);
     
     /* add the private & public key to the EC_KEY structure */
@@ -1204,10 +1208,10 @@ void ECDSAP521AuthenticationAlgorithm::ECDSASignature(const uint8_t *base, EC_KE
 
     if (signature != NULL)
     {
-        uint8_t *x1 = new uint8_t[EC_P521_KEY_LENGTH2];
-        uint8_t *y1 = new uint8_t[EC_P521_KEY_LENGTH2];
-        memset(x1, 0, EC_P521_KEY_LENGTH2);
-        memset(y1, 0, EC_P521_KEY_LENGTH2);
+        auto x1 = std::make_unique<uint8_t[]>(EC_P521_KEY_LENGTH2);
+        auto y1 = std::make_unique<uint8_t[]>(EC_P521_KEY_LENGTH2);
+        memset(x1.get(), 0, EC_P521_KEY_LENGTH2);
+        memset(y1.get(), 0, EC_P521_KEY_LENGTH2);
 
         uint32_t signSzR;
         uint32_t signSzS;
@@ -1221,63 +1225,55 @@ void ECDSAP521AuthenticationAlgorithm::ECDSASignature(const uint8_t *base, EC_KE
 
         if (signSzR == EC_P521_KEY_LENGTH1)
         {
-            memcpy(x1 + 1, sig_r->d, signSzR);
-            RearrangeEndianess(x1 + 1, signSzR);
+            memcpy(x1.get() + 1, sig_r->d, signSzR);
+            RearrangeEndianess(x1.get() + 1, signSzR);
         }
         else
         {
-            memcpy(x1, sig_r->d, signSzR);
-            RearrangeEndianess(x1, signSzR);
+            memcpy(x1.get(), sig_r->d, signSzR);
+            RearrangeEndianess(x1.get(), signSzR);
         }
         if (signSzS == EC_P521_KEY_LENGTH1)
         {
-            memcpy(y1 + 1, sig_s->d, signSzS);
-            RearrangeEndianess(y1 + 1, signSzS);
+            memcpy(y1.get() + 1, sig_s->d, signSzS);
+            RearrangeEndianess(y1.get() + 1, signSzS);
         }
         else
         {
-            memcpy(y1, sig_s->d, signSzS);
-            RearrangeEndianess(y1, signSzS);
+            memcpy(y1.get(), sig_s->d, signSzS);
+            RearrangeEndianess(y1.get(), signSzS);
         }
 
-        memcpy(result0, x1, EC_P521_KEY_LENGTH2);
-        memcpy(result0 + EC_P521_KEY_LENGTH2, y1, EC_P521_KEY_LENGTH2);
+        memcpy(result0, x1.get(), EC_P521_KEY_LENGTH2);
+        memcpy(result0 + EC_P521_KEY_LENGTH2, y1.get(), EC_P521_KEY_LENGTH2);
 #else
         signSzR = BN_num_bytes(signature->r);
         signSzS = BN_num_bytes(signature->s);
 
         if (signSzR == EC_P521_KEY_LENGTH1)
         {
-            memcpy(x1 + 1, signature->r->d, signSzR);
-            RearrangeEndianess(x1 + 1, signSzR);
+            memcpy(x1.get() + 1, signature->r->d, signSzR);
+            RearrangeEndianess(x1.get() + 1, signSzR);
         }
         else
         {
-            memcpy(x1, signature->r->d, signSzR);
-            RearrangeEndianess(x1, signSzR);
+            memcpy(x1.get(), signature->r->d, signSzR);
+            RearrangeEndianess(x1.get(), signSzR);
         }
         if (signSzS == EC_P521_KEY_LENGTH1)
         {
-            memcpy(y1 + 1, signature->s->d, signSzS);
-            RearrangeEndianess(y1 + 1, signSzS);
+            memcpy(y1.get() + 1, signature->s->d, signSzS);
+            RearrangeEndianess(y1.get() + 1, signSzS);
         }
         else
         {
-            memcpy(y1, signature->s->d, signSzS);
-            RearrangeEndianess(y1, signSzS);
+            memcpy(y1.get(), signature->s->d, signSzS);
+            RearrangeEndianess(y1.get(), signSzS);
         }
 
-        memcpy(result0, x1, EC_P521_KEY_LENGTH2);
-        memcpy(result0 + EC_P521_KEY_LENGTH2, y1, EC_P521_KEY_LENGTH2);
+        memcpy(result0, x1.get(), EC_P521_KEY_LENGTH2);
+        memcpy(result0 + EC_P521_KEY_LENGTH2, y1.get(), EC_P521_KEY_LENGTH2);
 #endif
-        if (x1 != NULL)
-        {
-            delete[] x1;
-        }
-        if (y1 != NULL)
-        {
-            delete[] y1;
-        }
     }
 
     EC_GROUP_free(ecgroup);
@@ -1366,13 +1362,19 @@ void VersalAuthenticationContext::GetPresign(const std::string& presignFilename,
 /******************************************************************************/
 void VersalAuthenticationContext::SetSPKSignatureFile(const std::string& filename)
 {
+    // Handle empty filename gracefully
+    if (filename.empty())
+    {
+        return;
+    }
+
     FILE* filePtr;
     filePtr = fopen(filename.c_str(), "r");
 
     if (filePtr)
     {
         fclose(filePtr);
-        GetPresign(filename, spksignature, 0);
+        GetPresign(filename, spksignature.get(), 0);
         spkSignLoaded = true;
         spkSignRequested = "";
     }
@@ -1391,7 +1393,7 @@ void VersalAuthenticationContext::SetBHSignatureFile(const std::string& filename
     if (filePtr)
     {
         fclose(filePtr);
-        GetPresign(filename, bHsignature, 0);
+        GetPresign(filename, bHsignature.get(), 0);
         bhSignLoaded = true;
     }
     else
@@ -1405,14 +1407,14 @@ void VersalAuthenticationContext::GenerateSPKSignature(const std::string& filena
 {
     if (primaryKey->Loaded && primaryKey->isSecret)
     {
-        uint8_t* shaHashPadded = new uint8_t[signatureLength];
-        uint8_t* spkSignatureTemp = new uint8_t[signatureLength];
-        memset(shaHashPadded, 0, signatureLength);
-        memset(spkSignatureTemp, 0, signatureLength);
-        GenerateSPKHash(shaHashPadded);
-        authAlgorithm->RearrangeEndianess(shaHashPadded, signatureLength);
-        authAlgorithm->CreateSignature(shaHashPadded, (uint8_t*)primaryKey, spkSignatureTemp);
-        authAlgorithm->RearrangeEndianess(spkSignatureTemp, signatureLength);
+        auto shaHashPadded = std::make_unique<uint8_t[]>(signatureLength);
+        auto spkSignatureTemp = std::make_unique<uint8_t[]>(signatureLength);
+        memset(shaHashPadded.get(), 0, signatureLength);
+        memset(spkSignatureTemp.get(), 0, signatureLength);
+        GenerateSPKHash(shaHashPadded.get());
+        authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
+        authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)primaryKey.get(), spkSignatureTemp.get());
+        authAlgorithm->RearrangeEndianess(spkSignatureTemp.get(), signatureLength);
         LOG_INFO("SPK Signature generated successfully");
 
         if (filename != "")
@@ -1437,8 +1439,6 @@ void VersalAuthenticationContext::GenerateSPKSignature(const std::string& filena
                 LOG_ERROR("-spksignature error !!!           Failure writing the SPK signature file - %s", StringUtils::BaseName(filename).c_str());
             }
         }
-        delete[] spkSignatureTemp;
-        delete[] shaHashPadded;
     }
     else
     {
@@ -1504,16 +1504,15 @@ void VersalAuthenticationContext::CreateSPKSignature(void)
     Check if PSK is given */
     if (primaryKey->Loaded && primaryKey->isSecret)
     {
-        uint8_t* shaHashPadded = new uint8_t[signatureLength];
-        memset(shaHashPadded, 0, signatureLength);
-        memset(spksignature, 0, signatureLength);
+        auto shaHashPadded = std::make_unique<uint8_t[]>(signatureLength);
+        memset(shaHashPadded.get(), 0, signatureLength);
+        memset(spksignature.get(), 0, signatureLength);
         // Calulate the SPK hash with PKCS padding
-        GenerateSPKHash(shaHashPadded);
-        authAlgorithm->RearrangeEndianess(shaHashPadded, signatureLength);
+        GenerateSPKHash(shaHashPadded.get());
+        authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
         // Sign the SPK hash
-        authAlgorithm->CreateSignature(shaHashPadded, (uint8_t*)primaryKey, spksignature);
-        authAlgorithm->RearrangeEndianess(spksignature, signatureLength);
-        delete[] shaHashPadded;
+        authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)primaryKey.get(), spksignature.get());
+        authAlgorithm->RearrangeEndianess(spksignature.get(), signatureLength);
     }
     /* If SPK signature file or PSK is not given in BIF file, cannot get SPK signature for the auth certificate
     Throw error */
@@ -1553,17 +1552,17 @@ void static SetDeviceDNA(const uint8_t* dnaValue, uint32_t* deviceDNA)
 }
 
 /******************************************************************************/
-void VersalAuthenticationContext::CreateAuthJtagImage(uint8_t* buffer, AuthJtagInfo authJtagAttributes)
+void VersalAuthenticationContext::CreateAuthJtagImage(Options& options, uint8_t* buffer, AuthJtagInfo authJtagAttributes)
 {
     LOG_TRACE("Creating the Authentication Header signature");
     AuthenticatedJtagImageStructure* authJtagImage = (AuthenticatedJtagImageStructure*)buffer;
-    if (primaryKey->Loaded && primaryKey->isSecret)
+    if (primaryKey->Loaded)
     {
         hashLength = hash->GetHashLength();
-        uint8_t* shaHash = new uint8_t[hashLength];
-        uint8_t* shaHashPadded = new uint8_t[signatureLength];
-        memset(shaHash, 0, hashLength);
-        memset(shaHashPadded, 0, signatureLength);
+        auto shaHash = std::make_unique<uint8_t[]>(hashLength);
+        auto shaHashPadded = std::make_unique<uint8_t[]>(signatureLength);
+        memset(shaHash.get(), 0, hashLength);
+        memset(shaHashPadded.get(), 0, signatureLength);
 
         uint32_t acHdr = authAlgorithm->GetAuthHeader();
         acHdr |= ((hashType == AuthHash::Sha2) ? 0 : 1) << AC_HDR_SHA_2_3_BIT_SHIFT;
@@ -1591,15 +1590,34 @@ void VersalAuthenticationContext::CreateAuthJtagImage(uint8_t* buffer, AuthJtagI
 
         FillSha3Padding(authJtagImage->ppkSHA3Padding, sizeof(authJtagImage->ppkSHA3Padding));
 
-        hash->CalculateVersalHash(false, (uint8_t*)authJtagImage, sizeof(authJtagImage->acHeader) + sizeof(authJtagImage->spkId) + sizeof(authJtagImage->authJtagInfo), shaHash);
-        authAlgorithm->CreatePadding(shaHashPadded, shaHash, hashLength);
-        authAlgorithm->RearrangeEndianess(shaHashPadded, signatureLength);
+        hash->CalculateVersalHash(false, (uint8_t*)authJtagImage, sizeof(authJtagImage->acHeader) + sizeof(authJtagImage->spkId) + sizeof(authJtagImage->authJtagInfo), shaHash.get());
+        authAlgorithm->CreatePadding(shaHashPadded.get(), shaHash.get(), hashLength);
+        authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
 
-        authAlgorithm->CreateSignature(shaHashPadded, (uint8_t*)primaryKey, authJtagImage->authJtagSignature);
+        if (primaryKey->isSecret)
+        {
+            authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)primaryKey.get(), authJtagImage->authJtagSignature);
+            LOG_TRACE("authJtag signature");
+            LOG_DUMP_BYTES(authJtagImage->authJtagSignature, signatureLength);
+        }
+        else
+        {
+            if (authJtagAttributes.jtagSignatureFile != "")
+            {
+                uint32_t index = 0;
+                GetPresign(authJtagAttributes.jtagSignatureFile, authJtagImage->authJtagSignature, index);
+            }
+            else
+            {
+                if(options.DoGenerateHashes())
+                {
+                        std::string hashfilename = "authJtag" + hash->GetHashFileExtension();
+                        WritePaddedSHAFile(shaHashPadded.get(), hashfilename);
+                }
+            }
+        }
         authAlgorithm->RearrangeEndianess(authJtagImage->authJtagSignature, signatureLength);
         memset(authJtagImage->padto2KB, 0, sizeof(authJtagImage->padto2KB));
-        delete[] shaHash;
-        delete[] shaHashPadded;
     }
     else
     {
@@ -1612,7 +1630,7 @@ void VersalAuthenticationCertificate::Link(BootImage& bi, Section* dataSection)
 {
     /* Gather up all the sections that will be used to calculate the authentication hash */
     std::list<Section*> sections;
-    Section* headers = NULL;
+    std::unique_ptr<Section> headers_owner;
 
     /* If the section is a header table section */
     if (isTableHeader)
@@ -1621,10 +1639,10 @@ void VersalAuthenticationCertificate::Link(BootImage& bi, Section* dataSection)
         if (bi.options.bifOptions->GetHeaderEncyption())
         {
             size = bi.encryptedHeaders->Length;
-            headers = new Section("Headers", size);
-            memset(headers->Data, bi.options.GetOutputFillByte(), headers->Length);
-            memcpy(headers->Data, bi.encryptedHeaders->Data, bi.encryptedHeaders->Length);
-            sections.push_back(headers);
+            headers_owner = std::make_unique<Section>("Headers", size);
+            memset(headers_owner->Data.get(), bi.options.GetOutputFillByte(), headers_owner->Length);
+            memcpy(headers_owner->Data.get(), bi.encryptedHeaders->Data.get(), bi.encryptedHeaders->Length);
+            sections.push_back(headers_owner.get());
         }
         else
         {
@@ -1656,21 +1674,21 @@ void VersalAuthenticationCertificate::Link(BootImage& bi, Section* dataSection)
             //sections.push_back(bi.nullPartHeaderSection);
 
             /* Create one new combined section will all the appended sections above */
-            headers = new Section("Headers", size);
+            headers_owner = std::make_unique<Section>("Headers", size);
             //headers->Address = iHT->section->Address; // not really needed, but useful for debug.
-            memset(headers->Data, bi.options.GetOutputFillByte(), headers->Length);
+            memset(headers_owner->Data.get(), bi.options.GetOutputFillByte(), headers_owner->Length);
 
             Binary::Address_t start = sections.front()->Address;
-            for (SectionList::iterator i = sections.begin(); i != sections.end(); i++)
+            for (std::list<Section*>::iterator i = sections.begin(); i != sections.end(); i++)
             {
                 Section& section(**i);
                 int offset = section.Address - start;
-                memcpy(headers->Data + offset, section.Data, section.Length);
+                memcpy(headers_owner->Data.get() + offset, section.Data.get(), section.Length);
             }
 
             // replace sections list with the combined new section
             sections.clear();
-            sections.push_back(headers);
+            sections.push_back(headers_owner.get());
         }
     }
     // If section is a partition section
@@ -1689,10 +1707,6 @@ void VersalAuthenticationCertificate::Link(BootImage& bi, Section* dataSection)
 
     // Link the certificate - pass for signing
     this->AuthContext->Link(bi, sections, this);
-    if (headers != NULL)
-    {
-        delete headers;
-    }
 }
 
 /******************************************************************************/

@@ -122,6 +122,53 @@ done:
     return seq;
 }
 
+/******************************************************************************/
+CdoSequence * cdoseq_load_cdo_from_buffer(char * data, size_t size) {
+
+    #if defined(_WIN64) || defined(_WIN32)
+    CdoSequence * sequence = NULL;
+    return sequence;
+    #endif
+
+    #if defined(__linux__)
+    CdoSequence * seq = NULL;
+    CdoRawInfo * raw = NULL;
+
+    if (data == NULL) goto done;
+    raw = cdoraw_decode(data, size);
+    if (raw != NULL) {
+        data = raw->data;
+        size = raw->size;
+    }
+    if (is_cdo_data(data, size)) {
+        seq = decode_cdo_binary(data, size);
+        if (seq == NULL) {
+            fprintf(stderr, "cannot decode binary cdo buffer\n");
+            goto done;
+        }
+        cdometa_add_markers(&raw->meta, seq);
+    } else {
+        FILE *memfile = fmemopen(data, size, "r");
+        if (memfile == NULL) {
+            fprintf(stderr, "fmemopen failed\n");
+            goto done;
+        }
+        seq = cdoseq_from_source(memfile);
+        fclose(memfile);
+        if (seq == NULL) {
+            fprintf(stderr, "cannot parse source cdo buffer\n");
+            goto done;
+        }
+    }
+done:
+    if (raw != NULL) {
+        cdoraw_delete(raw);
+    }
+    return seq;
+    #endif
+}
+
+/******************************************************************************/
 void cdoseq_extract_writes(CdoSequence * seq) {
     LINK * l = seq->cmds.next;
     while (l != &seq->cmds) {

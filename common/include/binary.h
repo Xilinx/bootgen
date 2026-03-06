@@ -25,6 +25,7 @@
 ***********************************************   H E A D E R   F I L E S   ***
 -------------------------------------------------------------------------------
 */
+#include <memory>
 #include <list>
 #include <string>
 #include <stdint.h>
@@ -34,6 +35,14 @@
 class Section;
 class Options;
 
+// No-op deleter for non-owning unique_ptr wrappers (parent-owned sections)
+struct NoOpSectionDeleter {
+    void operator()(Section*) const { /* Do nothing - parent owns it */ }
+};
+
+// Type alias for non-owning Section pointer
+using NonOwningSectionPtr = std::unique_ptr<Section, NoOpSectionDeleter>;
+
 /*
 -------------------------------------------------------------------------------
 *********************************************   P R E P R O C E S S O R S   ***
@@ -41,7 +50,9 @@ class Options;
 */
 #define WORD_SIZE_IN_BYTES      4
 
-typedef std::list<Section*> SectionList;
+// Smart pointer ownership model: Binary owns all Sections via unique_ptr
+// Binary destructor automatically cleans up via RAII
+typedef std::list<std::unique_ptr<Section>> SectionList;
 
 
 /*
@@ -82,7 +93,7 @@ public:
     Binary::Length_t Length;
     uint32_t Alignment;
     Binary::Length_t Reserve;
-    uint8_t* Data;
+    std::unique_ptr<uint8_t[]> Data;
     uint64_t firstChunkSize;
     bool continuation;
     bool isPartitionData;

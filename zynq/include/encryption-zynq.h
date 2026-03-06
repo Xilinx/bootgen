@@ -116,9 +116,9 @@ private:
     void InitializePad2Data(uint32_t pad2DataByteLength);
     void EncryptDataStream(uint8_t* encryptedOutputData);
 
-    uint8_t* stream_header;
+    std::unique_ptr<uint8_t[]> stream_header;  // Smart pointer - auto cleanup
     uint8_t ipad_data[BYTES_PER_IPAD];
-    uint8_t* input_data_Buffer;
+    std::unique_ptr<uint8_t[]> input_data_Buffer;
     uint32_t input_data_ByteLength;
     uint8_t pad1_data[BYTES_PER_PAD1];
     uint8_t gap_2048[BYTES_PER_2048_GAP];

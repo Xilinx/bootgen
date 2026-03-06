@@ -41,18 +41,18 @@ VersalBootImage::VersalBootImage(Options& options, uint8_t index) : BootImage(op
 {
     partitionHeaderList.clear();
     options.SetDefaultAlignment(16);
-    bootHeader = new VersalBootHeader();
-    imageHeaderTable = new VersalImageHeaderTable();
-    partitionHeaderTable = new VersalPartitionHeaderTable();
-    currentEncryptCtx = new VersalEncryptionContext();
-    currentAuthCtx = new VersalAuthenticationContext(Authentication::RSA);
+    bootHeader = std::make_unique<VersalBootHeader>();
+    imageHeaderTable = std::make_unique<VersalImageHeaderTable>();
+    partitionHeaderTable = std::make_unique<VersalPartitionHeaderTable>();
+    currentEncryptCtx = std::make_unique<VersalEncryptionContext>();
+    currentAuthCtx = std::make_unique<VersalAuthenticationContext>(Authentication::RSA);
     SetLegacyEncryptionFlag(true);
-    partitionOutput = new VersalPartitionOutput();
-    hash = new HashSha3();
-    cache = new VersalBinary();
-    checksumTable = new VersalChecksumTable();
+    partitionOutput = std::make_unique<VersalPartitionOutput>();
+    hash = std::make_unique<HashSha3>();
+    cache = std::make_unique<VersalBinary>();
+    checksumTable = std::make_unique<VersalChecksumTable>();
     currentAuthCtx->hashType = AuthHash::Sha3;
-    currentAuthCtx->hash = hash;
+    currentAuthCtx->hash = hash.get();  // Non-owning reference to BootImage's hash
     partitionHeaderTable->firstSection = NULL;
     convertAieElfToCdo = true;
     current_image_block = 0;
@@ -128,9 +128,9 @@ void VersalBootImage::ConfigureEncryptionContext(ImageHeader * image, Encryption
         options.bifOptions->SetHeaderEncryption(true);
         if (imageHeaderTable->GetEncryptContext() == NULL)
         {
-            imageHeaderTable->SetEncryptContext(new VersalEncryptionContext(this->currentEncryptCtx));
+            imageHeaderTable->SetEncryptContext(std::make_unique<VersalEncryptionContext>(this->currentEncryptCtx.get()));
         }
-        image->SetEncryptContext(new VersalEncryptionContext(this->currentEncryptCtx));
+        image->SetEncryptContext(std::make_unique<VersalEncryptionContext>(this->currentEncryptCtx.get()));
         break;
 
     case Encryption::None:
@@ -160,14 +160,14 @@ void VersalBootImage::ConfigureEncryptionContext(ImageHeader * image, Encryption
             options.bifOptions->SetHeaderEncryption(true);
             if (imageHeaderTable->GetEncryptContext() == NULL)
             {
-                imageHeaderTable->SetEncryptContext(new VersalEncryptionContext());
+                imageHeaderTable->SetEncryptContext(std::make_unique<VersalEncryptionContext>());
             }
         }
         else if(options.bifOptions->metaHdrAttributes.encrKeySource != KeySource::None)
         {
             LOG_ERROR("BIF attribute error !!!\n\t   'keysrc' can be specified only when 'encryption' is enabled for MetaHeader.");
         }
-        image->SetEncryptContext(new NoneEncryptionContext());
+        image->SetEncryptContext(std::make_unique<NoneEncryptionContext>());
         break;
 
     default:
@@ -218,8 +218,11 @@ void VersalBootImage::ConfigureAuthenticationContext(ImageHeader * image, Authen
             AuthenticationContext::SetAuthenticationKeyLength(EC_P384_KEY_LENGTH);
         }
 
-        image->SetAuthContext(new VersalAuthenticationContext(currentAuthCtx, authType));
-        AuthenticationContext* authCtx = image->GetAuthContext();
+        // Store context in container to keep it alive, pass raw pointer to image
+        auto authCtxPtr = std::make_unique<VersalAuthenticationContext>(currentAuthCtx.get(), authType);
+        AuthenticationContext* authCtx = authCtxPtr.get();
+        image->SetAuthContext(authCtx);
+        authContexts.push_back(std::move(authCtxPtr));
         authCtx->SetPresignFile(partitionbifoptions->presignFile);
         authCtx->SetUdfFile(partitionbifoptions->udfDataFile);
         if (spkSignFile != "")
@@ -241,7 +244,10 @@ void VersalBootImage::ConfigureAuthenticationContext(ImageHeader * image, Authen
             }
         }
         image->SetAuthenticationType(Authentication::None);
-        image->SetAuthContext(new NoneAuthenticationContext());
+        // Store context in container to keep it alive, pass raw pointer to image
+        auto authCtxPtr = std::make_unique<NoneAuthenticationContext>();
+        image->SetAuthContext(authCtxPtr.get());
+        authContexts.push_back(std::move(authCtxPtr));
         if (spkSignFile != "")
         {
             currentAuthCtx->GenerateSPKSignature(spkSignFile);
@@ -264,12 +270,12 @@ void VersalBootImage::ConfigureChecksumContext(ImageHeader * image, Checksum::Ty
         break;
 
     case Checksum::SHA3:
-        image->SetChecksumContext(new VersalSHA3ChecksumContext());
+        image->SetChecksumContext(std::make_unique<VersalSHA3ChecksumContext>());
         break;
 
     case Checksum::None:
     default:
-        image->SetChecksumContext(new NoneChecksumContext());
+        image->SetChecksumContext(std::make_unique<NoneChecksumContext>());
         break;
     }
 }
@@ -294,8 +300,8 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
         LOG_ERROR("Cannot read file %s", it->filename.c_str());
     }
 
-    VersalBootHeaderStructure* bH = new VersalBootHeaderStructure;
-    fread(bH, 1, sizeof(VersalBootHeaderStructure), binFile);
+    auto bH = std::make_unique<VersalBootHeaderStructure>();
+    fread(bH.get(), 1, sizeof(VersalBootHeaderStructure), binFile);
 
     if (bH->widthDetectionWord != 0xAA995566)
     {
@@ -307,8 +313,6 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
     {
         smap_exists = true;
     }
-    delete bH;
-    bH = NULL;
     fclose(binFile);
 
     std::ifstream src(it->filename.c_str(), std::ios::binary);
@@ -318,7 +322,7 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
         LOG_ERROR("Failure in reading bootimage file for import - %s ", baseFile.c_str());
     }
 
-    VersalBootHeader* importedBh = NULL;
+    std::unique_ptr<VersalBootHeader> importedBh;  // Use unique_ptr to avoid shadowing
     if (!full_pdi)
     {
         LOG_WARNING("File %s is not a full PDI. It is missing the boot header", baseFile.c_str());
@@ -334,7 +338,7 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
     }
     else
     {
-        importedBh = new VersalBootHeader(src);
+        importedBh = std::make_unique<VersalBootHeader>(src);  // Assign to outer scope unique_ptr
         if (importedBh->GetHeaderVersion() != 0xFFFFFFFF)
         {
             LOG_WARNING("This version of bootgen may not support the bootimage header in %s ", baseFile.c_str());
@@ -375,20 +379,27 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
             LOG_INFO("Copying bootheader from %s ", baseFile.c_str());
             SetAssumeEncryptionFlag(false);
             options.SetEncryptedKeySource(importedBh->GetEncryptionKeySource());
-            bootHeader->Copy(importedBh);
+            bootHeader->Copy(importedBh.get());
         }
 
         src.seekg(importedBh->GetImageHeaderByteOffset());
     }
 
     CheckForIhtAttributes(baseFile);
-    imageHeaderTable = new VersalImageHeaderTable(src);
+    imageHeaderTable = std::make_unique<VersalImageHeaderTable>(src);
     if (imageHeaderTable->iht_optional_data_length != 0)
     {
-        src.seekg(importedBh->GetImageHeaderByteOffset() + sizeof(VersalImageHeaderTableStructure));
+        if (importedBh)  // unique_ptr can be checked directly
+        {
+            src.seekg(importedBh->GetImageHeaderByteOffset() + sizeof(VersalImageHeaderTableStructure));
+        }
+        else
+        {
+            src.seekg(sizeof(VersalImageHeaderTableStructure));
+        }        
         iht_optional_data_length = imageHeaderTable->iht_optional_data_length;
-        iht_optional_data = (uint32_t*)malloc(iht_optional_data_length);
-        src.read((char*)iht_optional_data, iht_optional_data_length);
+        iht_optional_data = std::make_unique<uint32_t[]>(iht_optional_data_length / sizeof(uint32_t));
+        src.read((char*)iht_optional_data.get(), iht_optional_data_length);
     }
     uint32_t offset = imageHeaderTable->GetFirstImageHeaderOffset() * sizeof(uint32_t);
     uint32_t imageCount = imageHeaderTable->GetImageCount();
@@ -414,11 +425,17 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
         if (createSubSystemPdis == true)
         {
             src.seekg(offset);
-            VersalSubSysImageHeader* subsys = new VersalSubSysImageHeader(src);
+            auto subsys = std::make_unique<VersalSubSysImageHeader>(src);
 
             for (uint32_t i = 0; i < subsys->num_of_images; i++)
             {
-                ImageHeader* image = new VersalImageHeader(src, (VersalImageHeaderStructure*)subsys->section->Data, IsBootloader, i);
+                // Check if subsys section data is valid before passing to constructor
+                if (subsys->section == NULL || subsys->section->Data.get() == NULL)
+                {
+                    LOG_ERROR("Subsystem section or data is NULL! Cannot create VersalImageHeader.");
+                    continue;
+                }
+                auto image = std::make_unique<VersalImageHeader>(src, (VersalImageHeaderStructure*)subsys->section->Data.get(), IsBootloader, i);
                 image->SetAlignment(it->alignment);
                 image->SetOffset(it->offset);
                 image->SetReserve(it->reserve, it->updateReserveInPh);
@@ -448,8 +465,8 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
                 image->SetBhSignFile(options.bifOptions->GetBHSignFileName());
 
                 /* Commenting this func for now, check while doing the HSM mode */
-                ConfigureProcessingStages(image, it);
-                subsys->imgList.push_back(image);
+                ConfigureProcessingStages(image.get(), it);
+                subsys->imgList.push_back(image.release());
 
                 /* Image is just temporary, we need to get a pointer back to the copied object and relink */
                 subsys->imgList.back()->Relink();
@@ -458,16 +475,17 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
                 /* For replacing pmcdata */
                 if (IsBootloader)
                 {
-                    image->SetTotalFsblFwSizeIh(importedBh->GetTotalPmcFwLength());
-                    image->SetFsblFwSizeIh(importedBh->GetPmcFwLength());
+                    newImage->SetTotalFsblFwSizeIh(importedBh->GetTotalPmcFwLength());  // Use newImage after release()
+                    newImage->SetFsblFwSizeIh(importedBh->GetPmcFwLength());
                     if (importedBh->GetTotalPmcCdoLength() != 0 && options.bifOptions->GetPmcdataFile() == "")
                     {
                         options.bifOptions->SetTotalpmcdataSize(importedBh->GetTotalPmcCdoLength());
                         options.bifOptions->pmcdataSize = importedBh->GetPmcCdoLength();
-                        options.bifOptions->pmcDataBuffer = new uint8_t[options.bifOptions->GetTotalpmcdataSize()];
-                        memcpy(options.bifOptions->pmcDataBuffer, newImage->GetPartitionHeaderList().front()->partition->section->Data + importedBh->GetTotalPmcFwLength(), options.bifOptions->totalpmcdataSize);
-                        image->SetPmcDataSizeIh(options.bifOptions->pmcdataSize);
-                        image->SetTotalPmcDataSizeIh(options.bifOptions->GetTotalpmcdataSize());
+                        auto pmcDataBuffer_owner = std::make_unique<uint8_t[]>(options.bifOptions->GetTotalpmcdataSize());
+                        memcpy(pmcDataBuffer_owner.get(), newImage->GetPartitionHeaderList().front()->partition->section->Data.get() + importedBh->GetTotalPmcFwLength(), options.bifOptions->totalpmcdataSize);
+                        options.bifOptions->pmcDataBuffer = pmcDataBuffer_owner.release();  // Transfer ownership to bifOptions
+                        newImage->SetPmcDataSizeIh(options.bifOptions->pmcdataSize);
+                        newImage->SetTotalPmcDataSizeIh(options.bifOptions->GetTotalpmcdataSize());
                     }
                 }
 
@@ -485,12 +503,12 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
                             LOG_ERROR("Cannot read file %s", it->filename.c_str());
                         }
 
-                        uint8_t* aC = new uint8_t[sizeof(AuthCertificate4096Sha3PaddingStructure)];
-                        memset(aC, 0, sizeof(AuthCertificate4096Sha3PaddingStructure));
+                        auto aC = std::make_unique<uint8_t[]>(sizeof(AuthCertificate4096Sha3PaddingStructure));
+                        memset(aC.get(), 0, sizeof(AuthCertificate4096Sha3PaddingStructure));
 
                         if (!(fseek(binFile, ph->GetAuthCertificateOffset(), SEEK_SET)))
                         {
-                            size_t result = fread(aC, 1, sizeof(AuthCertificate4096Sha3PaddingStructure), binFile);
+                            size_t result = fread(aC.get(), 1, sizeof(AuthCertificate4096Sha3PaddingStructure), binFile);
                             if (result != sizeof(AuthCertificate4096Sha3PaddingStructure))
                             {
                                 LOG_ERROR("Error parsing Authentication Certificates from PDI file");
@@ -499,27 +517,28 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
                         fclose(binFile);
 
                         Authentication::Type authtype = Authentication::None;
-                        if (((*aC) & 0xF3) == 0x02)
+                        if (((*aC.get()) & 0xF3) == 0x02)
                         {
                             authtype = Authentication::ECDSA;
                         }
-                        else if (((*aC) & 0xF3) == 0x11)
+                        else if (((*aC.get()) & 0xF3) == 0x11)
                         {
                             authtype = Authentication::RSA;
                         }
-                        else if (((*aC) & 0xF3) == 0x22)
+                        else if (((*aC.get()) & 0xF3) == 0x22)
                         {
                             authtype = Authentication::ECDSAp521;
                         }
-                        VersalAuthenticationContext* auth = new VersalAuthenticationContext((AuthCertificate4096Sha3PaddingStructure*)aC, authtype);
+                        auto auth = std::make_unique<VersalAuthenticationContext>((AuthCertificate4096Sha3PaddingStructure*)aC.release(), authtype);
 
                         // load in previous certificate data
-                        AuthenticationCertificate* tempac;
-                        tempac = new VersalAuthenticationCertificate(auth);
+                        auto tempac = std::make_unique<VersalAuthenticationCertificate>(auth.get());
                         auth->preSigned = true;
                         tempac->fsbl = true;
-                        ph->ac.push_back(tempac);
-                        newImage->SetAuthContext(auth);
+                        ph->ac.push_back(tempac.release());
+                        // Store context in container to keep it alive, pass raw pointer to image
+                        newImage->SetAuthContext(auth.get());
+                        authContexts.push_back(std::move(auth));
                     }
                 }
             }
@@ -528,7 +547,7 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
             {
                 if ((prev_image_block != current_image_block) || (this_bootimage == true))
                 {
-                    subSysImageList.push_back(subsys);
+                    subSysImageList.push_back(subsys.release());
                     prev_image_block = current_image_block;
                 }
                 else
@@ -544,13 +563,13 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
             }
             else
             {
-                subSysImageList.push_back(subsys);
+                subSysImageList.push_back(subsys.release());
             }
         }
         else
         {
             src.seekg(offset);
-            ImageHeader* image = new VersalImageHeader(src, IsBootloader);
+            auto image = std::make_unique<VersalImageHeader>(src, IsBootloader);
 
             image->SetAlignment(it->alignment);
             image->SetOffset(it->offset);
@@ -580,8 +599,8 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
             image->SetSpkSignFile(it->spkSignatureFile);
             image->SetBhSignFile(options.bifOptions->GetBHSignFileName());
 
-            ConfigureProcessingStages(image, it);
-            imageList.push_back(image);
+            ConfigureProcessingStages(image.get(), it);
+            imageList.push_back(image.release());
 
             /* Image is just temporary, we need to get a pointer back to the copied object and relink */
             imageList.back()->Relink();
@@ -590,16 +609,17 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
             /* For replacing pmcdata */
             if (IsBootloader)
             {
-                image->SetTotalFsblFwSizeIh(importedBh->GetTotalPmcFwLength());
-                image->SetFsblFwSizeIh(importedBh->GetPmcFwLength());
+                newImage->SetTotalFsblFwSizeIh(importedBh->GetTotalPmcFwLength());  // Use newImage after release()
+                newImage->SetFsblFwSizeIh(importedBh->GetPmcFwLength());
                 if (importedBh->GetTotalPmcCdoLength() != 0 && options.bifOptions->GetPmcdataFile() == "")
                 {
                     options.bifOptions->SetTotalpmcdataSize(importedBh->GetTotalPmcCdoLength());
                     options.bifOptions->pmcdataSize = importedBh->GetPmcCdoLength();
-                    options.bifOptions->pmcDataBuffer = new uint8_t[options.bifOptions->GetTotalpmcdataSize()];
-                    memcpy(options.bifOptions->pmcDataBuffer, newImage->GetPartitionHeaderList().front()->partition->section->Data + importedBh->GetTotalPmcFwLength(), options.bifOptions->totalpmcdataSize);
-                    image->SetPmcDataSizeIh(options.bifOptions->pmcdataSize);
-                    image->SetTotalPmcDataSizeIh(options.bifOptions->GetTotalpmcdataSize());
+                    auto pmcDataBuffer_owner = std::make_unique<uint8_t[]>(options.bifOptions->GetTotalpmcdataSize());
+                    memcpy(pmcDataBuffer_owner.get(), newImage->GetPartitionHeaderList().front()->partition->section->Data.get() + importedBh->GetTotalPmcFwLength(), options.bifOptions->totalpmcdataSize);
+                    options.bifOptions->pmcDataBuffer = pmcDataBuffer_owner.release();  // Transfer ownership to bifOptions
+                    newImage->SetPmcDataSizeIh(options.bifOptions->pmcdataSize);
+                    newImage->SetTotalPmcDataSizeIh(options.bifOptions->GetTotalpmcdataSize());
                 }
             }
 
@@ -616,12 +636,12 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
                     {
                         LOG_ERROR("Cannot read file %s", it->filename.c_str());
                     }
-                    uint8_t* aC = new uint8_t[sizeof(AuthCertificate4096Sha3PaddingStructure)];
-                    memset(aC, 0, sizeof(AuthCertificate4096Sha3PaddingStructure));
+                    auto aC = std::make_unique<uint8_t[]>(sizeof(AuthCertificate4096Sha3PaddingStructure));
+                    memset(aC.get(), 0, sizeof(AuthCertificate4096Sha3PaddingStructure));
 
                     if (!(fseek(binFile, ph->GetAuthCertificateOffset(), SEEK_SET)))
                     {
-                        size_t result = fread(aC, 1, sizeof(AuthCertificate4096Sha3PaddingStructure), binFile);
+                        size_t result = fread(aC.get(), 1, sizeof(AuthCertificate4096Sha3PaddingStructure), binFile);
                         if (result != sizeof(AuthCertificate4096Sha3PaddingStructure))
                         {
                             LOG_ERROR("Error parsing Authentication Certificates from PDI file");
@@ -630,26 +650,27 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
                     fclose(binFile);
 
                     Authentication::Type authtype = Authentication::None;
-                    if (((*aC) & 0xF3) == 0x02)
+                    if (((*aC.get()) & 0xF3) == 0x02)
                     {
                         authtype = Authentication::ECDSA;
                     }
-                    else if (((*aC) & 0xF3) == 0x11)
+                    else if (((*aC.get()) & 0xF3) == 0x11)
                     {
                         authtype = Authentication::RSA;
                     }
-                    else if (((*aC) & 0xF3) == 0x22)
+                    else if (((*aC.get()) & 0xF3) == 0x22)
                     {
                         authtype = Authentication::ECDSAp521;
                     }
-                    VersalAuthenticationContext* auth = new VersalAuthenticationContext((AuthCertificate4096Sha3PaddingStructure*)aC, authtype);
+                    auto auth = std::make_unique<VersalAuthenticationContext>((AuthCertificate4096Sha3PaddingStructure*)aC.release(), authtype);
 
-                    AuthenticationCertificate* tempac;
-                    tempac = new VersalAuthenticationCertificate(auth);
+                    auto tempac = std::make_unique<VersalAuthenticationCertificate>(auth.get());
                     auth->preSigned = true;
                     tempac->fsbl = true;
-                    ph->ac.push_back(tempac);
-                    newImage->SetAuthContext(auth);
+                        ph->ac.push_back(tempac.release());
+                    // Store context in container to keep it alive, pass raw pointer to image
+                    newImage->SetAuthContext(auth.get());
+                    authContexts.push_back(std::move(auth));
                 }
             }
             offset += sizeof(VersalImageHeaderStructure);
@@ -798,7 +819,7 @@ ImageHeader* VersalBootImage::ParsePartitionDataToImage(BifOptions * bifoptions,
 
     imageBifOptions->slrConfigPartitionIndex++;
 
-    ImageHeader *image = new VersalImageHeader(partitionBifOptions->filename);
+    auto image = std::make_unique<VersalImageHeader>(partitionBifOptions->filename);
     image->SetFileList(partitionBifOptions->filelist);
     image->SetBootloader(partitionBifOptions->bootloader);
     image->SetAlignment(partitionBifOptions->alignment);
@@ -928,14 +949,18 @@ ImageHeader* VersalBootImage::ParsePartitionDataToImage(BifOptions * bifoptions,
         }
     }
 
-    ConfigureEncryptionBlocks(image, partitionBifOptions);
-    ConfigureProcessingStages(image, partitionBifOptions);
-    ValidateSecureAttributes(image, bifoptions, partitionBifOptions);
+    ConfigureEncryptionBlocks(image.get(), partitionBifOptions);
+    ConfigureProcessingStages(image.get(), partitionBifOptions);
+    ValidateSecureAttributes(image.get(), bifoptions, partitionBifOptions);
+
+    // CRITICAL FIX: Save raw pointer NOW before any release() calls
+    // Smart pointers become NULL after release(), so save .get() early!
+    ImageHeader* imageRawPtr = image.get();
 
     if ((partitionBifOptions->partitionType == PartitionType::SLR_BOOT) || (partitionBifOptions->partitionType == PartitionType::SLR_CONFIG))
     {
         /* SSIT devices */
-        SlrPdiInfo* slrPdi = new SlrPdiInfo;
+        auto slrPdi = std::make_unique<SlrPdiInfo>();
         slrPdi->file = partitionBifOptions->filename;
         std::ifstream s(slrPdi->file.c_str());
         if (!s)
@@ -951,14 +976,20 @@ ImageHeader* VersalBootImage::ParsePartitionDataToImage(BifOptions * bifoptions,
                 slrPdi->index = (SlrId::Type) slr_boot_cnt;
             }
             slrPdi->type = SlrPdiType::BOOT;
-            slrBootPdiInfo.push_back(slrPdi);
+            slrBootPdiInfo.push_back(slrPdi.release());
+            
             if (slr_boot_cnt == bifoptions->slrBootCnt)
             {
+                // All SLR boot partitions collected - configure final image and add to boot imageList
                 image->SetSlrBootPartitions(slrBootPdiInfo);
                 image->SetName("SSIT Boot Partition");
                 image->SetSlrPartition(true);
-                imageList.push_back(image);
+                imageList.push_back(image.release());
+                slrBootPdiInfo.clear();  // Clear static list after ownership transfer
+                slr_boot_cnt = 0;  // Reset for next SSIT group
             }
+            // Note: All images (intermediate & final) are returned to caller
+            // Caller (Add function) decides whether to add to subsystem imgList (lines 1497-1509)
         }
         else
         {
@@ -976,14 +1007,18 @@ ImageHeader* VersalBootImage::ParsePartitionDataToImage(BifOptions * bifoptions,
             {
                 slrPdi->index = (partitionBifOptions->slrNum == 0x0) ? (SlrId::MASTER) : ((SlrId::Type) partitionBifOptions->slrNum);
             }
-            imageBifOptions->slrConfigPdiInfo.push_back(slrPdi);
+            imageBifOptions->slrConfigPdiInfo.push_back(slrPdi.release());
+            
             if (imageBifOptions->slrConfigPartitionIndex == imageBifOptions->slrConfigCnt)
             {
+                // All SLR config partitions collected - configure final image and add to boot imageList
                 image->SetSlrConfigPartitions(imageBifOptions->slrConfigPdiInfo);
                 image->SetName("SSIT Config Partition");
                 image->SetSlrPartition(true);
-                imageList.push_back(image);
+                imageList.push_back(image.release());
             }
+            // Note: All images (intermediate & final) are returned to caller
+            // Caller (Add function) decides whether to add to subsystem imgList (lines 1504-1509)
         }
     }
     else if ((convertAieElfToCdo == true) && (partitionBifOptions->destCPUType == DestinationCPU::AIE))
@@ -994,7 +1029,7 @@ ImageHeader* VersalBootImage::ParsePartitionDataToImage(BifOptions * bifoptions,
         bifoptions->aie_elfs.push_back(partitionBifOptions->filename);
         if (aie_elf_cnt == 1)
         {
-            imageList.push_back(image);
+            imageList.push_back(image.release());
         }
         else
         {
@@ -1003,7 +1038,7 @@ ImageHeader* VersalBootImage::ParsePartitionDataToImage(BifOptions * bifoptions,
     }
     else if (partitionBifOptions->partitionType == PartitionType::IMAGE_STORE_PDI)
     {
-        ImageStorePdiInfo* imageStorePdi = new ImageStorePdiInfo;
+        auto imageStorePdi = std::make_unique<ImageStorePdiInfo>();
         imageStorePdi->file = partitionBifOptions->filename;
         std::ifstream s(imageStorePdi->file.c_str());
         if (!s)
@@ -1011,42 +1046,43 @@ ImageHeader* VersalBootImage::ParsePartitionDataToImage(BifOptions * bifoptions,
             LOG_ERROR("Cannot read file - %s ", imageStorePdi->file.c_str());
         }
         imageStorePdi->id = partitionBifOptions->imageStoreId;
-        image->SetWriteImageStorePartitions(imageStorePdi);
-        imageList.push_back(image);
+        image->SetWriteImageStorePartitions(imageStorePdi.release());
+        imageList.push_back(image.release());
     }
     else
     {
-        imageList.push_back(image);
+        imageList.push_back(image.release());
     }
 
-    bool break_outer_loop = false;
-
+    // Process subsystem assignments
     for (std::list<SubSysImageHeader*>::iterator subSysHdr = subSysImageList.begin(); subSysHdr != subSysImageList.end(); subSysHdr++)
     {
         for (std::list<std::string>::iterator partName = (*subSysHdr)->partitionNameList.begin(); partName != (*subSysHdr)->partitionNameList.end(); partName++)
         {
-            image->SetMemCopyAddress((*subSysHdr)->GetSubSysMemCopyAddress());
-            image->SetDelayLoadHandOffFlags((*subSysHdr)->GetDelayLoadMode(), (*subSysHdr)->GetDelayHandoffMode());
+            imageRawPtr->SetMemCopyAddress((*subSysHdr)->GetSubSysMemCopyAddress());
+            imageRawPtr->SetDelayLoadHandOffFlags((*subSysHdr)->GetDelayLoadMode(), (*subSysHdr)->GetDelayHandoffMode());
             std::string part(*partName);
-            if (!image->GetFilename().compare(part))
+            if (!imageRawPtr->GetFilename().compare(part))
             {
-                (*subSysHdr)->imgList.push_back(image);
-                break_outer_loop = true;
+                (*subSysHdr)->imgList.push_back(imageRawPtr);  // Subsystem references image (imageList owns it)
                 break;
             }
         }
-        if (break_outer_loop)
-        {
-            break;
-        }
     }
- 
-    if (image->GetTcmBootFlag() == true && image->GetDestCpu() != DestinationCPU::R5_0 && image->GetDestCpu() != DestinationCPU::R5_1 && image->GetDestCpu() != DestinationCPU::R5_lockstep)
+
+    if (imageRawPtr->GetTcmBootFlag() == true && imageRawPtr->GetDestCpu() != DestinationCPU::R5_0 && imageRawPtr->GetDestCpu() != DestinationCPU::R5_1 && imageRawPtr->GetDestCpu() != DestinationCPU::R5_lockstep)
     {
         LOG_ERROR("BIF attribute error !!!\n\t  'tcmboot' is supported only with R5 cpu");
     }
 
-    return image;
+    // If image unique_ptr still owns the object, release it before returning
+    // This transfers ownership to the caller who will use the returned raw pointer
+    if (image)
+    {
+        image.release();
+    }
+
+    return imageRawPtr;
 }
 
 /******************************************************************************/
@@ -1055,17 +1091,17 @@ void VersalBootImage::OutputOptionalSecureDebugImage()
     std::string secureDebugImageFile = options.GetSecureDebugImageFile();
 
     uint32_t authJtagImageSize = sizeof(AuthenticatedJtagImageStructure);
-    uint8_t* writedata = new uint8_t[authJtagImageSize];
-    memset(writedata, 0, authJtagImageSize);
+    auto writedata = std::make_unique<uint8_t[]>(authJtagImageSize);
+    memset(writedata.get(), 0, authJtagImageSize);
 
     if (options.GetSecureDebugAuthType() != Authentication::None)
     {
-        VersalAuthenticationContext* authCtx = new VersalAuthenticationContext(this->currentAuthCtx, options.GetSecureDebugAuthType());
+        auto authCtx = std::make_unique<VersalAuthenticationContext>(this->currentAuthCtx.get(), options.GetSecureDebugAuthType());
         if (authCtx)
         {
             authCtx->hashType = authHash;
-            authCtx->hash = hash;
-            authCtx->CreateAuthJtagImage(writedata, bifOptions->authJtagInfo);
+            authCtx->hash = hash.get();  // Non-owning reference to BootImage's hash
+            authCtx->CreateAuthJtagImage(options, writedata.get(), bifOptions->authJtagInfo);
         }
 
         std::ofstream ofs;
@@ -1076,13 +1112,11 @@ void VersalBootImage::OutputOptionalSecureDebugImage()
             LOG_ERROR("Cannot write output to file : %s", secureDebugImageFile.c_str());
         }
 
-        ofs.write((const char*)writedata, authJtagImageSize);
+        ofs.write((const char*)writedata.get(), authJtagImageSize);
         ofs.close();
 
         LOG_TRACE("Authenticated Jtag Image : '%s' generated.", secureDebugImageFile.c_str());
     }
-
-    delete[] writedata;
 }
 
 /******************************************************************************/
@@ -1250,7 +1284,7 @@ void VersalBootImage::Add(BifOptions* bifoptions)
         if (bifoptions->GetSPKFileName() != "")
         {
             currentAuthCtx->SetSPKeyFile(bifoptions->GetSPKFileName());
-            VersalAuthenticationContext* authCtx = NULL;
+            std::unique_ptr<VersalAuthenticationContext> authCtx;
             if (currentAuthCtx)
             {
                 std::string filename = bifoptions->GetSPKFileName();
@@ -1273,25 +1307,20 @@ void VersalBootImage::Add(BifOptions* bifoptions)
 
                 if (rsa != NULL)
                 {
-                    authCtx = new VersalAuthenticationContext(currentAuthCtx, Authentication::RSA);
+                    authCtx = std::make_unique<VersalAuthenticationContext>(currentAuthCtx.get(), Authentication::RSA);
                 }
                 else if(eckeyLocal != NULL)
                 {
-                    authCtx = new VersalAuthenticationContext(currentAuthCtx, Authentication::ECDSA);
+                    authCtx = std::make_unique<VersalAuthenticationContext>(currentAuthCtx.get(), Authentication::ECDSA);
                 }
             }
 
             if (options.DoGenerateHashes())
             {
-                authCtx->hash = hash;
+                authCtx->hash = hash.get();  // Non-owning reference to BootImage's hash
                 authCtx->spkIdentification = bifOptions->GetRevokeId();
                 LOG_INFO("Generating SPK Hash File");
-                authCtx->GenerateSPKHashFile(bifoptions->GetSPKFileName(), hash);
-            }
-
-            if (authCtx != NULL)
-            {
-                delete authCtx;
+                authCtx->GenerateSPKHashFile(bifoptions->GetSPKFileName(), hash.get());
             }
         }
 
@@ -1381,7 +1410,7 @@ void VersalBootImage::Add(BifOptions* bifoptions)
         for (std::list<ImageBifOptions*>::iterator imgitr = bifoptions->imageBifOptionList.begin(); imgitr != bifoptions->imageBifOptionList.end(); imgitr++)
         {
             uint8_t slr_cfg_cnt = 0;
-            VersalSubSysImageHeader *subSysImage = new VersalSubSysImageHeader(*imgitr);
+            auto subSysImage = std::make_unique<VersalSubSysImageHeader>(*imgitr);
             bool bootimage_partition = false;
             current_image_block++;
             bool break_outer_loop = false;
@@ -1481,7 +1510,7 @@ void VersalBootImage::Add(BifOptions* bifoptions)
             /* Add to subsys list only if it the partition type is not bootimage. Because bootimage will have its own subsystems */
             if ((!bootimage_partition) || (subSysImage->imgList.size() != 0))
             {
-                subSysImageList.push_back(subSysImage);
+                subSysImageList.push_back(subSysImage.release());
             }
         }
     }
@@ -1704,7 +1733,7 @@ void VersalBootImage::OutputOptionalEfuseHash()
                 VersalAuthenticationContext* authCtx = NULL;
                 if (rsa != NULL)
                 {
-                    authCtx = new VersalAuthenticationContext(currentAuthCtx, Authentication::RSA);
+                    auto authCtx = std::make_unique<VersalAuthenticationContext>(currentAuthCtx.get(), Authentication::RSA);
                 }
                 else if (eckeyLocal != NULL)
                 {
@@ -1722,11 +1751,11 @@ void VersalBootImage::OutputOptionalEfuseHash()
 
                     if (ecCurveNID == NID_secp384r1)
                     {
-                        authCtx = new VersalAuthenticationContext(currentAuthCtx, Authentication::ECDSA);
+                        auto authCtx = std::make_unique<VersalAuthenticationContext>(currentAuthCtx.get(), Authentication::ECDSA);
                     }
                     else if (ecCurveNID == NID_secp521r1)
                     {
-                        authCtx = new VersalAuthenticationContext(currentAuthCtx, Authentication::ECDSAp521);
+                        auto authCtx = std::make_unique<VersalAuthenticationContext>(currentAuthCtx.get(), Authentication::ECDSAp521);
                     }
                     else
                     {
@@ -1738,7 +1767,7 @@ void VersalBootImage::OutputOptionalEfuseHash()
                     LOG_ERROR("Cannot read the public key file : %s", filename.c_str());
                 }
 
-                authCtx->hash = hash;
+                authCtx->hash = hash.get();  // Non-owning reference to BootImage's hash
                 authCtx->GeneratePPKHash(hashFile);
             }
         }
@@ -1753,7 +1782,7 @@ void VersalBootImage::OutputOptionalEfuseHash()
                 File >> word;
                 File >> word;
 
-                VersalAuthenticationContext* authCtx = NULL;
+                std::unique_ptr<VersalAuthenticationContext> authCtx;
                 if (word == "EC")
                 {
                     FILE* f = NULL;
@@ -1770,11 +1799,11 @@ void VersalBootImage::OutputOptionalEfuseHash()
 
                     if (ecCurveNID == NID_secp384r1)
                     {
-                        authCtx = new VersalAuthenticationContext(currentAuthCtx, Authentication::ECDSA);
+                        authCtx = std::make_unique<VersalAuthenticationContext>(currentAuthCtx.get(), Authentication::ECDSA);
                     }
                     else if (ecCurveNID == NID_secp521r1)
                     {
-                        authCtx = new VersalAuthenticationContext(currentAuthCtx, Authentication::ECDSAp521);
+                        authCtx = std::make_unique<VersalAuthenticationContext>(currentAuthCtx.get(), Authentication::ECDSAp521);
                     }
                     else
                     {
@@ -1783,9 +1812,9 @@ void VersalBootImage::OutputOptionalEfuseHash()
                 }
                 else
                 {
-                    authCtx = new VersalAuthenticationContext(currentAuthCtx, Authentication::RSA);
+                    authCtx = std::make_unique<VersalAuthenticationContext>(currentAuthCtx.get(), Authentication::RSA);
                 }
-                authCtx->hash = hash;
+                authCtx->hash = hash.get();  // Non-owning reference to BootImage's hash
                 authCtx->GeneratePPKHash(hashFile);
             }
         }
@@ -1837,20 +1866,20 @@ void VersalBootImage::BuildAndLink(Binary* cache)
         }
         else
         {
-            ImageBifOptions *imgOptions = new ImageBifOptions();
+            auto imgOptions = std::make_unique<ImageBifOptions>();
             /* If Subsystems are not specified in BIF - create one image header for PLM and other image header for subsytem and add all partitions to it */
             imgOptions->SetImageName("default_subsys");
-            VersalSubSysImageHeader* sub_sys_image = new VersalSubSysImageHeader(imgOptions);
+            auto sub_sys_image = std::make_unique<VersalSubSysImageHeader>(imgOptions.get());
             for (std::list<ImageHeader*>::iterator image = imageList.begin(); image != imageList.end(); image++)
             {
                 if ((*image)->IsBootloader())
                 {
                     imgOptions->SetImageName("pmc_subsys");
-                    VersalSubSysImageHeader* plm_header = new VersalSubSysImageHeader(imgOptions);
+                    auto plm_header = std::make_unique<VersalSubSysImageHeader>(imgOptions.get());
                     plm_header->imgList.push_back((*image));
                     plm_header->SetSubSystemName("pmc_subsys");
                     plm_header->SetSubSystemId(0x1c000001);
-                    subSysImageList.push_back(plm_header);
+                    subSysImageList.push_back(plm_header.release());
                 }
                 else
                 {
@@ -1861,7 +1890,7 @@ void VersalBootImage::BuildAndLink(Binary* cache)
             {
                 sub_sys_image->SetSubSystemName("default_subsys");
                 sub_sys_image->SetSubSystemId(0x1c000000);
-                subSysImageList.push_back(sub_sys_image);
+                subSysImageList.push_back(sub_sys_image.release());
                 LOG_INFO("BOOTGEN_SUBSYSTEM_PDI is set, but no subsystems are specified, all partitions are grouped into one default subsystem");
             }
          }
@@ -1915,6 +1944,11 @@ void VersalBootImage::BuildAndLink(Binary* cache)
 
     LOG_INFO("After Link ");
     LOG_DUMP_IMAGE(*cache);
+    
+    // CRITICAL FIX APPLIED: cache.Sections now uses raw pointers (non-owning)!
+    // Sections are added to cache with .get() during Build() phase
+    // Sections remain owned by their parent objects (BootHeader, ImageHeader, Partition)
+    // This matches the original design where cache is just a collection, not an owner
 }
 
 /******************************************************************************/

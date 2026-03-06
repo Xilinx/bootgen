@@ -42,8 +42,9 @@ ZynqMpImageHeader::ZynqMpImageHeader(std::string& filename)
     size += 4;
     size += 16;
 
-    section = new Section("ImageHeader " + Name, size);
-    memset(section->Data, 0, size);
+    auto temp_section = std::make_unique<Section>("ImageHeader " + Name, size);
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    memset(section->Data.get(), 0, size);
 }
 
 /******************************************************************************/
@@ -90,8 +91,9 @@ ZynqMpImageHeader::ZynqMpImageHeader(std::ifstream& ifs)
 
     /* Go to start and read the image header to populate other fields */
     ifs.seekg(pos);
-    section = new Section("ImageHeader " + Name, size);
-    imageHeader = (ZynqMpImageHeaderStructure*)section->Data;
+    auto temp_section = std::make_unique<Section>("ImageHeader " + Name, size);
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    imageHeader = (ZynqMpImageHeaderStructure*)section->Data.get();
     ifs.read((char*)imageHeader, size);
 
     /* This is a work around of a bug in the old bootgen. The partition header counter is stored in
@@ -101,7 +103,7 @@ ZynqMpImageHeader::ZynqMpImageHeader(std::ifstream& ifs)
 
     for (uint8_t index = 0; index<count; index++)
     {
-        PartitionHeader* hdr = new ZynqMpPartitionHeader(this, index);
+        auto hdr = std::make_unique<ZynqMpPartitionHeader>(this, index);
         if (!firstValidHdr)
         {
             hdr->firstValidIndex = true;
@@ -111,7 +113,7 @@ ZynqMpImageHeader::ZynqMpImageHeader(std::ifstream& ifs)
         hdr->ReadHeader(ifs);
         hdr->ReadData(ifs);
 
-        partitionHeaderList.push_back(hdr);
+        partitionHeaderList.push_back(hdr.release());
 
         Bootloader = false;
         Alignment = 0;
@@ -155,7 +157,6 @@ ZynqMpImageHeader::~ZynqMpImageHeader()
 {
     if (section != NULL)
     {
-        delete section;
     }
 }
 
@@ -164,7 +165,7 @@ void ZynqMpImageHeader::ImportFpgaDataFile(BootImage& bi)
 {
     ByteFile data(Filename);
 
-    PartitionHeader* partHdr = new ZynqMpPartitionHeader(this, 0);
+    auto partHdr = std::make_unique<ZynqMpPartitionHeader>(this, 0);
     if(updateReserveInPh == true)
     {
         if(Reserve.IsSet())
@@ -175,17 +176,25 @@ void ZynqMpImageHeader::ImportFpgaDataFile(BootImage& bi)
             }
             else
             {
+                Binary::Length_t original_size = data.len;
                 data.len = Reserve.Value();
+                uint8_t* resized_data = (uint8_t*)malloc(data.len);
+                memcpy(resized_data, data.bytes, original_size);
+                memset(resized_data + original_size, 0, data.len - original_size);
+                partHdr->partition = std::make_unique<Partition>(partHdr.get(), resized_data, data.len);
+                free(resized_data);
+                partitionHeaderList.push_back(partHdr.release());
+                return;
             }
         }
     }
 
-    partHdr->partition = new Partition(partHdr, data.bytes, data.len);
-    partitionHeaderList.push_back(partHdr);
+    partHdr.get()->partition = std::make_unique<Partition>(partHdr.get(), data.bytes, data.len);
+    partitionHeaderList.push_back(partHdr.release());
 }
 
 /******************************************************************************/
-void ZynqMpImageHeader::CreateElfPartitions(BootImage& bi, ElfFormat* elf, uint8_t proc_state)
+void ZynqMpImageHeader::CreateElfPartitions(BootImage& bi, std::unique_ptr<ElfFormat>& elf, uint8_t proc_state)
 {
     Binary::Length_t total_size = 0;
     Binary::Address_t load_addr = 0;
@@ -203,7 +212,7 @@ void ZynqMpImageHeader::CreateElfPartitions(BootImage& bi, ElfFormat* elf, uint8
             std::string pmu_fw = bi.bifOptions->GetPmuFwImageFile();
             if (pmu_fw != "")
             {
-                uint8_t* fsbl_data = CombineElfSections(elf, &fsbl_size, &load_addr);
+                uint8_t* fsbl_data = CombineElfSections(elf.get(), &fsbl_size, &load_addr);
                 fsblFwSize = totalFsblFwSize = total_size = fsbl_size;
                 if(updateReserveInPh == true)
                 {
@@ -215,7 +224,10 @@ void ZynqMpImageHeader::CreateElfPartitions(BootImage& bi, ElfFormat* elf, uint8
                         }
                         else
                         {
+                            Binary::Length_t original_size = fsbl_size;
                             fsblFwSize = totalFsblFwSize = total_size = fsbl_size = Reserve.Value();
+                            fsbl_data = (uint8_t*)realloc(fsbl_data, fsbl_size);
+                            memset(fsbl_data + original_size, 0, fsbl_size - original_size);
                         }
                     }
                 }
@@ -224,7 +236,7 @@ void ZynqMpImageHeader::CreateElfPartitions(BootImage& bi, ElfFormat* elf, uint8
             }
             else
             {
-                partition_data = CombineElfSections(elf, &total_size, &load_addr);
+                partition_data = CombineElfSections(elf.get(), &total_size, &load_addr);
                 if(updateReserveInPh == true)
                 {
                     if(Reserve.IsSet())
@@ -235,7 +247,10 @@ void ZynqMpImageHeader::CreateElfPartitions(BootImage& bi, ElfFormat* elf, uint8
                         }
                         else
                         {
+                            Binary::Length_t original_size = total_size;
                             fsblFwSize = totalFsblFwSize = total_size = fsbl_size = Reserve.Value();
+                            partition_data = (uint8_t*)realloc(partition_data, total_size);
+                            memset(partition_data + original_size, 0, total_size - original_size);
                         }
                     }
                 }
@@ -250,7 +265,7 @@ void ZynqMpImageHeader::CreateElfPartitions(BootImage& bi, ElfFormat* elf, uint8
         }
         else
         {
-            partition_data = GetElfSections(elf, &total_size, &load_addr, iprog);
+            partition_data = GetElfSections(elf.get(), &total_size, &load_addr, iprog);
             if(updateReserveInPh == true)
             {
                 if(Reserve.IsSet() && non_zero_elf_sec_count > 1)
@@ -265,7 +280,10 @@ void ZynqMpImageHeader::CreateElfPartitions(BootImage& bi, ElfFormat* elf, uint8
                     }
                     else
                     {
+                        Binary::Length_t original_size = total_size;
                         total_size = Reserve.Value();
+                        partition_data = (uint8_t*)realloc(partition_data, total_size);
+                        memset(partition_data + original_size, 0, total_size - original_size);
                     }
                 }
             }
@@ -283,19 +301,19 @@ void ZynqMpImageHeader::CreateElfPartitions(BootImage& bi, ElfFormat* elf, uint8
         }
 
 
-        PartitionHeader* partHdr = new ZynqMpPartitionHeader(this, hdr_index);
+        auto partHdr = std::make_unique<ZynqMpPartitionHeader>(this, hdr_index);
         (hdr_index == 0) ? (partHdr->firstValidIndex = true) : (partHdr->firstValidIndex = false);
         partHdr->elfEndianess = elf->endian;
         partHdr->execAddress = exec_addr;
         partHdr->loadAddress = load_addr;
         partHdr->execState = proc_state;
 
-        partHdr->partition = new Partition(partHdr, partition_data, total_size);
+        partHdr.get()->partition = std::make_unique<Partition>(partHdr.get(), partition_data, total_size);
         free(partition_data);
         // This length also includes padding size necessary for 16-byte alignment
         partHdr->partitionSize = partHdr->partition->section->Length;
         hdr_index++;
-        partitionHeaderList.push_back(partHdr);
+        partitionHeaderList.push_back(partHdr.release());
 
         if (Bootloader)
         {
@@ -319,7 +337,7 @@ uint8_t* ZynqMpImageHeader::AttachPmuFw(uint8_t* fsbl_data, uint64_t* size, std:
     if (StringUtils::EndsWith(pmu_fw, ".elf"))
     {
         ElfFormat32 pmu_elf(pmu_fw_data.bytes);
-        partition_data = CombineElfSections((ElfFormat*)&pmu_elf, &pmu_size, &pmu_addr);
+        partition_data = CombineElfSections(&pmu_elf, &pmu_size, &pmu_addr);
     }
     else
     {
@@ -356,28 +374,28 @@ void ZynqMpImageHeader::ImportBit(BootImage& bi)
     {
         LOG_ERROR("Cannot read BIT file - %s ", Filename.c_str());
     }
-    BitFile *bit = new ZynqMpBitFile(stream);
+    auto bit = std::make_unique<ZynqMpBitFile>(stream);
     bit->ParseBit(bi);
     bit->SetEncryptionType(Encrypt->Type());
     bi.bitFilename = Filename.c_str();
-    PartitionHeader* hdr = new ZynqMpPartitionHeader(this, 0);
+    auto hdr = std::make_unique<ZynqMpPartitionHeader>(this, 0);
     hdr->firstValidIndex = true;
 
     /* The endianess is different (Big Endian) in case of Zynq MP/FPGA
        encryption cases. All other cases the bitstream is copied as
        Little Endian */
-    OutputStream *os = bit->GetOutputStreamType();
+    auto os = bit->GetOutputStreamType();
 
     /* If the Zynq/FPGA bitstream partition is encrypted, then we need
        to strip the normal BIT header (sync data, etc) before encryption.
        All other cases, just copy the entire bitstream as is */
     if (bit->GetBitStripFlag())
     {
-        bit->Strip(os);
+        bit->Strip(os.get());
     }
     else
     {
-        bit->Copy(os);
+        bit->Copy(os.get());
     }
 
     /* Bitstream sizes should be word aligned.
@@ -415,7 +433,7 @@ void ZynqMpImageHeader::ImportBit(BootImage& bi)
 
     hdr->transferSize = os->Size();
     hdr->preservedBitstreamHdr = os->pHdr;
-    hdr->partition = new Partition(hdr, os->Start(), os->Size());
+    hdr.get()->partition = std::make_unique<Partition>(hdr.get(), os->Start(), os->Size());
     if(updateReserveInPh == true)
     {
         if(Reserve.IsSet())
@@ -428,11 +446,11 @@ void ZynqMpImageHeader::ImportBit(BootImage& bi)
             {
                 hdr->transferSize = Reserve.Value();
                 hdr->partitionSize = Reserve.Value();
-                hdr->partition = new Partition(hdr, os->Start(),Reserve.Value());
+                hdr.get()->partition = std::make_unique<Partition>(hdr.get(), os->Start(),Reserve.Value());
             }
         }
     }
-    partitionHeaderList.push_back(hdr);
+    partitionHeaderList.push_back(hdr.release());
 }
 
 /******************************************************************************/
@@ -441,7 +459,7 @@ void ZynqMpImageHeader::ImportBin(BootImage& bi)
     SetDomain(Domain::PS);
     ByteFile data(Filename);
 
-    PartitionHeader* hdr = new ZynqMpPartitionHeader(this, 0);
+    auto hdr = std::make_unique<ZynqMpPartitionHeader>(this, 0);
     hdr->firstValidIndex = true;
 
     hdr->execAddress = Startup.ValueOrDefault(0);
@@ -477,7 +495,7 @@ void ZynqMpImageHeader::ImportBin(BootImage& bi)
 	    memset(partition_data + pmu_size, 0, pmu_padding);
 	    memcpy(partition_data + pmuFwSize, data.bytes, data.len);
 
-	    data.bytes = partition_data;
+     data.bytes = partition_data;  // ByteFile.bytes is now raw pointer
 	    fsblFwSize = totalFsblFwSize = data.len + ((4 - (data.len & 3)) & 3);
 	    data.len += pmuFwSize;
 
@@ -495,13 +513,22 @@ void ZynqMpImageHeader::ImportBin(BootImage& bi)
             }
             else
             {
+                Binary::Length_t original_size = data.len;
                 data.len = Reserve.Value();
+                uint8_t* resized_data = (uint8_t*)malloc(data.len);
+                memcpy(resized_data, data.bytes, original_size);
+                memset(resized_data + original_size, 0, data.len - original_size);
+                hdr->partition = std::make_unique<Partition>(hdr.get(), resized_data, data.len);
+                free(resized_data);
+                hdr->partitionSize = data.len;
+                partitionHeaderList.push_back(hdr.release());
+                return;
             }
         }
     }
-    hdr->partition = new Partition(hdr, data.bytes, data.len);
+    hdr.get()->partition = std::make_unique<Partition>(hdr.get(), data.bytes, data.len);
     hdr->partitionSize = data.len;
-    partitionHeaderList.push_back(hdr);
+    partitionHeaderList.push_back(hdr.release());
 }
 
 /******************************************************************************/
@@ -533,13 +560,14 @@ uint32_t ZynqMpImageHeader::GetImageNameLength(void)
 /******************************************************************************/
 void ZynqMpImageHeader::Build(BootImage& bi, Binary& cache)
 {
-   cache.Sections.push_back(section);
+   cache.Sections.push_back(std::unique_ptr<Section>(section));
+
 
     uint32_t defaultAlignment = bi.options.GetDefaultAlignment();
 
     if (imageHeader == NULL)
     {
-        imageHeader = (ZynqMpImageHeaderStructure*)section->Data;
+        imageHeader = (ZynqMpImageHeaderStructure*)section->Data.get();
         SetImageName();
         SetImageNameLength((uint32_t)Name.length());
         SetDataSectionCount(0);
@@ -610,7 +638,7 @@ void ZynqMpImageHeader::Link(BootImage &bi, PartitionHeader* partitionHeader,
     fullBhSize = bi.options.bootheaderSize;
     allHdrSize = bi.options.allHeaderSize;
 
-    imageHeader = (ZynqMpImageHeaderStructure*)section->Data;
+    imageHeader = (ZynqMpImageHeaderStructure*)section->Data.get();
     if (partitionHeader->section != NULL)
     {
         SetPartitionHeaderOffset((uint32_t)partitionHeader->section->Address);
@@ -629,18 +657,20 @@ void ZynqMpImageHeader::Link(BootImage &bi, PartitionHeader* partitionHeader,
 /******************************************************************************/
 ZynqMpImageHeaderTable::ZynqMpImageHeaderTable()
 {
-    section = new Section("ImageHeaderTable", sizeof(ZynqMpImageHeaderTableStructure));
-    iHTable = (ZynqMpImageHeaderTableStructure*)section->Data;
+    auto temp_section = std::make_unique<Section>("ImageHeaderTable", sizeof(ZynqMpImageHeaderTableStructure));
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    iHTable = (ZynqMpImageHeaderTableStructure*)section->Data.get();
 }
 
 /******************************************************************************/
 ZynqMpImageHeaderTable::ZynqMpImageHeaderTable(std::ifstream& src)
 {
-    section = new Section("ImageHeaderTable", sizeof(ZynqMpImageHeaderTableStructure));
-    iHTable = (ZynqMpImageHeaderTableStructure*)section->Data;
+    auto temp_section = std::make_unique<Section>("ImageHeaderTable", sizeof(ZynqMpImageHeaderTableStructure));
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    iHTable = (ZynqMpImageHeaderTableStructure*)section->Data.get();
     
     /* Import the Image Header Table from a boot image file */
-    src.read((char*)section->Data, section->Length);
+    src.read((char*)section->Data.get(), section->Length);
 }
 
 /******************************************************************************/
@@ -648,7 +678,6 @@ ZynqMpImageHeaderTable::~ZynqMpImageHeaderTable()
 {
     if (section != NULL)
     {
-        delete section;
     }
 }
 
@@ -716,7 +745,7 @@ void ZynqMpImageHeaderTable::SetChecksum(void)
 /******************************************************************************/
 void ZynqMpImageHeaderTable::RealignSectionDataPtr(void)
 {
-    iHTable = (ZynqMpImageHeaderTableStructure*)section->Data;
+    iHTable = (ZynqMpImageHeaderTableStructure*)section->Data.get();
 }
 
 /******************************************************************************/

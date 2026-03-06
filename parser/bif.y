@@ -62,6 +62,8 @@
 #include "imageheadertable-spartanup.h"
 #include "imageheadertable-versal_2ve_2vm.h"
 
+// Parser uses raw pointers for compatibility with Bison semantics
+// These are transferred to options lists which take ownership
 BifOptions* currentBifOptions;
 PartitionBifOptions* currentPartitionBifOptions ;
 ImageBifOptions* currentImageBifOptions;
@@ -103,6 +105,8 @@ LmsKeyTypeParam lmsParams;
     AuthKeyLevel::Type      authkeylevel_t;
 }
 
+/* Free strdup'd strings when they're no longer needed to prevent memory leaks */
+%destructor { free($$); } <string>
 
 %token                  OBRACE EBRACE
 %token                  COMMA EQUAL COLON QUOTE SEMICOLON
@@ -131,7 +135,7 @@ LmsKeyTypeParam lmsParams;
 %token <number>         NONE
 %token <number>         DECVALUE HEXVALUE
 %token <number>         KEYSRC_ENCRYPTION FSBL_CONFIG AUTH_PARAMS
-%token <number>         AUTHJTAG_CONFIG DEVICE_DNA JTAG_TIMEOUT
+%token <number>         AUTHJTAG_CONFIG DEVICE_DNA JTAG_TIMEOUT AUTHJTAG_SIGN
 %token <number>         LMS_KEY_PARAMS LMS_HASH LMS_H LMS_W
 %token <number>         SHA256 SHAKE256
 %token <number>         PUF4KMODE PUFROSWAP SHUTTER SPLIT SMAP_WIDTH
@@ -405,6 +409,7 @@ authjtag_attr           :   REVOKE_ID EQUAL expression           { currentBifOpt
                         |   SPK_REVOKE_ID EQUAL expression       { currentBifOptions->SetAuthJtagSPKRevokeID($3); }
                         |   DEVICE_DNA EQUAL HEXWORD             { currentBifOptions->SetAuthJtagDeviceDna($3); }
                         |   JTAG_TIMEOUT EQUAL expression        { currentBifOptions->SetAuthJtagTimeOut($3); }
+                        |   AUTHJTAG_SIGN EQUAL filename         { currentBifOptions->SetAuthJtagSignatureFile($3); }
                         ;
 
 fsbl_attr               :   core                                                { currentBifOptions->SetCore($1);
@@ -568,6 +573,7 @@ optattr                 :   AUTHENTICATION EQUAL authvalue                      
 other_file_attr         :   INIT
                         |   key_file
                         |   BH_KEK_IV
+                        |   BH_KEY_IV
                         |   BBRAM_KEK_IV
                         |   EFUSE_KEK_IV
                         |   EFUSE_USER_KEK0_IV

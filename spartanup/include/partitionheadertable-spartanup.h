@@ -272,13 +272,16 @@ public:
     void CalculateChunkificationHash(uint8_t* hash, uint8_t* data, size_t inlen, bool padding);
 
     void DumpPCRHashes(BootImage & bi);
+    Section* hashBlockSection;
+    uint32_t hashBlockSectionLength;
+    uint64_t hashBlockLength;
+    PartitionHeader* header;
 
 private:
-    PartitionHeader* header;
+
     uint64_t firstChunkSize;
     bool dl9Series;
     uint64_t secureChunkSize;
-    uint64_t hashBlockLength;
     int pmcdataChunkCount;
     uint8_t chunkificationHashLength;
     size_t totalHashBlockSignatureLength;

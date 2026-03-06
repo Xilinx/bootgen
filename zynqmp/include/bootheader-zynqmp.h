@@ -146,9 +146,9 @@ public:
 private:
     ZynqMpBootHeaderStructure *bHTable;
     bool keyIvMust;
-    uint8_t* pufData;
-    uint8_t* bhKeyData;
-    uint8_t* ivData;
+    std::unique_ptr<uint8_t[]> pufData;
+    std::unique_ptr<uint8_t[]> bhKeyData;
+    std::unique_ptr<uint8_t[]> ivData;
 };
 
 #endif

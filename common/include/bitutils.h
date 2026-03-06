@@ -280,7 +280,7 @@ class OutputStream
 public:
     OutputStream() : maxsize(0) 
     {
-        buffer = 0;
+        buffer = nullptr;
         ptr = 0;
         pHdr.data = NULL;
         pHdr.size = 0;
@@ -290,26 +290,21 @@ public:
 
     OutputStream(size_t maxsize0) : maxsize(maxsize0) 
     {
-        buffer = new uint8_t[maxsize];
-        ptr= buffer;
+        buffer = std::make_unique<uint8_t[]>(maxsize);
+        ptr = buffer.get();
     }
 
     virtual ~OutputStream()
     {
-        delete[] buffer;
+        // buffer cleanup handled by unique_ptr
     }
      
     /* Allocate new buffer for the bitstream */
     void Alloc(size_t maxsize0) 
     {
-        if (buffer)
-        {
-            delete[] buffer;
-        }
-
         maxsize = maxsize0;
-        buffer = new uint8_t[maxsize];
-        ptr = buffer;
+        buffer = std::make_unique<uint8_t[]>(maxsize);
+        ptr = buffer.get();
     }
 
     void WriteCfiLine(uint8_t* cfiBytes)
@@ -342,12 +337,12 @@ public:
 
     const uint8_t* Start() 
     {
-        return buffer;
+        return buffer.get();
     }
 
     size_t Size() 
     {
-        return (size_t)(ptr - buffer);
+        return (size_t)(ptr - buffer.get());
     }
 
     void Rewind(size_t count) 
@@ -362,7 +357,7 @@ public:
 
 protected:
     size_t maxsize;
-    uint8_t* buffer;
+    std::unique_ptr<uint8_t[]> buffer;
     uint8_t* ptr;
     bool changeEndianness;
 };
@@ -443,9 +438,8 @@ class BitFile
 {
 public:
     BitFile(std::istream& stream0);
-    ~BitFile();
+    virtual ~BitFile();  // Virtual destructor to avoid warnings
 
-    void ParseBitFpga();
     virtual void ParseBit(BootImage& bi);
     virtual void SetEncryptionType(Encryption::Type);
 
@@ -455,7 +449,7 @@ public:
     /* For ZynqMp files and Zynq/FPGA un-encrypted files */
     virtual void Copy(OutputStream* os);
 
-    virtual OutputStream* GetOutputStreamType(void) = 0;
+    virtual std::unique_ptr<OutputStream> GetOutputStreamType(void) = 0;
     virtual bool GetBitStripFlag(void) = 0;
     virtual bool GetBitPadFlag(bool) = 0;
     virtual void DummyRead(void) = 0;
@@ -473,7 +467,7 @@ protected:
 
     Encryption::Type encryptType;
     InputStream_BE is;
-    OutputStream_BE* temp;
+    std::unique_ptr<OutputStream_BE> temp;  // Smart pointer for auto cleanup
 };
 
 /******************************************************************************/
@@ -481,7 +475,7 @@ class ZynqMpBitFile : public BitFile
 {
 public:
     ZynqMpBitFile(std::istream& stream) : BitFile(stream) { };
-    OutputStream* GetOutputStreamType(void);
+    std::unique_ptr<OutputStream> GetOutputStreamType(void);
     bool GetBitStripFlag(void);
     bool GetBitPadFlag(bool);
     void DummyRead(void) { };
@@ -493,7 +487,7 @@ class ZynqBitFile : public BitFile
 {
 public:
     ZynqBitFile(std::istream& stream) : BitFile(stream) { };
-    OutputStream* GetOutputStreamType(void);
+    std::unique_ptr<OutputStream> GetOutputStreamType(void);
     bool GetBitStripFlag(void);
     bool GetBitPadFlag(bool);
     void DummyRead(void) { };

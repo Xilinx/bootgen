@@ -366,8 +366,8 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
                 {
                     if (partHdr->imageHeader->GetEncryptionKeySrc() == bi.aesKeyandKeySrc[i].first)
                     {
-                        aesKey = new uint32_t[AES_GCM_KEY_SZ / 4];
-                        memcpy(aesKey, bi.aesKeyandKeySrc[i].second, AES_GCM_KEY_SZ);
+                        aesKey = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / 4);
+                        memcpy(aesKey.get(), bi.aesKeyandKeySrc[i].second.get(), AES_GCM_KEY_SZ);
                         break;
                     }
                 }
@@ -385,8 +385,12 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
 
     ReadEncryptionKeyFile(aesFilename);
 
-    std::pair<KeySource::Type, uint32_t*> asesKeyandKeySrcPair(partHdr->imageHeader->GetEncryptionKeySrc(), aesKey);
-    bi.aesKeyandKeySrc.push_back(asesKeyandKeySrcPair);
+    // Create a persistent copy of the key for storing in bi.aesKeyandKeySrc
+    // This copy is managed by std::unique_ptr for automatic cleanup
+    auto persistentKeyPtr = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / sizeof(uint32_t));
+    memcpy(persistentKeyPtr.get(), aesKey.get(), AES_GCM_KEY_SZ);
+    
+    bi.aesKeyandKeySrc.push_back(std::make_pair(partHdr->imageHeader->GetEncryptionKeySrc(), std::move(persistentKeyPtr)));
     bi.bifOptions->CheckForBadKeyandKeySrcPair(bi.aesKeyandKeySrc, aesFilename);
 
     options.SetDevicePartName(deviceName);
@@ -414,12 +418,12 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
                 {
                     if (aesKey == NULL)
                     {
-                        aesKey = new uint32_t[AES_GCM_KEY_SZ / 4];
-                        memcpy(aesKey, bi.aesKeyandKeySrc[i].second, AES_GCM_KEY_SZ);
+                        aesKey = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / 4);
+                        memcpy(aesKey.get(), bi.aesKeyandKeySrc[i].second.get(), AES_GCM_KEY_SZ);
                     }
                     if (aesKeyVec.size() == 0)
                     {
-                        aesKeyVec.push_back(ConvertKeyIvToString((uint8_t *)aesKey, AES_GCM_KEY_SZ).c_str());
+                        aesKeyVec.push_back(ConvertKeyIvToString((uint8_t *)aesKey.get(), AES_GCM_KEY_SZ).c_str());
                     }
                     break;
                 }
@@ -437,7 +441,7 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
             {
                 if (aesKey != NULL)
                 {
-                    memcpy(aesKey, bi.aesKeyandKeySrc[i].second, AES_GCM_KEY_SZ);
+                    memcpy(aesKey.get(), bi.aesKeyandKeySrc[i].second.get(), AES_GCM_KEY_SZ);
                 }
                 break;
             }
@@ -450,17 +454,17 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
     {
         if (partHdr->IsBootloader())
         {
-            if (options.secHdrIv == NULL)
+            if (!options.secHdrIv)
             {
-                options.secHdrIv = (uint8_t*)malloc(BYTES_PER_IV);
+                options.secHdrIv = std::make_unique<uint8_t[]>(BYTES_PER_IV);
             }
-            memcpy_be(options.secHdrIv, tmpIv, BYTES_PER_IV);
+            memcpy_be(options.secHdrIv.get(), tmpIv, BYTES_PER_IV);
         }
-        if (partHdr->partitionSecHdrIv == NULL)
+        if (!partHdr->partitionSecHdrIv)
         {
-            partHdr->partitionSecHdrIv = (uint8_t*)malloc(BYTES_PER_IV);
+            partHdr->partitionSecHdrIv = std::make_unique<uint8_t[]>(BYTES_PER_IV);
         }
-        memcpy_be(partHdr->partitionSecHdrIv, tmpIv, BYTES_PER_IV);
+        memcpy_be(partHdr->partitionSecHdrIv.get(), tmpIv, BYTES_PER_IV);
     }
 
     uint32_t totalBlocksOverhead = (totalencrBlocks + 1) * 64; //64 = AES_GCM_IV_SZ+AES_GCM_KEY_SZ+NUM_BYTES_PER_WORD+AES_GCM_TAG_SZ
@@ -487,7 +491,7 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
         uint32_t encrFsblByteLength;
         uint32_t estimatedEncrFsblLength = partHdr->imageHeader->GetFsblFwSizeIh() + totalBlocksOverhead;
         uint32_t estimatedTotalFsblLength = estimatedEncrFsblLength;
-        uint8_t* encrFsblDataBuffer = new uint8_t[estimatedEncrFsblLength];
+        auto encrFsblDataBuffer = std::make_unique<uint8_t[]>(estimatedEncrFsblLength);
 
         uint32_t totalpmcdataencrBlocks = ConfigureEncryptionBlocksforPmcData(bi, partHdr);
         uint32_t estimatedtotalPmcCdoLength = partHdr->imageHeader->GetTotalPmcFwSizeIh() + (totalpmcdataencrBlocks + 1) * 64;
@@ -522,8 +526,8 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
             }
         }
 
-        uint32_t* tmpIvPMCDATA = new uint32_t[WORDS_PER_IV];
-        memset(tmpIvPMCDATA, 0, WORDS_PER_IV);
+        auto tmpIvPMCDATA = std::make_unique<uint32_t[]>(WORDS_PER_IV);
+        memset(tmpIvPMCDATA.get(), 0, WORDS_PER_IV);
 
         // PMC Data Encryption
         if (bi.pmcDataAesFile != "")
@@ -532,7 +536,6 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
             aesSeedexits = false;
             fixedInputDataExits = false;
             SetAesFileName(bi.pmcDataAesFile);
-            LOG_INFO("Key file - %s", aesFilename.c_str());
             std::ifstream keyFile(aesFilename);
             bool fileExists = keyFile.good();
             if (!fileExists)
@@ -543,8 +546,8 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
                     {
                         if (partHdr->imageHeader->GetEncryptionKeySrc() == bi.aesKeyandKeySrc[i].first)
                         {
-                            aesKey = new uint32_t[AES_GCM_KEY_SZ / 4];
-                            memcpy(aesKey, bi.aesKeyandKeySrc[i].second, AES_GCM_KEY_SZ);
+                            aesKey = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / 4);
+                            memcpy(aesKey.get(), bi.aesKeyandKeySrc[i].second.get(), AES_GCM_KEY_SZ);
                             break;
                         }
                     }
@@ -589,7 +592,7 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
             LOG_ERROR("Key Generation Error !!!\n           Key File doesnot exist to encrypt PMC CDO ");
         }
 
-        VersalBootHeaderStructure* bh = (VersalBootHeaderStructure*)bi.bootHeader->section->Data;
+        VersalBootHeaderStructure* bh = (VersalBootHeaderStructure*)bi.bootHeader->section->Data.get();
         bh->plmLength = partHdr->imageHeader->GetFsblFwSizeIh();
         bh->pmcCdoLength = partHdr->imageHeader->GetTotalPmcFwSizeIh();
         bh->totalPlmLength = estimatedTotalFsblLength;
@@ -633,11 +636,11 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
         if (bh->plmLength != 0)
         {
             ChunkifyAndEncrypt(options,
-                partHdr->partition->section->Data,
+                partHdr->partition->section->Data.get(),
                 partHdr->imageHeader->GetFsblFwSizeIh(), NULL, 0,
                 //(uint8_t*)bh + sizeof(VersalSmapWidthTable),
                 //sizeof(VersalBootHeaderStructure) - sizeof(VersalSmapWidthTable),
-                encrFsblDataBuffer /* out*/,
+                encrFsblDataBuffer.get() /* out*/,
                 encrFsblByteLength /* out */);
 
             if (estimatedEncrFsblLength < encrFsblByteLength)
@@ -661,8 +664,10 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
 
         if (bi.pmcDataAesFile != "")
         {
-            aesKey = aesIv = aesSeed = NULL;
-            fixedInputData = NULL;
+            aesKey.reset();
+            aesIv.reset();
+            aesSeed.reset();
+            fixedInputData.reset();
             SetAesFileName(bi.pmcDataAesFile);
             LOG_INFO("Key file - %s", aesFilename.c_str());
             std::ifstream keyFile(aesFilename);
@@ -675,8 +680,8 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
                     {
                         if (partHdr->imageHeader->GetEncryptionKeySrc() == bi.aesKeyandKeySrc[i].first)
                         {
-                            aesKey = new uint32_t[AES_GCM_KEY_SZ / 4];
-                            memcpy(aesKey, bi.aesKeyandKeySrc[i].second, AES_GCM_KEY_SZ);
+                            aesKey = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / 4);
+                            memcpy(aesKey.get(), bi.aesKeyandKeySrc[i].second.get(), AES_GCM_KEY_SZ);
                             break;
                         }
                     }
@@ -685,8 +690,12 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
             }
             ReadEncryptionKeyFile(aesFilename);
 
-            std::pair<KeySource::Type, uint32_t*> asesKeyandKeySrcPair(partHdr->imageHeader->GetEncryptionKeySrc(), aesKey);
-            bi.aesKeyandKeySrc.push_back(asesKeyandKeySrcPair);
+    // Create a persistent copy of the key for storing in bi.aesKeyandKeySrc
+    // This copy is managed by std::unique_ptr for automatic cleanup
+    auto persistentKeyPtr = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / sizeof(uint32_t));
+    memcpy(persistentKeyPtr.get(), aesKey.get(), AES_GCM_KEY_SZ);
+    
+            bi.aesKeyandKeySrc.push_back(std::make_pair(partHdr->imageHeader->GetEncryptionKeySrc(), std::move(persistentKeyPtr)));
             bi.bifOptions->CheckForBadKeyandKeySrcPair(bi.aesKeyandKeySrc, aesFilename);
 
             options.SetDevicePartName(deviceName);
@@ -713,12 +722,12 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
                         {
                             if (aesKey == NULL)
                             {
-                                aesKey = new uint32_t[AES_GCM_KEY_SZ / 4];
-                                memcpy(aesKey, bi.aesKeyandKeySrc[i].second, AES_GCM_KEY_SZ);
+                                aesKey = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / 4);
+                                memcpy(aesKey.get(), bi.aesKeyandKeySrc[i].second.get(), AES_GCM_KEY_SZ);
                             }
                             if (aesKeyVec.size() == 0)
                             {
-                                aesKeyVec.push_back(ConvertKeyIvToString((uint8_t *)aesKey, AES_GCM_KEY_SZ).c_str());
+                                aesKeyVec.push_back(ConvertKeyIvToString((uint8_t *)aesKey.get(), AES_GCM_KEY_SZ).c_str());
                             }
                             break;
                         }
@@ -730,13 +739,11 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
             tmpIv = GetIv();
             if (tmpIv != NULL)
             {
-                if (options.secHdrIvPmcData == NULL)
+                if (!options.secHdrIvPmcData)
                 {
-                    options.secHdrIvPmcData = (uint8_t*)malloc(BYTES_PER_IV);
+                    options.secHdrIvPmcData = std::make_unique<uint8_t[]>(BYTES_PER_IV);
                 }
-                //memcpy_be(options.secHdrIvPmcData, tmpIv, BYTES_PER_IV);
-                //memcpy_be(tmpIv, bh->plmSecureHdrIv, BYTES_PER_IV);
-                memcpy(options.secHdrIvPmcData, bh->plmSecureHdrIv, BYTES_PER_IV);
+                memcpy_be(options.secHdrIvPmcData.get(), tmpIv, BYTES_PER_IV);
             }
         }
         else
@@ -746,16 +753,16 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
         isPmcData = true;
         uint32_t encrPmcByteLength;
         uint32_t estimatedEncrPmcLength = partHdr->imageHeader->GetTotalPmcFwSizeIh() + totalBlocksOverhead;
-        uint8_t* encrPmcDataBuffer = new uint8_t[estimatedEncrPmcLength];
+        auto encrPmcDataBuffer = std::make_unique<uint8_t[]>(estimatedEncrPmcLength);
         LOG_INFO("Encrypting the PMC Data");
 
-        SetIv(options.secHdrIv);
+        SetIv(options.secHdrIv.get());
 
         ChunkifyAndEncrypt(options,
-            partHdr->partition->section->Data + partHdr->imageHeader->GetFsblFwSizeIh(),
+            partHdr->partition->section->Data.get() + partHdr->imageHeader->GetFsblFwSizeIh(),
             partHdr->imageHeader->GetTotalPmcFwSizeIh(),
             NULL, 0,
-            encrPmcDataBuffer /* out*/,
+            encrPmcDataBuffer.get() /* out*/,
             encrPmcByteLength /* out */);
 
         if (estimatedEncrPmcLength < encrPmcByteLength)
@@ -764,11 +771,11 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
         }
 
         partHdr->partition->section->IncreaseLengthAndPadTo(encrFsblByteLength + encrPmcByteLength, 0x0);
-        memset(partHdr->partition->section->Data, 0, encrFsblByteLength + encrPmcByteLength);
+        memset(partHdr->partition->section->Data.get(), 0, encrFsblByteLength + encrPmcByteLength);
         if(encrFsblByteLength != 0)
-            memcpy(partHdr->partition->section->Data, encrFsblDataBuffer, encrFsblByteLength);
+            memcpy(partHdr->partition->section->Data.get(), encrFsblDataBuffer.get(), encrFsblByteLength);
 
-        memcpy(partHdr->partition->section->Data + encrFsblByteLength, encrPmcDataBuffer, encrPmcByteLength);
+        memcpy(partHdr->partition->section->Data.get() + encrFsblByteLength, encrPmcDataBuffer.get(), encrPmcByteLength);
 
         partHdr->imageHeader->SetTotalPmcFwSizeIh(encrPmcByteLength);
         partHdr->imageHeader->SetTotalFsblFwSizeIh(encrFsblByteLength);
@@ -776,15 +783,13 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
 
         LOG_INFO("Encrypted the partition - %s", partHdr->partition->section->Name.c_str());
         bi.options.CloseEncryptionDumpFile();
-        delete[] encrFsblDataBuffer;
-        delete[] encrPmcDataBuffer;
         return;
     }
     else if(isBootloader && partHdr->imageHeader->GetPmcFwSizeIh() == 0)
     {
         uint32_t encryptedLength;
         uint32_t estimatedEncrLength = partHdr->partition->section->Length + totalBlocksOverhead;
-        uint8_t* encryptedDataBuffer = new uint8_t[estimatedEncrLength];
+        auto encryptedDataBuffer = std::make_unique<uint8_t[]>(estimatedEncrLength);
 
 
         uint32_t estimatedTotalFsblLength = estimatedEncrLength;
@@ -804,7 +809,7 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
             }
         }
 
-        VersalBootHeaderStructure* bh = (VersalBootHeaderStructure*)bi.bootHeader->section->Data;
+        VersalBootHeaderStructure* bh = (VersalBootHeaderStructure*)bi.bootHeader->section->Data.get();
         bh->plmLength = partHdr->imageHeader->GetFsblFwSizeIh();
         bh->pmcCdoLength = 0;
         bh->totalPlmLength = estimatedTotalFsblLength;
@@ -846,47 +851,45 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
         }
 
         bh->headerChecksum = bi.bootHeader->ComputeWordChecksum(&bh->widthDetectionWord, bi.bootHeader->GetBHChecksumDataSize());
-        //LOG_DUMP_BYTES(bi.bootHeader->section->Data, bi.bootHeader->GetBootHeaderSize());
+        //LOG_DUMP_BYTES(bi.bootHeader->section->Data.get(), bi.bootHeader->GetBootHeaderSize());
 
         ChunkifyAndEncrypt(options,
-            partHdr->partition->section->Data,
+            partHdr->partition->section->Data.get(),
             partHdr->imageHeader->GetFsblFwSizeIh(), NULL, 0,
-            //bi.bootHeader->section->Data + sizeof(VersalSmapWidthTable),
+            //bi.bootHeader->section->Data.get() + sizeof(VersalSmapWidthTable),
             //sizeof(VersalBootHeaderStructure) - sizeof(VersalSmapWidthTable),
-            encryptedDataBuffer /* out*/,
+            encryptedDataBuffer.get() /* out*/,
             encryptedLength /* out */);
 
         partHdr->partition->section->IncreaseLengthAndPadTo(encryptedLength, 0x0);
-        memcpy(partHdr->partition->section->Data, encryptedDataBuffer, encryptedLength);
+        memcpy(partHdr->partition->section->Data.get(), encryptedDataBuffer.get(), encryptedLength);
         partHdr->partition->section->Length = encryptedLength;
         partHdr->imageHeader->SetTotalFsblFwSizeIh(encryptedLength);
 
         LOG_INFO("Encrypted the partition - %s", partHdr->partition->section->Name.c_str());
         bi.options.CloseEncryptionDumpFile();
-        delete[] encryptedDataBuffer;
         return;
     }
     else
     {
         uint32_t encryptedLength;
         uint32_t estimatedEncrLength = partHdr->partition->section->Length + totalBlocksOverhead;
-        uint8_t* encryptedDataBuffer = new uint8_t[estimatedEncrLength];
+        auto encryptedDataBuffer = std::make_unique<uint8_t[]>(estimatedEncrLength);
 
         ChunkifyAndEncrypt(options,
-            partHdr->partition->section->Data,
+            partHdr->partition->section->Data.get(),
             (uint32_t)partHdr->partition->section->Length,
             NULL, 0,
-            encryptedDataBuffer /* out*/,
+            encryptedDataBuffer.get() /* out*/,
             encryptedLength /* out */);
 
         partHdr->partition->section->IncreaseLengthAndPadTo(encryptedLength, 0x0);
-        memcpy(partHdr->partition->section->Data, encryptedDataBuffer, encryptedLength);
+        memcpy(partHdr->partition->section->Data.get(), encryptedDataBuffer.get(), encryptedLength);
         partHdr->partition->section->Length = encryptedLength;
         partHdr->imageHeader->SetTotalFsblFwSizeIh(encryptedLength);
 
         LOG_INFO("Encrypted the partition - %s", partHdr->partition->section->Name.c_str());
         bi.options.CloseEncryptionDumpFile();
-        delete[] encryptedDataBuffer;
         return;
     }
 }

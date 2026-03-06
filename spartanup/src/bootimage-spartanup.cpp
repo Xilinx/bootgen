@@ -42,25 +42,25 @@ SpartanBootImage::SpartanBootImage(Options& options, uint8_t index) : BootImage(
 {
     partitionHeaderList.clear();
     options.SetDefaultAlignment(16);
-    bootHeader = new SpartanupBootHeader(arch);
-    imageHeaderTable = new SpartanupImageHeaderTable();
-    partitionHeaderTable = new SpartanupPartitionHeaderTable();
-    currentEncryptCtx = new SpartanupEncryptionContext();
-    currentAuthCtx = new SpartanupAuthenticationContext(Authentication::RSA);
+    bootHeader = std::make_unique<SpartanupBootHeader>(arch);
+    imageHeaderTable = std::make_unique<SpartanupImageHeaderTable>();
+    partitionHeaderTable = std::make_unique<SpartanupPartitionHeaderTable>();
+    currentEncryptCtx = std::make_unique<SpartanupEncryptionContext>();
+    currentAuthCtx = std::make_unique<SpartanupAuthenticationContext>(Authentication::RSA);
     SetLegacyEncryptionFlag(true);
-    partitionOutput = new SpartanupPartitionOutput();
+    partitionOutput = std::make_unique<SpartanupPartitionOutput>();
     if (!options.IsDl9Series())
     {
-        hash = new HashSha3_256();
+        hash = std::make_unique<HashSha3_256>();
     }
     else
     {
-        hash = new HashSha3();
+        hash = std::make_unique<HashSha3>();
     }
-    cache = new SpartanupBinary();
-    checksumTable = new SpartanupChecksumTable();
+    cache = std::make_unique<SpartanupBinary>();
+    checksumTable = std::make_unique<SpartanupChecksumTable>();
     currentAuthCtx->hashType = AuthHash::Sha3;
-    currentAuthCtx->hash = hash;
+    currentAuthCtx->hash = hash.get();  // Non-owning reference to BootImage's hash
     partitionHeaderTable->firstSection = NULL;
     convertAieElfToCdo = true;
     current_image_block = 0;
@@ -136,9 +136,9 @@ void SpartanBootImage::ConfigureEncryptionContext(ImageHeader * image, Encryptio
         options.bifOptions->SetHeaderEncryption(true);
         if (imageHeaderTable->GetEncryptContext() == NULL)
         {
-            imageHeaderTable->SetEncryptContext(new SpartanupEncryptionContext(this->currentEncryptCtx));
+            imageHeaderTable->SetEncryptContext(std::make_unique<SpartanupEncryptionContext>(this->currentEncryptCtx.get()));
         }
-        image->SetEncryptContext(new SpartanupEncryptionContext(this->currentEncryptCtx));
+        image->SetEncryptContext(std::make_unique<SpartanupEncryptionContext>(this->currentEncryptCtx.get()));
         break;
 
     case Encryption::None:
@@ -168,14 +168,14 @@ void SpartanBootImage::ConfigureEncryptionContext(ImageHeader * image, Encryptio
             options.bifOptions->SetHeaderEncryption(true);
             if (imageHeaderTable->GetEncryptContext() == NULL)
             {
-                imageHeaderTable->SetEncryptContext(new SpartanupEncryptionContext());
+                imageHeaderTable->SetEncryptContext(std::make_unique<SpartanupEncryptionContext>());
             }
         }
         else if(options.bifOptions->metaHdrAttributes.encrKeySource != KeySource::None)
         {
             LOG_ERROR("BIF attribute error !!!\n\t   'keysrc' can be specified only when 'encryption' is enabled for MetaHeader.");
         }
-        image->SetEncryptContext(new NoneEncryptionContext());
+        image->SetEncryptContext(std::make_unique<NoneEncryptionContext>());
         break;
 
     default:
@@ -229,8 +229,11 @@ void SpartanBootImage::ConfigureAuthenticationContext(ImageHeader * image, Authe
             AuthenticationContext::SetAuthenticationKeyLength(EC_P384_KEY_LENGTH);
         }
 
-        image->SetAuthContext(new SpartanupAuthenticationContext(currentAuthCtx, authType));
-        AuthenticationContext* authCtx = image->GetAuthContext();
+        // Store context in container to keep it alive, pass raw pointer to image
+        auto authCtxPtr = std::make_unique<SpartanupAuthenticationContext>(currentAuthCtx.get(), authType);
+        AuthenticationContext* authCtx = authCtxPtr.get();
+        image->SetAuthContext(authCtx);
+        authContexts.push_back(std::move(authCtxPtr));
         authCtx->SetPresignFile(partitionbifoptions->presignFile);
         authCtx->SetUdfFile(partitionbifoptions->udfDataFile);
 
@@ -253,7 +256,10 @@ void SpartanBootImage::ConfigureAuthenticationContext(ImageHeader * image, Authe
             }
         }
         image->SetAuthenticationType(Authentication::None);
-        image->SetAuthContext(new NoneAuthenticationContext());
+        // Store context in container to keep it alive, pass raw pointer to image
+        auto authCtxPtr = std::make_unique<NoneAuthenticationContext>();
+        image->SetAuthContext(authCtxPtr.get());
+        authContexts.push_back(std::move(authCtxPtr));
         if (spkSignFile != "")
         {
             currentAuthCtx->GenerateSPKSignature(spkSignFile);
@@ -276,12 +282,12 @@ void SpartanBootImage::ConfigureChecksumContext(ImageHeader * image, Checksum::T
         break;
 
     case Checksum::SHA3:
-        image->SetChecksumContext(new SpartanupSHA3ChecksumContext());
+        image->SetChecksumContext(std::make_unique<SpartanupSHA3ChecksumContext>());
         break;
 
     case Checksum::None:
     default:
-        image->SetChecksumContext(new NoneChecksumContext());
+        image->SetChecksumContext(std::make_unique<NoneChecksumContext>());
         break;
     }
 }
@@ -307,8 +313,8 @@ void SpartanBootImage::ParseBootImage(PartitionBifOptions* it)
         LOG_ERROR("Cannot read file %s", it->filename.c_str());
     }
 
-    SpartanupBootHeaderStructure* bH = new SpartanupBootHeaderStructure;
-    fread(bH, 1, sizeof(SpartanupBootHeaderStructure), binFile);
+    auto bH = std::make_unique<SpartanupBootHeaderStructure>();
+    fread(bH.get(), 1, sizeof(SpartanupBootHeaderStructure), binFile);
 
     if (bH->widthDetectionWord != 0xAA995566)
     {
@@ -320,8 +326,6 @@ void SpartanBootImage::ParseBootImage(PartitionBifOptions* it)
     {
         smap_exists = true;
     }
-    delete bH;
-    bH = NULL;
     fclose(binFile);
 
     std::ifstream src(it->filename.c_str(), std::ios::binary);
@@ -331,7 +335,7 @@ void SpartanBootImage::ParseBootImage(PartitionBifOptions* it)
         LOG_ERROR("Failure in reading bootimage file for import - %s ", baseFile.c_str());
     }
 
-    SpartanupBootHeader* importedBh = NULL;
+    std::unique_ptr<SpartanupBootHeader> importedBh;
     if (!full_pdi)
     {
         LOG_WARNING("File %s is not a full PDI. It is missing the boot header", baseFile.c_str());
@@ -347,7 +351,7 @@ void SpartanBootImage::ParseBootImage(PartitionBifOptions* it)
     }
     else
     {
-        importedBh = new SpartanupBootHeader(src, arch);
+        importedBh = std::make_unique<SpartanupBootHeader>(src, arch);
         if (importedBh->GetHeaderVersion() != 0xFFFFFFFF)
         {
             LOG_WARNING("This version of bootgen may not support the bootimage header in %s ", baseFile.c_str());
@@ -388,20 +392,20 @@ void SpartanBootImage::ParseBootImage(PartitionBifOptions* it)
             LOG_INFO("Copying bootheader from %s ", baseFile.c_str());
             SetAssumeEncryptionFlag(false);
             options.SetEncryptedKeySource(importedBh->GetEncryptionKeySource());
-            bootHeader->Copy(importedBh);
+            bootHeader->Copy(importedBh.get());
         }
 
         src.seekg(importedBh->GetImageHeaderByteOffset());
     }
 
     CheckForIhtAttributes(baseFile);
-    imageHeaderTable = new SpartanupImageHeaderTable(src);
+    imageHeaderTable = std::make_unique<SpartanupImageHeaderTable>(src);
     if (imageHeaderTable->iht_optional_data_length != 0)
     {
         src.seekg(importedBh->GetImageHeaderByteOffset() + sizeof(SpartanupImageHeaderTableStructure));
         iht_optional_data_length = imageHeaderTable->iht_optional_data_length;
-        iht_optional_data = (uint32_t*)malloc(iht_optional_data_length);
-        src.read((char*)iht_optional_data, iht_optional_data_length);
+        iht_optional_data = std::make_unique<uint32_t[]>(iht_optional_data_length / sizeof(uint32_t));
+        src.read((char*)iht_optional_data.get(), iht_optional_data_length);
     }
     uint32_t offset = imageHeaderTable->GetFirstImageHeaderOffset() * sizeof(uint32_t);
     uint32_t imageCount = imageHeaderTable->GetImageCount();
@@ -427,11 +431,11 @@ void SpartanBootImage::ParseBootImage(PartitionBifOptions* it)
         if (createSubSystemPdis == true)
         {
             src.seekg(offset);
-            SpartanupSubSysImageHeader* subsys = new SpartanupSubSysImageHeader(src);
+            auto subsys = std::make_unique<SpartanupSubSysImageHeader>(src);
 
             for (uint32_t i = 0; i < subsys->num_of_images; i++)
             {
-                ImageHeader* image = new SpartanupImageHeader(src, (SpartanupImageHeaderStructure*)subsys->section->Data, IsBootloader, i);
+                auto image = std::make_unique<SpartanupImageHeader>(src, (SpartanupImageHeaderStructure*)subsys->section->Data.get(), IsBootloader, i);
                 image->SetAlignment(it->alignment);
                 image->SetOffset(it->offset);
                 image->SetReserve(it->reserve, it->updateReserveInPh);
@@ -461,8 +465,8 @@ void SpartanBootImage::ParseBootImage(PartitionBifOptions* it)
                 image->SetBhSignFile(options.bifOptions->GetBHSignFileName());
 
                 /* Commenting this func for now, check while doing the HSM mode */
-                ConfigureProcessingStages(image, it);
-                subsys->imgList.push_back(image);
+                ConfigureProcessingStages(image.get(), it);
+                subsys->imgList.push_back(image.release());
 
                 /* Image is just temporary, we need to get a pointer back to the copied object and relink */
                 subsys->imgList.back()->Relink();
@@ -471,16 +475,17 @@ void SpartanBootImage::ParseBootImage(PartitionBifOptions* it)
                 /* For replacing pmcdata */
                 if (IsBootloader)
                 {
-                    image->SetTotalFsblFwSizeIh(importedBh->GetTotalPmcFwLength());
-                    image->SetFsblFwSizeIh(importedBh->GetPmcFwLength());
+                    newImage->SetTotalFsblFwSizeIh(importedBh->GetTotalPmcFwLength());
+                    newImage->SetFsblFwSizeIh(importedBh->GetPmcFwLength());
                     if (importedBh->GetTotalPmcCdoLength() != 0 && options.bifOptions->GetPmcdataFile() == "")
                     {
                         options.bifOptions->SetTotalpmcdataSize(importedBh->GetTotalPmcCdoLength());
                         options.bifOptions->pmcdataSize = importedBh->GetPmcCdoLength();
-                        options.bifOptions->pmcDataBuffer = new uint8_t[options.bifOptions->GetTotalpmcdataSize()];
-                        memcpy(options.bifOptions->pmcDataBuffer, newImage->GetPartitionHeaderList().front()->partition->section->Data + importedBh->GetTotalPmcFwLength(), options.bifOptions->totalpmcdataSize);
-                        image->SetPmcDataSizeIh(options.bifOptions->pmcdataSize);
-                        image->SetTotalPmcDataSizeIh(options.bifOptions->GetTotalpmcdataSize());
+                        auto pmcDataBuffer_owner = std::make_unique<uint8_t[]>(options.bifOptions->GetTotalpmcdataSize());
+                        memcpy(pmcDataBuffer_owner.get(), newImage->GetPartitionHeaderList().front()->partition->section->Data.get() + importedBh->GetTotalPmcFwLength(), options.bifOptions->totalpmcdataSize);
+                        options.bifOptions->pmcDataBuffer = pmcDataBuffer_owner.release();  // Transfer ownership to bifOptions
+                        newImage->SetPmcDataSizeIh(options.bifOptions->pmcdataSize);
+                        newImage->SetTotalPmcDataSizeIh(options.bifOptions->GetTotalpmcdataSize());
                     }
                 }
 
@@ -498,12 +503,12 @@ void SpartanBootImage::ParseBootImage(PartitionBifOptions* it)
                             LOG_ERROR("Cannot read file %s", it->filename.c_str());
                         }
 
-                        uint8_t* aC = new uint8_t[sizeof(AuthCertificate4096Sha3PaddingHBStructure)];
-                        memset(aC, 0, sizeof(AuthCertificate4096Sha3PaddingHBStructure));
+                        auto aC = std::make_unique<uint8_t[]>(sizeof(AuthCertificate4096Sha3PaddingHBStructure));
+                        memset(aC.get(), 0, sizeof(AuthCertificate4096Sha3PaddingHBStructure));
 
                         if (!(fseek(binFile, ph->GetAuthCertificateOffset(), SEEK_SET)))
                         {
-                            size_t result = fread(aC, 1, sizeof(AuthCertificate4096Sha3PaddingHBStructure), binFile);
+                            size_t result = fread(aC.get(), 1, sizeof(AuthCertificate4096Sha3PaddingHBStructure), binFile);
                             if (result != sizeof(AuthCertificate4096Sha3PaddingHBStructure))
                             {
                                 LOG_ERROR("Error parsing Authentication Certificates from PDI file");
@@ -512,27 +517,29 @@ void SpartanBootImage::ParseBootImage(PartitionBifOptions* it)
                         fclose(binFile);
 
                         Authentication::Type authtype = Authentication::None;
-                        if (((*aC) & 0xF3) == 0x02)
+                        if (((*aC.get()) & 0xF3) == 0x02)
                         {
                             authtype = Authentication::ECDSA;
                         }
-                        else if (((*aC) & 0xF3) == 0x11)
+                        else if (((*aC.get()) & 0xF3) == 0x11)
                         {
                             authtype = Authentication::RSA;
                         }
-                        else if (((*aC) & 0xF3) == 0x22)
+                        else if (((*aC.get()) & 0xF3) == 0x22)
                         {
                             authtype = Authentication::ECDSAp521;
                         }
-                        SpartanupAuthenticationContext* auth = new SpartanupAuthenticationContext((AuthCertificate4096Sha3PaddingHBStructure*)aC, authtype);
+                        auto auth = std::make_unique<SpartanupAuthenticationContext>((AuthCertificate4096Sha3PaddingHBStructure*)aC.release(), authtype);
 
                         // load in previous certificate data
-                        AuthenticationCertificate* tempac;
-                        tempac = new SpartanupAuthenticationCertificate(auth);
+                        auto tempac = std::make_unique<SpartanupAuthenticationCertificate>(auth.get());
                         auth->preSigned = true;
                         tempac->fsbl = true;
-                        ph->ac.push_back(tempac);
-                        newImage->SetAuthContext(auth);
+                        ph->ac.push_back(tempac.release());
+                        
+                        // Store context in container to keep it alive, pass raw pointer to image
+                        newImage->SetAuthContext(auth.get());
+                        authContexts.push_back(std::move(auth));
                     }
                 }
             }
@@ -541,7 +548,7 @@ void SpartanBootImage::ParseBootImage(PartitionBifOptions* it)
             {
                 if ((prev_image_block != current_image_block) || (this_bootimage == true))
                 {
-                    subSysImageList.push_back(subsys);
+                    subSysImageList.push_back(subsys.release());
                     prev_image_block = current_image_block;
                 }
                 else
@@ -557,13 +564,13 @@ void SpartanBootImage::ParseBootImage(PartitionBifOptions* it)
             }
             else
             {
-                subSysImageList.push_back(subsys);
+                subSysImageList.push_back(subsys.release());
             }
         }
         else
         {
             src.seekg(offset);
-            ImageHeader* image = new SpartanupImageHeader(src, IsBootloader);
+            auto image = std::make_unique<SpartanupImageHeader>(src, IsBootloader);
 
             image->SetAlignment(it->alignment);
             image->SetOffset(it->offset);
@@ -593,8 +600,8 @@ void SpartanBootImage::ParseBootImage(PartitionBifOptions* it)
             image->SetSpkSignFile(it->spkSignatureFile);
             image->SetBhSignFile(options.bifOptions->GetBHSignFileName());
 
-            ConfigureProcessingStages(image, it);
-            imageList.push_back(image);
+            ConfigureProcessingStages(image.get(), it);
+            imageList.push_back(image.release());
 
             /* Image is just temporary, we need to get a pointer back to the copied object and relink */
             imageList.back()->Relink();
@@ -603,14 +610,15 @@ void SpartanBootImage::ParseBootImage(PartitionBifOptions* it)
             /* For replacing pmcdata */
             if (IsBootloader)
             {
-                image->SetTotalFsblFwSizeIh(importedBh->GetTotalPmcFwLength());
-                image->SetFsblFwSizeIh(importedBh->GetPmcFwLength());
+                newImage->SetTotalFsblFwSizeIh(importedBh->GetTotalPmcFwLength());
+                newImage->SetFsblFwSizeIh(importedBh->GetPmcFwLength());
                 if (importedBh->GetTotalPmcCdoLength() != 0 && options.bifOptions->GetPmcdataFile() == "")
                 {
                     options.bifOptions->SetTotalpmcdataSize(importedBh->GetTotalPmcCdoLength());
                     options.bifOptions->pmcdataSize = importedBh->GetPmcCdoLength();
-                    options.bifOptions->pmcDataBuffer = new uint8_t[options.bifOptions->GetTotalpmcdataSize()];
-                    memcpy(options.bifOptions->pmcDataBuffer, newImage->GetPartitionHeaderList().front()->partition->section->Data + importedBh->GetTotalPmcFwLength(), options.bifOptions->totalpmcdataSize);
+                    auto pmcDataBuffer_owner = std::make_unique<uint8_t[]>(options.bifOptions->GetTotalpmcdataSize());
+                    memcpy(pmcDataBuffer_owner.get(), newImage->GetPartitionHeaderList().front()->partition->section->Data.get() + importedBh->GetTotalPmcFwLength(), options.bifOptions->totalpmcdataSize);
+                    options.bifOptions->pmcDataBuffer = pmcDataBuffer_owner.release();  // Transfer ownership to bifOptions
                     image->SetPmcDataSizeIh(options.bifOptions->pmcdataSize);
                     image->SetTotalPmcDataSizeIh(options.bifOptions->GetTotalpmcdataSize());
                 }
@@ -629,12 +637,12 @@ void SpartanBootImage::ParseBootImage(PartitionBifOptions* it)
                     {
                         LOG_ERROR("Cannot read file %s", it->filename.c_str());
                     }
-                    uint8_t* aC = new uint8_t[sizeof(AuthCertificate4096Sha3PaddingHBStructure)];
-                    memset(aC, 0, sizeof(AuthCertificate4096Sha3PaddingHBStructure));
+                    auto aC = std::make_unique<uint8_t[]>(sizeof(AuthCertificate4096Sha3PaddingHBStructure));
+                    memset(aC.get(), 0, sizeof(AuthCertificate4096Sha3PaddingHBStructure));
 
                     if (!(fseek(binFile, ph->GetAuthCertificateOffset(), SEEK_SET)))
                     {
-                        size_t result = fread(aC, 1, sizeof(AuthCertificate4096Sha3PaddingHBStructure), binFile);
+                        size_t result = fread(aC.get(), 1, sizeof(AuthCertificate4096Sha3PaddingHBStructure), binFile);
                         if (result != sizeof(AuthCertificate4096Sha3PaddingHBStructure))
                         {
                             LOG_ERROR("Error parsing Authentication Certificates from PDI file");
@@ -643,26 +651,28 @@ void SpartanBootImage::ParseBootImage(PartitionBifOptions* it)
                     fclose(binFile);
 
                     Authentication::Type authtype = Authentication::None;
-                    if (((*aC) & 0xF3) == 0x02)
+                    if (((*aC.get()) & 0xF3) == 0x02)
                     {
                         authtype = Authentication::ECDSA;
                     }
-                    else if (((*aC) & 0xF3) == 0x11)
+                    else if (((*aC.get()) & 0xF3) == 0x11)
                     {
                         authtype = Authentication::RSA;
                     }
-                    else if (((*aC) & 0xF3) == 0x22)
+                    else if (((*aC.get()) & 0xF3) == 0x22)
                     {
                         authtype = Authentication::ECDSAp521;
                     }
-                    SpartanupAuthenticationContext* auth = new SpartanupAuthenticationContext((AuthCertificate4096Sha3PaddingHBStructure*)aC, authtype);
+                    auto auth = std::make_unique<SpartanupAuthenticationContext>((AuthCertificate4096Sha3PaddingHBStructure*)aC.release(), authtype);
 
-                    AuthenticationCertificate* tempac;
-                    tempac = new SpartanupAuthenticationCertificate(auth);
+                    auto tempac = std::make_unique<SpartanupAuthenticationCertificate>(auth.get());
                     auth->preSigned = true;
                     tempac->fsbl = true;
-                    ph->ac.push_back(tempac);
-                    newImage->SetAuthContext(auth);
+                    ph->ac.push_back(tempac.release());
+                    
+                    // Store context in container to keep it alive, pass raw pointer to image
+                    newImage->SetAuthContext(auth.get());
+                    authContexts.push_back(std::move(auth));
                 }
             }
             offset += sizeof(SpartanupImageHeaderStructure);
@@ -732,6 +742,10 @@ void SpartanBootImage::ValidateSecureAttributes(ImageHeader * image, BifOptions 
     switch (partitionBifOptions->authType)
     {
     case Authentication::RSA:
+    case Authentication::ECDSA:
+    case Authentication::ECDSAp521:
+    case Authentication::LMS_SHA2_256:
+    case Authentication::LMS_SHAKE256:
     {
         if (XipMode)
         {
@@ -811,7 +825,7 @@ ImageHeader* SpartanBootImage::ParsePartitionDataToImage(BifOptions * bifoptions
     static std::list<SlrPdiInfo*> slrBootPdiInfo;
     static std::list<SlrPdiInfo*> slrConfigPdiInfo;
 
-    ImageHeader *image = new SpartanupImageHeader(partitionBifOptions->filename);
+    auto image = std::make_unique<SpartanupImageHeader>(partitionBifOptions->filename);
     image->SetFileList(partitionBifOptions->filelist);
     image->SetBootloader(partitionBifOptions->bootloader);
     image->SetAlignment(partitionBifOptions->alignment);
@@ -942,14 +956,14 @@ ImageHeader* SpartanBootImage::ParsePartitionDataToImage(BifOptions * bifoptions
         }
     }
 
-    ConfigureEncryptionBlocks(image, partitionBifOptions);
-    ConfigureProcessingStages(image, partitionBifOptions);
-    ValidateSecureAttributes(image, bifoptions, partitionBifOptions);
+    ConfigureEncryptionBlocks(image.get(), partitionBifOptions);
+    ConfigureProcessingStages(image.get(), partitionBifOptions);
+    ValidateSecureAttributes(image.get(), bifoptions, partitionBifOptions);
 
     if ((partitionBifOptions->partitionType == PartitionType::SLR_BOOT) || (partitionBifOptions->partitionType == PartitionType::SLR_CONFIG))
     {
         /* SSIT devices */
-        SlrPdiInfo* slrPdi = new SlrPdiInfo;
+        auto slrPdi = std::make_unique<SlrPdiInfo>();
         slrPdi->file = partitionBifOptions->filename;
         std::ifstream s(slrPdi->file.c_str());
         if (!s)
@@ -965,13 +979,13 @@ ImageHeader* SpartanBootImage::ParsePartitionDataToImage(BifOptions * bifoptions
                 slrPdi->index = (SlrId::Type) slr_boot_cnt;
             }
             slrPdi->type = SlrPdiType::BOOT;
-            slrBootPdiInfo.push_back(slrPdi);
+            slrBootPdiInfo.push_back(slrPdi.release());
             if (slr_boot_cnt == bifoptions->slrBootCnt)
             {
                 image->SetSlrBootPartitions(slrBootPdiInfo);
                 image->SetName("SSIT Boot Partition");
                 image->SetSlrPartition(true);
-                imageList.push_back(image);
+                imageList.push_back(image.release());
             }
         }
         else
@@ -991,13 +1005,13 @@ ImageHeader* SpartanBootImage::ParsePartitionDataToImage(BifOptions * bifoptions
             {
                 slrPdi->index = (partitionBifOptions->slrNum == 0x0) ? (SlrId::MASTER) : ((SlrId::Type) partitionBifOptions->slrNum);
             }
-            slrConfigPdiInfo.push_back(slrPdi);
+            slrConfigPdiInfo.push_back(slrPdi.release());
             if (slr_cfg_cnt == bifoptions->slrConfigCnt)
             {
                 image->SetSlrConfigPartitions(slrConfigPdiInfo);
                 image->SetName("SSIT Config Partition");
                 image->SetSlrPartition(true);
-                imageList.push_back(image);
+                imageList.push_back(image.release());
             }
         }
     }
@@ -1009,7 +1023,7 @@ ImageHeader* SpartanBootImage::ParsePartitionDataToImage(BifOptions * bifoptions
         bifoptions->aie_elfs.push_back(partitionBifOptions->filename);
         if (aie_elf_cnt == 1)
         {
-            imageList.push_back(image);
+            imageList.push_back(image.release());
         }
         else
         {
@@ -1018,7 +1032,7 @@ ImageHeader* SpartanBootImage::ParsePartitionDataToImage(BifOptions * bifoptions
     }
     else if (partitionBifOptions->partitionType == PartitionType::IMAGE_STORE_PDI)
     {
-        ImageStorePdiInfo* imageStorePdi = new ImageStorePdiInfo;
+        auto imageStorePdi = std::make_unique<ImageStorePdiInfo>();
         imageStorePdi->file = partitionBifOptions->filename;
         std::ifstream s(imageStorePdi->file.c_str());
         if (!s)
@@ -1026,26 +1040,28 @@ ImageHeader* SpartanBootImage::ParsePartitionDataToImage(BifOptions * bifoptions
             LOG_ERROR("Cannot read file - %s ", imageStorePdi->file.c_str());
         }
         imageStorePdi->id = partitionBifOptions->imageStoreId;
-        image->SetWriteImageStorePartitions(imageStorePdi);
-        imageList.push_back(image);
+        image->SetWriteImageStorePartitions(imageStorePdi.release());
+        imageList.push_back(image.release());
     }
     else
     {
-        imageList.push_back(image);
+        imageList.push_back(image.release());
     }
 
+    // Get the pointer back from imageList after push
+    ImageHeader* imgPtr = imageList.back();
     bool break_outer_loop = false;
 
     for (std::list<SubSysImageHeader*>::iterator subSysHdr = subSysImageList.begin(); subSysHdr != subSysImageList.end(); subSysHdr++)
     {
         for (std::list<std::string>::iterator partName = (*subSysHdr)->partitionNameList.begin(); partName != (*subSysHdr)->partitionNameList.end(); partName++)
         {
-            image->SetMemCopyAddress((*subSysHdr)->GetSubSysMemCopyAddress());
-            image->SetDelayLoadHandOffFlags((*subSysHdr)->GetDelayLoadMode(), (*subSysHdr)->GetDelayHandoffMode());
+            imgPtr->SetMemCopyAddress((*subSysHdr)->GetSubSysMemCopyAddress());
+            imgPtr->SetDelayLoadHandOffFlags((*subSysHdr)->GetDelayLoadMode(), (*subSysHdr)->GetDelayHandoffMode());
             std::string part(*partName);
-            if (!image->GetFilename().compare(part))
+            if (!imgPtr->GetFilename().compare(part))
             {
-                (*subSysHdr)->imgList.push_back(image);
+                (*subSysHdr)->imgList.push_back(imgPtr);
                 break_outer_loop = true;
                 break;
             }
@@ -1055,7 +1071,7 @@ ImageHeader* SpartanBootImage::ParsePartitionDataToImage(BifOptions * bifoptions
             break;
         }
     }
-    return image;
+    return imgPtr;
 }
 
 /******************************************************************************/
@@ -1072,17 +1088,17 @@ void SpartanBootImage::OutputOptionalSecureDebugImage()
     {
         authJtagImageSize = sizeof(AuthenticatedJtagECP384ImageStructure);
     }
-    uint8_t* writedata = new uint8_t[authJtagImageSize];
-    memset(writedata, 0, authJtagImageSize);
+    auto writedata = std::make_unique<uint8_t[]>(authJtagImageSize);
+    memset(writedata.get(), 0, authJtagImageSize);
 
     if (options.GetSecureDebugAuthType() != Authentication::None)
     {
-        SpartanupAuthenticationContext* authCtx = new SpartanupAuthenticationContext(this->currentAuthCtx, options.GetSecureDebugAuthType());
+        auto authCtx = std::make_unique<SpartanupAuthenticationContext>(this->currentAuthCtx.get(), options.GetSecureDebugAuthType());
         if (authCtx)
         {
             authCtx->hashType = authHash;
-            authCtx->hash = hash;
-            authCtx->CreateAuthJtagImage(writedata, bifOptions->authJtagInfo);
+            authCtx->hash = hash.get();  // Non-owning reference to BootImage's hash
+            authCtx->CreateAuthJtagImage(writedata.get(), bifOptions->authJtagInfo);
         }
 
         std::ofstream ofs;
@@ -1093,13 +1109,11 @@ void SpartanBootImage::OutputOptionalSecureDebugImage()
             LOG_ERROR("Cannot write output to file : %s", secureDebugImageFile.c_str());
         }
 
-        ofs.write((const char*)writedata, authJtagImageSize);
+        ofs.write((const char*)writedata.get(), authJtagImageSize);
         ofs.close();
 
         LOG_TRACE("Authenticated Jtag Image : '%s' generated.", secureDebugImageFile.c_str());
     }
-
-    delete[] writedata;
 }
 
 /******************************************************************************/
@@ -1272,7 +1286,7 @@ void SpartanBootImage::Add(BifOptions* bifoptions)
         if (bifoptions->GetSPKFileName() != "")
         {
             currentAuthCtx->SetSPKeyFile(bifoptions->GetSPKFileName());
-            SpartanupAuthenticationContext* authCtx = NULL;
+            std::unique_ptr<SpartanupAuthenticationContext> authCtx;
             if (currentAuthCtx)
             {
                 std::string filename = bifoptions->GetSPKFileName();
@@ -1295,14 +1309,15 @@ void SpartanBootImage::Add(BifOptions* bifoptions)
 
                 if (rsa != NULL)
                 {
-                    authCtx = new SpartanupAuthenticationContext(currentAuthCtx, Authentication::RSA);
+                    authCtx = std::make_unique<SpartanupAuthenticationContext>(currentAuthCtx.get(), Authentication::RSA);
                 }
                 else if(eckeyLocal != NULL)
                 {
-                    authCtx = new SpartanupAuthenticationContext(currentAuthCtx, Authentication::ECDSA);
+                    authCtx = std::make_unique<SpartanupAuthenticationContext>(currentAuthCtx.get(), Authentication::ECDSA);
                 }
             }
 
+            /*
             if (options.DoGenerateHashes())
             {
                 authCtx->hash = hash;
@@ -1310,11 +1325,9 @@ void SpartanBootImage::Add(BifOptions* bifoptions)
                 LOG_INFO("Generating SPK Hash File");
                 authCtx->GenerateSPKHashFile(bifoptions->GetSPKFileName(), hash);
             }
+            */
 
-            if (authCtx != NULL)
-            {
-                delete authCtx;
-            }
+            // authCtx automatically cleaned up
         }
 
         if (bifoptions->GetSSKFileName() != "")
@@ -1402,7 +1415,7 @@ void SpartanBootImage::Add(BifOptions* bifoptions)
     {
         for (std::list<ImageBifOptions*>::iterator imgitr = bifoptions->imageBifOptionList.begin(); imgitr != bifoptions->imageBifOptionList.end(); imgitr++)
         {
-            SpartanupSubSysImageHeader *subSysImage = new SpartanupSubSysImageHeader(*imgitr);
+            auto subSysImage = std::make_unique<SpartanupSubSysImageHeader>(*imgitr);
             bool bootimage_partition = false;
             current_image_block++;
             bool break_outer_loop = false;
@@ -1502,7 +1515,7 @@ void SpartanBootImage::Add(BifOptions* bifoptions)
             /* Add to subsys list only if it the partition type is not bootimage. Because bootimage will have its own subsystems */
             if ((!bootimage_partition) || (subSysImage->imgList.size() != 0))
             {
-                subSysImageList.push_back(subSysImage);
+                subSysImageList.push_back(subSysImage.release());
             }
         }
     }
@@ -1722,10 +1735,10 @@ void SpartanBootImage::OutputOptionalEfuseHash()
                 EC_KEY *eckeyLocal = PEM_read_EC_PUBKEY(f, NULL, NULL, NULL);
                 fclose(f);
 
-                SpartanupAuthenticationContext* authCtx = NULL;
+                std::unique_ptr<SpartanupAuthenticationContext> authCtx;
                 if (rsa != NULL)
                 {
-                    authCtx = new SpartanupAuthenticationContext(currentAuthCtx, Authentication::RSA);
+                    authCtx = std::make_unique<SpartanupAuthenticationContext>(currentAuthCtx.get(), Authentication::RSA);
                 }
                 else if (eckeyLocal != NULL)
                 {
@@ -1743,11 +1756,11 @@ void SpartanBootImage::OutputOptionalEfuseHash()
 
                     if (ecCurveNID == NID_secp384r1)
                     {
-                        authCtx = new SpartanupAuthenticationContext(currentAuthCtx, Authentication::ECDSA);
+                        authCtx = std::make_unique<SpartanupAuthenticationContext>(currentAuthCtx.get(), Authentication::ECDSA);
                     }
                     else if (ecCurveNID == NID_secp521r1)
                     {
-                        authCtx = new SpartanupAuthenticationContext(currentAuthCtx, Authentication::ECDSAp521);
+                        authCtx = std::make_unique<SpartanupAuthenticationContext>(currentAuthCtx.get(), Authentication::ECDSAp521);
                     }
                     else
                     {
@@ -1760,10 +1773,10 @@ void SpartanBootImage::OutputOptionalEfuseHash()
                     // TO-DO - Check if there is a way to identify LMS key
                     // LOG_ERROR("Cannot read the public key file : %s", filename.c_str());
                     // Decide LMS SHA256/SHAKE256 based on the params read from key file. For timebeing treating as LMS_SHA256
-                    authCtx = new SpartanupAuthenticationContext(currentAuthCtx, Authentication::LMS_SHA2_256);
+                    authCtx = std::make_unique<SpartanupAuthenticationContext>(currentAuthCtx.get(), Authentication::LMS_SHA2_256);
                 }
 
-                authCtx->hash = hash;
+                authCtx->hash = hash.get();  // Non-owning reference to BootImage's hash
                 authCtx->GeneratePPKHash(hashFile);
             }
         }
@@ -1778,7 +1791,7 @@ void SpartanBootImage::OutputOptionalEfuseHash()
                 File >> word;
                 File >> word;
 
-                SpartanupAuthenticationContext* authCtx = NULL;
+                std::unique_ptr<SpartanupAuthenticationContext> authCtx;
                 if (word == "EC")
                 {
                     FILE* f = NULL;
@@ -1795,11 +1808,11 @@ void SpartanBootImage::OutputOptionalEfuseHash()
 
                     if (ecCurveNID == NID_secp384r1)
                     {
-                        authCtx = new SpartanupAuthenticationContext(currentAuthCtx, Authentication::ECDSA);
+                        authCtx = std::make_unique<SpartanupAuthenticationContext>(currentAuthCtx.get(), Authentication::ECDSA);
                     }
                     else if (ecCurveNID == NID_secp521r1)
                     {
-                        authCtx = new SpartanupAuthenticationContext(currentAuthCtx, Authentication::ECDSAp521);
+                        authCtx = std::make_unique<SpartanupAuthenticationContext>(currentAuthCtx.get(), Authentication::ECDSAp521);
                     }
                     else
                     {
@@ -1808,9 +1821,9 @@ void SpartanBootImage::OutputOptionalEfuseHash()
                 }
                 else
                 {
-                    authCtx = new SpartanupAuthenticationContext(currentAuthCtx, Authentication::RSA);
+                    authCtx = std::make_unique<SpartanupAuthenticationContext>(currentAuthCtx.get(), Authentication::RSA);
                 }
-                authCtx->hash = hash;
+                authCtx->hash = hash.get();  // Non-owning reference to BootImage's hash
                 authCtx->GeneratePPKHash(hashFile);
             }
         }
@@ -1829,17 +1842,17 @@ void SpartanBootImage::OutputOptionalEfusePufHash()
     {
         if (bifOptions->GetPufHelperFile() != "")
         {
-            uint8_t* pufDataTemp = new uint8_t[PUF_DATA_LENGTH_4K];
-            memset(pufDataTemp, 0, PUF_DATA_LENGTH_4K);
+            auto pufDataTemp = std::make_unique<uint8_t[]>(PUF_DATA_LENGTH_4K);
+            memset(pufDataTemp.get(), 0, PUF_DATA_LENGTH_4K);
 
             FileImport fileReader;
-            if (!fileReader.LoadHexData(bifOptions->GetPufHelperFile(), pufDataTemp, PUF_DATA_LENGTH_4K - PUF_DATA_LENGTH_4K_ALIGNMENT))
+            if (!fileReader.LoadHexData(bifOptions->GetPufHelperFile(), pufDataTemp.get(), PUF_DATA_LENGTH_4K - PUF_DATA_LENGTH_4K_ALIGNMENT))
             {
                 LOG_ERROR("Invalid no. of data bytes for PUF Helper Data.\n           Expected length for PUF Helper Data is %d bytes", PUF_DATA_LENGTH_4K - PUF_DATA_LENGTH_4K_ALIGNMENT);
             }
 
-            uint8_t* pufHash = new uint8_t[hash->GetHashLength()];
-            hash->CalculateHash(true, pufDataTemp, PUF_DATA_LENGTH_4K, pufHash);
+            auto pufHash = std::make_unique<uint8_t[]>(hash->GetHashLength());
+            hash->CalculateHash(true, pufDataTemp.get(), PUF_DATA_LENGTH_4K, pufHash.get());
 
             FILE* filePtr;
             if ((filePtr = fopen(hashFile.c_str(), "w")) == NULL)
@@ -1857,8 +1870,6 @@ void SpartanBootImage::OutputOptionalEfusePufHash()
 
             fclose(filePtr);
             LOG_INFO("Efuse PPK bits written to file %s successfully", hashFile.c_str());
-
-            delete[] pufDataTemp;
         }
         else
         {
@@ -1878,17 +1889,17 @@ void SpartanBootImage::OutputOptionalPufPDI()
         fName += "puf.bin";
         filePtr = fopen(fName.c_str(), "wb");
 
-        uint8_t* pufPDITemp = new uint8_t[bootHeader->section->Length];
-        memcpy(pufPDITemp, bootHeader->section->Data, bootHeader->section->Length);
+        auto pufPDITemp = std::make_unique<uint8_t[]>(bootHeader->section->Length);
+        memcpy(pufPDITemp.get(), bootHeader->section->Data.get(), bootHeader->section->Length);
 
-        SpartanupBootHeaderStructure *bHTable = (SpartanupBootHeaderStructure*)pufPDITemp;
+        SpartanupBootHeaderStructure *bHTable = (SpartanupBootHeaderStructure*)pufPDITemp.get();
         bHTable->pufPDIIdentificationWord = PUF_IMAGE_ID_WORD;
 
         bHTable->headerChecksum = bootHeader->ComputeWordChecksum(&bHTable->widthDetectionWord, bootHeader->GetBootHeaderSize() - sizeof(uint32_t) - sizeof(SpartanupSmapWidthTable));
 
         if (filePtr != NULL)
         {
-            result = fwrite(pufPDITemp, 1, bootHeader->section->Length, filePtr);
+            result = fwrite(pufPDITemp.get(), 1, bootHeader->section->Length, filePtr);
             if (result != bootHeader->section->Length)
             {
                 LOG_ERROR("Error dumping PUF PDI to a file");
@@ -1940,20 +1951,20 @@ void SpartanBootImage::BuildAndLink(Binary* cache)
         }
         else
         {
-            ImageBifOptions *imgOptions = new ImageBifOptions();
+            auto imgOptions = std::make_unique<ImageBifOptions>();
             /* If Subsystems are not specified in BIF - create one image header for PLM and other image header for subsytem and add all partitions to it */
             imgOptions->SetImageName("default_subsys");
-            SpartanupSubSysImageHeader* sub_sys_image = new SpartanupSubSysImageHeader(imgOptions);
+            auto sub_sys_image = std::make_unique<SpartanupSubSysImageHeader>(imgOptions.get());
             for (std::list<ImageHeader*>::iterator image = imageList.begin(); image != imageList.end(); image++)
             {
                 if ((*image)->IsBootloader())
                 {
                     imgOptions->SetImageName("pmc_subsys");
-                    SpartanupSubSysImageHeader* plm_header = new SpartanupSubSysImageHeader(imgOptions);
+                    auto plm_header = std::make_unique<SpartanupSubSysImageHeader>(imgOptions.get());
                     plm_header->imgList.push_back((*image));
                     plm_header->SetSubSystemName("pmc_subsys");
                     plm_header->SetSubSystemId(0x1c000001);
-                    subSysImageList.push_back(plm_header);
+                    subSysImageList.push_back(plm_header.release());
                 }
                 else
                 {
@@ -1964,7 +1975,7 @@ void SpartanBootImage::BuildAndLink(Binary* cache)
             {
                 sub_sys_image->SetSubSystemName("default_subsys");
                 sub_sys_image->SetSubSystemId(0x1c000000);
-                subSysImageList.push_back(sub_sys_image);
+                subSysImageList.push_back(sub_sys_image.release());
                 LOG_INFO("BOOTGEN_SUBSYSTEM_PDI is set, but no subsystems are specified, all partitions are grouped into one default subsystem");
             }
          }

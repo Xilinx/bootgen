@@ -29,6 +29,10 @@
 #include <openssl/rand.h>
 #include "obfskutil.h"
 
+#ifndef ENABLE_OBFUSCATED_KEY
+#include "obfskutil.h"
+#endif
+
 /*
 ------------------------------------------------------------------------------------------------
 **********************************************************************   F U N C T I O N S   ***
@@ -41,7 +45,7 @@ ZynqMpEncryptionContext::ZynqMpEncryptionContext()
     , aesSeedexits(false)
     , partNum(0)
 {
-    encryptionAlgorithm = new AesGcmEncryptionContext();
+    encryptionAlgorithm = std::make_unique<AesGcmEncryptionContext>();
 };
 
 /******************************************************************************/
@@ -51,45 +55,22 @@ ZynqMpEncryptionContext::ZynqMpEncryptionContext(const EncryptionContext* other)
     , partNum(0)
 {
     aesFilename = other->aesFilename;
-    encryptionAlgorithm = new AesGcmEncryptionContext();
+    encryptionAlgorithm = std::make_unique<AesGcmEncryptionContext>();
 }
 
 /******************************************************************************/
 ZynqMpEncryptionContext::~ZynqMpEncryptionContext()
 {
-    if (encryptionAlgorithm)
-    {
-        delete encryptionAlgorithm;
-    }
-    if (aesKey)
-    {
-        delete aesKey;
-    }
-    if (aesIv)
-    {
-        delete aesIv;
-    }
-    if (aesSeed)
-    {
-        delete aesSeed;
-    }
-    if (outBufKDF)
-    {
-        delete outBufKDF;
-    }
-    if (fixedInputData)
-    {
-        delete fixedInputData;
-    }
+    // Smart pointers (encryptionAlgorithm, aesKey, aesIv, aesSeed, outBufKDF, fixedInputData) automatically cleaned up
 };
 
 /******************************************************************************/
 void ZynqMpEncryptionContext::SetAesKey(const uint8_t* key)
 {
-    aesKey = new uint32_t[WORDS_PER_AES_KEY];
+    aesKey = std::make_unique<uint32_t[]>(WORDS_PER_AES_KEY);
     for (uint32_t index = 0; index < WORDS_PER_AES_KEY; index++)
     {
-        aesKey[index] = ReadBigEndian32(key);
+        aesKey.get()[index] = ReadBigEndian32(key);
         key += sizeof(uint32_t);
     }
 }
@@ -531,11 +512,11 @@ void ZynqMpEncryptionContext::GetNextIv(uint8_t * keyNext, int ptr)
 /******************************************************************************/
 void ZynqMpEncryptionContext::SetAesSeed(const uint8_t* key)
 {
-    aesSeed = new uint32_t[WORDS_PER_AES_KEY];
+    aesSeed = std::make_unique<uint32_t[]>(WORDS_PER_AES_KEY);
 
     for (uint32_t index = 0; index < WORDS_PER_AES_KEY; index++)
     {
-        aesSeed[index] = ReadBigEndian32(key);
+        aesSeed.get()[index] = ReadBigEndian32(key);
         key += sizeof(uint32_t);
     }
 }
@@ -543,29 +524,29 @@ void ZynqMpEncryptionContext::SetAesSeed(const uint8_t* key)
 /******************************************************************************/
 const uint32_t* ZynqMpEncryptionContext::GetAesSeed(void)
 {
-    return (uint32_t *)aesSeed;
+    return aesSeed.get();
 }
 
 /******************************************************************************/
 const uint32_t * ZynqMpEncryptionContext::GetAesKey(void)
 {
-    return (uint32_t *)aesKey;
+    return aesKey.get();
 }
 
 /******************************************************************************/
 const uint32_t* ZynqMpEncryptionContext::GetAesOptKey(void)
 {
-    return (uint32_t *)aesOptKey;
+    return aesOptKey.get();
 }
 
 /******************************************************************************/
 void ZynqMpEncryptionContext::SetAesOptKey(const uint8_t* key)
 {
-    aesOptKey = new uint32_t[WORDS_PER_AES_KEY];
+    aesOptKey = std::make_unique<uint32_t[]>(WORDS_PER_AES_KEY);
 
     for (uint32_t index = 0; index < WORDS_PER_AES_KEY; index++)
     {
-        aesOptKey[index] = ReadBigEndian32(key);
+        aesOptKey.get()[index] = ReadBigEndian32(key);
         key += sizeof(uint32_t);
     }
 }
@@ -604,12 +585,12 @@ void ZynqMpEncryptionContext::GenerateAesOptKey(void)
 /******************************************************************************/
 void ZynqMpEncryptionContext::SetIv(const uint8_t* iv)
 {
-    aesIv = new uint32_t[WORDS_PER_IV];
+    aesIv = std::make_unique<uint32_t[]>(WORDS_PER_IV);
 
     // Copy the key
     for (uint32_t index = 0; index < WORDS_PER_IV; index++)
     {
-        aesIv[index] = ReadBigEndian32(iv);
+        aesIv.get()[index] = ReadBigEndian32(iv);
         iv += sizeof(uint32_t);
     }
 }
@@ -644,7 +625,7 @@ void ZynqMpEncryptionContext::GenerateIv(void)
 /******************************************************************************/
 const uint32_t* ZynqMpEncryptionContext::GetIv(void)
 {
-    return (uint32_t *)aesIv;
+    return aesIv.get();
 }
 
 /******************************************************************************/
@@ -700,23 +681,23 @@ void ZynqMpEncryptionContext::GenerateRemainingKeys(Options& options, std::strin
 
     if (GetAesSeed() == NULL)
     {
-        aesSeed = new uint32_t[WORDS_PER_AES_KEY];
-        memset(aesSeed, 0, WORDS_PER_AES_KEY);
+        aesSeed = std::make_unique<uint32_t[]>(WORDS_PER_AES_KEY);
+        memset(aesSeed.get(), 0, WORDS_PER_AES_KEY);
         GenerateAesSeed();
     }
 
     if (GetFixedInputData() == NULL)
     {
-        fixedInputData = new uint32_t[WORDS_PER_FID];
-        memset(fixedInputData, 0, WORDS_PER_FID);
+        fixedInputData = std::make_unique<uint32_t[]>(WORDS_PER_FID);
+        memset(fixedInputData.get(), 0, WORDS_PER_FID);
         GenerateAesFixedInputData();
     }
 
     uint32_t outBufBytes = blocks * (AES_GCM_KEY_SZ + AES_GCM_IV_SZ);
-    outBufKDF = new uint32_t[outBufBytes];
+    outBufKDF = std::make_unique<uint32_t[]>(outBufBytes);
     SetKdfLogFile(options.GetEncryptionDumpFlag());
 
-    uint32_t ret  = kdf->CounterModeKDF(aesSeed, fixedInputData, fixedInputDataByteLength, outBufKDF, outBufBytes);
+    uint32_t ret  = kdf->CounterModeKDF(aesSeed.get(), fixedInputData.get(), fixedInputDataByteLength, outBufKDF.get(), outBufBytes);
     if (ret != 0)
     {
         LOG_ERROR("Error generating encryption keys from Counter Mode KDF.");
@@ -754,23 +735,23 @@ void ZynqMpEncryptionContext::GenerateRemainingKeys(Options& options, std::strin
 void ZynqMpEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint8_t *inBuf, uint32_t inLen, uint8_t* outBuf, uint32_t& outLen)
 {
     std::vector<uint32_t> blockList = options.bifOptions->GetEncryptionBlocksList();
-    uint8_t *aesIv = new uint8_t[AES_GCM_IV_SZ];
-    uint8_t *aesKey = new uint8_t[AES_GCM_KEY_SZ];
-    uint8_t *aesOptKey = new uint8_t[AES_GCM_KEY_SZ];
-    uint8_t *aesIVNext = new uint8_t[AES_GCM_IV_SZ];
-    uint8_t *aesKeyNext = new uint8_t[AES_GCM_KEY_SZ];
+    auto aesIv = std::make_unique<uint8_t[]>(AES_GCM_IV_SZ);
+    auto aesKey = std::make_unique<uint8_t[]>(AES_GCM_KEY_SZ);
+    auto aesOptKey = std::make_unique<uint8_t[]>(AES_GCM_KEY_SZ);
+    auto aesIVNext = std::make_unique<uint8_t[]>(AES_GCM_IV_SZ);
+    auto aesKeyNext = std::make_unique<uint8_t[]>(AES_GCM_KEY_SZ);
 
-    GetEncryptionKeys(options, aesKey, aesOptKey, aesIv);
+    GetEncryptionKeys(options, aesKey.get(), aesOptKey.get(), aesIv.get());
 
-    GetNextKey(aesKeyNext, 1);
-    GetNextIv(aesIVNext, 1);
+    GetNextKey(aesKeyNext.get(), 1);
+    GetNextIv(aesIVNext.get(), 1);
 
     if (partNum > 0) {
-        uint8_t *x = new uint8_t[AES_GCM_IV_SZ];
-        memset(x, 0, AES_GCM_IV_SZ);
-        *(x + AES_GCM_IV_SZ - 1) = partNum;
-        *(aesIv + AES_GCM_IV_SZ - 1) = *(aesIv + AES_GCM_IV_SZ - 1) + *(x + AES_GCM_IV_SZ - 1);
-        delete[] x;
+        auto x = std::make_unique<uint8_t[]>(AES_GCM_IV_SZ);
+        memset(x.get(), 0, AES_GCM_IV_SZ);
+        *(x.get() + AES_GCM_IV_SZ - 1) = partNum;
+        *(aesIv.get() + AES_GCM_IV_SZ - 1) = *(aesIv.get() + AES_GCM_IV_SZ - 1) + *(x.get() + AES_GCM_IV_SZ - 1);
+        // Cleanup handled by unique_ptr
     }
 
     // Extract the first block size
@@ -784,16 +765,16 @@ void ZynqMpEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint8_t
     if (options.bifOptions->GetAesOptKeyFlag())
     {
         //Write the optional key from .nky file
-        memcpy(secureHdr_in, aesOptKey, AES_GCM_KEY_SZ);
+        memcpy(secureHdr_in, aesOptKey.get(), AES_GCM_KEY_SZ);
         if (isBootloader == false)
         {
             /* If optional key is enabled, then aesKey (boot key) needs to be used only encrypt the secure header
             Next block is encrypted using Opt Key.
             For all partitions, other than bootloader, don't use aesKey (bootkey), always use optional key
             Reason: The main idea to use optional key is to minimize the time of bootkey usage during booting process */
-            memcpy(aesKey, aesOptKey, AES_GCM_KEY_SZ);
+            memcpy(aesKey.get(), aesOptKey.get(), AES_GCM_KEY_SZ);
             memset(secureHdr_in, 0, AES_GCM_KEY_SZ);
-            memcpy(secureHdr_in, aesKeyNext, AES_GCM_KEY_SZ);
+            memcpy(secureHdr_in, aesKeyNext.get(), AES_GCM_KEY_SZ);
         }
     }
     else
@@ -804,12 +785,12 @@ void ZynqMpEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint8_t
         //Write Next key
         if (isBootloader == false)
         {
-            memcpy(secureHdr_in, aesKeyNext, AES_GCM_KEY_SZ);
+            memcpy(secureHdr_in, aesKeyNext.get(), AES_GCM_KEY_SZ);
         }
     }
 
     // Block 0 IV(random generated), and the Block0 word size
-    memcpy(secureHdr_in + AES_GCM_KEY_SZ, aesIVNext, AES_GCM_IV_SZ);
+    memcpy(secureHdr_in + AES_GCM_KEY_SZ, aesIVNext.get(), AES_GCM_IV_SZ);
     WriteLittleEndian32(secureHdr_in + AES_GCM_KEY_SZ + AES_GCM_IV_SZ, nextBlkSize / NUM_BYTES_PER_WORD);
 
     int ct_len;
@@ -818,7 +799,7 @@ void ZynqMpEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint8_t
     /* Encrypt the Secure Header with device key and starting IV */
     LOG_TRACE("Encrypting the Secure Header");
     uint8_t* ptr = outBuf;
-    encryptionAlgorithm->AesGcm256Encrypt(secureHdr_in, SECURE_HDR_SZ, aesKey, aesIv, NULL, 0, ptr, ct_len, gcm_tag);
+    encryptionAlgorithm->AesGcm256Encrypt(secureHdr_in, SECURE_HDR_SZ, aesKey.get(), aesIv.get(), NULL, 0, ptr, ct_len, gcm_tag);
 
     /* Attach the AES-GCM generated Hash Tag to end of the block */
     memcpy(outBuf + ct_len, gcm_tag, AES_GCM_TAG_SZ);
@@ -834,11 +815,11 @@ void ZynqMpEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint8_t
         VERBOSE_OUT << std::endl << "    Secure Header";
         VERBOSE_OUT << std::endl << "        AES Key : ";
         for (i = 0; i<AES_GCM_KEY_SZ; i++)
-            VERBOSE_OUT << std::setfill('0') << std::setw(2) << std::hex << uint32_t(aesKey[i]);
+            VERBOSE_OUT << std::setfill('0') << std::setw(2) << std::hex << uint32_t(aesKey.get()[i]);
 
         VERBOSE_OUT << std::endl << "        AES IV  : ";
         for (i = 0; i<AES_GCM_IV_SZ; i++)
-            VERBOSE_OUT << std::setfill('0') << std::setw(2) << std::hex << uint32_t(aesIv[i]);
+            VERBOSE_OUT << std::setfill('0') << std::setw(2) << std::hex << uint32_t(aesIv.get()[i]);
 
         VERBOSE_OUT << std::endl << "        Length  : ";
         VERBOSE_OUT << std::setfill('0') << std::setw(2) << std::hex << SECURE_HDR_SZ;
@@ -863,7 +844,7 @@ void ZynqMpEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint8_t
         */
 
         //AES-GCM Decryption for verification purpose 
-        encryptionAlgorithm->AesGcm256Decrypt(secureHdr_out, pt_len, aesKey, aesIv, NULL, 0, outBuf, SECURE_HDR_SZ, gcm_tag);
+        encryptionAlgorithm->AesGcm256Decrypt(secureHdr_out, pt_len, aesKey.get(), aesIv.get(), NULL, 0, outBuf, SECURE_HDR_SZ, gcm_tag);
         int ret = memcmp(secureHdr_in, secureHdr_out, SECURE_HDR_SZ);
         if (ret == 0)
         {
@@ -879,23 +860,23 @@ void ZynqMpEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint8_t
     /* Secure Header and Block 0 will be using the same IV, to have equal number of Keys
     and IVs from Key File. */
     /*Security Vulnerability : Reusing same AES / IV Key Pair*/
-    memcpy(aesIv, aesIVNext, AES_GCM_IV_SZ);
+    memcpy(aesIv.get(), aesIVNext.get(), AES_GCM_IV_SZ);
     if (options.bifOptions->GetAesOptKeyFlag())
     {
         if (isBootloader == false)
         {
-            memcpy(aesKey, aesKeyNext, AES_GCM_KEY_SZ);
+            memcpy(aesKey.get(), aesKeyNext.get(), AES_GCM_KEY_SZ);
         }
         else
         {
-            memcpy(aesKey, aesOptKey, AES_GCM_KEY_SZ);
+            memcpy(aesKey.get(), aesOptKey.get(), AES_GCM_KEY_SZ);
         }
     }
     else
     {
         if (isBootloader == false)
         {
-            memcpy(aesKey, aesKeyNext, AES_GCM_KEY_SZ);
+            memcpy(aesKey.get(), aesKeyNext.get(), AES_GCM_KEY_SZ);
         }
     }
 
@@ -910,30 +891,30 @@ void ZynqMpEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint8_t
         /* Get next key and IV(random for next key from keyfile) for next block */
         if (nextBlkSize == 0)
         {
-            memset(aesKeyNext, 0, AES_GCM_KEY_SZ);
-            memset(aesIVNext, 0, AES_GCM_IV_SZ);
+            memset(aesKeyNext.get(), 0, AES_GCM_KEY_SZ);
+            memset(aesIVNext.get(), 0, AES_GCM_IV_SZ);
         }
         else
         {
-            GetNextKey(aesKeyNext, blkPtr + 1);
-            GetNextIv(aesIVNext, blkPtr + 1);
+            GetNextKey(aesKeyNext.get(), blkPtr + 1);
+            GetNextIv(aesIVNext.get(), blkPtr + 1);
         }
 
-        uint8_t *gcm_pt = new uint8_t[currBlkSize + AES_GCM_KEY_SZ + AES_GCM_IV_SZ + NUM_BYTES_PER_WORD];
+        auto gcm_pt = std::make_unique<uint8_t[]>(currBlkSize + AES_GCM_KEY_SZ + AES_GCM_IV_SZ + NUM_BYTES_PER_WORD);
         //Prepare the buffer for encryption
         //Actual block data + Next Block Key + Next Block IV + Next Block Word Size
-        memcpy(gcm_pt, inBuf + inPtr, currBlkSize);
+        memcpy(gcm_pt.get(), inBuf + inPtr, currBlkSize);
         inPtr += currBlkSize;
-        memcpy(gcm_pt + currBlkSize, aesKeyNext, AES_GCM_KEY_SZ);
-        memcpy(gcm_pt + currBlkSize + AES_GCM_KEY_SZ, aesIVNext, AES_GCM_IV_SZ);
-        WriteLittleEndian32(gcm_pt + currBlkSize + AES_GCM_KEY_SZ + AES_GCM_IV_SZ, nextBlkSize / NUM_BYTES_PER_WORD);
+        memcpy(gcm_pt.get() + currBlkSize, aesKeyNext.get(), AES_GCM_KEY_SZ);
+        memcpy(gcm_pt.get() + currBlkSize + AES_GCM_KEY_SZ, aesIVNext.get(), AES_GCM_IV_SZ);
+        WriteLittleEndian32(gcm_pt.get() + currBlkSize + AES_GCM_KEY_SZ + AES_GCM_IV_SZ, nextBlkSize / NUM_BYTES_PER_WORD);
 
         //Encrypt the consolidated block
         LOG_TRACE("Encrypting the block %d of size 0x%x of partition number %d", blkPtr, currBlkSize, partNum);
-        encryptionAlgorithm->AesGcm256Encrypt(gcm_pt, currBlkSize + SECURE_HDR_SZ, aesKey, aesIv, NULL, 0, outBuf + outPtr, ct_len, gcm_tag);
+        encryptionAlgorithm->AesGcm256Encrypt(gcm_pt.get(), currBlkSize + SECURE_HDR_SZ, aesKey.get(), aesIv.get(), NULL, 0, outBuf + outPtr, ct_len, gcm_tag);
         memcpy(outBuf + outPtr + ct_len, gcm_tag, AES_GCM_TAG_SZ);
 
-        uint8_t* inBuf_out = new uint8_t[ct_len + AES_GCM_TAG_SZ];
+        auto inBuf_out = std::make_unique<uint8_t[]>(ct_len + AES_GCM_TAG_SZ);
         if (options.GetEncryptionDumpFlag())
         {
             uint32_t i = 0;
@@ -946,11 +927,11 @@ void ZynqMpEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint8_t
             VERBOSE_OUT << std::endl << "    Block " << blkPtr - 1;
             VERBOSE_OUT << std::endl << "        AES Key : ";
             for (i = 0; i<AES_GCM_KEY_SZ; i++)
-                VERBOSE_OUT << std::setfill('0') << std::setw(2) << std::hex << uint32_t(aesKey[i]);
+                VERBOSE_OUT << std::setfill('0') << std::setw(2) << std::hex << uint32_t(aesKey.get()[i]);
 
             VERBOSE_OUT << std::endl << "        AES IV  : ";
             for (i = 0; i<AES_GCM_IV_SZ; i++)
-                VERBOSE_OUT << std::setfill('0') << std::setw(2) << std::hex << uint32_t(aesIv[i]);
+                VERBOSE_OUT << std::setfill('0') << std::setw(2) << std::hex << uint32_t(aesIv.get()[i]);
 
             VERBOSE_OUT << std::endl << "        Length  : ";
             VERBOSE_OUT << std::setfill('0') << std::setw(2) << std::hex << currBlkSize;
@@ -958,14 +939,14 @@ void ZynqMpEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint8_t
             VERBOSE_OUT << std::endl << "        Next Key, IV and length stored in Block " << blkPtr - 1;
             VERBOSE_OUT << std::endl << "            Next Key : ";
             for (i = 0; i<AES_GCM_KEY_SZ; i++)
-                VERBOSE_OUT << std::setfill('0') << std::setw(2) << std::hex << uint32_t(gcm_pt[i + currBlkSize]);
+                VERBOSE_OUT << std::setfill('0') << std::setw(2) << std::hex << uint32_t(gcm_pt.get()[i + currBlkSize]);
 
             VERBOSE_OUT << std::endl << "            Next IV  : ";
             for (i = 0; i<AES_GCM_IV_SZ; i++)
-                VERBOSE_OUT << std::setfill('0') << std::setw(2) << std::hex << uint32_t(gcm_pt[i + currBlkSize + AES_GCM_KEY_SZ]);
+                VERBOSE_OUT << std::setfill('0') << std::setw(2) << std::hex << uint32_t(gcm_pt.get()[i + currBlkSize + AES_GCM_KEY_SZ]);
 
             VERBOSE_OUT << std::endl << "            Length   : ";
-            length = ReadLittleEndian32(gcm_pt + currBlkSize + AES_GCM_KEY_SZ + AES_GCM_IV_SZ);
+            length = ReadLittleEndian32(gcm_pt.get() + currBlkSize + AES_GCM_KEY_SZ + AES_GCM_IV_SZ);
             VERBOSE_OUT << std::hex << length * 4;
             /*
             VERBOSE_OUT << std::endl << "        GCM Tag : ";
@@ -973,8 +954,8 @@ void ZynqMpEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint8_t
             VERBOSE_OUT << std::setfill('0') << std::setw(2) << std::hex << uint32_t(gcm_tag[i]);
             VERBOSE_OUT << std::endl;
             */
-            encryptionAlgorithm->AesGcm256Decrypt(inBuf_out, pt_len, aesKey, aesIv, NULL, 0, outBuf + outPtr, ct_len, gcm_tag);
-            int ret = memcmp(gcm_pt, inBuf_out, pt_len);
+            encryptionAlgorithm->AesGcm256Decrypt(inBuf_out.get(), pt_len, aesKey.get(), aesIv.get(), NULL, 0, outBuf + outPtr, ct_len, gcm_tag);
+            int ret = memcmp(gcm_pt.get(), inBuf_out.get(), pt_len);
             if (ret == 0)
             {
                 //VERBOSE_OUT << std::dec << "        Encrypted block " << currBlk++ << " was successfully decrypted and tag matched\n";
@@ -987,20 +968,15 @@ void ZynqMpEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint8_t
 
         //Update the current key & IV 
         outPtr += ct_len + AES_GCM_TAG_SZ;
-        memcpy(aesIv, aesIVNext, AES_GCM_IV_SZ);
-        memcpy(aesKey, aesKeyNext, AES_GCM_KEY_SZ);
+        memcpy(aesIv.get(), aesIVNext.get(), AES_GCM_IV_SZ);
+        memcpy(aesKey.get(), aesKeyNext.get(), AES_GCM_KEY_SZ);
 
-        delete[] gcm_pt;
-        delete[] inBuf_out;
+        // Cleanup handled by unique_ptr
         blkPtr++;
     }
 
     outLen = outPtr;
-    delete[] aesIv;
-    delete[] aesKey;
-    delete[] aesIVNext;
-    delete[] aesKeyNext;
-    delete[] aesOptKey;
+    // Cleanup handled by unique_ptr for all buffers
 }
 
 /******************************************************************************/
@@ -1045,13 +1021,13 @@ void ZynqMpEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr)
         {
             if (deviceKeyStored)
             {
-                aesKey = new uint32_t[AES_GCM_KEY_SZ / 4];
-                aesIv = new uint32_t[AES_GCM_IV_SZ / 4];
-                aesOptKey = new uint32_t[AES_GCM_KEY_SZ / 4];
+                aesKey = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / 4);
+                aesIv = std::make_unique<uint32_t[]>(AES_GCM_IV_SZ / 4);
+                aesOptKey = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / 4);
 
-                memcpy(aesKey, bi.deviceKey, AES_GCM_KEY_SZ);
-                memcpy(aesIv, bi.firstIv, AES_GCM_IV_SZ);
-                memcpy(aesOptKey, bi.firstOptKey, AES_GCM_KEY_SZ);
+                memcpy(aesKey.get(), bi.deviceKey.get(), AES_GCM_KEY_SZ);
+                memcpy(aesIv.get(), bi.firstIv.get(), AES_GCM_IV_SZ);
+                memcpy(aesOptKey.get(), bi.firstOptKey.get(), AES_GCM_KEY_SZ);
             }
             GenerateEncryptionKeyFile(aesFilename, options);
         }
@@ -1082,26 +1058,26 @@ void ZynqMpEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr)
         {
             if (aesKey == NULL)
             {
-                aesKey = new uint32_t[AES_GCM_KEY_SZ / 4];
-                memcpy(aesKey, bi.deviceKey, AES_GCM_KEY_SZ);
+                aesKey = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / 4);
+                memcpy(aesKey.get(), bi.deviceKey.get(), AES_GCM_KEY_SZ);
             }
             if (aesKeyVec.size() == 0)
             {
-                aesKeyVec.push_back(ConvertKeyIvToString((uint8_t *)aesKey, AES_GCM_KEY_SZ).c_str());
+                aesKeyVec.push_back(ConvertKeyIvToString((uint8_t *)aesKey.get(), AES_GCM_KEY_SZ).c_str());
             }
             if (aesIv == NULL)
             {
-                aesIv = new uint32_t[AES_GCM_IV_SZ / 4];
-                memcpy(aesIv, bi.firstIv, AES_GCM_IV_SZ);
+                aesIv = std::make_unique<uint32_t[]>(AES_GCM_IV_SZ / 4);
+                memcpy(aesIv.get(), bi.firstIv.get(), AES_GCM_IV_SZ);
             }
             if (aesIvVec.size() == 0)
             {
-                aesIvVec.push_back(ConvertKeyIvToString((uint8_t *)aesIv, AES_GCM_IV_SZ).c_str());
+                aesIvVec.push_back(ConvertKeyIvToString((uint8_t *)aesIv.get(), AES_GCM_IV_SZ).c_str());
             }
             if (aesOptKey == NULL)
             {
-                aesOptKey = new uint32_t[AES_GCM_KEY_SZ / 4];
-                memcpy(aesOptKey, bi.firstOptKey, AES_GCM_KEY_SZ);
+                aesOptKey = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / 4);
+                memcpy(aesOptKey.get(), bi.firstOptKey.get(), AES_GCM_KEY_SZ);
             }
         }
         GenerateRemainingKeys(options, aesFilename);
@@ -1111,34 +1087,34 @@ void ZynqMpEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr)
 
     if (!deviceKeyStored)
     {
-        bi.deviceKey = new uint32_t[AES_GCM_KEY_SZ / 4];
-        bi.firstIv = new uint32_t[AES_GCM_IV_SZ / 4];
-        bi.firstOptKey = new uint32_t[AES_GCM_KEY_SZ / 4];
+        bi.deviceKey = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / 4);
+        bi.firstIv = std::make_unique<uint32_t[]>(AES_GCM_IV_SZ / 4);
+        bi.firstOptKey = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / 4);
         if (aesKey != NULL)
         {
-            memcpy(bi.deviceKey, aesKey, AES_GCM_KEY_SZ);
+            memcpy(bi.deviceKey.get(), aesKey.get(), AES_GCM_KEY_SZ);
         }
         if (aesIv != NULL)
         {
-            memcpy(bi.firstIv, aesIv, AES_GCM_IV_SZ);
+            memcpy(bi.firstIv.get(), aesIv.get(), AES_GCM_IV_SZ);
         }
         if (aesOptKey != NULL)
         {
-            memcpy(bi.firstOptKey, aesOptKey, AES_GCM_KEY_SZ);
+            memcpy(bi.firstOptKey.get(), aesOptKey.get(), AES_GCM_KEY_SZ);
         }
         deviceKeyStored = true;
     }
     else
     {
-        if ((aesKey != NULL) && memcmp(bi.deviceKey, aesKey, AES_GCM_KEY_SZ))
+        if ((aesKey != NULL) && memcmp(bi.deviceKey.get(), aesKey.get(), AES_GCM_KEY_SZ))
         {
             LOG_ERROR("Key 0 should be same across all nky files - see 'bootgen -bif_help aeskeyfile' for more info.");
         }
-        if ((aesIv != NULL) && memcmp(bi.firstIv, aesIv, AES_GCM_IV_SZ))
+        if ((aesIv != NULL) && memcmp(bi.firstIv.get(), aesIv.get(), AES_GCM_IV_SZ))
         {
             LOG_ERROR("IV 0 should be same across all nky files - see 'bootgen -bif_help aeskeyfile' for more info.");
         }
-        if ((aesOptKey != NULL) && memcmp(bi.firstOptKey, aesOptKey, AES_GCM_KEY_SZ))
+        if ((aesOptKey != NULL) && memcmp(bi.firstOptKey.get(), aesOptKey.get(), AES_GCM_KEY_SZ))
         {
             LOG_ERROR("Key Opt should be same across all nky files - see 'bootgen -bif_help aeskeyfile' for more info.");
         }
@@ -1148,11 +1124,11 @@ void ZynqMpEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr)
     const uint32_t* tmpIv = GetIv();
     if (tmpIv != NULL)
     {
-        if (options.secHdrIv == NULL)
+        if (!options.secHdrIv)
         {
-            options.secHdrIv = (uint8_t*)malloc(BYTES_PER_IV);
+            options.secHdrIv = std::make_unique<uint8_t[]>(BYTES_PER_IV);
         }
-        memcpy_be(options.secHdrIv, tmpIv, BYTES_PER_IV);
+        memcpy_be(options.secHdrIv.get(), tmpIv, BYTES_PER_IV);
     }
 
     uint32_t totalBlocksOverhead = (totalencrBlocks + 1) * 64;
@@ -1179,12 +1155,12 @@ void ZynqMpEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr)
         // PMU Encryption
         uint32_t encrPmuByteLength;
         uint32_t estimatedEncrPmuLength = partHdr->imageHeader->GetPmuFwSizeIh() + totalBlocksOverhead;
-        uint8_t* encrPmuDataBuffer = new uint8_t[estimatedEncrPmuLength];
+        auto encrPmuDataBuffer = std::make_unique<uint8_t[]>(estimatedEncrPmuLength);
         LOG_INFO("Encrypting the PMU Firmware");
         ChunkifyAndEncrypt(options,
-            partHdr->partition->section->Data,
+            partHdr->partition->section->Data.get(),
             partHdr->imageHeader->GetPmuFwSizeIh(),
-            encrPmuDataBuffer /* out*/,
+            encrPmuDataBuffer.get() /* out*/,
             encrPmuByteLength /* out */);
 
         if (estimatedEncrPmuLength < encrPmuByteLength)
@@ -1195,12 +1171,12 @@ void ZynqMpEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr)
         // FSBL Encryption
         uint32_t encrFsblByteLength;
         uint32_t estimatedEncrFsblLength = partHdr->imageHeader->GetFsblFwSizeIh() + totalBlocksOverhead;
-        uint8_t* encrFsblDataBuffer = new uint8_t[estimatedEncrFsblLength];
+        auto encrFsblDataBuffer = std::make_unique<uint8_t[]>(estimatedEncrFsblLength);
         LOG_INFO("Encrypting the FSBL");
         ChunkifyAndEncrypt(options,
-            partHdr->partition->section->Data + partHdr->imageHeader->GetPmuFwSizeIh(),
+            partHdr->partition->section->Data.get() + partHdr->imageHeader->GetPmuFwSizeIh(),
             partHdr->imageHeader->GetFsblFwSizeIh(),
-            encrFsblDataBuffer /* out*/,
+            encrFsblDataBuffer.get() /* out*/,
             encrFsblByteLength /* out */);
 
         if (estimatedEncrFsblLength < encrFsblByteLength)
@@ -1210,8 +1186,8 @@ void ZynqMpEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr)
 
         partHdr->partition->section->IncreaseLengthAndPadTo(encrPmuByteLength + encrFsblByteLength, 0x0);
 
-        memcpy(partHdr->partition->section->Data, encrPmuDataBuffer, encrPmuByteLength);
-        memcpy(partHdr->partition->section->Data + encrPmuByteLength, encrFsblDataBuffer, encrFsblByteLength);
+        memcpy(partHdr->partition->section->Data.get(), encrPmuDataBuffer.get(), encrPmuByteLength);
+        memcpy(partHdr->partition->section->Data.get() + encrPmuByteLength, encrFsblDataBuffer.get(), encrFsblByteLength);
 
         partHdr->imageHeader->SetTotalPmuFwSizeIh(encrPmuByteLength);
         partHdr->imageHeader->SetTotalFsblFwSizeIh(encrFsblByteLength);
@@ -1219,30 +1195,29 @@ void ZynqMpEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr)
 
         LOG_INFO("Encrypted the partition - %s", partHdr->partition->section->Name.c_str());
         bi.options.CloseEncryptionDumpFile();
-        delete[] encrFsblDataBuffer;
-        delete[] encrPmuDataBuffer;
+        // Cleanup handled by unique_ptr
         return;
     }
     else
     {
         uint32_t encryptedLength;
         uint32_t estimatedEncrLength = partHdr->partition->section->Length + totalBlocksOverhead;
-        uint8_t* encryptedDataBuffer = new uint8_t[estimatedEncrLength];
+        auto encryptedDataBuffer = std::make_unique<uint8_t[]>(estimatedEncrLength);
 
         ChunkifyAndEncrypt(options,
-            partHdr->partition->section->Data,
+            partHdr->partition->section->Data.get(),
             (uint32_t)partHdr->partition->section->Length,
-            encryptedDataBuffer /* out*/,
+            encryptedDataBuffer.get() /* out*/,
             encryptedLength /* out */);
 
         partHdr->partition->section->IncreaseLengthAndPadTo(encryptedLength, 0x0);
-        memcpy(partHdr->partition->section->Data, encryptedDataBuffer, encryptedLength);
+        memcpy(partHdr->partition->section->Data.get(), encryptedDataBuffer.get(), encryptedLength);
         partHdr->partition->section->Length = encryptedLength;
         partHdr->imageHeader->SetTotalFsblFwSizeIh(encryptedLength);
 
         LOG_INFO("Encrypted the partition - %s", partHdr->partition->section->Name.c_str());
         bi.options.CloseEncryptionDumpFile();
-        delete[] encryptedDataBuffer;
+        // Cleanup handled by unique_ptr
         return;
     }
 }
@@ -1250,29 +1225,28 @@ void ZynqMpEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr)
 /******************************************************************************/
 void ZynqMpEncryptionContext::GenerateGreyKey()
 {
-#ifdef ENABLE_OBFUSCATED_KEY
+#ifndef ENABLE_OBFUSCATED_KEY
     ReadEncryptionKeyFile(aesFilename);
-    uint8_t *bhIv = new uint8_t[AES_GCM_IV_SZ];
-    uint8_t *redKey = new uint8_t[AES_GCM_KEY_SZ];
+    auto bhIv = std::make_unique<uint8_t[]>(AES_GCM_IV_SZ);
+    auto redKey = std::make_unique<uint8_t[]>(AES_GCM_KEY_SZ);
 
     if (aesKey != NULL)
     {
-        memcpy_be(redKey, aesKey, AES_GCM_KEY_SZ);
+        memcpy_be(redKey.get(), aesKey.get(), AES_GCM_KEY_SZ);
     }
     else
     {
         LOG_ERROR("Encryption Error !!!\n           Key 0 does not exist in the AES key file ");
     }
 
-    ReadBhIv(bhIv);
+    ReadBhIv(bhIv.get());
     std::string filename = "obfuscatedkey.txt";
-    obfs key(redKey, bhIv, metalFile.c_str(), filename.c_str());
+    obfs key(redKey.get(), bhIv.get(), metalFile.c_str(), filename.c_str());
     obfsk((void*)&key);
     LOG_TRACE("Obfuscated key file : '%s' generated successfully", filename.c_str());
     LOG_INFO("Obfuscated Key generated successfully");
 
-    delete[] bhIv;
-    delete[] redKey;
+    // Cleanup handled by unique_ptr
 #endif
 }
 
@@ -1280,20 +1254,20 @@ void ZynqMpEncryptionContext::GenerateGreyKey()
 void ZynqMpEncryptionContext::ReadBhIv(uint8_t* bhIv)
 {
     FileImport fileReader;
-    uint8_t* ivData = new uint8_t[AES_GCM_IV_SZ];
-    memset(ivData, 0, AES_GCM_IV_SZ);
+    auto ivData = std::make_unique<uint8_t[]>(AES_GCM_IV_SZ);
+    memset(ivData.get(), 0, AES_GCM_IV_SZ);
 
     if (bhKekIVFile != "")
     {
-        if (!fileReader.LoadHexData(bhKekIVFile, ivData, AES_GCM_IV_SZ))
+        if (!fileReader.LoadHexData(bhKekIVFile, ivData.get(), AES_GCM_IV_SZ))
         {
             LOG_ERROR("Invalid data bytes for BH IV.\n           Expected length for BH IV is 12 bytes");
         }
-        memcpy(bhIv, ivData, AES_GCM_IV_SZ);
+        memcpy(bhIv, ivData.get(), AES_GCM_IV_SZ);
     }
     else {
         LOG_ERROR("Key Generation Error !!!\n          BH IV must be specified in BIF file for obfuscated key generation. Use '[bh_key_iv]'");
     }
 
-    delete[] ivData;
+    // Cleanup handled by unique_ptr
 }

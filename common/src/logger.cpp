@@ -22,7 +22,7 @@
 */
 #include "logger.h"
 
-Logger* Logger::logger = NULL;
+std::unique_ptr<Logger> Logger::logger = nullptr;
 
 
 /*
@@ -34,11 +34,11 @@ Logger* Logger::logger = NULL;
 /******************************************************************************/
 Logger* Logger::Instance(void)
 {
-    if(logger == NULL)
+    if(logger == nullptr)
     {
-        logger = new Logger();
+        logger = std::unique_ptr<Logger>(new Logger());
     }
-    return logger;
+    return logger.get();
 }
 
 /******************************************************************************/

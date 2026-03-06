@@ -44,9 +44,10 @@ extern "C" {
 };
 
 #include "cdoutils.h"
+#include "checksum.h"
 
 static uint8_t bufferIndex = 0;
-std::list<CdoCommandDmaWrite*> Versal_2ve_2vmImageHeader::cdoSections;
+std::list<std::unique_ptr<CdoCommandDmaWrite>> Versal_2ve_2vmImageHeader::cdoSections;  // Smart pointers
 
 /*
 -------------------------------------------------------------------------------
@@ -67,19 +68,21 @@ Versal_2ve_2vmImageHeaderTable::Versal_2ve_2vmImageHeaderTable()
     , prebuilt(false)
     , dpacm(DpaCM::DpaCMDisable)
 {
-    section = new Section("MetaHeader", sizeof(Versal_2ve_2vmImageHeaderTableStructure));
-    iHTable = (Versal_2ve_2vmImageHeaderTableStructure*)section->Data;
+    auto temp_section = std::make_unique<Section>("MetaHeader", sizeof(Versal_2ve_2vmImageHeaderTableStructure));
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    iHTable = (Versal_2ve_2vmImageHeaderTableStructure*)section->Data.get();
 }
 
 /******************************************************************************/
 Versal_2ve_2vmImageHeaderTable::Versal_2ve_2vmImageHeaderTable(std::ifstream& src)
 {
     prebuilt = true;
-    section = new Section("MetaHeader", sizeof(Versal_2ve_2vmImageHeaderTableStructure));
-    iHTable = (Versal_2ve_2vmImageHeaderTableStructure*)section->Data;
+    auto temp_section = std::make_unique<Section>("MetaHeader", sizeof(Versal_2ve_2vmImageHeaderTableStructure));
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    iHTable = (Versal_2ve_2vmImageHeaderTableStructure*)section->Data.get();
     
     /* Import the Image Header Table from a boot image file */
-    src.read((char*)section->Data, section->Length);
+    src.read((char*)section->Data.get(), section->Length);
     creatorId = (iHTable->imageHeaderTableAttributes >> vihtImageCreatorIdShift) & vihtImageCreatorIdMask;
     parentId = iHTable->parentId;
     pdiId = iHTable->pdiId;
@@ -98,8 +101,10 @@ Versal_2ve_2vmImageHeaderTable::Versal_2ve_2vmImageHeaderTable(std::ifstream& sr
     if (hashBlockSectionLength != 0)
     {
         src.seekg(iHTable->hashBlockOffset * 4);
-        hashBlockSection = new Section("HashBlock1", hashBlockSectionLength);
-        src.read((char*)hashBlockSection->Data, hashBlockSectionLength);
+        // Use smart pointer locally, then release for base class raw pointer
+        auto hashBlockPtr = std::make_unique<Section>("HashBlock1", hashBlockSectionLength);
+        src.read((char*)hashBlockPtr->Data.get(), hashBlockSectionLength);
+        hashBlockSection = hashBlockPtr.release();
     }
 
 }
@@ -109,7 +114,6 @@ Versal_2ve_2vmImageHeaderTable::~Versal_2ve_2vmImageHeaderTable()
 {
     if (section != NULL)
     {
-        delete section;
     }
 }
 
@@ -120,7 +124,8 @@ void Versal_2ve_2vmImageHeaderTable::Build(BootImage& bi, Binary& cache)
 
     if (section != NULL)
     {
-        cache.Sections.push_back(section);
+        cache.Sections.push_back(std::unique_ptr<Section>(section));
+
     }
 
     if (!prebuilt)
@@ -139,7 +144,7 @@ void Versal_2ve_2vmImageHeaderTable::Build(BootImage& bi, Binary& cache)
         SetIdentificationString(bi.IsBootloaderFound());
         SetIds((bi.imageList.size() != 0) && true);
         metaHdrKeySrc = bi.options.bifOptions->metaHdrAttributes.encrKeySource;
-        SetMetaHdrSecureHdrIv(metaHdrSecHdrIv);
+        SetMetaHdrSecureHdrIv(metaHdrSecHdrIv.get());
         dpacm = bi.bifOptions->metaHdrAttributes.dpaCM;
         pufHDLoc = bi.bifOptions->metaHdrAttributes.pufHdLoc;
     }
@@ -188,7 +193,7 @@ void Versal_2ve_2vmImageHeaderTable::Build(BootImage& bi, Binary& cache)
             pufHDLoc = bi.bifOptions->metaHdrAttributes.pufHdLoc;
         }
 
-        SetOptionalData(bi.iht_optional_data, bi.iht_optional_data_length);
+        SetOptionalData(bi.iht_optional_data.get(), bi.iht_optional_data_length);
     }
 
 
@@ -235,7 +240,6 @@ void Versal_2ve_2vmImageHeaderTable::Build(BootImage& bi, Binary& cache)
             imageHeaderList.push_back(*image);
         }
     }
-
     bi.options.SetPadHeaderTable(false);
     if (bi.options.DoPadHeaderTable())
     {
@@ -259,8 +263,8 @@ void Versal_2ve_2vmImageHeaderTable::Build(BootImage& bi, Binary& cache)
 
     //if ((bi.GetDeviceArchitecture() == Arch::TELLURIDE)) //|| (bi.options.IsAuthOptimizationEnabled()))
     {
-        uint8_t* hash = new uint8_t[bi.hash->GetHashLength()];
-        bi.hashTable.push_back(std::pair<uint32_t, uint8_t*>(0, hash));
+        auto hash = std::make_unique<uint8_t[]>(bi.hash->GetHashLength());
+        bi.hashTable.push_back(std::make_pair(0, std::move(hash)));
         bi.numHashTableEntries++;
 
         uint32_t i = 0;
@@ -275,11 +279,11 @@ void Versal_2ve_2vmImageHeaderTable::Build(BootImage& bi, Binary& cache)
         }
     }
 
-    bi.imageHeaderTable->SetUserOptionalData(bi.bifOptions->metaHdrAttributes.ihtOptionalDataInfo);
+    bi.imageHeaderTable->SetUserOptionalData(bi.bifOptions->metaHdrAttributes.ihtOptionalDataInfo, bi.numHashTableEntries);
     bi.iht_optional_data_length = iht_optional_data_length;
     bi.copied_iht_optional_data_length = copied_iht_optional_data_length;
-    bi.iht_optional_data = (uint32_t*)realloc(bi.iht_optional_data, bi.iht_optional_data_length);
-    memcpy(bi.iht_optional_data, iht_optional_data, iht_optional_data_length);
+    bi.iht_optional_data = std::make_unique<uint32_t[]>(bi.iht_optional_data_length / sizeof(uint32_t));
+    memcpy(bi.iht_optional_data.get(), iht_optional_data.get(), iht_optional_data_length);
 
     SetReservedFields();
 }
@@ -581,13 +585,13 @@ void Versal_2ve_2vmImageHeaderTable::SetMetaHdrKeySrc(KeySource::Type keyType, B
 /******************************************************************************/
 void Versal_2ve_2vmImageHeaderTable::SetMetaHdrGreyOrBlackIv(std::string ivFile)
 {
-    uint8_t* ivData = new uint8_t[IV_LENGTH * 4];
-    memset(ivData, 0, IV_LENGTH * 4);
+    auto ivData = std::make_unique<uint8_t[]>(IV_LENGTH * 4);
+    memset(ivData.get(), 0, IV_LENGTH * 4);
 
     if (ivFile != "")
     {
         FileImport fileReader;
-        if (!fileReader.LoadHexData(ivFile, ivData, IV_LENGTH * 4))
+        if (!fileReader.LoadHexData(ivFile, ivData.get(), IV_LENGTH * 4))
         {
             LOG_ERROR("Invalid no. of data bytes for Black/Grey Key IV.\n           Expected length for Grey/Black IV is 12 bytes");
         }
@@ -600,8 +604,7 @@ void Versal_2ve_2vmImageHeaderTable::SetMetaHdrGreyOrBlackIv(std::string ivFile)
         }
     }
 
-    memcpy(&iHTable->metaHdrGreyOrBlackIV, ivData, IV_LENGTH * 4);
-    delete[] ivData;
+    memcpy(&iHTable->metaHdrGreyOrBlackIV, ivData.get(), IV_LENGTH * 4);
 }
 
 /******************************************************************************/
@@ -680,8 +683,8 @@ void Versal_2ve_2vmImageHeaderTable::SetXplmModulesData(BootImage& bi, uint32_t 
     if (size != 0)
     {
         bi.xplm_modules_data_length = size;
-        bi.xplm_modules_data = (uint32_t*)malloc(bi.xplm_modules_data_length);
-        memcpy(bi.xplm_modules_data, data, bi.xplm_modules_data_length);
+        bi.xplm_modules_data = std::make_unique<uint32_t[]>(bi.xplm_modules_data_length / sizeof(uint32_t));
+        memcpy(bi.xplm_modules_data.get(), data, bi.xplm_modules_data_length);
     }
 }
 
@@ -691,13 +694,13 @@ void Versal_2ve_2vmImageHeaderTable::SetOptionalData(uint32_t * data, uint32_t s
     iht_optional_data_length = size;
     if (size != 0)
     {
-        iht_optional_data = (uint32_t*)malloc(iht_optional_data_length);
-        memcpy(iht_optional_data, data, iht_optional_data_length);
+        iht_optional_data = std::make_unique<uint32_t[]>(iht_optional_data_length / sizeof(uint32_t));
+        memcpy(iht_optional_data.get(), data, iht_optional_data_length);
     }
 }
 
 /******************************************************************************/
-void Versal_2ve_2vmImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t numHashTableEntries)
+void Versal_2ve_2vmImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t numHashTableEntries, uint32_t isCorePsm)
 {
     for (size_t i = 0; i < optionalDataInfo.size(); i++)
     {
@@ -710,28 +713,36 @@ void Versal_2ve_2vmImageHeaderTable::SetUserOptionalData(std::vector<std::pair<s
             uint16_t sectn_length = sizeof(uint32_t) + size + sizeof(uint32_t);
             sectn_size_id = (uint32_t)((sectn_length / 4) << 16) | (optionalDataInfo[i].second);
 
-            iht_optional_data = (uint32_t*)realloc(iht_optional_data, iht_optional_data_length + sectn_length);
-            memcpy((uint32_t*)iht_optional_data + (iht_optional_data_length / 4), &sectn_size_id, sizeof(uint32_t));
-            memcpy((uint32_t*)iht_optional_data + (iht_optional_data_length / 4) + sizeof(uint32_t) / 4, data, size);
+            auto new_data = std::make_unique<uint32_t[]>((iht_optional_data_length + sectn_length) / sizeof(uint32_t));
+            if (iht_optional_data) {
+                memcpy(new_data.get(), iht_optional_data.get(), iht_optional_data_length);
+            }
+            memcpy(new_data.get() + (iht_optional_data_length / 4), &sectn_size_id, sizeof(uint32_t));
+            memcpy(new_data.get() + (iht_optional_data_length / 4) + sizeof(uint32_t) / 4, data, size);
 
-            uint32_t checksum = ComputeWordChecksum((uint32_t*)iht_optional_data + (iht_optional_data_length / 4), sectn_length - sizeof(uint32_t));
-            memcpy((uint32_t*)iht_optional_data + (iht_optional_data_length / 4) + (sectn_length - sizeof(uint32_t)) / 4, &checksum, sizeof(uint32_t));
-
+            uint32_t checksum = ComputeWordChecksum(new_data.get() + (iht_optional_data_length / 4), sectn_length - sizeof(uint32_t));
+            memcpy(new_data.get() + (iht_optional_data_length / 4) + (sectn_length - sizeof(uint32_t)) / 4, &checksum, sizeof(uint32_t));
+            iht_optional_data = std::move(new_data);
             iht_optional_data_length += sectn_length;
         }
     }
 
+    copied_iht_optional_data_length = iht_optional_data_length;
     if (iht_optional_data_length != 0)
     {
         uint32_t padLength = (iht_optional_data_length % 64 != 0) ? 64 - (iht_optional_data_length % 64) : 0;
-        iht_optional_data = (uint32_t*)realloc(iht_optional_data, iht_optional_data_length + padLength);
-        memset((uint32_t*)iht_optional_data + (iht_optional_data_length / 4), 0xFF, padLength);
+        auto new_data = std::make_unique<uint32_t[]>((iht_optional_data_length + padLength) / sizeof(uint32_t));
+        if (iht_optional_data) {
+            memcpy(new_data.get(), iht_optional_data.get(), iht_optional_data_length);
+        }
+        memset(new_data.get() + (iht_optional_data_length / 4), 0xFF, padLength);
+        iht_optional_data = std::move(new_data);
         iht_optional_data_length += padLength;
 
         section->IncreaseLengthAndPadTo(sizeof(Versal_2ve_2vmImageHeaderTableStructure) + iht_optional_data_length, 0);
-        memcpy(section->Data + sizeof(Versal_2ve_2vmImageHeaderTableStructure), iht_optional_data, iht_optional_data_length);
+        memcpy(section->Data.get() + sizeof(Versal_2ve_2vmImageHeaderTableStructure), iht_optional_data.get(), iht_optional_data_length);
 
-        iHTable = (Versal_2ve_2vmImageHeaderTableStructure*)section->Data;
+        iHTable = (Versal_2ve_2vmImageHeaderTableStructure*)section->Data.get();
         iHTable->optionalDataSize = iht_optional_data_length / 4;
     }
     LOG_TRACE("User optional data is processed");
@@ -740,7 +751,7 @@ void Versal_2ve_2vmImageHeaderTable::SetUserOptionalData(std::vector<std::pair<s
 /******************************************************************************/
 void Versal_2ve_2vmImageHeaderTable::RealignSectionDataPtr(void)
 {
-    iHTable = (Versal_2ve_2vmImageHeaderTableStructure*)section->Data;
+    iHTable = (Versal_2ve_2vmImageHeaderTableStructure*)section->Data.get();
 }
 
 /******************************************************************************/
@@ -794,7 +805,7 @@ void Versal_2ve_2vmImageHeaderTable::ValidateSecurityCombinations(Authentication
 Versal_2ve_2vmImageHeader::Versal_2ve_2vmImageHeader(std::string& filename)
     : ImageHeader(filename)
     , imageHeader(NULL)
-    , cdoHeader(NULL)
+    , cdoHeader(nullptr)
     , aie_array_base_address(AIE_BASE_ADDR)
     , coreBaseAddr(0)
     , southBankBaseAddr(0)
@@ -806,15 +817,16 @@ Versal_2ve_2vmImageHeader::Versal_2ve_2vmImageHeader(std::string& filename)
     Name = StringUtils::BaseName(filename);
     uint32_t size = sizeof(Versal_2ve_2vmImageHeaderStructure);
 
-    section = new Section("ImageHeader " + Name, size);
-    memset(section->Data, 0, size);
+    auto temp_section = std::make_unique<Section>("ImageHeader " + Name, size);
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    memset(section->Data.get(), 0, size);
 }
 
 /******************************************************************************/
 Versal_2ve_2vmImageHeader::Versal_2ve_2vmImageHeader(uint8_t* data, uint64_t len)
     : ImageHeader(data, len)
     , imageHeader(NULL)
-    , cdoHeader(NULL)
+    , cdoHeader(nullptr)
     , aie_array_base_address(AIE_BASE_ADDR)
     , coreBaseAddr(0)
     , southBankBaseAddr(0)
@@ -826,15 +838,16 @@ Versal_2ve_2vmImageHeader::Versal_2ve_2vmImageHeader(uint8_t* data, uint64_t len
     Name = "Buffer" + StringUtils::Format(".%d", bufferIndex++);
     uint32_t size = sizeof(Versal_2ve_2vmImageHeaderStructure);
 
-    section = new Section("ImageHeader " + Name, size);
-    memset(section->Data, 0, size);
+    auto temp_section = std::make_unique<Section>("ImageHeader " + Name, size);
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    memset(section->Data.get(), 0, size);
 }
 
 /******************************************************************************/
 Versal_2ve_2vmImageHeader::Versal_2ve_2vmImageHeader(std::ifstream& ifs, bool IsBootloader)
     : ImageHeader(ifs)
     , imageHeader(NULL)
-    , cdoHeader(NULL)
+    , cdoHeader(nullptr)
     , aie_array_base_address(AIE_BASE_ADDR)
     , coreBaseAddr(0)
     , southBankBaseAddr(0)
@@ -873,8 +886,9 @@ Versal_2ve_2vmImageHeader::Versal_2ve_2vmImageHeader(std::ifstream& ifs, bool Is
     uint32_t size = sizeof(Versal_2ve_2vmImageHeaderStructure);
 
     ifs.seekg(pos);
-    section = new Section("ImageHeader " + Name, size);
-    imageHeader = (Versal_2ve_2vmImageHeaderStructure*)section->Data;
+    auto temp_section = std::make_unique<Section>("ImageHeader " + Name, size);
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    imageHeader = (Versal_2ve_2vmImageHeaderStructure*)section->Data.get();
     ifs.read((char*)imageHeader, size);
 
     uint32_t count = 0;
@@ -889,7 +903,7 @@ Versal_2ve_2vmImageHeader::Versal_2ve_2vmImageHeader(std::ifstream& ifs, bool Is
     {
         Bootloader = IsBootloader;
 
-        Versal_2ve_2vmPartitionHeader* hdr = new Versal_2ve_2vmPartitionHeader(this, index);
+        auto hdr = std::make_unique<Versal_2ve_2vmPartitionHeader>(this, index);
         if (!firstValidHdr)
         {
             hdr->firstValidIndex = true;
@@ -902,7 +916,7 @@ Versal_2ve_2vmImageHeader::Versal_2ve_2vmImageHeader(std::ifstream& ifs, bool Is
         {
             hdr->preencrypted = true;
         }
-        partitionHeaderList.push_back(hdr);
+        partitionHeaderList.push_back(hdr.release());
 
         Alignment = 0;
         Offset = 0;
@@ -937,15 +951,16 @@ Versal_2ve_2vmImageHeader::Versal_2ve_2vmImageHeader(std::ifstream& ifs, Versal_
     Name = importedIH->imageName;
     uint32_t size = sizeof(Versal_2ve_2vmImageHeaderStructure);
 
-    section = new Section("ImageHeader " + Name, size);
-    imageHeader = (Versal_2ve_2vmImageHeaderStructure*)section->Data;
+    auto temp_section = std::make_unique<Section>("ImageHeader " + Name, size);
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    imageHeader = (Versal_2ve_2vmImageHeaderStructure*)section->Data.get();
     memcpy(imageHeader, importedIH, size);
     
     uint32_t offset =  (imageHeader->partitionHeaderWordOffset * sizeof(uint32_t)) + (img_index * sizeof(Versal_2ve_2vmPartitionHeaderTableStructure));
 
-    Versal_2ve_2vmPartitionHeaderTableStructure* tempPHT = new Versal_2ve_2vmPartitionHeaderTableStructure;
+    auto tempPHT = std::make_unique<Versal_2ve_2vmPartitionHeaderTableStructure>();
     ifs.seekg(offset);
-    ifs.read((char*)tempPHT, sizeof(Versal_2ve_2vmPartitionHeaderTableStructure));
+    ifs.read((char*)tempPHT.get(), sizeof(Versal_2ve_2vmPartitionHeaderTableStructure));
 
     uint32_t count = 0;
     if (imageHeader->dataSectionCount < 32)
@@ -953,13 +968,13 @@ Versal_2ve_2vmImageHeader::Versal_2ve_2vmImageHeader(std::ifstream& ifs, Versal_
         count = tempPHT->dataSectionCount;
     }
 
-    delete tempPHT;
+    // Cleanup handled by unique_ptr
 
     for (uint8_t index = 0; index < count; index++)
     {
         Bootloader = IsBootloader;
 
-        Versal_2ve_2vmPartitionHeader* hdr = new Versal_2ve_2vmPartitionHeader(this, index);
+        auto hdr = std::make_unique<Versal_2ve_2vmPartitionHeader>(this, index);
         if (!firstValidHdr)
         {
             hdr->firstValidIndex = true;
@@ -972,24 +987,25 @@ Versal_2ve_2vmImageHeader::Versal_2ve_2vmImageHeader(std::ifstream& ifs, Versal_
         {
             hdr->preencrypted = true;
         }
-        partitionHeaderList.push_back(hdr);
+        Versal_2ve_2vmPartitionHeader* hdrRaw = hdr.release();
+        partitionHeaderList.push_back(hdrRaw);
 
         Alignment = 0;
         Offset = 0;
         Reserve = 0;
 
-        destCpu = (DestinationCPU::Type)hdr->GetDestinationCpu();
-        exceptionLevel = (ExceptionLevel::Type)hdr->GetExceptionLevel();
-        trustzone = (TrustZone::Type)hdr->GetTrustZone();
-        early_handoff = hdr->GetEarlyHandoff();
-        hivec = hdr->GetHivec();
-        partitionType = hdr->GetPartitionType();
-        PartOwner = (PartitionOwner::Type)hdr->GetOwnerType();
-        dpacm = hdr->GetDpaCMFlag();
-        pufHdLoc = hdr->GetPufHdLocation();
-        offset += hdr->GetPartitionHeaderSize();
-        cluster = hdr->GetDestinationCluster();
-        lockstep = hdr->GetLockStepFlag();
+        destCpu = (DestinationCPU::Type)hdrRaw->GetDestinationCpu();
+        exceptionLevel = (ExceptionLevel::Type)hdrRaw->GetExceptionLevel();
+        trustzone = (TrustZone::Type)hdrRaw->GetTrustZone();
+        early_handoff = hdrRaw->GetEarlyHandoff();
+        hivec = hdrRaw->GetHivec();
+        partitionType = hdrRaw->GetPartitionType();
+        PartOwner = (PartitionOwner::Type)hdrRaw->GetOwnerType();
+        dpacm = hdrRaw->GetDpaCMFlag();
+        pufHdLoc = hdrRaw->GetPufHdLocation();
+        offset += hdrRaw->GetPartitionHeaderSize();
+        cluster = hdrRaw->GetDestinationCluster();
+        lockstep = hdrRaw->GetLockStepFlag();
     }
 }
 /******************************************************************************/
@@ -997,7 +1013,6 @@ Versal_2ve_2vmImageHeader::~Versal_2ve_2vmImageHeader()
 {
     if (section != NULL)
     {
-        delete section;
     }
 }
 
@@ -1140,7 +1155,7 @@ void Versal_2ve_2vmImageHeader::Build(BootImage& bi, Binary& cache)
 
     if (imageHeader == NULL)
     {
-        imageHeader = (Versal_2ve_2vmImageHeaderStructure*)section->Data;
+        imageHeader = (Versal_2ve_2vmImageHeaderStructure*)section->Data.get();
         SetImageName();
         SetImageHeaderAttributes();
         SetDataSectionCount(0);
@@ -1203,7 +1218,7 @@ void Versal_2ve_2vmImageHeader::ImportBin(BootImage& bi)
 
     uint32_t dataValue;
     uint32_t alignlen = data.len + ((4 - (data.len & 3)) & 3);
-    uint8_t* tempBuffer = new uint8_t[alignlen];
+    auto tempBuffer = std::make_unique<uint8_t[]>(alignlen);
 
     if (GetPartitionType() == PartitionType::CONFIG_DATA_OBJ)
     {
@@ -1226,11 +1241,11 @@ void Versal_2ve_2vmImageHeader::ImportBin(BootImage& bi)
             dataValue = ReadBigEndian32(data.bytes + index);
             if (change_endianness)
             {
-                WriteLittleEndian32(tempBuffer + index, dataValue);
+                WriteLittleEndian32(tempBuffer.get() + index, dataValue);
             }
             else
             {
-                WriteBigEndian32(tempBuffer + index, dataValue);
+                WriteBigEndian32(tempBuffer.get() + index, dataValue);
             }
         }
         //if (PostProcessCdo(tempBuffer, data.len)) return;
@@ -1252,16 +1267,17 @@ void Versal_2ve_2vmImageHeader::ImportBin(BootImage& bi)
             for (uint8_t i = 0; i < 4; i++)
             {
                 value[i] = ReadBigEndian32(data.bytes + index + (4 * i));
-                WriteLittleEndian32(tempBuffer + index + 4 * (3 - i), value[i]);
+                WriteLittleEndian32(tempBuffer.get() + index + 4 * (3 - i), value[i]);
             }
         }
+        
         exec_addr = 0;
     }
     else
     {
-        memcpy(tempBuffer, data.bytes, alignlen);
+        memcpy(tempBuffer.get(), data.bytes, alignlen);
     }
-    PartitionHeader* hdr = new Versal_2ve_2vmPartitionHeader(this, 0);
+    auto hdr = std::make_unique<Versal_2ve_2vmPartitionHeader>(this, 0);
     hdr->firstValidIndex = true;
     hdr->loadAddress = load_addr;
     hdr->execAddress = exec_addr;
@@ -1279,11 +1295,11 @@ void Versal_2ve_2vmImageHeader::ImportBin(BootImage& bi)
             }
         }
     }
-    hdr->partition = new Versal_2ve_2vmPartition(hdr, tempBuffer, alignlen);
+    hdr->partition = std::make_unique<Versal_2ve_2vmPartition>(hdr.get(), tempBuffer.get(), alignlen);  // Partition copies data
     hdr->partitionSize = alignlen;
-    delete[] tempBuffer;
-    SetLoadAndExecAddress(hdr);
-    partitionHeaderList.push_back(hdr);
+    // tempBuffer unique_ptr automatically cleans up
+    SetLoadAndExecAddress(hdr.get());
+    partitionHeaderList.push_back(hdr.release());
 }
 
 /******************************************************************************/
@@ -1291,7 +1307,7 @@ void Versal_2ve_2vmImageHeader::ImportBuffer(BootImage& bi)
 {
     SetDomain(Domain::PS);
 
-    PartitionHeader* hdr = new Versal_2ve_2vmPartitionHeader(this, 0);
+    auto hdr = std::make_unique<Versal_2ve_2vmPartitionHeader>(this, 0);
     hdr->firstValidIndex = true;
 
     hdr->execAddress = Startup.ValueOrDefault(0);
@@ -1321,9 +1337,9 @@ void Versal_2ve_2vmImageHeader::ImportBuffer(BootImage& bi)
             }
         }
     }
-    hdr->partition = new Versal_2ve_2vmPartition(hdr, buffer, bufferSize);
+    hdr->partition = std::make_unique<Versal_2ve_2vmPartition>(hdr.get(), buffer, bufferSize);
     hdr->partitionSize = bufferSize;
-    partitionHeaderList.push_back(hdr);
+    partitionHeaderList.push_back(hdr.release());
 }
 
 /******************************************************************************/
@@ -1342,14 +1358,15 @@ void Versal_2ve_2vmImageHeader::ImportNpi(BootImage& bi)
     {
         LOG_ERROR("Cannot read NPI file - %s ", Filename.c_str());
     }
-    BitFile *bit = new Versal_2ve_2vmBitFile(stream);
+    auto bit = std::make_unique<Versal_2ve_2vmBitFile>(stream);
     bit->ParseBit(bi);
     bi.bitFilename = Filename.c_str();
 
     /* The endianess is different (Big Endian) in case of Zynq MP/FPGA encryption cases. All other cases the
     the bitstream is copied as Little Endian */
-    OutputStream *os = bit->GetOutputStreamType();
-    bit->CopyNpi(os);
+    auto os = bit->GetOutputStreamType();
+    bit->CopyNpi(os.get());
+     // Clean up BitFile to prevent memory leak
 
     /* Bitstream sizes should be word aligned. Otherwise bitstream is invalid */
     if (os->Size() % 4)
@@ -1367,7 +1384,7 @@ void Versal_2ve_2vmImageHeader::ImportNpi(BootImage& bi)
 
     //if (PostProcessCdo(os->Start(), os->Size())) return;
 
-    PartitionHeader* hdr = new Versal_2ve_2vmPartitionHeader(this, 0);
+    auto hdr = std::make_unique<Versal_2ve_2vmPartitionHeader>(this, 0);
     hdr->firstValidIndex = true;
     hdr->execAddress = 0;
 
@@ -1378,9 +1395,9 @@ void Versal_2ve_2vmImageHeader::ImportNpi(BootImage& bi)
     hdr->transferSize = os->Size();
     hdr->preservedBitstreamHdr = os->pHdr;
 
-    hdr->partition = new Versal_2ve_2vmPartition(hdr, os->Start(), os->Size());
+    hdr->partition = std::make_unique<Versal_2ve_2vmPartition>(hdr.get(), os->Start(), os->Size());
 
-    partitionHeaderList.push_back(hdr);
+    partitionHeaderList.push_back(hdr.release());
 }
 
 /******************************************************************************/
@@ -1418,14 +1435,15 @@ void Versal_2ve_2vmImageHeader::ImportBit(BootImage& bi)
     {
         LOG_ERROR("Cannot read BIT file - %s ", Filename.c_str());
     }
-    BitFile *bit = new Versal_2ve_2vmBitFile(stream);
+    auto bit = std::make_unique<Versal_2ve_2vmBitFile>(stream);
     bit->ParseBit(bi);
     bi.bitFilename = Filename.c_str();
 
     /* The endianess is different (Big Endian) in case of Zynq MP/FPGA encryption cases. All other cases the
     the bitstream is copied as Little Endian */
-    OutputStream *os = bit->GetOutputStreamType();
-    bit->Copy(os);
+    auto os = bit->GetOutputStreamType();
+    bit->Copy(os.get());
+     // Clean up BitFile to prevent memory leak
 
     /* Bitstream sizes should be word aligned. Otherwise bitstream is invalid */
     if (os->Size() % 4)
@@ -1444,7 +1462,7 @@ void Versal_2ve_2vmImageHeader::ImportBit(BootImage& bi)
 
 
 
-    PartitionHeader* hdr = new Versal_2ve_2vmPartitionHeader(this, 0);
+    auto hdr = std::make_unique<Versal_2ve_2vmPartitionHeader>(this, 0);
     hdr->firstValidIndex = true;
     hdr->execAddress = 0;
 
@@ -1455,9 +1473,9 @@ void Versal_2ve_2vmImageHeader::ImportBit(BootImage& bi)
     hdr->transferSize = os->Size();
     hdr->preservedBitstreamHdr = os->pHdr;
     SetPartitionType(PartitionType::CFI);
-    hdr->partition = new Versal_2ve_2vmPartition(hdr, os->Start(), os->Size());
+    hdr->partition = std::make_unique<Versal_2ve_2vmPartition>(hdr.get(), os->Start(), os->Size());
 
-    partitionHeaderList.push_back(hdr);
+    partitionHeaderList.push_back(hdr.release());
 }
 
 /******************************************************************************/
@@ -1554,16 +1572,16 @@ void Versal_2ve_2vmImageHeader::ImportCdoSource(BootImage& bi)
     size_t size = 0;
     buffer = DecodeCdo(Filename, &size);
     //if (PostProcessCdo(buffer, size)) return;
-    PartitionHeader* hdr = new Versal_2ve_2vmPartitionHeader(this, 0);
+    auto hdr = std::make_unique<Versal_2ve_2vmPartitionHeader>(this, 0);
     hdr->firstValidIndex = true;
     hdr->loadAddress = 0xFFFFFFFFFFFFFFFF;
     hdr->execAddress = 0;
 
-    hdr->partition = new Versal_2ve_2vmPartition(hdr, buffer, size);
+    hdr->partition = std::make_unique<Versal_2ve_2vmPartition>(hdr.get(), buffer, size);
     hdr->partitionSize = size;
-    delete[] buffer;
-    SetLoadAndExecAddress(hdr);
-    partitionHeaderList.push_back(hdr);
+    free(buffer);  // cdoseq_to_binary uses malloc, so use free() not delete[]
+    SetLoadAndExecAddress(hdr.get());
+    partitionHeaderList.push_back(hdr.release());
 }
 
 /******************************************************************************/
@@ -1577,7 +1595,7 @@ void Versal_2ve_2vmImageHeader::ImportCdo(BootImage& bi)
         ParseCdos(bi, filelist, &buffer, &size, false);
     }
     SetPartitionType(PartitionType::CONFIG_DATA_OBJ);
-    PartitionHeader* hdr = new Versal_2ve_2vmPartitionHeader(this, 0);
+    auto hdr = std::make_unique<Versal_2ve_2vmPartitionHeader>(this, 0);
     hdr->firstValidIndex = true;
     hdr->loadAddress = 0xFFFFFFFFFFFFFFFF;
     hdr->execAddress = 0;
@@ -1596,11 +1614,11 @@ void Versal_2ve_2vmImageHeader::ImportCdo(BootImage& bi)
         }
     }
 
-    hdr->partition = new Versal_2ve_2vmPartition(hdr, buffer, size);
+    hdr->partition = std::make_unique<Versal_2ve_2vmPartition>(hdr.get(), buffer, size);
     hdr->partitionSize = hdr->transferSize = size;
-    delete[] buffer;
-    SetLoadAndExecAddress(hdr);
-    partitionHeaderList.push_back(hdr);
+    free(buffer);  // ParseCdos uses malloc (C library), so use free() not delete[]
+    SetLoadAndExecAddress(hdr.get());
+    partitionHeaderList.push_back(hdr.release());
 }
 
 /******************************************************************************/
@@ -1625,7 +1643,7 @@ void Versal_2ve_2vmImageHeader::Link(BootImage &bi, PartitionHeader* partitionHe
     fullBhSize = bi.options.bootheaderSize;
     allHdrSize = bi.options.allHeaderSize;
 
-    imageHeader = (Versal_2ve_2vmImageHeaderStructure*)section->Data;
+    imageHeader = (Versal_2ve_2vmImageHeaderStructure*)section->Data.get();
     if (partitionHeader->section != NULL)
     {
         SetPartitionHeaderOffset((uint32_t)partitionHeader->section->Address);
@@ -1743,7 +1761,7 @@ void Versal_2ve_2vmImageHeader::ImportElf(BootImage& bi)
 
     /* Get the ELF Class format - 32-bit elf vs 64-bit elf */
     elfClass = GetElfClass(data.bytes);
-    ElfFormat* elf = ElfFormat::GetElfFormat(elfClass, data.bytes, &proc_state);
+    auto elf = ElfFormat::GetElfFormat(elfClass, data.bytes, &proc_state);
 
     /* Check for no. of executable sections & non-zero size LOAD sections */
     uint8_t exec_count = 0;
@@ -1777,7 +1795,7 @@ void Versal_2ve_2vmImageHeader::ImportElf(BootImage& bi)
 
     Binary::Address_t load_addr = 0;
     Binary::Address_t exec_addr = 0;
-    uint8_t *partition_data = NULL;
+    std::vector<uint8_t> partition_data;  // Changed from raw pointer to vector for automatic memory management
 
     /* Loop through all the program headers and populate the fields exec, load address etc. */
     for (uint8_t iprog = 0; iprog < elf->programHdrEntryCount; iprog++)
@@ -1810,14 +1828,14 @@ void Versal_2ve_2vmImageHeader::ImportElf(BootImage& bi)
                     if (filler_bytes != 0)
                     {
                         total_size += filler_bytes;
-                        partition_data = (uint8_t*)realloc(partition_data, total_size);
-                        memset(partition_data + offset, 0, filler_bytes);
+                        partition_data.resize(total_size);
+                        memset(partition_data.data() + offset, 0, filler_bytes);
                         offset = total_size;
                     }
                 }
                 total_size += size;
-                partition_data = (uint8_t*)realloc(partition_data, total_size);
-                memcpy(partition_data + offset, elf->GetProgramHeaderData(iprog), size);
+                partition_data.resize(total_size);
+                memcpy(partition_data.data() + offset, elf->GetProgramHeaderData(iprog), size);
                 prev_end = addr + size;
                 offset = total_size;
             }
@@ -1872,12 +1890,12 @@ void Versal_2ve_2vmImageHeader::ImportElf(BootImage& bi)
                 /* Append PMC CDO to PMC FW to create a single partition */
                 pmcdataSize = totalpmcdataSize = cdo_length + total_cdo_pad_bytes;
                 total_size = pmc_fw_size + pmc_fw_pad_bytes + pmcdataSize;
-                partition_data = (uint8_t*)realloc(partition_data, total_size);
-                memset(partition_data + pmc_fw_size, 0, pmc_fw_pad_bytes);
-                memcpy(partition_data + pmc_fw_size + pmc_fw_pad_bytes, cdo_partition, cdo_length);
-                memset(partition_data + pmc_fw_size + pmc_fw_pad_bytes + cdo_length, 0, total_cdo_pad_bytes);
+                partition_data.resize(total_size);
+                memset(partition_data.data() + pmc_fw_size, 0, pmc_fw_pad_bytes);
+                memcpy(partition_data.data() + pmc_fw_size + pmc_fw_pad_bytes, cdo_partition, cdo_length);
+                memset(partition_data.data() + pmc_fw_size + pmc_fw_pad_bytes + cdo_length, 0, total_cdo_pad_bytes);
 
-                delete[] cdo_partition;
+                free(cdo_partition);  // ParseCdos uses malloc (C library), so use free() not delete[]
                 if (bi.bifOptions->GetPmcDataBuffer() != NULL)
                 {
                     pmcdataSize = bi.bifOptions->pmcdataSize;
@@ -1912,12 +1930,12 @@ void Versal_2ve_2vmImageHeader::ImportElf(BootImage& bi)
                         }
                     }
                 }
-                partition_data = (uint8_t*)malloc(total_size);
-                memcpy(partition_data, elf->GetProgramHeaderData(iprog), total_size);
+                partition_data.resize(total_size);
+                memcpy(partition_data.data(), elf->GetProgramHeaderData(iprog), total_size);
             }
         }
 
-        if (partition_data != NULL)
+        if (!partition_data.empty())
         {
             if (hdr_index == 0)
             {
@@ -1933,7 +1951,7 @@ void Versal_2ve_2vmImageHeader::ImportElf(BootImage& bi)
             {
                 load_addr = Load.Value();
             }
-            PartitionHeader* partHdr = new Versal_2ve_2vmPartitionHeader(this, hdr_index);
+            auto partHdr = std::make_unique<Versal_2ve_2vmPartitionHeader>(this, hdr_index);
             partHdr->firstValidIndex = first_index;
             partHdr->elfEndianess = elf->endian;
             partHdr->execAddress = exec_addr;
@@ -1945,7 +1963,7 @@ void Versal_2ve_2vmImageHeader::ImportElf(BootImage& bi)
                 partHdr->update_atf_handoff_params = true;
             }
 
-            partHdr->partition = new Versal_2ve_2vmPartition(partHdr, partition_data, total_size);
+            partHdr->partition = std::make_unique<Versal_2ve_2vmPartition>(partHdr.get(), partition_data.data(), total_size);
 
             // This length also includes padding size necessary for 16-byte alignment
             if(Bootloader)
@@ -1959,10 +1977,11 @@ void Versal_2ve_2vmImageHeader::ImportElf(BootImage& bi)
             
             //partHdr->partitionSize = partHdr->partition->section->Length;
 
-            partitionHeaderList.push_back(partHdr);
+            partitionHeaderList.push_back(partHdr.release());
             hdr_index++;
-            free(partition_data);
-            partition_data = NULL;
+            
+            // Clear the vector after partition is created (partition constructor makes a copy)
+            partition_data.clear();
         }
     }
 }
@@ -1970,7 +1989,7 @@ void Versal_2ve_2vmImageHeader::ImportElf(BootImage& bi)
 /******************************************************************************/
 void Versal_2ve_2vmImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> filelist, uint8_t** cdo_data, size_t* cdo_size, bool add_ssit_sync_master)
 {
-    uint8_t* total_cdo_data = NULL;
+    std::vector<uint8_t> total_cdo_data;  // Changed from raw pointer to vector for automatic memory management
     uint64_t total_cdo_length = 0;
     void *cdo_data_pp = NULL;
     size_t cdo_data_pp_length = 0;
@@ -2007,6 +2026,7 @@ void Versal_2ve_2vmImageHeader::ParseCdos(BootImage& bi, std::vector<std::string
                 cdo_seq = cdocmd_create_sequence();
                 cdocmd_add_ssit_sync_master(cdo_seq);
                 cdocmd_concat_seq(cdo_seq, cdo_seq1);
+                cdocmd_delete_sequence(cdo_seq1);  // Free temporary sequence
                 add_ssit_sync_master = false;
             }
             else
@@ -2061,11 +2081,11 @@ void Versal_2ve_2vmImageHeader::ParseCdos(BootImage& bi, std::vector<std::string
             // TODO: Call this only for v2
             const char * env = getenv("BOOTGEN_CHECK_CDO_COMMANDS");
             if (env && *env != '\0') {
-                if (check_cdo_commands(cdo_data, cdo_length, bi.xplm_modules_data, bi.xplm_modules_data_length) != 0) {
+                if (check_cdo_commands(cdo_data, cdo_length, bi.xplm_modules_data.get(), bi.xplm_modules_data_length) != 0) {
                     LOG_WARNING("Invalid PLM cdo command is found in input cdo file");
                 }
             }
-            //cdocmd_delete_sequence(cdo_seq);
+            cdocmd_delete_sequence(cdo_seq);  // Free CDO sequence memory
 
             
             if (cdocmd_post_process_cdo(cdo_data, cdo_length, &cdo_data_pp, &cdo_data_pp_length))
@@ -2075,9 +2095,10 @@ void Versal_2ve_2vmImageHeader::ParseCdos(BootImage& bi, std::vector<std::string
             
             if (cdo_data_pp != NULL)
             {
-                //delete cdo_data;
+                free(cdo_data);  // Free original cdo_data before replacing it
                 cdo_data = (uint8_t*)cdo_data_pp;
                 cdo_length = cdo_data_pp_length;
+                cdo_data_pp = NULL;
             }
 
             if (cdo_length > sizeof(VersalCdoHeader))
@@ -2090,31 +2111,33 @@ void Versal_2ve_2vmImageHeader::ParseCdos(BootImage& bi, std::vector<std::string
             }
 
             total_cdo_length += (actual_cdo_size);
-            total_cdo_data = (uint8_t*)realloc(total_cdo_data, total_cdo_length);
-            memcpy(total_cdo_data + offset, (uint8_t*)cdo_data + sizeof(VersalCdoHeader), actual_cdo_size);
+            total_cdo_data.resize(total_cdo_length);
+            memcpy(total_cdo_data.data() + offset, (uint8_t*)cdo_data + sizeof(VersalCdoHeader), actual_cdo_size);
             offset += actual_cdo_size;
-            //delete cdo_data;
+            free(cdo_data);  // Free cdo_data (from cdoseq_to_binary or cdocmd_post_process_cdo)
+            cdo_data = NULL;
         }
-        VersalCdoHeader* cdo_header = new VersalCdoHeader;
+        auto cdo_header = std::make_unique<VersalCdoHeader>();
         cdo_header->remaining_words = 0x04;
         cdo_header->id_word = 0x004f4443; /* CDO */
         cdo_header->version = 0x00000200; /* Version - 2.0 */
         cdo_header->length = (total_cdo_length - sizeof(VersalCdoHeader)) / 4;
         cdo_header->checksum = ~(cdo_header->remaining_words + cdo_header->id_word + cdo_header->version + cdo_header->length);
-        memcpy(total_cdo_data, cdo_header, sizeof(VersalCdoHeader));
-        delete cdo_header;
+        memcpy(total_cdo_data.data(), cdo_header.get(), sizeof(VersalCdoHeader));
+        
     }
     else
     {
         /* If PMC CDO is passed as a buffer 
            or in case PDI is passed as input in BIF, PMC data is read into a buffer from the PDI */
         total_cdo_length = bi.bifOptions->GetTotalpmcdataSize();
-        total_cdo_data = new uint8_t[total_cdo_length];
-        memcpy(total_cdo_data, bi.bifOptions->GetPmcDataBuffer(), total_cdo_length);
+        total_cdo_data.resize(total_cdo_length);
+        memcpy(total_cdo_data.data(), bi.bifOptions->GetPmcDataBuffer(), total_cdo_length);
     }
 
     *cdo_size = total_cdo_length;
-    *cdo_data = total_cdo_data;
+    *cdo_data = (uint8_t*)malloc(total_cdo_length);
+    memcpy(*cdo_data, total_cdo_data.data(), total_cdo_length);
 }
 
 /******************************************************************************/
@@ -2143,35 +2166,36 @@ void Versal_2ve_2vmImageHeader::CreateAieEnginePartition(BootImage& bi)
         size += ImportAieEngineElfCdo(*aie_file);
     }
 
-    cdoHeader = new VersalCdoHeader;
+    cdoHeader = std::make_unique<VersalCdoHeader>();
     cdoHeader->remaining_words = 0x04;
     cdoHeader->id_word = 0x004f4443; /* CDO */
     cdoHeader->version = 0x00000200; /* Version - 2.0 */
     size += sizeof(VersalCdoHeader);
-    PartitionHeader* partHdr = new Versal_2ve_2vmPartitionHeader(this, 0);
+    auto partHdr = std::make_unique<Versal_2ve_2vmPartitionHeader>(this, 0);
     partHdr->execState = 0;
     partHdr->elfEndianess = 0;
     partHdr->firstValidIndex = true;
 
-    uint8_t* pBuffer = new uint8_t[size];
+    auto pBuffer = std::make_unique<uint8_t[]>(size);
     uint32_t p_offset = 0;
     cdoHeader->length = (size - sizeof(VersalCdoHeader)) / 4;
     cdoHeader->checksum = ~(cdoHeader->remaining_words + cdoHeader->id_word + cdoHeader->version + cdoHeader->length);
-    memcpy(pBuffer, cdoHeader, sizeof(VersalCdoHeader));
+    memcpy(pBuffer.get(), cdoHeader.get(), sizeof(VersalCdoHeader));
     p_offset += sizeof(VersalCdoHeader);
-    for (std::list<CdoCommandDmaWrite*>::iterator it = cdoSections.begin(); it != cdoSections.end(); it++)
+    for (auto& cdoPtr : cdoSections)  // Use range-based loop with smart pointers
     {
-        memcpy(pBuffer + p_offset, (*it), CDO_COMMAND_SIZE);
+        memcpy(pBuffer.get() + p_offset, cdoPtr.get(), CDO_COMMAND_SIZE);
         p_offset += CDO_COMMAND_SIZE;
-        memcpy(pBuffer + p_offset, (*it)->data, ((*it)->length - 2) * 4);
-        p_offset += (((*it)->length - 2) * 4);
-        delete *it;
+        memcpy(pBuffer.get() + p_offset, cdoPtr->data, (cdoPtr->length - 2) * 4);
+        p_offset += ((cdoPtr->length - 2) * 4);
+        // Smart pointer auto-deletes struct, but data member still needs manual cleanup
+        delete[] cdoPtr->data;
     }
 
     partHdr->partitionSize = size;
-    partHdr->partition = new Versal_2ve_2vmPartition(partHdr, pBuffer, size);
-    partitionHeaderList.push_back(partHdr);
-    delete[] pBuffer;
+    partHdr->partition = std::make_unique<Versal_2ve_2vmPartition>(partHdr.get(), pBuffer.get(), size);  // Partition copies data
+    partitionHeaderList.push_back(partHdr.release());
+    // pBuffer unique_ptr automatically cleans up
     cdoSections.clear();
 }
 
@@ -2194,7 +2218,7 @@ std::list<std::string> Versal_2ve_2vmImageHeader::GetAieFilesPath(std::string fi
     core_list = ParseAieJson(json_file.c_str());
     for (std::list<std::string>::iterator aie_file = core_list.begin(); aie_file != core_list.end(); aie_file++)
     {
-        std::string aie_elf = file_path + (*aie_file) + "/Release/" + (*aie_file);
+        std::string aie_elf = file_path + (*aie_file) + "//" + "/Release/" + "//" + (*aie_file);
         aie_elf_list.push_back(aie_elf);
     }
     return aie_elf_list;
@@ -2204,7 +2228,7 @@ std::list<std::string> Versal_2ve_2vmImageHeader::GetAieFilesPath(std::string fi
 uint64_t Versal_2ve_2vmImageHeader::ImportAieEngineElfCdo(std::string aie_file)
 {
     uint32_t progHdrCnt = 0;
-    uint8_t *newData = NULL;
+    std::vector<uint8_t> newData;  // Changed from raw pointer to vector for automatic memory management
     uint32_t rowNum = 0;
     uint32_t colNum = 0;
 
@@ -2293,22 +2317,22 @@ uint64_t Versal_2ve_2vmImageHeader::ImportAieEngineElfCdo(std::string aie_file)
             {
                 std::size_t fillerBytes = (std::size_t) (addr - (prevAddr + prevSize));
                 totalSize += fillerBytes;
-                newData = (uint8_t*)realloc(newData, totalSize);
-                memset(newData + offset, 0, fillerBytes);
+                newData.resize(totalSize);
+                memset(newData.data() + offset, 0, fillerBytes);
                 offset = totalSize;
             }
             /* Populate the section data */
             totalSize += size;
-            newData = (uint8_t *)realloc(newData, totalSize);
-            memcpy(newData + offset, elfPrgHeader->data, size);
+            newData.resize(totalSize);
+            memcpy(newData.data() + offset, elfPrgHeader->data, size);
             prevAddr = addr;
             prevSize = size;
             offset = totalSize;
         }
     }
 
-    total_psize += CdoCmdDmaWrite(totalSize, GetAieEngineGlobalAddress(textSecAddr), newData);
-    free(newData);
+    total_psize += CdoCmdDmaWrite(totalSize, GetAieEngineGlobalAddress(textSecAddr), newData.data());
+    // No need to free - vector automatically cleans up
 
     for (uint8_t iprog = 0; iprog < elf.programHdrEntryCount; iprog++)
     {
@@ -2343,11 +2367,10 @@ uint64_t Versal_2ve_2vmImageHeader::ImportAieEngineElfCdo(std::string aie_file)
                     uint32_t pSize = elfPrgHeader->p_memsz - spill - previousPartitionSize;
                     uint64_t pAddr = GetAieEngineGlobalAddress((Binary::Address_t)elf.GetPhysicalAddress(iprog) + previousPartitionSize);
                     uint32_t p_size_pad = pSize + ((4 - (pSize & 3)) & 3);
-                    uint8_t *databuffer = new uint8_t[p_size_pad];
-                    memset(databuffer, 0, p_size_pad);
+                    auto databuffer = std::make_unique<uint8_t[]>(p_size_pad);
+                    memset(databuffer.get(), 0, p_size_pad);
                     previousPartitionSize += pSize;
-                    total_psize += CdoCmdDmaWrite(pSize, pAddr, databuffer);
-                    delete[] databuffer;
+                    total_psize += CdoCmdDmaWrite(pSize, pAddr, databuffer.get());
                     progHdrCnt++;
                 } while (spill);
             }
@@ -2378,7 +2401,7 @@ void Versal_2ve_2vmImageHeader::ImportAieEngineElf(BootImage& bi)
 {
     uint32_t progHdrCnt = 0;
     uint8_t procState = 0;
-    uint8_t *newData = NULL;
+    std::vector<uint8_t> newData;  // Changed from raw pointer to vector for automatic memory management
     uint32_t rowNum = 0;
     uint32_t colNum = 0;
 
@@ -2444,7 +2467,7 @@ void Versal_2ve_2vmImageHeader::ImportAieEngineElf(BootImage& bi)
     Binary::Address_t textSecAddr = 0;
 
     Elf32ProgramHeader* elfPrgHeader = NULL;
-    PartitionHeader* partHdr = new Versal_2ve_2vmPartitionHeader(this, progHdrCnt);
+    auto partHdr = std::make_unique<Versal_2ve_2vmPartitionHeader>(this, progHdrCnt);
     partHdr->execState = procState;
     partHdr->elfEndianess = elf.endian;
 
@@ -2468,14 +2491,14 @@ void Versal_2ve_2vmImageHeader::ImportAieEngineElf(BootImage& bi)
             {
                 std::size_t fillerBytes = (std::size_t) (addr - (prevAddr + prevSize));
                 totalSize += fillerBytes;
-                newData = (uint8_t*)realloc(newData, totalSize);
-                memset(newData + offset, 0, fillerBytes);
+                newData.resize(totalSize);
+                memset(newData.data() + offset, 0, fillerBytes);
                 offset = totalSize;
             }
             /* Populate the section data */
             totalSize += size;
-            newData = (uint8_t *)realloc(newData, totalSize);
-            memcpy(newData + offset, elfPrgHeader->data, size);
+            newData.resize(totalSize);
+            memcpy(newData.data() + offset, elfPrgHeader->data, size);
             prevAddr = addr;
             prevSize = size;
             offset = totalSize;
@@ -2493,9 +2516,9 @@ void Versal_2ve_2vmImageHeader::ImportAieEngineElf(BootImage& bi)
     // consider addr of first header
     partHdr->loadAddress = GetAieEngineGlobalAddress(textSecAddr);
     /* Create a new partition out of each valid program header */
-    partHdr->partition = new Versal_2ve_2vmPartition(partHdr, newData, partHdr->partitionSize);
+    partHdr->partition = std::make_unique<Versal_2ve_2vmPartition>(partHdr.get(), newData.data(), partHdr->partitionSize);
     progHdrCnt++;
-    partitionHeaderList.push_back(partHdr);
+    partitionHeaderList.push_back(partHdr.release());
 
     for (uint8_t iprog = 0; iprog < elf.programHdrEntryCount; iprog++)
     {
@@ -2511,13 +2534,13 @@ void Versal_2ve_2vmImageHeader::ImportAieEngineElf(BootImage& bi)
                     spill = CheckAieEngineDataMemoryBoundary((Binary::Address_t)elf.GetPhysicalAddress(iprog) + previousPartitionSize,
                         elfPrgHeader->p_filesz - previousPartitionSize);
 
-                    PartitionHeader* partHdr = new Versal_2ve_2vmPartitionHeader(this, progHdrCnt);
+                    auto partHdr = std::make_unique<Versal_2ve_2vmPartitionHeader>(this, progHdrCnt);
                     partHdr->partitionType = PartitionType::ELF;
                     partHdr->partitionSize = elfPrgHeader->p_filesz - spill - previousPartitionSize;
                     partHdr->loadAddress = GetAieEngineGlobalAddress((Binary::Address_t)elf.GetPhysicalAddress(iprog) + previousPartitionSize);
-                    partHdr->partition = new Versal_2ve_2vmPartition(partHdr, elfPrgHeader->data + previousPartitionSize, partHdr->partitionSize);
+                    partHdr->partition = std::make_unique<Versal_2ve_2vmPartition>(partHdr.get(), elfPrgHeader->data + previousPartitionSize, partHdr->partitionSize);
                     previousPartitionSize += partHdr->partitionSize;
-                    partitionHeaderList.push_back(partHdr);
+                    partitionHeaderList.push_back(partHdr.release());
                     progHdrCnt++;
                 } while (spill);
             }
@@ -2529,38 +2552,38 @@ void Versal_2ve_2vmImageHeader::ImportAieEngineElf(BootImage& bi)
                     spill = CheckAieEngineDataMemoryBoundary((Binary::Address_t)elf.GetPhysicalAddress(iprog) + previousPartitionSize,
                         elfPrgHeader->p_memsz - previousPartitionSize);
 
-                    PartitionHeader* partHdr = new Versal_2ve_2vmPartitionHeader(this, progHdrCnt);
+                    auto partHdr = std::make_unique<Versal_2ve_2vmPartitionHeader>(this, progHdrCnt);
                     partHdr->partitionType = PartitionType::ELF;
                     partHdr->partitionSize = elfPrgHeader->p_memsz - spill - previousPartitionSize;
                     partHdr->loadAddress = GetAieEngineGlobalAddress((Binary::Address_t)elf.GetPhysicalAddress(iprog) + previousPartitionSize);
                     previousPartitionSize += partHdr->partitionSize;
-                    uint8_t *databuffer = new uint8_t[partHdr->partitionSize];
-                    memset(databuffer, 0, partHdr->partitionSize);
-                    partHdr->partition = new Versal_2ve_2vmPartition(partHdr, databuffer, partHdr->partitionSize);
-                    partitionHeaderList.push_back(partHdr);
-                    delete[] databuffer;
+                    auto databuffer = std::make_unique<uint8_t[]>(partHdr->partitionSize);
+                    memset(databuffer.get(), 0, partHdr->partitionSize);
+                    partHdr->partition = std::make_unique<Versal_2ve_2vmPartition>(partHdr.get(), databuffer.release(), partHdr->partitionSize);
+                    partitionHeaderList.push_back(partHdr.release());
                     progHdrCnt++;
                 } while (spill);
             }
         }
     }
-    free(newData);
+    // No need to free - vector automatically cleans up
 }
 
 /******************************************************************************/
 uint32_t Versal_2ve_2vmImageHeader::CdoCmdDmaWrite(uint32_t pSize, uint64_t pAddr, uint8_t *databuffer)
 {
     uint32_t total_size;
-    CdoCommandDmaWrite* cdoDataSec = new CdoCommandDmaWrite;
+    auto cdoDataSec = std::make_unique<CdoCommandDmaWrite>();
     uint32_t p_size_pad = pSize + ((4 - (pSize & 3)) & 3);
     cdoDataSec->header = 0x00ff0105;
     cdoDataSec->length = (p_size_pad / 4) + 2;
     cdoDataSec->hi_address = ((pAddr) >> 32) & 0xFFFFFFFF;
     cdoDataSec->lo_address = (pAddr) & 0xFFFFFFFF;
-    cdoDataSec->data = new uint8_t[p_size_pad];
-    memset(cdoDataSec->data, 0, p_size_pad);
-    memcpy(cdoDataSec->data, databuffer, pSize);
-    cdoSections.push_back(cdoDataSec);
+    auto cdoDataSec_data = std::make_unique<uint8_t[]>(p_size_pad);
+    memset(cdoDataSec_data.get(), 0, p_size_pad);
+    memcpy(cdoDataSec_data.get(), databuffer, pSize);
+    cdoDataSec->data = cdoDataSec_data.release();
+    cdoSections.push_back(std::move(cdoDataSec));  // Move unique_ptr into list
     total_size = (CDO_COMMAND_SIZE + p_size_pad);
     LOG_TRACE("AIE ELF CDO DMA Write Command: Address-0x%x%08x, Size-%x", cdoDataSec->hi_address, cdoDataSec->lo_address, p_size_pad);
     return total_size;
@@ -2570,14 +2593,15 @@ uint32_t Versal_2ve_2vmImageHeader::CdoCmdDmaWrite(uint32_t pSize, uint64_t pAdd
 uint32_t Versal_2ve_2vmImageHeader::CdoCmdWriteImageStore(uint32_t pSize, uint64_t pdi_id, uint8_t *databuffer)
 {
     uint32_t total_size;
-    CdoCommandWriteImageStore* cdoDataSec = new CdoCommandWriteImageStore;
+    auto cdoDataSec = std::make_unique<CdoCommandWriteImageStore>();
     uint32_t p_size_pad = pSize + ((4 - (pSize & 3)) & 3);
     cdoDataSec->header = 0x00ff070D;
     cdoDataSec->length = (p_size_pad / 4) + 2;
     cdoDataSec->id = pdi_id;
-    cdoDataSec->data = new uint8_t[p_size_pad];
-    memset(cdoDataSec->data, 0, p_size_pad);
-    memcpy(cdoDataSec->data, databuffer, pSize);
+    auto cdoDataSec_data2 = std::make_unique<uint8_t[]>(p_size_pad);
+    memset(cdoDataSec_data2.get(), 0, p_size_pad);
+    memcpy(cdoDataSec_data2.get(), databuffer, pSize);
+    cdoDataSec->data = cdoDataSec_data2.release();
     total_size = (CDO_COMMAND_SIZE + p_size_pad);
     return total_size;
 }
@@ -2801,7 +2825,7 @@ void Versal_2ve_2vmSubSysImageHeader::Build(BootImage& bi, Binary& cache)
 
     if (versal_2ve_2vmSubSysImageHeaderTable == NULL)
     {
-        versal_2ve_2vmSubSysImageHeaderTable = (Versal_2ve_2vmImageHeaderStructure*)section->Data;
+        versal_2ve_2vmSubSysImageHeaderTable = (Versal_2ve_2vmImageHeaderStructure*)section->Data.get();
         SetImageName();
         SetImageHeaderAttributes();
         SetPartitionHeaderOffset(0);
@@ -2814,7 +2838,7 @@ void Versal_2ve_2vmSubSysImageHeader::Build(BootImage& bi, Binary& cache)
 /******************************************************************************/
 void Versal_2ve_2vmSubSysImageHeader::Link(BootImage &bi, SubSysImageHeader* nextHeader)
 {
-    versal_2ve_2vmSubSysImageHeaderTable = (Versal_2ve_2vmImageHeaderStructure*)section->Data;
+    versal_2ve_2vmSubSysImageHeaderTable = (Versal_2ve_2vmImageHeaderStructure*)section->Data.get();
     if (imgList.front()->GetPartitionHeaderList().front()->section != NULL)
     {
         SetPartitionHeaderOffset((uint32_t)imgList.front()->GetPartitionHeaderList().front()->section->Address);
@@ -2995,8 +3019,9 @@ Versal_2ve_2vmSubSysImageHeader::Versal_2ve_2vmSubSysImageHeader(ImageBifOptions
 
     std::string name = "ImageHeader " + imageName;
     uint32_t size = sizeof(Versal_2ve_2vmImageHeaderStructure);
-    section = new Section(name, size);
-    memset(section->Data, 0, size);
+    auto temp_section = std::make_unique<Section>(name, size);
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    memset(section->Data.get(), 0, size);
     imgList.clear();
     num_of_images = 0;
 }
@@ -3032,8 +3057,9 @@ Versal_2ve_2vmSubSysImageHeader::Versal_2ve_2vmSubSysImageHeader(std::ifstream& 
     uint32_t size = sizeof(Versal_2ve_2vmImageHeaderStructure);
 
     ifs.seekg(pos);
-    section = new Section("ImageHeader " + imageName, size);
-    versal_2ve_2vmSubSysImageHeaderTable = (Versal_2ve_2vmImageHeaderStructure*)section->Data;
+    auto temp_section = std::make_unique<Section>("ImageHeader " + imageName, size);
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    versal_2ve_2vmSubSysImageHeaderTable = (Versal_2ve_2vmImageHeaderStructure*)section->Data.get();
     ifs.read((char*)versal_2ve_2vmSubSysImageHeaderTable, size);
 
     imageId = versal_2ve_2vmSubSysImageHeaderTable->imageId;
@@ -3157,13 +3183,13 @@ void Versal_2ve_2vmImageHeader::CreateWriteImageStorePartition()
 
     ByteFile data(Filename);
     uint32_t p_size_pad = data.len + ((4 - (data.len & 3)) & 3);
-    uint8_t* tempBuffer = new uint8_t[p_size_pad];
-    memcpy(tempBuffer, data.bytes, p_size_pad);
+    auto tempBuffer2 = std::make_unique<uint8_t[]>(p_size_pad);
+    memcpy(tempBuffer2.get(), data.bytes, p_size_pad);
 
     size_t size = 0;
     size_t p_offset = 0;
     /* CDO Header */
-    cdoHeader = new VersalCdoHeader;
+    cdoHeader = std::make_unique<VersalCdoHeader>();
     cdoHeader->remaining_words = CDO_REMAINING_WORDS;
     cdoHeader->id_word = CDO_IDENTIFICATION; /* CDO */
     cdoHeader->version = CDO_VERSION; /* Version - 2.0 */
@@ -3173,47 +3199,50 @@ void Versal_2ve_2vmImageHeader::CreateWriteImageStorePartition()
     cdoHeader->checksum = 0;
     size += sizeof(VersalCdoHeader);
     std::vector<uint8_t> p_buffer(size);
-    memcpy(p_buffer.data(), cdoHeader, sizeof(VersalCdoHeader));
+    memcpy(p_buffer.data(), cdoHeader.get(), sizeof(VersalCdoHeader));
     p_offset += sizeof(VersalCdoHeader);
 
-    CdoCommandWriteImageStore* cdoCmd = new CdoCommandWriteImageStore;
+    auto cdoCmd = std::make_unique<CdoCommandWriteImageStore>();
     cdoCmd->header = 0x00ff070D;
     cdoCmd->length = (p_size_pad / 4) + 2;
     cdoCmd->id = imageStorePdiInfo->id;
-    cdoCmd->data = new uint8_t[p_size_pad];
-    memset(cdoCmd->data, 0, p_size_pad);
-    memcpy(cdoCmd->data, tempBuffer, p_size_pad);
+    auto cdoCmd_data = std::make_unique<uint8_t[]>(p_size_pad);
+    memset(cdoCmd_data.get(), 0, p_size_pad);
+    memcpy(cdoCmd_data.get(), tempBuffer2.get(), p_size_pad);
+    cdoCmd->data = cdoCmd_data.get();  // Non-owning pointer for copying
 
     size += CDO_CMD_WRITE_IMAGE_STORE_SIZE;
     p_buffer.resize(size);
-    memcpy(p_buffer.data() + p_offset, cdoCmd, CDO_CMD_WRITE_IMAGE_STORE_SIZE);
+    memcpy(p_buffer.data() + p_offset, cdoCmd.get(), CDO_CMD_WRITE_IMAGE_STORE_SIZE);
     p_offset += CDO_CMD_WRITE_IMAGE_STORE_SIZE;
 
     size += p_size_pad;
     p_buffer.resize(size);
-    memcpy(p_buffer.data() + p_offset, cdoCmd->data, p_size_pad);
+    memcpy(p_buffer.data() + p_offset, cdoCmd_data.get(), p_size_pad);  // Use cdoCmd_data directly
     p_offset += p_size_pad;
+    
+    // cdoCmd and cdoCmd_data unique_ptrs will automatically clean up
 
     size += sizeof(CdoCommandHeader);
     p_buffer.resize(size);
-    CdoCommandHeader* cmd_end = CdoCmdCdoEnd();
+    auto cmd_end = CdoCmdCdoEnd();
     memcpy(p_buffer.data() + p_offset, cmd_end, sizeof(CdoCommandHeader));
 
     /* Update CDO header lengths and checksum */
     cdoHeader->length = (size - sizeof(VersalCdoHeader)) / 4;
     cdoHeader->checksum = ~(cdoHeader->remaining_words + cdoHeader->id_word + cdoHeader->version + cdoHeader->length);
-    memcpy(p_buffer.data(), cdoHeader, sizeof(VersalCdoHeader));
+    memcpy(p_buffer.data(), cdoHeader.get(), sizeof(VersalCdoHeader));
 
     SetPartitionType(PartitionType::CONFIG_DATA_OBJ);
-    PartitionHeader* partHdr = new Versal_2ve_2vmPartitionHeader(this, imageStorePdiInfo->id);
+    auto partHdr = std::make_unique<Versal_2ve_2vmPartitionHeader>(this, imageStorePdiInfo->id);
     partHdr->execState = 0;
     partHdr->elfEndianess = 0;
     partHdr->firstValidIndex = true;
     partHdr->loadAddress = 0xFFFFFFFFFFFFFFFF;
     partHdr->execAddress = 0;
     partHdr->partitionSize = size;
-    uint8_t* buffer_copy = new uint8_t[size];
-    memcpy(buffer_copy, p_buffer.data(), size);
-    partHdr->partition = new Versal_2ve_2vmPartition(partHdr, buffer_copy, size);
-    partitionHeaderList.push_back(partHdr);
+    auto buffer_copy = std::make_unique<uint8_t[]>(size);
+    memcpy(buffer_copy.get(), p_buffer.data(), size);
+    partHdr->partition = std::make_unique<Versal_2ve_2vmPartition>(partHdr.get(), buffer_copy.release(), size);  // Transfer ownership to Versal_2ve_2vmPartition (matches Versal)
+    partitionHeaderList.push_back(partHdr.release());
 }

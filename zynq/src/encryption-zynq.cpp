@@ -297,7 +297,7 @@ void ZynqEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr)
     /* Data mover for handling endianness across architectures
        7-series FPGA requires the data in Big Endian format
        Zynq & ZynqMp requires the data in Little Endian format */
-    aes_encrypt.dataMover = new DataMoverLE(); 
+    aes_encrypt.dataMover = std::make_unique<DataMoverLE>().release(); 
     aes_encrypt.maskEfuseFlag = false; 
     /* Get the key file or keys (Key0, StartCBC, HMAC) passed from command line */
     std::string keyFilename = options.GetEncryptionKeyFile();
@@ -363,12 +363,12 @@ void ZynqEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr)
     uint32_t encryptedBufferByteLength;
 
     /* Encrypt the stream */
-    aes_encrypt.AESDataStreamEncrypt(keySource, isFPGA, partHdr->partition->section->Data, (uint32_t)partHdr->partition->section->Length,
+    aes_encrypt.AESDataStreamEncrypt(keySource, isFPGA, partHdr->partition->section->Data.get(), (uint32_t)partHdr->partition->section->Length,
         encryptedDataBuffer, encryptedBufferByteLength, partHdr->preservedBitstreamHdr.data, partHdr->preservedBitstreamHdr.size);
-    delete[] partHdr->partition->section->Data;
+    // unique_ptr handles deletion automatically
 
     /* Populate the partition headers */
-    partHdr->partition->section->Data = encryptedDataBuffer;
+    partHdr->partition->section->Data.reset(encryptedDataBuffer);
     partHdr->partition->section->Length = encryptedBufferByteLength;
     partHdr->imageHeader->SetTotalFsblFwSizeIh(encryptedBufferByteLength);
 }
@@ -431,23 +431,13 @@ ZynqEncryptionContext::ZynqEncryptionContext(uint32_t words_per_AES_block0, uint
             d_NumRounds = 10;
     }
 
-    working_AES_block = new uint32_t[wordsPerAesBlock];
+    working_AES_block = std::make_unique<uint32_t[]>(wordsPerAesBlock).release();
 }
 
 /******************************************************************************/
 ZynqEncryptionContext::~ZynqEncryptionContext(void)
 {
-    if (aesKey != NULL)
-        delete[] aesKey;
-
-    if (keySchedule != NULL)
-        delete[] keySchedule;
-
-    if (hmacKey != NULL)
-        delete[] hmacKey;
-
-    if (working_AES_block != NULL)
-        delete[] working_AES_block;
+    // unique_ptr handles deletion for aesKey, keySchedule, hmacKey, working_AES_block
 }
 
 /******************************************************************************/
@@ -461,7 +451,7 @@ void ZynqEncryptionContext::ClearKeySchedule(void)
 {
     // Allocate a key schedule if we don't already have one.
     if (keySchedule == NULL)
-        keySchedule = new uint32_t[sizeof(uint32_t) * (d_NumRounds + 1)];
+        keySchedule = std::make_unique<uint32_t[]>(sizeof(uint32_t) * (d_NumRounds + 1)).release();
 
     for (uint32_t index = 0; index < sizeof(uint32_t) * (d_NumRounds + 1); index++)
     {
@@ -472,7 +462,7 @@ void ZynqEncryptionContext::ClearKeySchedule(void)
 /******************************************************************************/
 void ZynqEncryptionContext::SetAesKey(const uint8_t* key)
 {
-    aesKey = new uint32_t[WORDS_PER_AES_KEY];
+    aesKey = std::make_unique<uint32_t[]>(WORDS_PER_AES_KEY).release();
     for (uint32_t index = 0; index < WORDS_PER_AES_KEY; index++)
     {
         aesKey[index] = ReadBigEndian32(key);
@@ -503,7 +493,7 @@ void ZynqEncryptionContext::EncryptKeys(const uint8_t* newKeyData, uint32_t keys
 {
     // Use a local encrypt object so that we don't disturb any of the caller's keys.
     ZynqEncryptionContext temp_encrypt(wordsPerAesBlock, wordsPerAesKey);
-    temp_encrypt.dataMover = new DataMoverLE();
+    temp_encrypt.dataMover = std::make_unique<DataMoverLE>().release();
 
     temp_encrypt.GenerateTempKeys();
     temp_encrypt.InitKeySchedule();
@@ -544,7 +534,7 @@ void ZynqEncryptionContext::GenerateCbc(void)
 
     // Setup a new encrypt object so that we don't disturb any of the caller's keys.
     ZynqEncryptionContext temp_encrypt(WORDS_PER_AES_BLOCK, WORDS_PER_AES_KEY);
-    temp_encrypt.dataMover = new DataMoverLE();
+    temp_encrypt.dataMover = std::make_unique<DataMoverLE>().release();
 
     // Get temp data to encrypt as the newCBC.
     SetRandomSeed();
@@ -579,7 +569,7 @@ const uint8_t * ZynqEncryptionContext::GetCbc(void)
 /******************************************************************************/
 void ZynqEncryptionContext::SetHmacKey(const uint8_t * HMACKey)
 {
-    hmacKey = new uint32_t[WORDS_PER_HMAC_KEY];
+    hmacKey = std::make_unique<uint32_t[]>(WORDS_PER_HMAC_KEY).release();
 
     for (uint32_t index = 0; index < WORDS_PER_HMAC_KEY; index++)
     {
@@ -610,7 +600,7 @@ void ZynqEncryptionContext::GenerateHmacKey(void)
 
     // Setup a new encrypt object so that we don't disturb any of the caller's keys.
     ZynqEncryptionContext temp_encrypt(WORDS_PER_AES_BLOCK, WORDS_PER_AES_KEY);
-    temp_encrypt.dataMover = new DataMoverLE();
+    temp_encrypt.dataMover = std::make_unique<DataMoverLE>().release();
 
     // Get temp data to encrypt as the newHMAC.
     SetRandomSeed();
@@ -1260,7 +1250,6 @@ void ZynqEncryptionContext::ComputeHMACDigest(const uint8_t* data,
 DataStreamEncryption::DataStreamEncryption(uint32_t words_per_AES_block0, uint32_t words_per_AES_key0)
     : ZynqEncryptionContext(words_per_AES_block0, words_per_AES_key0)
     , input_data_Buffer(NULL)
-    , stream_header(NULL)
     , input_data_ByteLength(0)
 {
     memset(ipad_data, 0, BYTES_PER_IPAD);
@@ -1276,7 +1265,7 @@ DataStreamEncryption::DataStreamEncryption(uint32_t words_per_AES_block0, uint32
 /******************************************************************************/
 DataStreamEncryption::~DataStreamEncryption(void)
 {
-    if (input_data_Buffer != NULL)   delete[] input_data_Buffer;
+    // unique_ptr handles deletion
 }
 
 /******************************************************************************/
@@ -1293,7 +1282,7 @@ void DataStreamEncryption::SetDataStreamHeader(KeySource::Type keySource, uint32
 
     if (presBitHdrSize == 0)
     {
-        stream_header = (uint8_t*)malloc(BYTES_PER_STREAM_HEADER);
+        stream_header = std::make_unique<uint8_t[]>(BYTES_PER_STREAM_HEADER);
         keySourceOffset = ENCRYPTION_KEY_SRC_OFFSET;
         encryptionEnableOffset = ENCRYPTION_ENABLE_WORD_OFFSET;
         cbcOffset = CBC_WORD_OFFSET;
@@ -1307,7 +1296,7 @@ void DataStreamEncryption::SetDataStreamHeader(KeySource::Type keySource, uint32
     else
     {
         uint32_t presBitHdrBytes = presBitHdrSize * sizeof(uint32_t);
-        stream_header = (uint8_t*)malloc(BYTES_PER_FPGA_STREAM_HEADER + presBitHdrBytes);
+        stream_header = std::make_unique<uint8_t[]>(BYTES_PER_FPGA_STREAM_HEADER + presBitHdrBytes);
         keySourceOffset = FPGA_ENCRYPTION_KEY_SRC_OFFSET + presBitHdrBytes;
         encryptionEnableOffset = FPGA_ENCRYPTION_ENABLE_WORD_OFFSET + presBitHdrBytes;
         cbcOffset = FPGA_CBC_WORD_OFFSET + presBitHdrBytes;
@@ -1414,14 +1403,14 @@ void DataStreamEncryption::InitializeInputDataStream(const uint8_t* inputData,
     }
 
     /* Allocate a buffer to hold the user data plus any header and padding NOOPs */
-    input_data_Buffer = new uint8_t[input_data_ByteLength];
-    if (input_data_Buffer == NULL)
+    input_data_Buffer = std::make_unique<uint8_t[]>(input_data_ByteLength);
+    if (input_data_Buffer == nullptr)
     {
         LOG_DEBUG(DEBUG_STAMP, "Out of memory");
         LOG_ERROR("Ercryption error !!!");
     }
 
-    uint8_t* inputDataStreamPtr = input_data_Buffer;
+    uint8_t* inputDataStreamPtr = input_data_Buffer.get();
 
     // Add the header if needed.
     if (isFPGAData == false)
@@ -1530,7 +1519,7 @@ void DataStreamEncryption::EncryptDataStream(uint8_t* encryptedData)
     AES_Encrypt(ipad_data, BYTES_PER_IPAD, encryptedData);
     encryptedData += BYTES_PER_IPAD;
 
-    AES_Encrypt(input_data_Buffer, input_data_ByteLength, encryptedData);
+    AES_Encrypt(input_data_Buffer.get(), input_data_ByteLength, encryptedData);
     encryptedData += input_data_ByteLength;
 
     AES_Encrypt(pad1_data, BYTES_PER_PAD1, encryptedData);
@@ -1630,7 +1619,7 @@ void DataStreamEncryption::AESDataStreamEncrypt(KeySource::Type  keySource,
     ComputeHMACDigest(ipad_data, BYTES_PER_IPAD, true, calculated_first_digest);
 
     // Add in the user data.
-    ComputeHMACDigest(input_data_Buffer, input_data_ByteLength, false, calculated_first_digest);
+    ComputeHMACDigest(input_data_Buffer.get(), input_data_ByteLength, false, calculated_first_digest);
 
     // Finally add in the PAD1 data.
     ComputeHMACDigest(pad1_data, BYTES_PER_PAD1, false, calculated_first_digest);
@@ -1662,7 +1651,7 @@ void DataStreamEncryption::AESDataStreamEncrypt(KeySource::Type  keySource,
     uint32_t dataStream32ByteMisalignment = 32 - encryptedDataByteLength % 32;
 
     /* Get a new buffer for the encrypted data and overhead */
-    encryptedData = new uint8_t[encryptedDataByteLength + dataStream32ByteMisalignment];
+    encryptedData = std::make_unique<uint8_t[]>(encryptedDataByteLength + dataStream32ByteMisalignment).release();
     if (encryptedData == NULL)
     {
         LOG_DEBUG(DEBUG_STAMP, "Out of memory");
@@ -1671,7 +1660,7 @@ void DataStreamEncryption::AESDataStreamEncrypt(KeySource::Type  keySource,
     uint8_t* ptr = encryptedData;
 
     /* Copy the data stream header to the return */
-    memcpy(ptr, stream_header, streamHdrSize);
+    memcpy(ptr, stream_header.get(), streamHdrSize);
     ptr += streamHdrSize;
 
     /* Encrypt the entire data stream from the iPad to the HMAC digest into the return buffer */

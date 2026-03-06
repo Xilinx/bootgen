@@ -604,17 +604,17 @@ uint32_t Kdf::CounterModeKDF(uint32_t* k_in, uint32_t* fid, uint32_t fid_byte_le
     if((fixed_input_data_byte_length != fid_byte_length) || (fixed_input_data == NULL))
     {
         fixed_input_data_byte_length = fid_byte_length;
-        delete[] fixed_input_data;
-        fixed_input_data = new uint8_t[fixed_input_data_byte_length];
+        
+        fixed_input_data = std::make_unique<uint8_t[]>(fixed_input_data_byte_length);
     }
-    memcpy_be(fixed_input_data, fid, fixed_input_data_byte_length);
+    memcpy_be(fixed_input_data.get(), fid, fixed_input_data_byte_length);
 
     /* This KDF accepts a seed of fixed length - 32bytes */
     if (key_seed == NULL)
     {
-        key_seed = new uint8_t[BYTES_PER_AES_SEED];
+        key_seed = std::make_unique<uint8_t[]>(BYTES_PER_AES_SEED);
     }
-    memcpy_be(key_seed, k_in, BYTES_PER_AES_SEED);
+    memcpy_be(key_seed.get(), k_in, BYTES_PER_AES_SEED);
 
     /* An example generating 4 key/IV pairs will have 4*(32+12) number_of_Ko_bytes.
     This should be flexible based on number of keys or key/iv pair required
@@ -625,7 +625,7 @@ uint32_t Kdf::CounterModeKDF(uint32_t* k_in, uint32_t* fid, uint32_t fid_byte_le
 
     for (uint32_t index = 0; index < (ko_bytes/sizeof(uint32_t)); index++)
     {
-        ko_buf[index] = read_little_endian_32( (key_out + (index * sizeof(uint32_t))) );
+        ko_buf[index] = read_little_endian_32( (key_out.get() + (index * sizeof(uint32_t))) );
     }
 
     return 0;
@@ -676,8 +676,8 @@ uint32_t Kdf::ParseKDFTestVectorFile(std::string filename)
                     std::cout << "KI must be 256 bits long - " << word.c_str() << std::endl;
                     exit(KDF_CAVP_KI_LENGTH_IMPROPER);
                 }
-                key_seed = new uint8_t[(uint32_t)word.size()];
-                pack_hex(word, key_seed);
+                key_seed = std::make_unique<uint8_t[]>((uint32_t)word.size());
+                pack_hex(word, key_seed.get());
             }
             else
             {
@@ -707,8 +707,8 @@ uint32_t Kdf::ParseKDFTestVectorFile(std::string filename)
                 testFile >> word;
                 if (fixed_input_data_byte_length > 0)
                 {
-                    fixed_input_data = new uint8_t[fixed_input_data_byte_length];
-                    pack_hex(word, fixed_input_data);
+                    fixed_input_data = std::make_unique<uint8_t[]>(fixed_input_data_byte_length);
+                    pack_hex(word, fixed_input_data.get());
                 }
                 else
                 {
@@ -728,8 +728,8 @@ uint32_t Kdf::ParseKDFTestVectorFile(std::string filename)
             if (word == "=")
             {
                 testFile >> word;
-                verify_ko = new uint8_t[key_out_length / 8];
-                pack_hex(word, verify_ko);
+                verify_ko = std::make_unique<uint8_t[]>(key_out_length / 8);
+                pack_hex(word, verify_ko.get());
             }
             else
             {
@@ -763,13 +763,13 @@ uint32_t Kdf::CAVPonCounterModeKDF(std::string filename)
 
     for (uint32_t y = 0; y < number_of_Ko_bytes; y++)
     {
-        std::cout << std::setfill('0') << std::setw(2) << std::hex << std::uppercase << uint32_t(key_out[y]);
+        std::cout << std::setfill('0') << std::setw(2) << std::hex << std::uppercase << uint32_t(key_out.get()[y]);
     }
     std::cout << std::endl << std::endl;
     
     if (verify_ko != NULL)
     {
-        if (memcmp(key_out, verify_ko, number_of_Ko_bytes) == 0)
+        if (memcmp(key_out.get(), verify_ko.get(), number_of_Ko_bytes) == 0)
         {
             std::cout << "Verified with given Ko" << std::endl;
             return 0;
@@ -828,19 +828,19 @@ void Kdf::KDF(uint32_t ko_bytes, bool reset_cntr)
     }
 
     uint64_t number_of_input_bytes = KDF_COUNTER_BYTES + fixed_input_data_byte_length;
-    uint8_t* input = new uint8_t[number_of_input_bytes];
+    auto input = std::make_unique<uint8_t[]>(number_of_input_bytes);
 
     if((ko_bytes != key_out_length) || (key_out == NULL)) 
     {
         key_out_length = ko_bytes;
-        delete[] key_out;
-        key_out = new uint8_t[key_out_length];
+        
+        key_out = std::make_unique<uint8_t[]>(key_out_length);
     }
 
-    gen_cmac_subkeys(key_seed);
+    gen_cmac_subkeys(key_seed.get());
 
-    copy_array_uint8_t(&input[0], kdf_counter, KDF_COUNTER_BYTES);
-    copy_array_uint8_t(&input[KDF_COUNTER_BYTES], fixed_input_data, fixed_input_data_byte_length);
+    copy_array_uint8_t(input.get(), kdf_counter, KDF_COUNTER_BYTES);
+    copy_array_uint8_t(input.get() + KDF_COUNTER_BYTES, fixed_input_data.get(), fixed_input_data_byte_length);
 
     uint32_t cmac_iterations = ko_bytes / 16;
     cmac_iterations += ((ko_bytes % 16) == 0 ? 0 : 1);
@@ -856,32 +856,32 @@ void Kdf::KDF(uint32_t ko_bytes, bool reset_cntr)
             kdf_counter[y]++;
             y--;
         } while (kdf_counter[y + 1] == 0 && y >= 0);
-        copy_array_uint8_t(&input[0], kdf_counter, KDF_COUNTER_BYTES);
+        copy_array_uint8_t(input.get(), kdf_counter, KDF_COUNTER_BYTES);
 
         /* Run the PRF */
         if (ko_bytes % 16 != 0 && x == cmac_iterations - 1)
         {
-            uint8_t* last_ko = new uint8_t[16];
-            cmac(&last_ko[0], input, number_of_input_bytes);
-            memcpy(&key_out[16 * x], &last_ko[0], (ko_bytes - (16 * x)));
+            auto last_ko = std::make_unique<uint8_t[]>(16);
+            cmac(last_ko.get(), input.get(), number_of_input_bytes);
+            memcpy(&key_out.get()[16 * x], last_ko.get(), (ko_bytes - (16 * x)));
             if (kdf_log_file != "")
             {
                 for (y = 0; y < 16; y++)
                 {
-                    VERBOSE_OUT_KDF << std::setfill('0') << std::setw(2) << std::hex << uint32_t(last_ko[y]);
+                    VERBOSE_OUT_KDF << std::setfill('0') << std::setw(2) << std::hex << uint32_t(last_ko.get()[y]);
                 }
                 VERBOSE_OUT_KDF << std::endl;
             }
-            delete[] last_ko;
+            
         }
         else
         {
-            cmac(&key_out[16 * x], input, number_of_input_bytes);
+            cmac(key_out.get() + (16 * x), input.get(), number_of_input_bytes);
             if (kdf_log_file != "")
             {
                 for (y = 0; y < 16; y++)
                 {
-                    VERBOSE_OUT_KDF << std::setfill('0') << std::setw(2) << std::hex << uint32_t(key_out[16 * x + y]);
+                    VERBOSE_OUT_KDF << std::setfill('0') << std::setw(2) << std::hex << uint32_t(key_out.get()[16 * x + y]);
                 }
                 VERBOSE_OUT_KDF << std::endl;
             }
@@ -893,5 +893,5 @@ void Kdf::KDF(uint32_t ko_bytes, bool reset_cntr)
         kdfLogFile.close();
     }
 
-    delete[] input;
+    
 }

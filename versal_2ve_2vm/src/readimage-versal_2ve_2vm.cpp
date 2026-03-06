@@ -55,26 +55,32 @@ void Versal_2ve_2vmReadImage::Separator(void)
 /******************************************************************************/
 Versal_2ve_2vmReadImage::~Versal_2ve_2vmReadImage()
 {
-    if (bH != NULL)
+    // Cleanup handled by unique_ptr for bH, iH, iHT, pHT
+    
+    // Clean up iHs list (wrap in smart pointer for safe deletion)
+    for (std::list<Versal_2ve_2vmImageHeaderStructure*>::iterator it = iHs.begin(); it != iHs.end(); ++it)
     {
-        delete[] bH;
+        std::unique_ptr<Versal_2ve_2vmImageHeaderStructure> iHPtr(*it);  // Wrap for auto-delete
     }
-    if (iH != NULL)
+    iHs.clear();
+    
+    // Clean up pHTs list (wrap in smart pointer for safe deletion)
+    for (std::list<Versal_2ve_2vmPartitionHeaderTableStructure*>::iterator it = pHTs.begin(); it != pHTs.end(); ++it)
     {
-        delete[] iH;
+        std::unique_ptr<Versal_2ve_2vmPartitionHeaderTableStructure> pHTPtr(*it);  // Wrap for auto-delete
     }
-    if (iHT != NULL)
+    pHTs.clear();
+    
+    // Clean up aCs list
+    for (std::list<uint8_t*>::iterator it = aCs.begin(); it != aCs.end(); ++it)
     {
-        delete[] iHT;
+        delete[] *it;  // These are arrays
     }
-    if (pHT != NULL)
-    {
-        delete[] pHT;
-    }
+    aCs.clear();
 }
 void Versal_2ve_2vmReadImage::DumpPlainPartition(uint8_t *buffer,uint32_t length, std::string partition_name, bool isBootloader, uint32_t id, uint32_t index)
 {
-    uint8_t *outputBuffer = new uint8_t[length];
+    auto outputBuffer = std::make_unique<uint8_t[]>(length);
     size_t outputIndex = 0;
     size_t inputSize = length;
     size_t hashSize = 0;
@@ -93,17 +99,16 @@ void Versal_2ve_2vmReadImage::DumpPlainPartition(uint8_t *buffer,uint32_t length
         if (i + chunksize < inputSize)
         { // Not the last chunk
             size_t bytesToCopy = currentChunkSize - hashSize;
-            std::memcpy(outputBuffer + outputIndex, buffer + i, bytesToCopy);
+            std::memcpy(outputBuffer.get() + outputIndex, buffer + i, bytesToCopy);
             outputIndex += bytesToCopy;
         }
         else
         { // Last chunk
-            std::memcpy(outputBuffer + outputIndex, buffer + i, currentChunkSize);
+            std::memcpy(outputBuffer.get() + outputIndex, buffer + i, currentChunkSize);
             outputIndex += currentChunkSize;
         }
     }
-    DumpPartitions(outputBuffer, outputIndex, partition_name, id, index);
-    delete[] outputBuffer;
+    DumpPartitions(outputBuffer.get(), outputIndex, partition_name, id, index);
 }
 
 /**********************************************************************************************/
@@ -131,8 +136,8 @@ void Versal_2ve_2vmReadImage::ReadPartitions()
         {
 
             uint32_t length = 0; 
-            uint8_t* buffer = NULL;
-            uint32_t id = (*pHT)->puid & 0xFFFF;
+            std::unique_ptr<uint8_t[]> buffer;  // Smart pointer for auto cleanup
+            uint32_t id = (*pHT)->puid & 0xFFFF; (void)id; // Suppress unused warning
 			bool isBootloader = false; 
             if(bH && iH == iHs.begin())    // TODO FIX: WA added to populate plm offset from BH instead of paritition header
             {
@@ -144,7 +149,7 @@ void Versal_2ve_2vmReadImage::ReadPartitions()
                 offset = (*pHT)->partitionWordOffset * 4;  
                 length = (*pHT)->encryptedPartitionLength * 4; 
             }
-            buffer = new uint8_t[length];
+            buffer = std::make_unique<uint8_t[]>(length);  // Allocate directly as unique_ptr
                 
             if ((*pHT)->dataSectionCount > 0)
             {
@@ -157,7 +162,7 @@ void Versal_2ve_2vmReadImage::ReadPartitions()
             }
             if (!(fseek(binFile, offset, SEEK_SET)))
             {
-                result = fread(buffer, 1, length, binFile);
+                result = fread(buffer.get(), 1, length, binFile);  // Use .get() for raw pointer access
                 if (result != length)
                 {
                     LOG_ERROR("Error parsing partitions from PDI file");
@@ -173,8 +178,8 @@ void Versal_2ve_2vmReadImage::ReadPartitions()
                     {
                         part_sec_index++;
                     }
-                    //DumpPartitions(buffer, length, (*iH)->imageName, part_index, part_sec_index);
-                    DumpPlainPartition(buffer, length, (*iH)->imageName, isBootloader, part_index, part_sec_index);
+                    //DumpPartitions(buffer.get(), length, (*iH)->imageName, part_index, part_sec_index);
+                    DumpPlainPartition(buffer.get(), length, (*iH)->imageName, isBootloader, part_index, part_sec_index);
                 }
                 else
                 {
@@ -185,11 +190,11 @@ void Versal_2ve_2vmReadImage::ReadPartitions()
                     }
                     if ((dumpType == DumpOption::PLM) || (dumpType == DumpOption::BOOT_FILES))
                     {
-                         // DumpPartitions(buffer, length, "plm", part_index, part_sec_index);
-                         DumpPlainPartition(buffer, length, "plm", isBootloader, part_index, part_sec_index);
+                         // DumpPartitions(buffer.get(), length, "plm", part_index, part_sec_index);
+                         DumpPlainPartition(buffer.get(), length, "plm", isBootloader, part_index, part_sec_index);
                          if (dumpType == DumpOption::PLM)
                         {
-                            delete[] buffer;
+                            // buffer is unique_ptr, auto-deleted when out of scope
                             fclose(binFile);
                             return;
                         }
@@ -205,19 +210,18 @@ void Versal_2ve_2vmReadImage::ReadPartitions()
                             
                             if (!(fseek(binFile, bH->sourceOffset + bH->totalPlmLength, SEEK_SET)))
                             {
-                                  result = fread(buffer, 1, bH->totalPmcCdoLength, binFile);
+                                  result = fread(buffer.get(), 1, bH->totalPmcCdoLength, binFile);  // Use .get()
                             }
                             if (result != bH->totalPmcCdoLength)
                             {
                                 LOG_ERROR("Error parsing PMC CDO from PDI file");
                             }
 
-                            //DumpPartitions(buffer + bH->totalPlmLength, bH->totalPmcCdoLength, "pmc_cdo");
-                            DumpPlainPartition(buffer + bH->totalPlmLength, bH->totalPmcCdoLength, "pmc_cdo");
+                            //DumpPartitions(buffer.get() + bH->totalPlmLength, bH->totalPmcCdoLength, "pmc_cdo");
+                            DumpPlainPartition(buffer.get() + bH->totalPlmLength, bH->totalPmcCdoLength, "pmc_cdo");
                             if ((dumpType == DumpOption::PMC_CDO) || (dumpType == DumpOption::BOOT_FILES))
                             {
-                                // if dump boot files, the return from here
-                                delete[] buffer;
+                                // buffer is unique_ptr, auto-deleted when out of scope
                                 fclose(binFile);
                                 return;
                             }
@@ -234,16 +238,15 @@ void Versal_2ve_2vmReadImage::ReadPartitions()
                 LOG_ERROR("Error parsing Partition Headers from bin file");
             }
             pHT++;
-            delete[] buffer;
+            // buffer is unique_ptr, auto-deleted at end of loop iteration
         }
-
     }
     fclose(binFile);
 }
 /******************************************************************************/
 uint32_t Versal_2ve_2vmReadImage::ChunkSizeforParitition(std::string partition_name,  bool isBootloader)
 {
-	char * env_SECURE_4K_CHUNK = getenv("SECURE_4K_CHUNK");
+	char * env_SECURE_4K_CHUNK = getenv("SECURE_4K_CHUNK"); (void)env_SECURE_4K_CHUNK; // Suppress unused warning
 	if(partition_name == "plm" || partition_name == "pmc_cdo" || isBootloader == true)
 		isBootloader = true;
 
@@ -284,6 +287,7 @@ uint32_t Versal_2ve_2vmReadImage:: IdentifyAuthtype(uint32_t authheader)
         {
                 case 1: bl_auth_type_versal_2ve_2vm = Authentication::RSA; break;
                 case 2: bl_auth_type_versal_2ve_2vm = Authentication::ECDSA; break;
+                case 3: bl_auth_type_versal_2ve_2vm = Authentication::ECDSAp521; break;
                 case 4: bl_auth_type_versal_2ve_2vm = Authentication::LMS_SHA2_256; break;
                 case 5: bl_auth_type_versal_2ve_2vm = Authentication::LMS_SHAKE256; break;
                 case 6: bl_auth_type_versal_2ve_2vm = Authentication::HSS_SHA2_256; break;
@@ -298,7 +302,6 @@ uint32_t Versal_2ve_2vmReadImage:: IdentifyAuthtype(uint32_t authheader)
 /******************************************************************************/
 uint32_t Versal_2ve_2vmReadImage::GetACLength(uint32_t AuthOffset, uint32_t ppksize)
 {
-    uint8_t* AC_spkheader = NULL;
     spkheaderstructure* spkheader  = NULL;
     uint32_t Acsize = 0;
     size_t result;
@@ -311,20 +314,18 @@ uint32_t Versal_2ve_2vmReadImage::GetACLength(uint32_t AuthOffset, uint32_t ppks
         LOG_ERROR("Cannot read file %s", binFilename.c_str());
     }
 
-    AC_spkheader = new uint8_t[TELLURIDE_AC_SPK_HDR_LENGTH];
-    memset(AC_spkheader, 0, TELLURIDE_AC_SPK_HDR_LENGTH);
+    auto AC_spkheader = std::make_unique<uint8_t[]>(TELLURIDE_AC_SPK_HDR_LENGTH);
+    memset(AC_spkheader.get(), 0, TELLURIDE_AC_SPK_HDR_LENGTH);
     if (!(fseek(binFile, AuthOffset + ppksize, SEEK_SET)))
     {
-        result = fread(AC_spkheader, 1, TELLURIDE_AC_SPK_HDR_LENGTH, binFile);
+        result = fread(AC_spkheader.get(), 1, TELLURIDE_AC_SPK_HDR_LENGTH, binFile);
         if (result != TELLURIDE_AC_SPK_HDR_LENGTH)
         {
             LOG_ERROR("Error parsing extracting SPK header from PDI file");
         }
     }
-    spkheader = (spkheaderstructure*)AC_spkheader;
+    spkheader = (spkheaderstructure*)AC_spkheader.get();
     Acsize = ppksize + TELLURIDE_AC_SPK_HDR_LENGTH + spkheader->acTotalSpkSize + spkheader->acSpkTotalSignatureSize;
-    delete AC_spkheader;
-    AC_spkheader = NULL;
     fclose(binFile);
     return Acsize;
 }
@@ -347,8 +348,8 @@ void Versal_2ve_2vmReadImage::ReadHeaderTableDetails()
     }
 
     // Boot Header Table Extraction
-    bH = new Versal_2ve_2vmBootHeaderStructure;
-    result = fread(bH, 1, sizeof(Versal_2ve_2vmBootHeaderStructure), binFile);
+    bH = std::make_unique<Versal_2ve_2vmBootHeaderStructure>();
+    result = fread(bH.get(), 1, sizeof(Versal_2ve_2vmBootHeaderStructure), binFile);
     if ((bH->smapWords[0] == 0xDD000000) || (bH->smapWords[0] == 0x00DD0000) || (bH->smapWords[0] == 0x000000DD))
     {
         smap_header_found = true;
@@ -356,10 +357,8 @@ void Versal_2ve_2vmReadImage::ReadHeaderTableDetails()
 
     if(bH->widthDetectionWord != 0xAA995566)
     {
-        delete bH;
-        bH = NULL;        
+        bH.reset();
     }
-
 
 
     if ((dumpType == DumpOption::BH) || (dumpType == DumpOption::BOOT_FILES))
@@ -395,19 +394,17 @@ void Versal_2ve_2vmReadImage::ReadHeaderTableDetails()
         if(IdentifyAuthtype(bH->authHeader1) != Authentication::None)
         {
             // extracting SPK header for PLM
-            uint8_t* plm_ac = NULL;
-        
             Aclength = GetACLength(sizeof(Versal_2ve_2vmBootHeaderStructure), bH->totalppkkSize1);     //Use ACLength only if Auth is enable
-            plm_ac = new uint8_t[Aclength];
+            auto plm_ac = std::make_unique<uint8_t[]>(Aclength);
             if (!(fseek(binFile, sizeof(Versal_2ve_2vmBootHeaderStructure), SEEK_SET)))
             {
-                result = fread(plm_ac, 1, Aclength, binFile);
+                result = fread(plm_ac.get(), 1, Aclength, binFile);
                 if (result != Aclength)
                 {
                     LOG_ERROR("Error parsing Authentication Certificates for PLM from PDI file");
                 }
             }
-            aCs.push_back(plm_ac);
+            aCs.push_back(plm_ac.release());
             authtype.push_back(IdentifyAuthtype(bH->authHeader1));
         }
         else
@@ -422,20 +419,21 @@ void Versal_2ve_2vmReadImage::ReadHeaderTableDetails()
      else 
         offset = sizeof(Versal_2ve_2vmBootHeaderStructure);
 	
-    uint8_t* hash_block = NULL; 
+    // uint8_t* hash_block = NULL;  // Unused variable - commented out 
     if(bH && offset != 0)
     {
-        hash_block = new uint8_t[bH->hashBlockLength1];
+        auto hash_block = std::make_unique<uint8_t[]>(bH->hashBlockLength1);
         if (!(fseek(binFile, offset, SEEK_SET)))
         {
-            result = fread(hash_block, 1, bH->hashBlockLength1, binFile);
+            result = fread(hash_block.get(), 1, bH->hashBlockLength1, binFile);
             if (result != bH->hashBlockLength1)
             {
                 LOG_ERROR("Error parsing Hash Block0 from PDI file");
             }
         }
-        Hashblock_record.push_back(std::make_pair(hash_block,bH->hashBlockLength1)); 
-        DumpPartitions(hash_block, bH->hashBlockLength1, "HashBlock0"); // dumping hashblock0
+        uint8_t* hash_block_ptr = hash_block.release();
+        Hashblock_record.push_back(std::make_pair(hash_block_ptr,bH->hashBlockLength1)); 
+        DumpPartitions(hash_block_ptr, bH->hashBlockLength1, "HashBlock0"); // dumping hashblock0
     }
 
 
@@ -445,16 +443,16 @@ void Versal_2ve_2vmReadImage::ReadHeaderTableDetails()
         offset = offset + bH->hashBlockLength1;
     if(bH && offset != 0)
     {
-        hash_block = new uint8_t[bH->totalSignatureSize1];
+        auto hash_block2 = std::make_unique<uint8_t[]>(bH->totalSignatureSize1);
         if (!(fseek(binFile, offset, SEEK_SET)))
         {
-            result = fread(hash_block, 1, bH->totalSignatureSize1, binFile);
+            result = fread(hash_block2.get(), 1, bH->totalSignatureSize1, binFile);
             if (result != bH->totalSignatureSize1)
             {
                 LOG_ERROR("Error parsing Hash Block0 sign from PDI file");
             }
         }
-        Hashblock_record.push_back(std::make_pair(hash_block,bH->totalSignatureSize1));
+        Hashblock_record.push_back(std::make_pair(hash_block2.release(),bH->totalSignatureSize1));
     }
   
 
@@ -477,8 +475,8 @@ void Versal_2ve_2vmReadImage::ReadHeaderTableDetails()
 
     if (!(fseek(binFile, offset, SEEK_SET)))
     {
-        iHT = new Versal_2ve_2vmImageHeaderTableStructure;
-        result = fread(iHT, 1, sizeof(Versal_2ve_2vmImageHeaderTableStructure), binFile);
+        iHT = std::make_unique<Versal_2ve_2vmImageHeaderTableStructure>();
+        result = fread(iHT.get(), 1, sizeof(Versal_2ve_2vmImageHeaderTableStructure), binFile);
         if (iHT->version != VERSION_v1_00_TELLURIDE)
         {
             LOG_ERROR("Improper version (0x%.8x) read from Image Header Table of the PDI file.", iHT->version);
@@ -499,22 +497,22 @@ void Versal_2ve_2vmReadImage::ReadHeaderTableDetails()
     }
 
 
-    uint8_t*  header_ac = NULL;
+    // uint8_t*  header_ac = NULL;  // Unused variable - commented out
     if (iHT && iHT->headerAuthCertificateWordOffset != 0 && (IdentifyAuthtype(iHT->authHeader1) != Authentication::None))
     {
         // Recording AC for meta header
             offset = iHT->headerAuthCertificateWordOffset * 4 ;
             Aclength = GetACLength(iHT->headerAuthCertificateWordOffset * 4, iHT->totalppkkSize1);     //Use ACLength only if Auth is enable
-            header_ac = new uint8_t[Aclength];
+            auto header_ac = std::make_unique<uint8_t[]>(Aclength);
             if (!(fseek(binFile, offset, SEEK_SET)))  
             {
-                result = fread(header_ac, 1, Aclength, binFile);
+                result = fread(header_ac.get(), 1, Aclength, binFile);
                 if (result != Aclength)
                 {
                     LOG_ERROR("Error parsing Header Authentication Certificate from PDI file");
                 }
             }
-            aCs.push_back(header_ac);  
+            aCs.push_back(header_ac.release());  
             authtype.push_back(IdentifyAuthtype(iHT->authHeader1));
     }
     else 
@@ -524,32 +522,32 @@ void Versal_2ve_2vmReadImage::ReadHeaderTableDetails()
          //Record hashblock1
        if((iHT->hashBlockLength1)*4 != 0)
        {
-            header_ac = new uint8_t[(iHT->hashBlockLength1)*4];
+            auto header_ac2 = std::make_unique<uint8_t[]>((iHT->hashBlockLength1)*4);
             if (!(fseek(binFile, (iHT->hashBlockOffset) * 4, SEEK_SET)))  
             {
-                result = fread(header_ac, 1, (iHT->hashBlockLength1)*4, binFile);
+                result = fread(header_ac2.get(), 1, (iHT->hashBlockLength1)*4, binFile);
                 if (result != (iHT->hashBlockLength1)*4)
                 {
                     LOG_ERROR("Error parsing record hashblock1 from PDI file");
                 }
             }  
-            Hashblock_record.push_back(std::make_pair(header_ac,(iHT->hashBlockLength1)*4));
+            Hashblock_record.push_back(std::make_pair(header_ac2.release(),(iHT->hashBlockLength1)*4));
        }
        
         //Record hashblock1 signture 
         offset = (iHT->hashBlockOffset)*4  + (iHT->hashBlockLength1)*4;
         if(offset != 0)
         {
-            hash_block = new uint8_t[iHT->totalHashBlockSignatureSize1];
+            auto hash_block3 = std::make_unique<uint8_t[]>(iHT->totalHashBlockSignatureSize1);
             if (!(fseek(binFile, offset, SEEK_SET)))
             {
-                result = fread(hash_block, 1, iHT->totalHashBlockSignatureSize1, binFile);
+                result = fread(hash_block3.get(), 1, iHT->totalHashBlockSignatureSize1, binFile);
                 if (result != iHT->totalHashBlockSignatureSize1)
                 {
                     LOG_ERROR("Error parsing Hash Block1 sign from PDI file");
                 }
             }
-            Hashblock_record.push_back(std::make_pair(hash_block,iHT->totalHashBlockSignatureSize1));
+            Hashblock_record.push_back(std::make_pair(hash_block3.release(),iHT->totalHashBlockSignatureSize1));
         }    
         
 
@@ -558,15 +556,15 @@ void Versal_2ve_2vmReadImage::ReadHeaderTableDetails()
         offset = iHT->firstImageHeaderWordOffset * 4;
         for (index = 0; index < iHT->imageTotalCount; index++)
         {
-            iH = new Versal_2ve_2vmImageHeaderStructure;
+            iH = std::make_unique<Versal_2ve_2vmImageHeaderStructure>();
             if (!(fseek(binFile, offset, SEEK_SET)))
             {
-                result = fread(iH, 1, sizeof(Versal_2ve_2vmImageHeaderStructure), binFile);
+                result = fread(iH.get(), 1, sizeof(Versal_2ve_2vmImageHeaderStructure), binFile);
                 if (result != sizeof(Versal_2ve_2vmImageHeaderStructure))
                 {
                     LOG_ERROR("Error parsing Image Headers from PDI file");
                 }
-                iHs.push_back(iH);
+                iHs.push_back(iH.release());
                 offset += sizeof(Versal_2ve_2vmImageHeaderStructure);
             }
             else
@@ -578,16 +576,16 @@ void Versal_2ve_2vmReadImage::ReadHeaderTableDetails()
         offset = (iHT->firstImageHeaderWordOffset * 4) + (sizeof(Versal_2ve_2vmImageHeaderStructure) * iHT->imageTotalCount);
         for (index = 0; index < iHT->partitionTotalCount; index++)
         {
-            pHT = new Versal_2ve_2vmPartitionHeaderTableStructure;
+            pHT = std::make_unique<Versal_2ve_2vmPartitionHeaderTableStructure>();
 
             if (!(fseek(binFile, offset, SEEK_SET)))
             {
-                result = fread(pHT, 1, sizeof(Versal_2ve_2vmPartitionHeaderTableStructure), binFile);
+                result = fread(pHT.get(), 1, sizeof(Versal_2ve_2vmPartitionHeaderTableStructure), binFile);
                 if (result != sizeof(Versal_2ve_2vmPartitionHeaderTableStructure))
                 {
                     LOG_ERROR("Error parsing Partition Headers from PDI file");
                 }
-                pHTs.push_back(pHT);
+                pHTs.push_back(pHT.release());
                 offset += sizeof(Versal_2ve_2vmPartitionHeaderTableStructure);
             }
             else
@@ -599,7 +597,7 @@ void Versal_2ve_2vmReadImage::ReadHeaderTableDetails()
 
         for (std::list<Versal_2ve_2vmPartitionHeaderTableStructure*>::iterator partitionHdr = pHTs.begin(); partitionHdr != pHTs.end(); partitionHdr++)
         {
-			uint8_t* aC = NULL;
+			 // uint8_t* aC = NULL; // Unused variable
             if(bH && partitionHdr == pHTs.begin())
                  continue;            //incrementing to skip the PLM partition
             
@@ -607,16 +605,16 @@ void Versal_2ve_2vmReadImage::ReadHeaderTableDetails()
             {              
                 Aclength = GetACLength((*partitionHdr)->authCertificateOffset * 4,(*partitionHdr)->totalppkkSize1);     //Use ACLength only if Auth is enable
                 offset = (*partitionHdr)->authCertificateOffset * 4;
-                aC = new uint8_t[Aclength];
+                auto aC = std::make_unique<uint8_t[]>(Aclength);
                 if (!(fseek(binFile, offset, SEEK_SET)))
                 {
-                    result = fread(aC, 1, Aclength, binFile);
+                    result = fread(aC.get(), 1, Aclength, binFile);
                     if (result != Aclength)
                     {
                         LOG_ERROR("Error parsing Authentication Certificates from PDI file");
                     }
                 }
-                aCs.push_back(aC);
+                aCs.push_back(aC.release());
                 authtype.push_back(IdentifyAuthtype((*partitionHdr)->authHeader1));
                 //delete[] aC;
                // aC = NULL;
@@ -625,16 +623,16 @@ void Versal_2ve_2vmReadImage::ReadHeaderTableDetails()
                 offset = (*partitionHdr)->hashBlockWordOffset * 4 ;
                 if(offset != 0)
                 {
-                    hash_block = new uint8_t[((*partitionHdr)->hashBlockLength1) * 4]; // Hash block1 length with wordoffset
+                    auto hash_block4 = std::make_unique<uint8_t[]>(((*partitionHdr)->hashBlockLength1) * 4); // Hash block1 length with wordoffset
                     if (!(fseek(binFile, offset, SEEK_SET)))
                     {
-                        result = fread(hash_block, 1, ((*partitionHdr)->hashBlockLength1) * 4, binFile);
+                        result = fread(hash_block4.get(), 1, ((*partitionHdr)->hashBlockLength1) * 4, binFile);
                         if (result != ((*partitionHdr)->hashBlockLength1) * 4)
                         {
                             LOG_ERROR("Error parsing Hash Block1 from PDI file");
                         }
                     }
-                    Hashblock_record.push_back(std::make_pair(hash_block, (*partitionHdr)->hashBlockLength1 * 4));
+                    Hashblock_record.push_back(std::make_pair(hash_block4.release(), (*partitionHdr)->hashBlockLength1 * 4));
                     // delete[] hash_block;
                     // hash_block = NULL;
                 }
@@ -643,16 +641,16 @@ void Versal_2ve_2vmReadImage::ReadHeaderTableDetails()
                 offset = (*partitionHdr)->hashBlockWordOffset * 4 + (*partitionHdr)->hashBlockLength1 * 4;   //hashblock length comes along with padding for HASH block1 only
                 if(offset != 0)
                 {
-                    hash_block = new uint8_t[(*partitionHdr)->totalHashBlockSignatureSize1];
+                    auto hash_block5 = std::make_unique<uint8_t[]>((*partitionHdr)->totalHashBlockSignatureSize1);
                     if (!(fseek(binFile, offset, SEEK_SET)))
                     {
-                        result = fread(hash_block, 1, (*partitionHdr)->totalHashBlockSignatureSize1, binFile);
+                        result = fread(hash_block5.get(), 1, (*partitionHdr)->totalHashBlockSignatureSize1, binFile);
                         if (result != (*partitionHdr)->totalHashBlockSignatureSize1)
                         {
                             LOG_ERROR("Error parsing Hash Block1 sign from PDI file");
                         }
                     }
-                    Hashblock_record.push_back(std::make_pair(hash_block,(*partitionHdr)->totalHashBlockSignatureSize1));    
+                    Hashblock_record.push_back(std::make_pair(hash_block5.release(),(*partitionHdr)->totalHashBlockSignatureSize1));    
                     //delete[] hash_block;
                     // hash_block = NULL;   
                 }                
@@ -830,9 +828,7 @@ void Versal_2ve_2vmReadImage::DisplayBootHeader(void)
         DisplayValue("puf_shutter (0x70) : ", bH->shutterValue);
         DisplayValue("puf_ro_swap (0x74) : ", bH->pufRoSwapConfigVal);
         DisplayValue("revoke_id (0x78) : ", bH->plmRevokeId);
-        #ifdef BUILD_TELLURIDE
         DisplayLongValues("udf_BH (0x7C) : ", (uint8_t*)bH->udfBH, 516);
-        #endif 
         DisplayValue("auth_header (0x280) : ", bH->authHeader1);
         DisplayValue("hash_block_size (0x284) : ", bH->hashBlockLength1);
         DisplayValue("total_ppk_size (0x288) : ", bH->totalppkkSize1);
@@ -842,10 +838,7 @@ void Versal_2ve_2vmReadImage::DisplayBootHeader(void)
         DisplayValue("metahdr_offset (0x2d0) : ", bH->imageHeaderByteOffset);
     
 
-
-	#ifdef BUILD_TELLURIDE
     DisplayKey("puf_data (0xb34) : ", bH->puf);   // PUF data offset
-	#endif
     DisplayValue("checksum (0x113c) : ", bH->headerChecksum);
     std::cout << " attribute list - " << std::endl;
     DisplayBhAttributes(bH->bhAttributes);
@@ -1062,6 +1055,8 @@ void Versal_2ve_2vmReadImage::DisplayAuthenicationCertificates(void)
                             DisplayLongValues("HASH Block0 signture   : ", ((*hash_block_itr).first), hash_block_itr->second); 
                         if(hash_block_itr != Hashblock_record.end())    
                             hash_block_itr++;
+                        if ((*aC_iterator) != NULL && authcheck != authtype.end())
+                            authcheck++;             // authtype checking
                         continue;     
                     }
                     if(hash_block_itr->second != 0)   //hashblock length 

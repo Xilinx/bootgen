@@ -66,11 +66,13 @@ void ShowCommonHelp(int,bool);
     char* cstring;
 }
 
+/* Free strdup'd strings when they're no longer needed to prevent memory leaks */
+%destructor { free($$); } <cstring>
 
 %token _IMAGE _FILL _O_TOK I _H _DEBUG_TOK _LEGACY _NONBOOTING _PACKAGENAME _BIF_HELP
 %token _LOG ERROR WARNING INFO DEBUG TRACE
 %token _SPLIT _PROCESS_BITSTREAM MCS BIN _OUT_TYPE
-%token _DUMP DUMP_PLM DUMP_PMC_CDO DUMP_BOOT_FILES _DUMP_DIR DUMP_SLAVE_PDIS DUMP_PUF_PDI
+%token _DUMP DUMP_PLM DUMP_PMC_CDO DUMP_BOOT_FILES _DUMP_DIR _PUF DUMP_SLAVE_PDIS DUMP_PUF_PDI
 %token _ARCH ZYNQ ZYNQMP VERSAL _R FPGA VERSALNET TELLURIDE VERSAL_2VE_2VM LASSEN LASSEN_DL9 SPARTANUP
 %token _DUAL_QSPI_MODE _DUAL_OSPI_MODE PARALLEL STACKED
 %token _W ON OFF
@@ -78,7 +80,6 @@ void ShowCommonHelp(int,bool);
 %token _EFUSEPPKBITS _GENERATE_HASHES _PADIMAGEHEADER _SPKSIGNATURE _GENERATE_KEYS PEM RSA ECDSAP521 AUTH GREY METAL LMS _EFUSEPUFBITS
 %token _SECUREDEBUG ECDSA _AUTHJTAG
 %token _ENCRYPT BBRAM EFUSE _P_TOK
-%token _INTERFACE SMAPx8 SMAPx16 SMAPx32 SPI BPIx8 BPIx16
 %token _READ READ_BH READ_IHT READ_IH READ_PHT READ_AC
 %token _VERIFY _VERIFYKDF _AUTH_OPTIMIZATION
 %token _ZYNQMPENCRDUMP
@@ -86,10 +87,10 @@ void ShowCommonHelp(int,bool);
 %token <cstring> IDENTIFIER FILENAME QFILENAME HEXSTRING
 %token EQUALS HMAC STARTCBC KEY0 COMMA
 %type <number> number
-%type <cstring> filename charstring
+%type <cstring> filename
 
 %token HBIFHELP HARCH HIMAGE HFILL HO HP HW HEFUSEPPKBITS HGENHASHES HLEGACY HPADHDR H_SPKSIGN HAUTHOPT
-%token HPACKAGE HENCRYPT HGENKEYS HDQSPI HLOG HZYNQMPES1 HPROCESSBIT HNONBOOTING HENCRDUMP HPOSTPROCESS
+%token HPACKAGE HENCRYPT HGENKEYS HDQSPI HLOG HZYNQMPES1 HPROCESSBIT HNONBOOTING HENCRDUMP
 %token HVERIFY HSECUREDEBUG HREAD HVERIFYKDF HDUMP HDUMPDIR HOVLCDO HOUTTYPE
 
 %token H_BIF_INIT H_BIF_UDFBH H_BIF_AES H_BIF_PPK H_BIF_PSK H_BIF_SPK H_BIF_SSK H_BIF_SPKSIGN H_BIF_HIVEC
@@ -145,13 +146,12 @@ option          : _IMAGE filename                   { options.SetBifFilename($2)
                 | _VERIFY verifyImageOptions
                 | _DUMP dumpOptions
                 | _DUMP_DIR filename                { options.SetDumpDirectory($2); }
+                | _PUF filename                     { options.SetPufOutputFileName($2); }
                 | _VERIFYKDF filename               { options.SetKDFTestVectorFile($2); }
                 | _AUTH_OPTIMIZATION                { options.SetAuthOptimization();}
                 | _OVERLAYCDO filename              { options.SetOverlayCDOFileName($2); }
                 | _OUT_TYPE outputType
                 ;
-
-charstring      : IDENTIFIER | HEXSTRING;
 
 filename        : HEXSTRING | IDENTIFIER | FILENAME | QFILENAME;
 
@@ -397,7 +397,6 @@ dumpOptions     : READ_BH                           { options.SetDumpOption(Dump
 encrDumpOptions : /* empty */                       { options.SetEncryptionDump(true,"aes_log.txt"); }
                 | filename                          { options.SetEncryptionDump(true,$1); }
 
-
 %%
 
 
@@ -522,10 +521,6 @@ void ShowCmdHelp(int a)
         std::cout << VERIFYHELP << std::endl;
         break;
 
-    case CO::BisonParser::token::HPOSTPROCESS: 
-        std::cout << POSTPROCESSHELP << std::endl;
-        break;
-    
     case CO::BisonParser::token::HVERIFYKDF:
         std::cout << VERIFYKDFHELP << std::endl;
         break;

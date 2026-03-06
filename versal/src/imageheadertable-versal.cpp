@@ -20,6 +20,11 @@
 ************************************************* H E A D E R   F I L E S   ***
 -------------------------------------------------------------------------------
 */
+#ifndef ENABLE_WDI
+#include <isl/iostreams/filtering_stream.hpp>
+#include <isl/iostreams/util.hpp>
+#endif
+#include <memory>
 #include "imageheadertable-versal.h"
 #include "authentication-versal.h"
 #include "bootimage.h"
@@ -46,7 +51,7 @@ extern "C" {
 #include "cdoutils.h"
 
 static uint8_t bufferIndex = 0;
-std::list<CdoCommandDmaWrite*> VersalImageHeader::cdoSections;
+std::list<std::unique_ptr<CdoCommandDmaWrite>> VersalImageHeader::cdoSections;  // Smart pointers
 
 /*
 -------------------------------------------------------------------------------
@@ -66,20 +71,24 @@ VersalImageHeaderTable::VersalImageHeaderTable()
     , bypassIdCode(false)
     , prebuilt(false)
     , dpacm(DpaCM::DpaCMDisable)
+    , isCorePsmFwPresent(false)
 {
-    section = new Section("MetaHeader", sizeof(VersalImageHeaderTableStructure));
-    iHTable = (VersalImageHeaderTableStructure*)section->Data;
+    auto temp_section = std::make_unique<Section>("MetaHeader", sizeof(VersalImageHeaderTableStructure));
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    iHTable = (VersalImageHeaderTableStructure*)section->Data.get();
 }
 
 /******************************************************************************/
 VersalImageHeaderTable::VersalImageHeaderTable(std::ifstream& src)
+    : isCorePsmFwPresent(false)
 {
     prebuilt = true;
-    section = new Section("MetaHeader", sizeof(VersalImageHeaderTableStructure));
-    iHTable = (VersalImageHeaderTableStructure*)section->Data;
+    auto temp_section = std::make_unique<Section>("MetaHeader", sizeof(VersalImageHeaderTableStructure));
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    iHTable = (VersalImageHeaderTableStructure*)section->Data.get();
     
     /* Import the Image Header Table from a boot image file */
-    src.read((char*)section->Data, section->Length);
+    src.read((char*)section->Data.get(), section->Length);
     creatorId = (iHTable->imageHeaderTableAttributes >> vihtImageCreatorIdShift) & vihtImageCreatorIdMask;
     parentId = iHTable->parentId;
     pdiId = iHTable->pdiId;
@@ -99,20 +108,24 @@ VersalImageHeaderTable::~VersalImageHeaderTable()
 {
     if (section != NULL)
     {
-        delete section;
     }
 }
 
 /******************************************************************************/
 void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
 {
+    LOG_TRACE("VersalImageHeaderTable::Build START: iht_optional_data_length = 0x%x", iht_optional_data_length);
     bool isApuOrRpuSubsystem = false;
 
+    // CRITICAL: This is the ImageHeaderTable section itself (NOT individual image headers!)
+    // This section goes directly to cache and is NOT in bi.headers
+    // Individual ImageHeader sections (created later) go to bi.headers conditionally
     if (section != NULL)
     {
-        cache.Sections.push_back(section);
+        cache.Sections.push_back(std::unique_ptr<Section>(section));
     }
 
+    
     if (!prebuilt)
     {
         pdiId = bi.bifOptions->GetPdiId();
@@ -128,7 +141,7 @@ void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
         SetIdentificationString(bi.IsBootloaderFound());
         SetIds(bi.imageList.size() != 0);
         metaHdrKeySrc = bi.options.bifOptions->metaHdrAttributes.encrKeySource;
-        SetMetaHdrSecureHdrIv(metaHdrSecHdrIv);
+        SetMetaHdrSecureHdrIv(metaHdrSecHdrIv.get());
         dpacm = bi.bifOptions->metaHdrAttributes.dpaCM;
         pufHDLoc = bi.bifOptions->metaHdrAttributes.pufHdLoc;
     }
@@ -177,7 +190,7 @@ void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
             pufHDLoc = bi.bifOptions->metaHdrAttributes.pufHdLoc;
         }
 
-        SetOptionalData(bi.iht_optional_data, bi.iht_optional_data_length);
+        SetOptionalData(bi.iht_optional_data.get(), bi.iht_optional_data_length);
     }
 
 
@@ -226,7 +239,6 @@ void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
         }
     }
 
-
     bi.options.SetPadHeaderTable(false);
     if (bi.options.DoPadHeaderTable())
     {
@@ -247,7 +259,15 @@ void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
             }
         }
     }
+   /* Detect if PSM partition exists for SetUserOptionalData */
+    isCorePsmFwPresent = false;
+    for (std::list<PartitionHeader*>::iterator partHdr = bi.partitionHeaderList.begin(); partHdr != bi.partitionHeaderList.end(); partHdr++)
+    {
+        if((*partHdr)->imageHeader->GetDestCpu() == DestinationCPU::PMU)
+            isCorePsmFwPresent = true;
+    }
 
+    LOG_TRACE("IsAuthOptimizationEnabled = %d, numHashTableEntries = %d", bi.options.IsAuthOptimizationEnabled(), bi.numHashTableEntries);
     if (bi.options.IsAuthOptimizationEnabled())
     {
          /* Adding an entry for header in hashtable */
@@ -258,6 +278,7 @@ void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
         else
         {
             bi.numHashTableEntries++;
+            LOG_TRACE("Incremented numHashTableEntries to %d for header", bi.numHashTableEntries);
         }
 
         std::string metaHdrSsk = bi.options.bifOptions->metaHdrAttributes.ssk;
@@ -295,13 +316,38 @@ void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
                 }
             }
         }
+
+        //For HSM with auth opt we can increment numHashTableEntries here as all the partition hashes will be stored in optional data
+        if(bi.bifOptions->metaHdrAttributes.spkSignature != "")
+        {
+            if(bi.IsBootloaderFound())
+            {
+                bi.numHashTableEntries += bi.partitionHeaderList.size()-1;
+            }
+            else
+            {
+                bi.numHashTableEntries += bi.partitionHeaderList.size();
+            }
+        }
+
+    }
+   /* Detect if PSM partition exists and store it for SetUserOptionalData */
+    isCorePsmFwPresent = false;
+    for (std::list<PartitionHeader*>::iterator partHdr = bi.partitionHeaderList.begin(); partHdr != bi.partitionHeaderList.end(); partHdr++)
+    {
+        if((*partHdr)->imageHeader->GetDestCpu() == DestinationCPU::PMU)
+            isCorePsmFwPresent = true;
     }
 
     bi.imageHeaderTable->SetUserOptionalData(bi.bifOptions->metaHdrAttributes.ihtOptionalDataInfo, bi.numHashTableEntries);
     bi.iht_optional_data_length = iht_optional_data_length;
     bi.copied_iht_optional_data_length = copied_iht_optional_data_length;
-    bi.iht_optional_data = (uint32_t*)realloc(bi.iht_optional_data, bi.iht_optional_data_length);
-    memcpy(bi.iht_optional_data, iht_optional_data, iht_optional_data_length);
+    LOG_TRACE("After SetUserOptionalData: iht_optional_data_length = 0x%x, copied = 0x%x", iht_optional_data_length, copied_iht_optional_data_length);
+    bi.iht_optional_data = std::make_unique<uint32_t[]>(bi.iht_optional_data_length / sizeof(uint32_t));
+    memcpy(bi.iht_optional_data.get(), iht_optional_data.get(), iht_optional_data_length);
+    
+    // Section already added to cache at start of Build() with .get()
+    // Cache stores non-owning reference, ImageHeaderTable keeps ownership
 }
 
 /******************************************************************************/
@@ -591,13 +637,13 @@ void VersalImageHeaderTable::SetMetaHdrKeySrc(KeySource::Type keyType, BifOption
 /******************************************************************************/
 void VersalImageHeaderTable::SetMetaHdrGreyOrBlackIv(std::string ivFile)
 {
-    uint8_t* ivData = new uint8_t[IV_LENGTH * 4];
-    memset(ivData, 0, IV_LENGTH * 4);
+    auto ivData = std::make_unique<uint8_t[]>(IV_LENGTH * 4);
+    memset(ivData.get(), 0, IV_LENGTH * 4);
 
     if (ivFile != "")
     {
         FileImport fileReader;
-        if (!fileReader.LoadHexData(ivFile, ivData, IV_LENGTH * 4))
+        if (!fileReader.LoadHexData(ivFile, ivData.get(), IV_LENGTH * 4))
         {
             LOG_ERROR("Invalid no. of data bytes for Black/Grey Key IV.\n           Expected length for Grey/Black IV is 12 bytes");
         }
@@ -610,8 +656,7 @@ void VersalImageHeaderTable::SetMetaHdrGreyOrBlackIv(std::string ivFile)
         }
     }
 
-    memcpy(&iHTable->metaHdrGreyOrBlackIV, ivData, IV_LENGTH * 4);
-    delete[] ivData;
+    memcpy(&iHTable->metaHdrGreyOrBlackIV, ivData.get(), IV_LENGTH * 4);
 }
 
 /******************************************************************************/
@@ -675,8 +720,8 @@ void VersalImageHeaderTable::SetXplmModulesData(BootImage& bi, uint32_t * data, 
     if (size != 0)
     {
         bi.xplm_modules_data_length = size;
-        bi.xplm_modules_data = (uint32_t*)malloc(bi.xplm_modules_data_length);
-        memcpy(bi.xplm_modules_data, data, bi.xplm_modules_data_length);
+        bi.xplm_modules_data = std::make_unique<uint32_t[]>(bi.xplm_modules_data_length / sizeof(uint32_t));
+        memcpy(bi.xplm_modules_data.get(), data, bi.xplm_modules_data_length);
     }
 }
 
@@ -686,30 +731,133 @@ void VersalImageHeaderTable::SetOptionalData(uint32_t * data, uint32_t size)
     iht_optional_data_length = size;
     if (size != 0)
     {
-        iht_optional_data = (uint32_t*)malloc(iht_optional_data_length);
-        memcpy(iht_optional_data, data, iht_optional_data_length);
+        iht_optional_data = std::make_unique<uint32_t[]>(iht_optional_data_length / sizeof(uint32_t));
+        memcpy(iht_optional_data.get(), data, iht_optional_data_length);
     }
 }
 
 /******************************************************************************/
-void VersalImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t numHashTableEntries)
+void VersalImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t numHashTableEntries, uint32_t isCorePsm)
 {
-    /* Fetch optional data, if available then exclude padding */
+    LOG_TRACE("SetUserOptionalData START: iht_optional_data_length = 0x%x, numHashTableEntries = %d, isCorePsm = %d", iht_optional_data_length, numHashTableEntries, isCorePsm);
+    bool foundCosePsm = false;
+    
+    /* Fetch optional data, if available then exclude padding.
+       For both Versal and Versal NET: Filter out PSM data to regenerate it fresh.
+       This ensures PSM optional data is always consistent across HSM and non-HSM flows. */
     if(iht_optional_data_length > 0)
     {
         uint32_t actual_opData_length = 0;
+        std::vector<uint8_t> filtered_data;  // Changed from raw pointer to vector for automatic memory management
+        uint32_t filtered_length = 0;
+        
+        
         while(actual_opData_length < iht_optional_data_length)
         {
-            uint32_t* buffer = (uint32_t*)iht_optional_data + (actual_opData_length / 4);
+            uint32_t* buffer = iht_optional_data.get() + (actual_opData_length / 4);
             uint32_t opData_id = buffer[0] & 0x0000FFFF;
+            LOG_TRACE("opdata_id %x", opData_id);
+            
+            /* Check if PSM optional data exists - always filter it out for regeneration */
+            if(opData_id == 0x04)
+            {
+                /* For both Versal and Versal NET: Don't set foundCosePsm 
+                   PSM data will always be regenerated fresh to ensure consistency */
+                LOG_TRACE("Found PSM optional data (ID=0x04) in imported PDI - will filter and regenerate");
+            }
+                
             if(opData_id == 0x0000FFFF)
+            {
                 break;
+            }
 
-            actual_opData_length += (((buffer[0] & 0xFFFF0000) >> 16) * 4);
+            uint32_t section_length = (((buffer[0] & 0xFFFF0000) >> 16) * 4);
+            
+            /* Safety check to prevent infinite loop */
+            if (section_length == 0)
+            {
+                LOG_TRACE("Optional data section has zero length - unable to parse further");
+                break;
+            }
+            
+            /* Filter out PSM data and hash tables for regeneration.
+               - PSM data (ID=0x04): Always regenerate for consistency
+               - Hash table (ID=0x01): Always regenerate to avoid stale data from imports
+               This ensures consistent optional data across all build flows. */
+            if(opData_id == 0x04)
+            {
+                /* Skip PSM data - will regenerate */
+                LOG_TRACE("Filtering out PSM optional data (ID=0x04) from imported PDI");
+            }
+            else if(opData_id == 0x01)
+            {
+                /* Skip hash table - will regenerate */
+                LOG_TRACE("Filtering out hash table (ID=0x01) from imported PDI");
+            }
+            else
+            {
+                /* Copy this optional data section */
+                filtered_data.resize(filtered_length + section_length);
+                memcpy(filtered_data.data() + filtered_length, (uint8_t*)buffer, section_length);
+                filtered_length += section_length;
+            }
+            
+            actual_opData_length += section_length;
         }
 
-        /* Update existing length to exculde padding */
-        iht_optional_data_length = actual_opData_length;
+
+        /* Replace imported optional data with filtered data */
+        if(filtered_length > 0)
+        {
+            iht_optional_data = std::make_unique<uint32_t[]>(filtered_length / sizeof(uint32_t));
+            memcpy(iht_optional_data.get(), filtered_data.data(), filtered_length);
+            iht_optional_data_length = filtered_length;
+        }
+        else
+        {
+            /* No data after filtering, clear everything */
+            if(iht_optional_data != nullptr)
+            {
+                iht_optional_data.reset();
+            }
+            iht_optional_data_length = 0;
+        }
+    }
+
+   /*
+       For both Versal and Versal NET:
+       - PSM optional data (Section ID=0x04) is ALWAYS regenerated when PSM firmware exists
+       - ALL system-reserved optional data (IDs 0x01-0x20) is filtered and regenerated
+       - Only user-defined optional data (IDs > 0x20) is preserved from imports
+       
+       This ensures consistent behavior across all flows:
+       - HSM Stage 1: System optional data generated fresh
+       - HSM Stage 2+: System optional data regenerated (filtered from imports)
+       - Non-HSM: System optional data generated fresh
+       - Result: All flows produce identical system optional data
+    */
+
+    
+    if(isCorePsmFwPresent && !foundCosePsm)
+    {
+        LOG_TRACE("Adding PSM optional data, iht_optional_data_length before = 0x%x", iht_optional_data_length);
+        /*  Section id = 4 is reserved for core = psm
+            Storing only Optional Data Header and Checksum  */
+        uint32_t sectn_size_id = 0;
+        /* Optional Data Header + Checksum */
+        uint16_t sectn_length = sizeof(uint32_t) + sizeof(uint32_t);
+        sectn_size_id = (uint32_t)((sectn_length / 4) << 16) | 0x04;
+
+        auto new_data = std::make_unique<uint32_t[]>((iht_optional_data_length + sectn_length) / sizeof(uint32_t));
+        if (iht_optional_data) {
+            memcpy(new_data.get(), iht_optional_data.get(), iht_optional_data_length);
+        }
+        memcpy((uint8_t*)new_data.get() + iht_optional_data_length, &sectn_size_id, sizeof(uint32_t));
+        uint32_t checksum = ComputeWordChecksum((uint8_t*)new_data.get() + iht_optional_data_length, sectn_length - sizeof(uint32_t));
+        memcpy((uint8_t*)new_data.get() + iht_optional_data_length + sectn_length - sizeof(uint32_t), &checksum, sizeof(uint32_t));
+        iht_optional_data = std::move(new_data);
+        iht_optional_data_length += sectn_length;
+        LOG_TRACE("After PSM: iht_optional_data_length = 0x%x", iht_optional_data_length);
     }
 
     for (size_t i = 0; i < optionalDataInfo.size(); i++)
@@ -726,9 +874,9 @@ void VersalImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::stri
         }
 
         uint32_t optional_data_padLength = (size % 64 != 0) ? 64 - (size % 64) : 0;
-        uint8_t*  data= new uint8_t[size + optional_data_padLength];
-        memset(data, 0, size + optional_data_padLength);
-        memcpy(data, tempData, size);
+        auto data = std::make_unique<uint8_t[]>(size + optional_data_padLength);
+        memset(data.get(), 0, size + optional_data_padLength);
+        memcpy(data.get(), tempData, size);
         free(tempData);
         size += optional_data_padLength;
 
@@ -739,43 +887,60 @@ void VersalImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::stri
             uint16_t sectn_length = sizeof(uint32_t) + size + sizeof(uint32_t);
             sectn_size_id = (uint32_t)((sectn_length / 4) << 16) | (optionalDataInfo[i].second);
 
-            iht_optional_data = (uint32_t*)realloc(iht_optional_data, iht_optional_data_length + sectn_length);
-            memcpy((uint8_t*)iht_optional_data + iht_optional_data_length, &sectn_size_id, sizeof(uint32_t));
-            memcpy((uint8_t*)iht_optional_data + iht_optional_data_length + sizeof(uint32_t), data, size);
+            auto new_data = std::make_unique<uint32_t[]>((iht_optional_data_length + sectn_length) / sizeof(uint32_t));
+            if (iht_optional_data) {
+                memcpy(new_data.get(), iht_optional_data.get(), iht_optional_data_length);
+            }
+            memcpy((uint8_t*)new_data.get() + iht_optional_data_length, &sectn_size_id, sizeof(uint32_t));
+            memcpy((uint8_t*)new_data.get() + iht_optional_data_length + sizeof(uint32_t), data.get(), size);
 
-            uint32_t checksum = ComputeWordChecksum((uint8_t*)iht_optional_data + iht_optional_data_length, sectn_length - sizeof(uint32_t));
-            memcpy((uint8_t*)iht_optional_data + iht_optional_data_length + sectn_length - sizeof(uint32_t), &checksum, sizeof(uint32_t));
-
+            uint32_t checksum = ComputeWordChecksum((uint8_t*)new_data.get() + iht_optional_data_length, sectn_length - sizeof(uint32_t));
+            memcpy((uint8_t*)new_data.get() + iht_optional_data_length + sectn_length - sizeof(uint32_t), &checksum, sizeof(uint32_t));
+            iht_optional_data = std::move(new_data);
             iht_optional_data_length += sectn_length;
         }
     }
 
     copied_iht_optional_data_length = iht_optional_data_length;
+    LOG_TRACE("SetUserOptionalData: numHashTableEntries = %d, iht_optional_data_length before hash = 0x%x", numHashTableEntries, iht_optional_data_length);
 
     if (numHashTableEntries != 0)
     {
         /* Optional Data Header + Optional Data Actual size (32 bit(4Bytes) partition Number + Hash Length in bytes) + Checksum */
         uint16_t sectn_length = sizeof(uint32_t) + (numHashTableEntries * (sizeof(uint32_t) + SHA3_LENGTH_BYTES)) + sizeof(uint32_t);
-        iht_optional_data = (uint32_t*)realloc(iht_optional_data, iht_optional_data_length + sectn_length);
-        memset((uint8_t*)iht_optional_data + iht_optional_data_length, 0, sectn_length);
-
+        LOG_TRACE("Allocating hash table space: sectn_length = 0x%x (0x%x entries)", sectn_length, numHashTableEntries);
+        auto new_data = std::make_unique<uint32_t[]>((iht_optional_data_length + sectn_length) / sizeof(uint32_t));
+        if (iht_optional_data) {
+            memcpy(new_data.get(), iht_optional_data.get(), iht_optional_data_length);
+        }
+        memset((uint8_t*)new_data.get() + iht_optional_data_length, 0, sectn_length);
+        iht_optional_data = std::move(new_data);
         iht_optional_data_length += sectn_length;
-        
+        LOG_TRACE("After hash table allocation: iht_optional_data_length = 0x%x", iht_optional_data_length);
     }
 
+    
     if (iht_optional_data_length != 0)
     {
         uint32_t padLength = (iht_optional_data_length % 64 != 0) ? 64 - (iht_optional_data_length % 64) : 0;
-        iht_optional_data = (uint32_t*)realloc(iht_optional_data, iht_optional_data_length + padLength);
-        memset((uint8_t*)iht_optional_data + (iht_optional_data_length), 0xFF, padLength);
+        auto new_data = std::make_unique<uint32_t[]>((iht_optional_data_length + padLength) / sizeof(uint32_t));
+        if (iht_optional_data) {
+            memcpy(new_data.get(), iht_optional_data.get(), iht_optional_data_length);
+        }
+        memset((uint8_t*)new_data.get() + (iht_optional_data_length), 0xFF, padLength);
+        iht_optional_data = std::move(new_data);
         iht_optional_data_length += padLength;
 
-        section->IncreaseLengthAndPadTo(sizeof(VersalImageHeaderTableStructure) + iht_optional_data_length, 0);
-        memcpy(section->Data + sizeof(VersalImageHeaderTableStructure), iht_optional_data, iht_optional_data_length);
+        GetSectionPtr()->IncreaseLengthAndPadTo(sizeof(VersalImageHeaderTableStructure) + iht_optional_data_length, 0);
+        memcpy(GetSectionPtr()->Data.get() + sizeof(VersalImageHeaderTableStructure), iht_optional_data.get(), iht_optional_data_length);
 
-        iHTable = (VersalImageHeaderTableStructure*)section->Data;
+        iHTable = (VersalImageHeaderTableStructure*)section->Data.get();
         iHTable->optionalDataSize = iht_optional_data_length / 4;
-        
+        LOG_TRACE("FINAL: iHTable->optionalDataSize = 0x%x (bytes = 0x%x)", iHTable->optionalDataSize, iht_optional_data_length);
+    }
+    else
+    {
+        LOG_TRACE("No optional data to process");
     }
     LOG_TRACE("User optional data is processed");
 }
@@ -783,7 +948,7 @@ void VersalImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::stri
 /******************************************************************************/
 void VersalImageHeaderTable::RealignSectionDataPtr(void)
 {
-    iHTable = (VersalImageHeaderTableStructure*)section->Data;
+    iHTable = (VersalImageHeaderTableStructure*)section->Data.get();
 }
 
 /******************************************************************************/
@@ -837,7 +1002,7 @@ void VersalImageHeaderTable::ValidateSecurityCombinations(Authentication::Type a
 VersalImageHeader::VersalImageHeader(std::string& filename)
     : ImageHeader(filename)
     , imageHeader(NULL)
-    , cdoHeader(NULL)
+    , cdoHeader(nullptr)
     , aie_array_base_address(AIE_BASE_ADDR)
     , coreBaseAddr(0)
     , southBankBaseAddr(0)
@@ -849,15 +1014,16 @@ VersalImageHeader::VersalImageHeader(std::string& filename)
     Name = StringUtils::BaseName(filename);
     uint32_t size = sizeof(VersalImageHeaderStructure);
 
-    section = new Section("ImageHeader " + Name, size);
-    memset(section->Data, 0, size);
+    auto temp_section = std::make_unique<Section>("ImageHeader " + Name, size);
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    memset(section->Data.get(), 0, size);
 }
 
 /******************************************************************************/
 VersalImageHeader::VersalImageHeader(uint8_t* data, uint64_t len)
     : ImageHeader(data, len)
     , imageHeader(NULL)
-    , cdoHeader(NULL)
+    , cdoHeader(nullptr)
     , aie_array_base_address(AIE_BASE_ADDR)
     , coreBaseAddr(0)
     , southBankBaseAddr(0)
@@ -869,15 +1035,16 @@ VersalImageHeader::VersalImageHeader(uint8_t* data, uint64_t len)
     Name = "Buffer" + StringUtils::Format(".%d", bufferIndex++);
     uint32_t size = sizeof(VersalImageHeaderStructure);
 
-    section = new Section("ImageHeader " + Name, size);
-    memset(section->Data, 0, size);
+    auto temp_section = std::make_unique<Section>("ImageHeader " + Name, size);
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    memset(section->Data.get(), 0, size);
 }
 
 /******************************************************************************/
 VersalImageHeader::VersalImageHeader(std::ifstream& ifs, bool IsBootloader)
     : ImageHeader(ifs)
     , imageHeader(NULL)
-    , cdoHeader(NULL)
+    , cdoHeader(nullptr)
     , aie_array_base_address(AIE_BASE_ADDR)
     , coreBaseAddr(0)
     , southBankBaseAddr(0)
@@ -916,8 +1083,9 @@ VersalImageHeader::VersalImageHeader(std::ifstream& ifs, bool IsBootloader)
     uint32_t size = sizeof(VersalImageHeaderStructure);
 
     ifs.seekg(pos);
-    section = new Section("ImageHeader " + Name, size);
-    imageHeader = (VersalImageHeaderStructure*)section->Data;
+    auto temp_section = std::make_unique<Section>("ImageHeader " + Name, size);
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    imageHeader = (VersalImageHeaderStructure*)section->Data.get();
     ifs.read((char*)imageHeader, size);
 
     uint32_t count = 0;
@@ -932,7 +1100,7 @@ VersalImageHeader::VersalImageHeader(std::ifstream& ifs, bool IsBootloader)
     {
         Bootloader = IsBootloader;
 
-        VersalPartitionHeader* hdr = new VersalPartitionHeader(this, index);
+        auto hdr = std::make_unique<VersalPartitionHeader>(this, index);
         if (!firstValidHdr)
         {
             hdr->firstValidIndex = true;
@@ -945,22 +1113,25 @@ VersalImageHeader::VersalImageHeader(std::ifstream& ifs, bool IsBootloader)
         {
             hdr->preencrypted = true;
         }
-        partitionHeaderList.push_back(hdr);
+        
+        // CRITICAL: Save raw pointer before release() to avoid use-after-release
+        VersalPartitionHeader* rawHdr = hdr.get();
+        partitionHeaderList.push_back(hdr.release());
 
         Alignment = 0;
         Offset = 0;
         Reserve = 0;
 
-        destCpu = (DestinationCPU::Type)hdr->GetDestinationCpu();
-        exceptionLevel = (ExceptionLevel::Type)hdr->GetExceptionLevel();
-        trustzone = (TrustZone::Type)hdr->GetTrustZone();
-        early_handoff = hdr->GetEarlyHandoff();
-        hivec = hdr->GetHivec();
-        partitionType = hdr->GetPartitionType();
-        PartOwner = (PartitionOwner::Type)hdr->GetOwnerType();
-        dpacm = hdr->GetDpaCMFlag();
-        pufHdLoc = hdr->GetPufHdLocation();
-        offset += hdr->GetPartitionHeaderSize();
+        destCpu = (DestinationCPU::Type)rawHdr->GetDestinationCpu();
+        exceptionLevel = (ExceptionLevel::Type)rawHdr->GetExceptionLevel();
+        trustzone = (TrustZone::Type)rawHdr->GetTrustZone();
+        early_handoff = rawHdr->GetEarlyHandoff();
+        hivec = rawHdr->GetHivec();
+        partitionType = rawHdr->GetPartitionType();
+        PartOwner = (PartitionOwner::Type)rawHdr->GetOwnerType();
+        dpacm = rawHdr->GetDpaCMFlag();
+        pufHdLoc = rawHdr->GetPufHdLocation();
+        offset += rawHdr->GetPartitionHeaderSize();
     }
 }
 
@@ -980,15 +1151,16 @@ VersalImageHeader::VersalImageHeader(std::ifstream& ifs, VersalImageHeaderStruct
     Name = importedIH->imageName;
     uint32_t size = sizeof(VersalImageHeaderStructure);
 
-    section = new Section("ImageHeader " + Name, size);
-    imageHeader = (VersalImageHeaderStructure*)section->Data;
+    auto temp_section = std::make_unique<Section>("ImageHeader " + Name, size);
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    imageHeader = (VersalImageHeaderStructure*)section->Data.get();
     memcpy(imageHeader, importedIH, size);
     
     uint32_t offset =  (imageHeader->partitionHeaderWordOffset * sizeof(uint32_t)) + (img_index * sizeof(VersalPartitionHeaderTableStructure));
 
-    VersalPartitionHeaderTableStructure* tempPHT = new VersalPartitionHeaderTableStructure;
+    auto tempPHT = std::make_unique<VersalPartitionHeaderTableStructure>();
     ifs.seekg(offset);
-    ifs.read((char*)tempPHT, sizeof(VersalPartitionHeaderTableStructure));
+    ifs.read((char*)tempPHT.get(), sizeof(VersalPartitionHeaderTableStructure));
 
     uint32_t count = 0;
     if (imageHeader->dataSectionCount < 32)
@@ -996,13 +1168,13 @@ VersalImageHeader::VersalImageHeader(std::ifstream& ifs, VersalImageHeaderStruct
         count = tempPHT->dataSectionCount;
     }
 
-    delete tempPHT;
+    // Cleanup handled by unique_ptr
 
     for (uint8_t index = 0; index < count; index++)
     {
         Bootloader = IsBootloader;
 
-        VersalPartitionHeader* hdr = new VersalPartitionHeader(this, index);
+        auto hdr = std::make_unique<VersalPartitionHeader>(this, index);
         if (!firstValidHdr)
         {
             hdr->firstValidIndex = true;
@@ -1015,24 +1187,27 @@ VersalImageHeader::VersalImageHeader(std::ifstream& ifs, VersalImageHeaderStruct
         {
             hdr->preencrypted = true;
         }
-        partitionHeaderList.push_back(hdr);
+        
+        // CRITICAL: Save raw pointer before release() to avoid use-after-release
+        VersalPartitionHeader* rawHdr = hdr.get();
+        partitionHeaderList.push_back(hdr.release());
 
         Alignment = 0;
         Offset = 0;
         Reserve = 0;
 
-        destCpu = (DestinationCPU::Type)hdr->GetDestinationCpu();
-        exceptionLevel = (ExceptionLevel::Type)hdr->GetExceptionLevel();
-        trustzone = (TrustZone::Type)hdr->GetTrustZone();
-        early_handoff = hdr->GetEarlyHandoff();
-        hivec = hdr->GetHivec();
-        partitionType = hdr->GetPartitionType();
-        PartOwner = (PartitionOwner::Type)hdr->GetOwnerType();
-        dpacm = hdr->GetDpaCMFlag();
-        pufHdLoc = hdr->GetPufHdLocation();
-        offset += hdr->GetPartitionHeaderSize();
-        cluster = hdr->GetDestinationCluster();
-        lockstep = hdr->GetLockStepFlag();
+        destCpu = (DestinationCPU::Type)rawHdr->GetDestinationCpu();
+        exceptionLevel = (ExceptionLevel::Type)rawHdr->GetExceptionLevel();
+        trustzone = (TrustZone::Type)rawHdr->GetTrustZone();
+        early_handoff = rawHdr->GetEarlyHandoff();
+        hivec = rawHdr->GetHivec();
+        partitionType = rawHdr->GetPartitionType();
+        PartOwner = (PartitionOwner::Type)rawHdr->GetOwnerType();
+        dpacm = rawHdr->GetDpaCMFlag();
+        pufHdLoc = rawHdr->GetPufHdLocation();
+        offset += rawHdr->GetPartitionHeaderSize();
+        cluster = rawHdr->GetDestinationCluster();
+        lockstep = rawHdr->GetLockStepFlag();
     }
 }
 /******************************************************************************/
@@ -1040,7 +1215,6 @@ VersalImageHeader::~VersalImageHeader()
 {
     if (section != NULL)
     {
-        delete section;
     }
 }
 
@@ -1183,7 +1357,7 @@ void VersalImageHeader::Build(BootImage& bi, Binary& cache)
 
     if (imageHeader == NULL)
     {
-        imageHeader = (VersalImageHeaderStructure*)section->Data;
+        imageHeader = (VersalImageHeaderStructure*)section->Data.get();
         SetImageName();
         SetImageHeaderAttributes();
         SetDataSectionCount(0);
@@ -1246,7 +1420,7 @@ void VersalImageHeader::ImportBin(BootImage& bi)
 
     uint32_t dataValue;
     uint32_t alignlen = data.len + ((4 - (data.len & 3)) & 3);
-    uint8_t* tempBuffer = new uint8_t[alignlen];
+    auto tempBuffer = std::make_unique<uint8_t[]>(alignlen);
 
     if (GetPartitionType() == PartitionType::CONFIG_DATA_OBJ)
     {
@@ -1269,14 +1443,14 @@ void VersalImageHeader::ImportBin(BootImage& bi)
             dataValue = ReadBigEndian32(data.bytes + index);
             if (change_endianness)
             {
-                WriteLittleEndian32(tempBuffer + index, dataValue);
+                WriteLittleEndian32(tempBuffer.get() + index, dataValue);
             }
             else
             {
-                WriteBigEndian32(tempBuffer + index, dataValue);
+                WriteBigEndian32(tempBuffer.get() + index, dataValue);
             }
         }
-        if (PostProcessCdo(tempBuffer, data.len)) return;
+        if (PostProcessCdo(tempBuffer.get(), data.len)) return;
         load_addr = 0xFFFFFFFF;
         exec_addr = 0;
     }
@@ -1295,7 +1469,7 @@ void VersalImageHeader::ImportBin(BootImage& bi)
             for (uint8_t i = 0; i < 4; i++)
             {
                 value[i] = ReadBigEndian32(data.bytes + index + (4 * i));
-                WriteLittleEndian32(tempBuffer + index + 4 * (3 - i), value[i]);
+                WriteLittleEndian32(tempBuffer.get() + index + 4 * (3 - i), value[i]);
             }
         }
         
@@ -1303,9 +1477,9 @@ void VersalImageHeader::ImportBin(BootImage& bi)
     }
     else
     {
-        memcpy(tempBuffer, data.bytes, alignlen);
+        memcpy(tempBuffer.get(), data.bytes, alignlen);
     }
-    PartitionHeader* hdr = new VersalPartitionHeader(this, 0);
+    auto hdr = std::make_unique<VersalPartitionHeader>(this, 0);
     hdr->firstValidIndex = true;
     hdr->loadAddress = load_addr;
     hdr->execAddress = exec_addr;
@@ -1323,11 +1497,10 @@ void VersalImageHeader::ImportBin(BootImage& bi)
             }
         }
     }
-    hdr->partition = new VersalPartition(hdr, tempBuffer, alignlen);
+    hdr.get()->partition = std::make_unique<VersalPartition>(hdr.get(), tempBuffer.get(), alignlen);
     hdr->partitionSize = alignlen;
-    delete[] tempBuffer;
-    SetLoadAndExecAddress(hdr);
-    partitionHeaderList.push_back(hdr);
+    SetLoadAndExecAddress(hdr.get());
+    partitionHeaderList.push_back(hdr.release());
 }
 
 /******************************************************************************/
@@ -1335,7 +1508,7 @@ void VersalImageHeader::ImportBuffer(BootImage& bi)
 {
     SetDomain(Domain::PS);
 
-    PartitionHeader* hdr = new VersalPartitionHeader(this, 0);
+    auto hdr = std::make_unique<VersalPartitionHeader>(this, 0);
     hdr->firstValidIndex = true;
 
     hdr->execAddress = Startup.ValueOrDefault(0);
@@ -1365,9 +1538,9 @@ void VersalImageHeader::ImportBuffer(BootImage& bi)
             }
         }
     }
-    hdr->partition = new VersalPartition(hdr, buffer, bufferSize);
+    hdr.get()->partition = std::make_unique<VersalPartition>(hdr.get(), buffer, bufferSize);
     hdr->partitionSize = bufferSize;
-    partitionHeaderList.push_back(hdr);
+    partitionHeaderList.push_back(hdr.release());
 }
 
 /******************************************************************************/
@@ -1381,19 +1554,23 @@ void VersalImageHeader::ImportNpi(BootImage& bi)
 
     /* Parse the bitstream, and set the bit file name for usage by other features
     such as '-process_bitstream' */
+#ifndef ENABLE_WDI
+    isl::iostreams::istream stream(Filename.c_str(), std::ios_base::binary);
+#else
     std::ifstream stream(Filename.c_str(), std::ios_base::binary);
+#endif
     if (!stream)
     {
         LOG_ERROR("Cannot read NPI file - %s ", Filename.c_str());
     }
-    BitFile *bit = new VersalBitFile(stream);
+    auto bit = std::make_unique<VersalBitFile>(stream);
     bit->ParseBit(bi);
     bi.bitFilename = Filename.c_str();
 
     /* The endianess is different (Big Endian) in case of Zynq MP/FPGA encryption cases. All other cases the
     the bitstream is copied as Little Endian */
-    OutputStream *os = bit->GetOutputStreamType();
-    bit->CopyNpi(os);
+    auto os = bit->GetOutputStreamType();
+    bit->CopyNpi(os.get());
 
     /* Bitstream sizes should be word aligned. Otherwise bitstream is invalid */
     if (os->Size() % 4)
@@ -1411,7 +1588,7 @@ void VersalImageHeader::ImportNpi(BootImage& bi)
 
     if (PostProcessCdo(os->Start(), os->Size())) return;
 
-    PartitionHeader* hdr = new VersalPartitionHeader(this, 0);
+    auto hdr = std::make_unique<VersalPartitionHeader>(this, 0);
     hdr->firstValidIndex = true;
     hdr->execAddress = 0;
 
@@ -1422,9 +1599,9 @@ void VersalImageHeader::ImportNpi(BootImage& bi)
     hdr->transferSize = os->Size();
     hdr->preservedBitstreamHdr = os->pHdr;
 
-    hdr->partition = new VersalPartition(hdr, os->Start(), os->Size());
+    hdr.get()->partition = std::make_unique<VersalPartition>(hdr.get(), os->Start(), os->Size());
 
-    partitionHeaderList.push_back(hdr);
+    partitionHeaderList.push_back(hdr.release());
 }
 
 /******************************************************************************/
@@ -1457,19 +1634,23 @@ void VersalImageHeader::ImportBit(BootImage& bi)
 
     /* Parse the bitstream, and set the bit file name for usage by other features
     such as '-process_bitstream' */
+#ifndef ENABLE_WDI
+    isl::iostreams::istream stream(Filename.c_str(), std::ios_base::binary);
+#else
     std::ifstream stream(Filename.c_str(), std::ios_base::binary);
+#endif
     if (!stream)
     {
         LOG_ERROR("Cannot read BIT file - %s ", Filename.c_str());
     }
-    BitFile *bit = new VersalBitFile(stream);
+    auto bit = std::make_unique<VersalBitFile>(stream);
     bit->ParseBit(bi);
     bi.bitFilename = Filename.c_str();
 
     /* The endianess is different (Big Endian) in case of Zynq MP/FPGA encryption cases. All other cases the
     the bitstream is copied as Little Endian */
-    OutputStream *os = bit->GetOutputStreamType();
-    bit->Copy(os);
+    auto os = bit->GetOutputStreamType();
+    bit->Copy(os.get());
 
     /* Bitstream sizes should be word aligned. Otherwise bitstream is invalid */
     if (os->Size() % 4)
@@ -1488,7 +1669,7 @@ void VersalImageHeader::ImportBit(BootImage& bi)
 
     
 
-    PartitionHeader* hdr = new VersalPartitionHeader(this, 0);
+    auto hdr = std::make_unique<VersalPartitionHeader>(this, 0);
     hdr->firstValidIndex = true;
     hdr->execAddress = 0;
 
@@ -1499,9 +1680,9 @@ void VersalImageHeader::ImportBit(BootImage& bi)
     hdr->transferSize = os->Size();
     hdr->preservedBitstreamHdr = os->pHdr;
     SetPartitionType(PartitionType::CFI);
-    hdr->partition = new VersalPartition(hdr, os->Start(), os->Size());
+    hdr.get()->partition = std::make_unique<VersalPartition>(hdr.get(), os->Start(), os->Size());
 
-    partitionHeaderList.push_back(hdr);
+    partitionHeaderList.push_back(hdr.release());
 }
 
 /******************************************************************************/
@@ -1546,7 +1727,11 @@ void VersalImageHeader::ParseFileToImport(BootImage& bi)
                 LOG_ERROR("File for merging is not in CDO format - %s", Filename.c_str());
             }
             LOG_INFO("Parsing file - %s", filelist.at(0).c_str());
+#ifndef ENABLE_WDI
+            isl::iostreams::istream stream(Filename.c_str(), std::ios_base::binary);
+#else
             std::ifstream stream(Filename.c_str(), std::ios_base::binary);
+#endif
             if (!stream)
             {
                 LOG_ERROR("Cannot read file - %s ", Filename.c_str());
@@ -1590,7 +1775,11 @@ void VersalImageHeader::ParseFileToImport(BootImage& bi)
                 }
                 ImportBin(bi);
             }
+#ifndef ENABLE_WDI
+            stream.auto_close();
+#else
             stream.close();
+#endif
         }
         else
         {
@@ -1606,16 +1795,16 @@ void VersalImageHeader::ImportCdoSource(BootImage& bi)
     size_t size = 0;
     buffer = DecodeCdo(Filename, &size);
     if (PostProcessCdo(buffer, size)) return;
-    PartitionHeader* hdr = new VersalPartitionHeader(this, 0);
+    auto buffer_owner = std::unique_ptr<uint8_t[]>(buffer);
+    auto hdr = std::make_unique<VersalPartitionHeader>(this, 0);
     hdr->firstValidIndex = true;
     hdr->loadAddress = 0xFFFFFFFFFFFFFFFF;
     hdr->execAddress = 0;
 
-    hdr->partition = new VersalPartition(hdr, buffer, size);
+    hdr.get()->partition = std::make_unique<VersalPartition>(hdr.get(), buffer_owner.get(), size);
     hdr->partitionSize = size;
-    delete[] buffer;
-    SetLoadAndExecAddress(hdr);
-    partitionHeaderList.push_back(hdr);
+    SetLoadAndExecAddress(hdr.get());
+    partitionHeaderList.push_back(hdr.release());
 }
 
 /******************************************************************************/
@@ -1636,7 +1825,7 @@ void VersalImageHeader::ImportCdo(BootImage& bi)
         }
     }
     SetPartitionType(PartitionType::CONFIG_DATA_OBJ);
-    PartitionHeader* hdr = new VersalPartitionHeader(this, 0);
+    auto hdr = std::make_unique<VersalPartitionHeader>(this, 0);
     hdr->firstValidIndex = true;
     hdr->loadAddress = 0xFFFFFFFFFFFFFFFF;
     hdr->execAddress = 0;
@@ -1654,11 +1843,11 @@ void VersalImageHeader::ImportCdo(BootImage& bi)
             }
         }
     }
-    hdr->partition = new VersalPartition(hdr, buffer, size);
+    hdr.get()->partition = std::make_unique<VersalPartition>(hdr.get(), buffer, size);
     hdr->partitionSize = hdr->transferSize = size;
     free(buffer);
-    SetLoadAndExecAddress(hdr);
-    partitionHeaderList.push_back(hdr);
+    SetLoadAndExecAddress(hdr.get());
+    partitionHeaderList.push_back(hdr.release());
 }
 
 /******************************************************************************/
@@ -1683,7 +1872,7 @@ void VersalImageHeader::Link(BootImage &bi, PartitionHeader* partitionHeader, Im
     fullBhSize = bi.options.bootheaderSize;
     allHdrSize = bi.options.allHeaderSize;
 
-    imageHeader = (VersalImageHeaderStructure*)section->Data;
+    imageHeader = (VersalImageHeaderStructure*)section->Data.get();
     if (partitionHeader->section != NULL)
     {
         SetPartitionHeaderOffset((uint32_t)partitionHeader->section->Address);
@@ -1801,7 +1990,7 @@ void VersalImageHeader::ImportElf(BootImage& bi)
 
     /* Get the ELF Class format - 32-bit elf vs 64-bit elf */
     elfClass = GetElfClass(data.bytes);
-    ElfFormat* elf = ElfFormat::GetElfFormat(elfClass, data.bytes, &proc_state);
+    auto elf = ElfFormat::GetElfFormat(elfClass, data.bytes, &proc_state);
 
     /* Check for no. of executable sections & non-zero size LOAD sections */
     uint8_t exec_count = 0;
@@ -1835,7 +2024,7 @@ void VersalImageHeader::ImportElf(BootImage& bi)
 
     Binary::Address_t load_addr = 0;
     Binary::Address_t exec_addr = 0;
-    uint8_t *partition_data = NULL;
+    std::vector<uint8_t> partition_data;  // Changed from raw pointer to vector for automatic memory management
 
     /* Loop through all the program headers and populate the fields exec, load address etc. */
     for (uint8_t iprog = 0; iprog < elf->programHdrEntryCount; iprog++)
@@ -1868,14 +2057,14 @@ void VersalImageHeader::ImportElf(BootImage& bi)
                     if (filler_bytes != 0)
                     {
                         total_size += filler_bytes;
-                        partition_data = (uint8_t*)realloc(partition_data, total_size);
-                        memset(partition_data + offset, 0, filler_bytes);
+                        partition_data.resize(total_size);
+                        memset(partition_data.data() + offset, 0, filler_bytes);
                         offset = total_size;
                     }
                 }
                 total_size += size;
-                partition_data = (uint8_t*)realloc(partition_data, total_size);
-                memcpy(partition_data + offset, elf->GetProgramHeaderData(iprog), size);
+                partition_data.resize(total_size);
+                memcpy(partition_data.data() + offset, elf->GetProgramHeaderData(iprog), size);
                 prev_end = addr + size;
                 offset = total_size;
             }
@@ -1930,10 +2119,10 @@ void VersalImageHeader::ImportElf(BootImage& bi)
                 /* Append PMC CDO to PMC FW to create a single partition */
                 pmcdataSize = totalpmcdataSize = cdo_length + total_cdo_pad_bytes;
                 total_size = pmc_fw_size + pmc_fw_pad_bytes + pmcdataSize;
-                partition_data = (uint8_t*)realloc(partition_data, total_size);
-                memset(partition_data + pmc_fw_size, 0, pmc_fw_pad_bytes);
-                memcpy(partition_data + pmc_fw_size + pmc_fw_pad_bytes, cdo_partition, cdo_length);
-                memset(partition_data + pmc_fw_size + pmc_fw_pad_bytes + cdo_length, 0, total_cdo_pad_bytes);
+                partition_data.resize(total_size);
+                memset(partition_data.data() + pmc_fw_size, 0, pmc_fw_pad_bytes);
+                memcpy(partition_data.data() + pmc_fw_size + pmc_fw_pad_bytes, cdo_partition, cdo_length);
+                memset(partition_data.data() + pmc_fw_size + pmc_fw_pad_bytes + cdo_length, 0, total_cdo_pad_bytes);
 
                 free(cdo_partition);
             }
@@ -1964,12 +2153,12 @@ void VersalImageHeader::ImportElf(BootImage& bi)
                         }
                     }
                 }
-                partition_data = (uint8_t*)malloc(total_size);
-                memcpy(partition_data, elf->GetProgramHeaderData(iprog), total_size);
+                partition_data.resize(total_size);
+                memcpy(partition_data.data(), elf->GetProgramHeaderData(iprog), total_size);
             }
         }
 
-        if (partition_data != NULL)
+        if (!partition_data.empty())
         {
             if (hdr_index == 0)
             {
@@ -1985,7 +2174,7 @@ void VersalImageHeader::ImportElf(BootImage& bi)
             {
                 load_addr = Load.Value();
             }
-            PartitionHeader* partHdr = new VersalPartitionHeader(this, hdr_index);
+            auto partHdr = std::make_unique<VersalPartitionHeader>(this, hdr_index);
             partHdr->firstValidIndex = first_index;
             partHdr->elfEndianess = elf->endian;
             partHdr->execAddress = exec_addr;
@@ -1997,15 +2186,16 @@ void VersalImageHeader::ImportElf(BootImage& bi)
                 partHdr->update_atf_handoff_params = true;
             }
 
-            partHdr->partition = new VersalPartition(partHdr, partition_data, total_size);
+            partHdr.get()->partition = std::make_unique<VersalPartition>(partHdr.get(), partition_data.data(), total_size);
 
             // This length also includes padding size necessary for 16-byte alignment
             partHdr->partitionSize = partHdr->partition->section->Length;
 
-            partitionHeaderList.push_back(partHdr);
+            partitionHeaderList.push_back(partHdr.release());
             hdr_index++;
-            free(partition_data);
-            partition_data = NULL;
+            
+            // Clear the vector after partition is created (partition constructor makes a copy)
+            partition_data.clear();
         }
     }
 }
@@ -2013,16 +2203,16 @@ void VersalImageHeader::ImportElf(BootImage& bi)
 /******************************************************************************/
 void VersalImageHeader::ParseSlaveSlrConfigCdos(BootImage& bi, std::vector<std::string> filelist, uint8_t** cdo_data, size_t* cdo_size, bool add_ssit_sync_master)
 {
-    uint8_t* total_cdo_data = NULL;
-    uint8_t* cdo_padded_buffer = NULL;
+    std::vector<uint8_t> total_cdo_data;  // Changed from raw pointer to vector for automatic memory management
+    std::vector<uint8_t> cdo_padded_buffer;  // Changed from raw pointer to vector for automatic memory management
     size_t cdo_padded_buffer_length = 0;
     uint64_t total_cdo_length = 0;
     //void *cdo_data_pp = NULL;
     //size_t cdo_data_pp_length = 0;
 
-    uint32_t* start_marker_offsets = NULL;
+    std::unique_ptr<uint32_t[]> start_marker_offsets;  // Smart pointer for auto cleanup
     uint8_t num_start_markers = 0;
-    uint32_t* end_marker_offsets = NULL;
+    std::unique_ptr<uint32_t[]> end_marker_offsets;    // Smart pointer for auto cleanup
     uint8_t num_end_markers = 0;
 
 
@@ -2044,7 +2234,18 @@ void VersalImageHeader::ParseSlaveSlrConfigCdos(BootImage& bi, std::vector<std::
             if (add_ssit_sync_master)
             {
                 /* Add SSIT Sync Master command */
+                #ifndef ENABLE_WDI
+                if(isl::iostreams::xp::is_xp_format(cdo_filename))
+                {
+                    cdo_seq1 = Decompressing_File(cdo_filename);
+                }
+                else
+                {
+                    cdo_seq1 = cdoseq_load_cdo(cdo_filename);
+                }
+                #else
                 cdo_seq1 = cdoseq_load_cdo(cdo_filename);
+                #endif
                 if (cdo_seq1 == NULL)
                 {
                     LOG_ERROR("Error parsing CDO file");
@@ -2052,11 +2253,23 @@ void VersalImageHeader::ParseSlaveSlrConfigCdos(BootImage& bi, std::vector<std::
                 cdo_seq = cdocmd_create_sequence();
                 cdocmd_add_ssit_sync_master(cdo_seq);
                 cdocmd_concat_seq(cdo_seq, cdo_seq1);
+                cdocmd_delete_sequence(cdo_seq1);  // Free temporary sequence
                 add_ssit_sync_master = false;
             }
             else
             {
+                #ifndef ENABLE_WDI
+                if(isl::iostreams::xp::is_xp_format(cdo_filename))
+                {
+                    cdo_seq = Decompressing_File(cdo_filename);
+                }
+                else
+                {
+                    cdo_seq = cdoseq_load_cdo(cdo_filename);
+                }
+                #else
                 cdo_seq = cdoseq_load_cdo(cdo_filename);
+                #endif
                 if (cdo_seq == NULL)
                 {
                     LOG_ERROR("Error parsing CDO file");
@@ -2072,6 +2285,8 @@ void VersalImageHeader::ParseSlaveSlrConfigCdos(BootImage& bi, std::vector<std::
             search_for_sync_points();
             cdo_data = cdoseq_to_binary(cdo_seq, &cdo_length, 0);
             CheckIdsInCdo(cdo_seq, bi.options.IsVersalNetSeries(), cdo_filename);
+            cdocmd_delete_sequence(cdo_seq);  // Free CDO sequence memory
+
             
             if (cdo_length != 0)
             {
@@ -2083,16 +2298,16 @@ void VersalImageHeader::ParseSlaveSlrConfigCdos(BootImage& bi, std::vector<std::
             }
 
             total_cdo_length += (actual_cdo_size);
-            total_cdo_data = (uint8_t*)realloc(total_cdo_data, total_cdo_length);
-            memcpy(total_cdo_data + offset, (uint8_t*)cdo_data + sizeof(VersalCdoHeader), actual_cdo_size);
+            total_cdo_data.resize(total_cdo_length);
+            memcpy(total_cdo_data.data() + offset, (uint8_t*)cdo_data + sizeof(VersalCdoHeader), actual_cdo_size);
             offset += actual_cdo_size;
             //delete cdo_data;
         }
 
         num_start_markers = get_num_start_markers();
-        start_marker_offsets = get_slr_start_marker_offsets();
+        start_marker_offsets.reset(get_slr_start_marker_offsets());  // Wrap C pointer in unique_ptr
         num_end_markers = get_num_end_markers();
-        end_marker_offsets = get_slr_end_marker_offsets();
+        end_marker_offsets.reset(get_slr_end_marker_offsets());      // Wrap C pointer in unique_ptr
 
         if (num_start_markers != num_end_markers)
         {
@@ -2109,8 +2324,8 @@ void VersalImageHeader::ParseSlaveSlrConfigCdos(BootImage& bi, std::vector<std::
             LOG_TRACE("       markers found at offsets -");
             for (int i = 0; i < num_start_markers; i++)
             {
-                start = *(start_marker_offsets + i) * 4;
-                end = *(end_marker_offsets + i) * 4;
+                start = start_marker_offsets[i] * 4;  // Use array indexing with unique_ptr
+                end = end_marker_offsets[i] * 4;      // Use array indexing with unique_ptr
                 /* Create a new chunk at start only if start and end are not in same 32K data */
                 if (start  / SSIT_CHUNK_SIZE != end / SSIT_CHUNK_SIZE)
                 {
@@ -2119,19 +2334,19 @@ void VersalImageHeader::ParseSlaveSlrConfigCdos(BootImage& bi, std::vector<std::
                     pad_bytes = SSIT_CHUNK_SIZE - (size % SSIT_CHUNK_SIZE);
                     cdo_padded_buffer_length += (size + pad_bytes);
 
-                    cdo_padded_buffer = (uint8_t*)realloc(cdo_padded_buffer, cdo_padded_buffer_length);
-                    memcpy(cdo_padded_buffer + p_offset, total_cdo_data + copied_offset, size);
+                    cdo_padded_buffer.resize(cdo_padded_buffer_length);
+                    memcpy(cdo_padded_buffer.data() + p_offset, total_cdo_data.data() + copied_offset, size);
                     p_offset += size;
                     copied_offset += size;
 
                     if (pad_bytes != 0)
                     {
-                        CdoCommandNop* cdoCmd = CdoCmdNoOperation2(pad_bytes);
-                        memcpy(cdo_padded_buffer + p_offset, cdoCmd, CDO_CMD_NOP_SIZE + 4);
+                        auto cdoCmd = CdoCmdNoOperation2(pad_bytes);
+                        memcpy(cdo_padded_buffer.data() + p_offset, cdoCmd, CDO_CMD_NOP_SIZE + 4);
                         p_offset += (CDO_CMD_NOP_SIZE + 4);
                         if (cdoCmd->length > 0)
                         {
-                            memset(cdo_padded_buffer + p_offset, 0, cdoCmd->length * sizeof(uint32_t));
+                            memset(cdo_padded_buffer.data() + p_offset, 0, cdoCmd->length * sizeof(uint32_t));
                             p_offset += (cdoCmd->length * sizeof(uint32_t));
                         }
                     }
@@ -2147,36 +2362,34 @@ void VersalImageHeader::ParseSlaveSlrConfigCdos(BootImage& bi, std::vector<std::
             /* Remaining data after last marker */
             size = total_cdo_length - prev_start;
             cdo_padded_buffer_length += size;
-            cdo_padded_buffer = (uint8_t*)realloc(cdo_padded_buffer, cdo_padded_buffer_length);
-            memcpy(cdo_padded_buffer + p_offset, total_cdo_data + copied_offset, size);
+            cdo_padded_buffer.resize(cdo_padded_buffer_length);
+            memcpy(cdo_padded_buffer.data() + p_offset, total_cdo_data.data() + copied_offset, size);
 
-            delete start_marker_offsets;
-            if (end_marker_offsets) delete end_marker_offsets;
+            // Smart pointers auto-deleted at end of scope
 
             total_cdo_length = (cdo_padded_buffer_length);
-            total_cdo_data = (uint8_t*)realloc(total_cdo_data, total_cdo_length);
-            memcpy(total_cdo_data, cdo_padded_buffer, total_cdo_length);
-            free(cdo_padded_buffer);
+            total_cdo_data = std::move(cdo_padded_buffer);  // Move instead of realloc+memcpy+free
         }
 
-        VersalCdoHeader* cdo_header = new VersalCdoHeader;
+        auto cdo_header = std::make_unique<VersalCdoHeader>();
         cdo_header->remaining_words = 0x04;
         cdo_header->id_word = 0x004f4443; /* CDO */
         cdo_header->version = 0x00000200; /* Version - 2.0 */
         cdo_header->length = (total_cdo_length - sizeof(VersalCdoHeader)) / 4;
         cdo_header->checksum = ~(cdo_header->remaining_words + cdo_header->id_word + cdo_header->version + cdo_header->length);
-        memcpy(total_cdo_data, cdo_header, sizeof(VersalCdoHeader));
-        delete cdo_header;
+        memcpy(buffer, cdo_header.get(), sizeof(VersalCdoHeader));
+        // Cleanup handled by unique_ptr
     }
 
     *cdo_size = total_cdo_length;
-    *cdo_data = total_cdo_data;
+    *cdo_data = (uint8_t*)malloc(total_cdo_length);
+    memcpy(*cdo_data, total_cdo_data.data(), total_cdo_length);
 }
 
 /******************************************************************************/
 void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> filelist, uint8_t** cdo_data, size_t* cdo_size, bool add_ssit_sync_master)
 {
-    uint8_t* total_cdo_data = NULL;
+    std::vector<uint8_t> total_cdo_data;  // Changed from raw pointer to vector for automatic memory management
     uint64_t total_cdo_length = 0;
     void *cdo_data_pp = NULL;
     size_t cdo_data_pp_length = 0;
@@ -2209,7 +2422,18 @@ void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> fileli
             if (add_ssit_sync_master)
             {
                 /* Add SSIT Sync Master command */
+                #ifndef ENABLE_WDI
+                if(isl::iostreams::xp::is_xp_format(cdo_filename))
+                {
+                    cdo_seq1 = Decompressing_File(cdo_filename);
+                }
+                else
+                {
+                    cdo_seq1 = cdoseq_load_cdo(cdo_filename);
+                }
+                #else
                 cdo_seq1 = cdoseq_load_cdo(cdo_filename);
+                #endif
                 if (cdo_seq1 == NULL)
                 {
                     LOG_ERROR("Error parsing CDO file");
@@ -2217,11 +2441,23 @@ void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> fileli
                 cdo_seq = cdocmd_create_sequence();
                 cdocmd_add_ssit_sync_master(cdo_seq);
                 cdocmd_concat_seq(cdo_seq, cdo_seq1);
+                cdocmd_delete_sequence(cdo_seq1);  // Free temporary sequence
                 add_ssit_sync_master = false;
             }
             else
             {
+                #ifndef ENABLE_WDI
+                if(isl::iostreams::xp::is_xp_format(cdo_filename))
+                {
+                    cdo_seq = Decompressing_File(cdo_filename);
+                }
+                else
+                {
+                    cdo_seq = cdoseq_load_cdo(cdo_filename);
+                }
+                #else
                 cdo_seq = cdoseq_load_cdo(cdo_filename);
+                #endif
                 if (cdo_seq == NULL)
                 {
                     LOG_ERROR("Error parsing CDO file");
@@ -2271,11 +2507,11 @@ void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> fileli
             // TODO: Call this only for v2
             const char * env = getenv("BOOTGEN_CHECK_CDO_COMMANDS");
             if (env && *env != '\0') {
-                if (check_cdo_commands(cdo_data, cdo_length, bi.xplm_modules_data, bi.xplm_modules_data_length) != 0) {
+                if (check_cdo_commands(cdo_data, cdo_length, bi.xplm_modules_data.get(), bi.xplm_modules_data_length) != 0) {
                     LOG_WARNING("Invalid PLM cdo command is found in input cdo file");
                 }
             }
-            //cdocmd_delete_sequence(cdo_seq);
+            cdocmd_delete_sequence(cdo_seq);  // Free CDO sequence memory
             
             if (cdocmd_post_process_cdo(cdo_data, cdo_length, &cdo_data_pp, &cdo_data_pp_length))
             {
@@ -2300,9 +2536,10 @@ void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> fileli
             }
             if (cdo_data_pp != NULL)
             {
-                //delete cdo_data;
+                free(cdo_data);  // Free original cdo_data before replacing it
                 cdo_data = (uint8_t*)cdo_data_pp;
                 cdo_length = cdo_data_pp_length;
+                cdo_data_pp = NULL;
             }
 
             if (cdo_length > sizeof(VersalCdoHeader))
@@ -2315,31 +2552,35 @@ void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> fileli
             }
 
             total_cdo_length += (actual_cdo_size);
-            total_cdo_data = (uint8_t*)realloc(total_cdo_data, total_cdo_length);
-            memcpy(total_cdo_data + offset, (uint8_t*)cdo_data + sizeof(VersalCdoHeader), actual_cdo_size);
+            total_cdo_data.resize(total_cdo_length);
+            memcpy(total_cdo_data.data() + offset, (uint8_t*)cdo_data + sizeof(VersalCdoHeader), actual_cdo_size);
             offset += actual_cdo_size;
-            //delete cdo_data;
+            free(cdo_data);  // Free cdo_data (from cdoseq_to_binary or cdocmd_post_process_cdo)
+            cdo_data = NULL;
         }
-        VersalCdoHeader* cdo_header = new VersalCdoHeader;
+        auto cdo_header = std::make_unique<VersalCdoHeader>();
         cdo_header->remaining_words = 0x04;
         cdo_header->id_word = 0x004f4443; /* CDO */
         cdo_header->version = 0x00000200; /* Version - 2.0 */
         cdo_header->length = (total_cdo_length - sizeof(VersalCdoHeader)) / 4;
         cdo_header->checksum = ~(cdo_header->remaining_words + cdo_header->id_word + cdo_header->version + cdo_header->length);
-        memcpy(total_cdo_data, cdo_header, sizeof(VersalCdoHeader));
-        delete cdo_header;
+        memcpy(total_cdo_data.data(), cdo_header.get(), sizeof(VersalCdoHeader));
+        // Cleanup handled by unique_ptr
     }
     else
     {
         /* If PMC CDO is passed as a buffer 
            or in case PDI is passed as input in BIF, PMC data is read into a buffer from the PDI */
         total_cdo_length = bi.bifOptions->GetTotalpmcdataSize();
-        total_cdo_data = new uint8_t[total_cdo_length];
-        memcpy(total_cdo_data, bi.bifOptions->GetPmcDataBuffer(), total_cdo_length);
+        total_cdo_data.resize(total_cdo_length);
+        memcpy(total_cdo_data.data(), bi.bifOptions->GetPmcDataBuffer(), total_cdo_length);
     }
 
+    // Allocate output buffer and copy vector data (C-style interface requires malloc'd pointer)
     *cdo_size = total_cdo_length;
-    *cdo_data = total_cdo_data;
+    *cdo_data = (uint8_t*)malloc(total_cdo_length);
+    memcpy(*cdo_data, total_cdo_data.data(), total_cdo_length);
+    // Vector automatically cleaned up at end of scope
 }
 
 /******************************************************************************/
@@ -2368,35 +2609,34 @@ void VersalImageHeader::CreateAieEnginePartition(BootImage& bi)
         size += ImportAieEngineElfCdo(*aie_file);
     }
 
-    cdoHeader = new VersalCdoHeader;
+    cdoHeader = std::make_unique<VersalCdoHeader>();
     cdoHeader->remaining_words = 0x04;
     cdoHeader->id_word = 0x004f4443; /* CDO */
     cdoHeader->version = 0x00000200; /* Version - 2.0 */
     size += sizeof(VersalCdoHeader);
-    PartitionHeader* partHdr = new VersalPartitionHeader(this, 0);
+    auto partHdr = std::make_unique<VersalPartitionHeader>(this, 0);
     partHdr->execState = 0;
     partHdr->elfEndianess = 0;
     partHdr->firstValidIndex = true;
 
-    uint8_t* pBuffer = new uint8_t[size];
+    auto pBuffer = std::make_unique<uint8_t[]>(size);
     uint32_t p_offset = 0;
     cdoHeader->length = (size - sizeof(VersalCdoHeader)) / 4;
     cdoHeader->checksum = ~(cdoHeader->remaining_words + cdoHeader->id_word + cdoHeader->version + cdoHeader->length);
-    memcpy(pBuffer, cdoHeader, sizeof(VersalCdoHeader));
+    memcpy(pBuffer.get(), cdoHeader.get(), sizeof(VersalCdoHeader));
     p_offset += sizeof(VersalCdoHeader);
-    for (std::list<CdoCommandDmaWrite*>::iterator it = cdoSections.begin(); it != cdoSections.end(); it++)
+    for (auto& cdoPtr : cdoSections)  // Use range-based loop with smart pointers
     {
-        memcpy(pBuffer + p_offset, (*it), CDO_COMMAND_SIZE);
+        memcpy(pBuffer.get() + p_offset, cdoPtr.get(), CDO_COMMAND_SIZE);
         p_offset += CDO_COMMAND_SIZE;
-        memcpy(pBuffer + p_offset, (*it)->data, ((*it)->length - 2) * 4);
-        p_offset += (((*it)->length - 2) * 4);
-        delete *it;
+        memcpy(pBuffer.get() + p_offset, cdoPtr->data, (cdoPtr->length - 2) * 4);
+        p_offset += ((cdoPtr->length - 2) * 4);
+        // Smart pointer auto-deletes
     }
 
     partHdr->partitionSize = size;
-    partHdr->partition = new VersalPartition(partHdr, pBuffer, size);
-    partitionHeaderList.push_back(partHdr);
-    delete[] pBuffer;
+    partHdr.get()->partition = std::make_unique<VersalPartition>(partHdr.get(), pBuffer.get(), size);
+    partitionHeaderList.push_back(partHdr.release());
     cdoSections.clear();
 }
 
@@ -2419,7 +2659,7 @@ std::list<std::string> VersalImageHeader::GetAieFilesPath(std::string filename)
     core_list = ParseAieJson(json_file.c_str());
     for (std::list<std::string>::iterator aie_file = core_list.begin(); aie_file != core_list.end(); aie_file++)
     {
-        std::string aie_elf = file_path + (*aie_file) + "/Release/" + (*aie_file);
+        std::string aie_elf = file_path + (*aie_file) + "//" + "/Release/" + "//" + (*aie_file);
         aie_elf_list.push_back(aie_elf);
     }
     return aie_elf_list;
@@ -2429,7 +2669,7 @@ std::list<std::string> VersalImageHeader::GetAieFilesPath(std::string filename)
 uint64_t VersalImageHeader::ImportAieEngineElfCdo(std::string aie_file)
 {
     uint32_t progHdrCnt = 0;
-    uint8_t *newData = NULL;
+    std::vector<uint8_t> newData;  // Changed from raw pointer to vector for automatic memory management
     uint32_t rowNum = 0;
     uint32_t colNum = 0;
 
@@ -2518,22 +2758,22 @@ uint64_t VersalImageHeader::ImportAieEngineElfCdo(std::string aie_file)
             {
                 std::size_t fillerBytes = (std::size_t) (addr - (prevAddr + prevSize));
                 totalSize += fillerBytes;
-                newData = (uint8_t*)realloc(newData, totalSize);
-                memset(newData + offset, 0, fillerBytes);
+                newData.resize(totalSize);
+                memset(newData.data() + offset, 0, fillerBytes);
                 offset = totalSize;
             }
             /* Populate the section data */
             totalSize += size;
-            newData = (uint8_t *)realloc(newData, totalSize);
-            memcpy(newData + offset, elfPrgHeader->data, size);
+            newData.resize(totalSize);
+            memcpy(newData.data() + offset, elfPrgHeader->data, size);
             prevAddr = addr;
             prevSize = size;
             offset = totalSize;
         }
     }
 
-    total_psize += CdoCmdDmaWrite(totalSize, GetAieEngineGlobalAddress(textSecAddr), newData);
-    free(newData);
+    total_psize += CdoCmdDmaWrite(totalSize, GetAieEngineGlobalAddress(textSecAddr), newData.data());
+    // No need to free - vector automatically cleans up
 
     for (uint8_t iprog = 0; iprog < elf.programHdrEntryCount; iprog++)
     {
@@ -2568,11 +2808,10 @@ uint64_t VersalImageHeader::ImportAieEngineElfCdo(std::string aie_file)
                     uint32_t pSize = elfPrgHeader->p_memsz - spill - previousPartitionSize;
                     uint64_t pAddr = GetAieEngineGlobalAddress((Binary::Address_t)elf.GetPhysicalAddress(iprog) + previousPartitionSize);
                     uint32_t p_size_pad = pSize + ((4 - (pSize & 3)) & 3);
-                    uint8_t *databuffer = new uint8_t[p_size_pad];
-                    memset(databuffer, 0, p_size_pad);
+                    auto databuffer = std::make_unique<uint8_t[]>(p_size_pad);
+                    memset(databuffer.get(), 0, p_size_pad);
                     previousPartitionSize += pSize;
-                    total_psize += CdoCmdDmaWrite(pSize, pAddr, databuffer);
-                    delete[] databuffer;
+                    total_psize += CdoCmdDmaWrite(pSize, pAddr, databuffer.get());
                     progHdrCnt++;
                 } while (spill);
             }
@@ -2603,7 +2842,7 @@ void VersalImageHeader::ImportAieEngineElf(BootImage& bi)
 {
     uint32_t progHdrCnt = 0;
     uint8_t procState = 0;
-    uint8_t *newData = NULL;
+    std::vector<uint8_t> newData;  // Changed from raw pointer to vector for automatic memory management
     uint32_t rowNum = 0;
     uint32_t colNum = 0;
 
@@ -2669,7 +2908,7 @@ void VersalImageHeader::ImportAieEngineElf(BootImage& bi)
     Binary::Address_t textSecAddr = 0;
 
     Elf32ProgramHeader* elfPrgHeader = NULL;
-    PartitionHeader* partHdr = new VersalPartitionHeader(this, progHdrCnt);
+    auto partHdr = std::make_unique<VersalPartitionHeader>(this, progHdrCnt);
     partHdr->execState = procState;
     partHdr->elfEndianess = elf.endian;
 
@@ -2693,14 +2932,14 @@ void VersalImageHeader::ImportAieEngineElf(BootImage& bi)
             {
                 std::size_t fillerBytes = (std::size_t) (addr - (prevAddr + prevSize));
                 totalSize += fillerBytes;
-                newData = (uint8_t*)realloc(newData, totalSize);
-                memset(newData + offset, 0, fillerBytes);
+                newData.resize(totalSize);
+                memset(newData.data() + offset, 0, fillerBytes);
                 offset = totalSize;
             }
             /* Populate the section data */
             totalSize += size;
-            newData = (uint8_t *)realloc(newData, totalSize);
-            memcpy(newData + offset, elfPrgHeader->data, size);
+            newData.resize(totalSize);
+            memcpy(newData.data() + offset, elfPrgHeader->data, size);
             prevAddr = addr;
             prevSize = size;
             offset = totalSize;
@@ -2718,9 +2957,9 @@ void VersalImageHeader::ImportAieEngineElf(BootImage& bi)
     // consider addr of first header
     partHdr->loadAddress = GetAieEngineGlobalAddress(textSecAddr);
     /* Create a new partition out of each valid program header */
-    partHdr->partition = new VersalPartition(partHdr, newData, partHdr->partitionSize);
+    partHdr.get()->partition = std::make_unique<VersalPartition>(partHdr.get(), newData.data(), partHdr->partitionSize);
     progHdrCnt++;
-    partitionHeaderList.push_back(partHdr);
+    partitionHeaderList.push_back(partHdr.release());
 
     for (uint8_t iprog = 0; iprog < elf.programHdrEntryCount; iprog++)
     {
@@ -2736,13 +2975,13 @@ void VersalImageHeader::ImportAieEngineElf(BootImage& bi)
                     spill = CheckAieEngineDataMemoryBoundary((Binary::Address_t)elf.GetPhysicalAddress(iprog) + previousPartitionSize,
                         elfPrgHeader->p_filesz - previousPartitionSize);
 
-                    PartitionHeader* partHdr = new VersalPartitionHeader(this, progHdrCnt);
+                    auto partHdr = std::make_unique<VersalPartitionHeader>(this, progHdrCnt);
                     partHdr->partitionType = PartitionType::ELF;
                     partHdr->partitionSize = elfPrgHeader->p_filesz - spill - previousPartitionSize;
                     partHdr->loadAddress = GetAieEngineGlobalAddress((Binary::Address_t)elf.GetPhysicalAddress(iprog) + previousPartitionSize);
-                    partHdr->partition = new VersalPartition(partHdr, elfPrgHeader->data + previousPartitionSize, partHdr->partitionSize);
+                    partHdr.get()->partition = std::make_unique<VersalPartition>(partHdr.get(), elfPrgHeader->data + previousPartitionSize, partHdr->partitionSize);
                     previousPartitionSize += partHdr->partitionSize;
-                    partitionHeaderList.push_back(partHdr);
+                    partitionHeaderList.push_back(partHdr.release());
                     progHdrCnt++;
                 } while (spill);
             }
@@ -2754,38 +2993,38 @@ void VersalImageHeader::ImportAieEngineElf(BootImage& bi)
                     spill = CheckAieEngineDataMemoryBoundary((Binary::Address_t)elf.GetPhysicalAddress(iprog) + previousPartitionSize,
                         elfPrgHeader->p_memsz - previousPartitionSize);
 
-                    PartitionHeader* partHdr = new VersalPartitionHeader(this, progHdrCnt);
+                    auto partHdr = std::make_unique<VersalPartitionHeader>(this, progHdrCnt);
                     partHdr->partitionType = PartitionType::ELF;
                     partHdr->partitionSize = elfPrgHeader->p_memsz - spill - previousPartitionSize;
                     partHdr->loadAddress = GetAieEngineGlobalAddress((Binary::Address_t)elf.GetPhysicalAddress(iprog) + previousPartitionSize);
                     previousPartitionSize += partHdr->partitionSize;
-                    uint8_t *databuffer = new uint8_t[partHdr->partitionSize];
-                    memset(databuffer, 0, partHdr->partitionSize);
-                    partHdr->partition = new VersalPartition(partHdr, databuffer, partHdr->partitionSize);
-                    partitionHeaderList.push_back(partHdr);
-                    delete[] databuffer;
+                    auto databuffer = std::make_unique<uint8_t[]>(partHdr->partitionSize);
+                    memset(databuffer.get(), 0, partHdr->partitionSize);
+                    partHdr.get()->partition = std::make_unique<VersalPartition>(partHdr.get(), databuffer.get(), partHdr->partitionSize);
+                    partitionHeaderList.push_back(partHdr.release());
                     progHdrCnt++;
                 } while (spill);
             }
         }
     }
-    free(newData);
+    // No need to free - vector automatically cleans up
 }
 
 /******************************************************************************/
 uint32_t VersalImageHeader::CdoCmdDmaWrite(uint32_t pSize, uint64_t pAddr, uint8_t *databuffer)
 {
     uint32_t total_size;
-    CdoCommandDmaWrite* cdoDataSec = new CdoCommandDmaWrite;
+    auto cdoDataSec = std::make_unique<CdoCommandDmaWrite>();
     uint32_t p_size_pad = pSize + ((4 - (pSize & 3)) & 3);
     cdoDataSec->header = 0x00ff0105;
     cdoDataSec->length = (p_size_pad / 4) + 2;
     cdoDataSec->hi_address = ((pAddr) >> 32) & 0xFFFFFFFF;
     cdoDataSec->lo_address = (pAddr) & 0xFFFFFFFF;
-    cdoDataSec->data = new uint8_t[p_size_pad];
-    memset(cdoDataSec->data, 0, p_size_pad);
-    memcpy(cdoDataSec->data, databuffer, pSize);
-    cdoSections.push_back(cdoDataSec);
+    auto cdoDataSec_data = std::make_unique<uint8_t[]>(p_size_pad);
+    memset(cdoDataSec_data.get(), 0, p_size_pad);
+    memcpy(cdoDataSec_data.get(), databuffer, pSize);
+    cdoDataSec->data = cdoDataSec_data.release();  // Transfer ownership to struct
+    cdoSections.push_back(std::move(cdoDataSec));  // Move unique_ptr into list
     total_size = (CDO_COMMAND_SIZE + p_size_pad);
     LOG_TRACE("AIE ELF CDO DMA Write Command: Address-0x%x%08x, Size-%x", cdoDataSec->hi_address, cdoDataSec->lo_address, p_size_pad);
     return total_size;
@@ -2795,14 +3034,15 @@ uint32_t VersalImageHeader::CdoCmdDmaWrite(uint32_t pSize, uint64_t pAddr, uint8
 uint32_t VersalImageHeader::CdoCmdWriteImageStore(uint32_t pSize, uint64_t pdi_id, uint8_t *databuffer)
 {
     uint32_t total_size;
-    CdoCommandWriteImageStore* cdoDataSec = new CdoCommandWriteImageStore;
+    auto cdoDataSec = std::make_unique<CdoCommandWriteImageStore>();
     uint32_t p_size_pad = pSize + ((4 - (pSize & 3)) & 3);
     cdoDataSec->header = 0x00ff070D;
     cdoDataSec->length = (p_size_pad / 4) + 2;
     cdoDataSec->id = pdi_id;
-    cdoDataSec->data = new uint8_t[p_size_pad];
-    memset(cdoDataSec->data, 0, p_size_pad);
-    memcpy(cdoDataSec->data, databuffer, pSize);
+    auto cdoDataSec_data = std::make_unique<uint8_t[]>(p_size_pad);
+    memset(cdoDataSec_data.get(), 0, p_size_pad);
+    memcpy(cdoDataSec_data.get(), databuffer, pSize);
+    cdoDataSec->data = cdoDataSec_data.release();  // Transfer ownership to struct
     total_size = (CDO_COMMAND_SIZE + p_size_pad);
     return total_size;
 }
@@ -2993,7 +3233,7 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
     if ((slrBootPdiInfo.size() == 1) && GetSlrType(slrBootPdiInfo.front()) == MASTER_CDO)
     {
         SetPartitionType(PartitionType::CONFIG_DATA_OBJ);
-        PartitionHeader* partHdr = new VersalPartitionHeader(this, 0);
+        auto partHdr = std::make_unique<VersalPartitionHeader>(this, 0);
         partHdr->execState = 0;
         partHdr->elfEndianess = 0;
         partHdr->firstValidIndex = true;
@@ -3001,7 +3241,18 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
         size_t size = 0;
         const char* cdo_filename = slrBootPdiInfo.front()->file.c_str();
         CdoSequence * cdo_seq;
+        #ifndef ENABLE_WDI
+        if(isl::iostreams::xp::is_xp_format(cdo_filename))
+        {
+            cdo_seq = Decompressing_File(cdo_filename);
+        }
+        else
+        {
+            cdo_seq = cdoseq_load_cdo(cdo_filename);
+        }
+        #else
         cdo_seq = cdoseq_load_cdo(cdo_filename);
+        #endif
         if (cdo_seq == NULL)
         {
             LOG_ERROR("Error parsing CDO file");
@@ -3012,10 +3263,10 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
         }
         cdo_buffer = (uint8_t*)cdoseq_to_binary(cdo_seq, &size, 0);
         partHdr->partitionSize = size;
-        partHdr->partition = new VersalPartition(partHdr, cdo_buffer, size);
-        partitionHeaderList.push_back(partHdr);
+        partHdr.get()->partition = std::make_unique<VersalPartition>(partHdr.get(), cdo_buffer, size);
+        partitionHeaderList.push_back(partHdr.release());
         free(cdo_buffer);
-        delete cdoHeader;
+        // Cleanup handled by unique_ptr
         cdoSections.clear();
     }
     else
@@ -3025,7 +3276,7 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
         uint8_t slr_cnt = 0;
 
         /* Add CDO Header */
-        cdoHeader = new VersalCdoHeader;
+        cdoHeader = std::make_unique<VersalCdoHeader>();
         cdoHeader->remaining_words = CDO_REMAINING_WORDS;
         cdoHeader->id_word = CDO_IDENTIFICATION; /* CDO */
         cdoHeader->version = CDO_VERSION; /* Version - 2.0 */
@@ -3034,7 +3285,7 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
 
         size += sizeof(VersalCdoHeader);
         std::vector<uint8_t> p_buffer(size);
-        memcpy(p_buffer.data(), cdoHeader, sizeof(VersalCdoHeader));
+        memcpy(p_buffer.data(), cdoHeader.get(), sizeof(VersalCdoHeader));
         p_offset += sizeof(VersalCdoHeader);
 
 
@@ -3057,6 +3308,7 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                 break;
             case 0x04d2c093: /* h30 */
             case 0x14d2c093:
+                device_name = "xcvh1782";
                 break;
             case 0x04d10093: /* h40 */
             case 0x14d10093:
@@ -3065,6 +3317,30 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
             case 0x04d14093: /* h50 */
             case 0x14d14093:
                 device_name = "xcvp1802";
+                break;
+            case 0x14d2a093:
+                device_name = "xcvh1522";
+                break;
+            case 0x14d29093:
+                device_name = "xcvh1542";
+                break;
+            case 0x14d28093:
+                device_name = "xcvh1582";
+                break;
+            case 0x14d2d093:
+                device_name = "xcvh1742";
+                break;
+            case 0x14d34093:
+                device_name = "xcvp1552";
+                break;
+            case 0x04c40093:
+                device_name = "xcvp1902";
+                break;
+            case 0x04d1c093:
+                device_name = "xcvp2502";
+                break;
+            case 0x14d20093:
+                device_name = "xcvp2802";
                 break;
             default:
                 LOG_WARNING("Skipping NoC configuration verification for the SSIT device. Device IDCODE 0x%08x ", bi.bifOptions->idCode);
@@ -3106,7 +3382,7 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                 }
 
                 uint32_t p1_size = ih_offset, p2_size = file_size - p1_size;
-                
+                //if (getenv("BOOTGEN_SPLIT_SSIT_SLAVE_BOOT_PDI") != NULL)
                 {
                     pad_size = p1_size + ((4 - (p1_size & 3)) & 3);
                 }
@@ -3144,7 +3420,7 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                         {
                             std::string golden_cdo_filename = device_name + "_boot" + std::to_string((*slr_id)->index);
                             CompareCDOSequences(cdo_seq, golden_cdo_filename, (*slr_id)->file);
-                            //cdocmd_delete_sequence(cdo_seq);
+                            cdocmd_delete_sequence(cdo_seq);  // Free CDO sequence memory
                         }
                     }
                 }
@@ -3156,7 +3432,7 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
 
                 if (pad_bytes != 0)
                 {
-                    CdoCommandNop* cdoCmd = CdoCmdNoOperation(pad_bytes);
+                    auto cdoCmd = CdoCmdNoOperation(pad_bytes);
                     LOG_TRACE("NOP - 0x%x", p_offset);
                     memcpy(p_buffer.data() + p_offset, cdoCmd, CDO_CMD_NOP_SIZE);
                     p_offset += CDO_CMD_NOP_SIZE;
@@ -3168,11 +3444,11 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                 }
 
                 /* Add Write Key Hole command with SLR Boot PDI data */
-                CdoCommandWriteKeyhole* cdoCmd = CdoCmdWriteKeyHole(pad_size, (*slr_id)->index);
+                auto cdoCmd = CdoCmdWriteKeyHole(pad_size, (*slr_id)->index);
                 memcpy(p_buffer.data() + p_offset, cdoCmd, CDO_CMD_WRITE_KEYHOLE_SIZE);
                 p_offset += CDO_CMD_WRITE_KEYHOLE_SIZE;
 
-                
+                //if (getenv("BOOTGEN_SPLIT_SSIT_SLAVE_BOOT_PDI") != NULL)
                 {
                     memcpy(p_buffer.data() + p_offset, slr_boot_data.bytes + bh_offset, p1_size);
                     p_offset += p1_size;
@@ -3185,10 +3461,9 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                     /* Add SSIT Sync Slave command */
                     size += sizeof(CdoSsitSlaves);
                     p_buffer.resize(size);
-                    CdoSsitSlaves *ssit_sync_slaves_cmd = CdoCmdWriteSsitSyncSlaves(1 << ((*slr_id)->index - 1) & 0xFF);
+                    auto ssit_sync_slaves_cmd = CdoCmdWriteSsitSyncSlaves(1 << ((*slr_id)->index - 1) & 0xFF);
                     memcpy(p_buffer.data() + p_offset, ssit_sync_slaves_cmd, sizeof(CdoSsitSlaves));
                     p_offset += sizeof(CdoSsitSlaves);
-                    delete ssit_sync_slaves_cmd;
                     /* Add part 2 write keyhole*/
                     pad_size = p2_size + ((4 - (p2_size & 3)) & 3);
                     pad_bytes = ((16 - ((p_offset + CDO_CMD_WRITE_KEYHOLE_SIZE) & 15)) & 15);
@@ -3196,7 +3471,7 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                     p_buffer.resize(size);
                     if (pad_bytes != 0)
                     {
-                        CdoCommandNop* cdoCmd = CdoCmdNoOperation(pad_bytes);
+                        auto cdoCmd = CdoCmdNoOperation(pad_bytes);
                         LOG_TRACE("NOP - 0x%x", p_offset);
                         memcpy(p_buffer.data() + p_offset, cdoCmd, CDO_CMD_NOP_SIZE);
                         p_offset += CDO_CMD_NOP_SIZE;
@@ -3206,27 +3481,44 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                             p_offset += (cdoCmd->header.length * sizeof(uint32_t));
                         }
                     }
-                    CdoCommandWriteKeyhole* cdoCmd2 = CdoCmdWriteKeyHole(pad_size, (*slr_id)->index);
+                    auto cdoCmd2 = CdoCmdWriteKeyHole(pad_size, (*slr_id)->index);
                     memcpy(p_buffer.data() + p_offset, cdoCmd2, CDO_CMD_WRITE_KEYHOLE_SIZE);
                     p_offset += CDO_CMD_WRITE_KEYHOLE_SIZE;
-                    memcpy(p_buffer.data() + p_offset, slr_boot_data.bytes + ih_offset + (SMAP_BUS_WIDTH * 4), p2_size);
+
+                    if( (slr_boot_data.len - ih_offset - (SMAP_BUS_WIDTH * 4)) < p2_size)
+                    {
+                        memcpy(p_buffer.data() + p_offset, slr_boot_data.bytes + ih_offset, p2_size);
+                    }
+                    else
+                    {
+                        memcpy(p_buffer.data() + p_offset, slr_boot_data.bytes + ih_offset + (SMAP_BUS_WIDTH)*4, p2_size);
+                    }
+                    // memcpy(p_buffer.data() + p_offset, slr_boot_data.bytes + ih_offset + (SMAP_BUS_WIDTH * 4), p2_size);
+
                     p_offset += p2_size;
                     if ((pad_size - p2_size) != 0)
                     {
                         memset(p_buffer.data() + p_offset, 0, pad_size - p2_size);
                         p_offset += pad_size - p2_size;
                     }
-                    delete cdoCmd2;
                 }
-                delete cdoCmd;
+                /*else
+                {
+                    memcpy(p_buffer + p_offset, slr_boot_data.bytes + bh_offset, file_size);
+                    p_offset += file_size;
+                    if ((pad_size - file_size) != 0)
+                    {
+                        memset(p_buffer + p_offset, 0, pad_size - file_size);
+                        p_offset += pad_size - file_size;
+                    }
+                }*/
 
                 /* Add SSIT Wait Slave command */
                 size += sizeof(CdoSsitSlaves);
                 p_buffer.resize(size);
-                CdoSsitSlaves *ssit_wait_slaves_cmd = CdoCmdWriteSsitWaitSlaves(1 << ((*slr_id)->index - 1));
+                auto ssit_wait_slaves_cmd = CdoCmdWriteSsitWaitSlaves(1 << ((*slr_id)->index - 1));
                 memcpy(p_buffer.data() + p_offset, ssit_wait_slaves_cmd, sizeof(CdoSsitSlaves));
                 p_offset += sizeof(CdoSsitSlaves);
-                delete ssit_wait_slaves_cmd;
 
                 
                 if (slr_cnt == num_of_slrs)
@@ -3234,10 +3526,9 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                     /* Add SSIT Sync Slave command */
                     size += sizeof(CdoSsitSlaves);
                     p_buffer.resize(size);
-                    CdoSsitSlaves *ssit_sync_slaves_cmd = CdoCmdWriteSsitSyncSlaves(((1 << num_of_slrs) - 1) & 0xFF);
+                    auto ssit_sync_slaves_cmd = CdoCmdWriteSsitSyncSlaves(((1 << num_of_slrs) - 1) & 0xFF);
                     memcpy(p_buffer.data() + p_offset, ssit_sync_slaves_cmd, sizeof(CdoSsitSlaves));
                     p_offset += sizeof(CdoSsitSlaves);
-                    delete ssit_sync_slaves_cmd;
                 }
                 if (bi.options.GetDumpOption() != DumpOption::SLAVE_PDIS)
                 {
@@ -3248,7 +3539,19 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
             {
                 /* Add Master Boot NPI and NoC freq CDO commands by parsing the CDO file */
                 const char* cdo_filename = (*slr_id)->file.c_str();
-                CdoSequence* cdo_seq = cdoseq_load_cdo(cdo_filename);
+                CdoSequence* cdo_seq;
+                #ifndef ENABLE_WDI
+                if(isl::iostreams::xp::is_xp_format(cdo_filename))
+                {
+                    cdo_seq = Decompressing_File(cdo_filename);
+                }
+                else
+                {
+                    cdo_seq = cdoseq_load_cdo(cdo_filename);
+                }
+                #else
+                cdo_seq = cdoseq_load_cdo(cdo_filename);
+                #endif
                 if (cdo_seq == NULL)
                 {
                     LOG_ERROR("Error parsing CDO file : %s", cdo_filename);
@@ -3263,8 +3566,19 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                     std::string golden_cdo_filename = device_name + "_boot0";
                     master_cdo_verified = 1;
                     CompareCDOSequences(cdo_seq, golden_cdo_filename, (*slr_id)->file.c_str());
-                    //cdocmd_delete_sequence(cdo_seq);
+                    cdocmd_delete_sequence(cdo_seq);  // Free CDO sequence memory
+                    #ifndef ENABLE_WDI
+                    if(isl::iostreams::xp::is_xp_format(cdo_filename))
+                    {
+                        cdo_seq = Decompressing_File(cdo_filename);
+                    }
+                    else
+                    {
+                        cdo_seq = cdoseq_load_cdo(cdo_filename);
+                    }
+                    #else
                     cdo_seq = cdoseq_load_cdo(cdo_filename);
+                    #endif
                     if (cdo_seq == NULL)
                     {
                         LOG_ERROR("Error parsing CDO file : %s", cdo_filename);
@@ -3272,7 +3586,7 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                 }
                 size_t cdo_size = 0;
                 uint8_t* cdo_buffer = (uint8_t*)cdoseq_to_binary(cdo_seq, &cdo_size, 0);
-                //cdocmd_delete_sequence(cdo_seq);
+                cdocmd_delete_sequence(cdo_seq);  // Free CDO sequence memory
                 file_size = cdo_size;
 
                 if (file_size > sizeof(VersalCdoHeader))
@@ -3308,34 +3622,32 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                     p_buffer.resize(size);
 
                     /* Add SSIT Sync Slave command */
-                    CdoSsitSlaves *ssit_sync_slaves_cmd = CdoCmdWriteSsitSyncSlaves(((1 << num_of_slrs) - 1) & 0xFF);
+                    auto ssit_sync_slaves_cmd = CdoCmdWriteSsitSyncSlaves(((1 << num_of_slrs) - 1) & 0xFF);
                     memcpy(p_buffer.data() + p_offset, ssit_sync_slaves_cmd, sizeof(CdoSsitSlaves));
                     p_offset += sizeof(CdoSsitSlaves);
-                    delete ssit_sync_slaves_cmd;
                 }
             }
         }
 
         size += sizeof(CdoCommandHeader);
         p_buffer.resize(size);
-        CdoCommandHeader* cmd_end = CdoCmdCdoEnd();
+        auto cmd_end = CdoCmdCdoEnd();
         memcpy(p_buffer.data() + p_offset, cmd_end, sizeof(CdoCommandHeader));
-        delete cmd_end;
 
         /* Update CDO header lengths and checksum */
         cdoHeader->length = (size - sizeof(VersalCdoHeader)) / 4;
         cdoHeader->checksum = ~(cdoHeader->remaining_words + cdoHeader->id_word + cdoHeader->version + cdoHeader->length);
-        memcpy(p_buffer.data(), cdoHeader, sizeof(VersalCdoHeader));
+        memcpy(p_buffer.data(), cdoHeader.get(), sizeof(VersalCdoHeader));
 
         SetPartitionType(PartitionType::CONFIG_DATA_OBJ);
-        PartitionHeader* partHdr = new VersalPartitionHeader(this, 0);
+        auto partHdr = std::make_unique<VersalPartitionHeader>(this, 0);
         partHdr->execState = 0;
         partHdr->elfEndianess = 0;
         partHdr->firstValidIndex = true;
         partHdr->partitionSize = size;
-        partHdr->partition = new VersalPartition(partHdr, p_buffer.data(), size);
-        partitionHeaderList.push_back(partHdr);
-        delete cdoHeader;
+        partHdr.get()->partition = std::make_unique<VersalPartition>(partHdr.get(), p_buffer.data(), size);
+        partitionHeaderList.push_back(partHdr.release());
+        // Cleanup handled by unique_ptr
         cdoSections.clear();
     }
 }
@@ -3453,12 +3765,12 @@ size_t GetActualChunkSize(SsitConfigSlrInfo* slr_info, BootImage* bi = nullptr)
 /******************************************************************************/
 void VersalImageHeader::LogConfigSlrDetails(size_t chunk_num, uint8_t slr_num, size_t offset, size_t chunk_size, size_t sync_points)
 {
-    SsitConfigSlrLog* log_details = new SsitConfigSlrLog;
+    auto log_details = std::make_unique<SsitConfigSlrLog>();
     log_details->slr_num = slr_num;
     log_details->offset = offset;
     log_details->size = chunk_size;
     log_details->sync_points = sync_points;
-    configSlrLog.push_back(log_details);
+    configSlrLog.push_back(log_details.release());
 }
 
 /******************************************************************************/
@@ -3517,7 +3829,7 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
     LOG_INFO("Creating SLR Config CDO partition");
 
     /* CDO Header */
-    cdoHeader = new VersalCdoHeader;
+    cdoHeader = std::make_unique<VersalCdoHeader>();
     cdoHeader->remaining_words = CDO_REMAINING_WORDS;
     cdoHeader->id_word = CDO_IDENTIFICATION; /* CDO */
     cdoHeader->version = CDO_VERSION; /* Version - 2.0 */
@@ -3527,14 +3839,14 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
     cdoHeader->checksum = 0;
     size += sizeof(VersalCdoHeader);
     std::vector<uint8_t> p_buffer(size);
-    memcpy(p_buffer.data(), cdoHeader, sizeof(VersalCdoHeader));
+    memcpy(p_buffer.data(), cdoHeader.get(), sizeof(VersalCdoHeader));
     p_offset += sizeof(VersalCdoHeader);
 
     /* Initialize the individual SLR config structures */
     slrConfigPdiInfo.sort(SortByIndex);
     for (std::list<SlrPdiInfo*>::iterator slr_id = slrConfigPdiInfo.begin(); slr_id != slrConfigPdiInfo.end(); slr_id++)
     {
-        SsitConfigSlrInfo* configSlr = new SsitConfigSlrInfo;
+        auto configSlr = std::make_unique<SsitConfigSlrInfo>();
         configSlr->file = (*slr_id)->file;
         configSlr->index = (*slr_id)->index;
         configSlr->offset = 0;
@@ -3545,11 +3857,14 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
         configSlr->partition_offset = 0;
         configSlr->num_chunks = 0;
         configSlr->eof = false;
-        configSlrsInfo.push_back(configSlr);
-        if (configSlr->index ==SlrId::MASTER)
+        
+        // Check BEFORE release to avoid use-after-move
+        if (configSlr->index == SlrId::MASTER)
         {
             master_slr_available = true;
         }
+        
+        configSlrsInfo.push_back(configSlr.release());
     }
 
     /* Parse slave SLR config files to get SLR data, identify sync points, file sizes and get total file size */
@@ -3584,7 +3899,7 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
 
                     if (pad_bytes != 0)
                     {
-                        CdoCommandNop* cdoCmd = CdoCmdNoOperation(pad_bytes);
+                        auto cdoCmd = CdoCmdNoOperation(pad_bytes);
                         memcpy(p_buffer.data() + p_offset, cdoCmd, CDO_CMD_NOP_SIZE);
                         p_offset += CDO_CMD_NOP_SIZE;
                         if (cdoCmd->header.length > 0)
@@ -3600,9 +3915,8 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
                     LogConfigSlrDetails(chunk_num++, (((*slr_info)->index == 4) ? 0 : (*slr_info)->index), p_offset, chunk_size, (*slr_info)->sync_points);
 
                     /* Add write keyhole command for slave SLRs and master config */
-                    CdoCommandWriteKeyhole* cdoCmd = CdoCmdWriteKeyHole(chunk_size, (*slr_info)->index);
+                    auto cdoCmd = CdoCmdWriteKeyHole(chunk_size, (*slr_info)->index);
                     memcpy(p_buffer.data() + p_offset, cdoCmd, CDO_CMD_WRITE_KEYHOLE_SIZE);
-                    delete cdoCmd;
                     p_offset += CDO_CMD_WRITE_KEYHOLE_SIZE;
                     memcpy(p_buffer.data() + p_offset, (*slr_info)->data + (*slr_info)->offset, chunk_size);
 
@@ -3635,7 +3949,18 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
 
                         const char* cdo_filename = (*slr_info)->file.c_str();
                         CdoSequence * master_cdo_seq;
+                        #ifndef ENABLE_WDI
+                        if(isl::iostreams::xp::is_xp_format(cdo_filename))
+                        {
+                            master_cdo_seq = Decompressing_File(cdo_filename);
+                        }
+                        else
+                        {
+                            master_cdo_seq = cdoseq_load_cdo(cdo_filename);
+                        }
+                        #else
                         master_cdo_seq = cdoseq_load_cdo(cdo_filename);
+                        #endif
                         CheckIdsInCdo(master_cdo_seq, bi.options.IsVersalNetSeries(), cdo_filename);
                         if (master_cdo_seq == NULL)
                         {
@@ -3663,7 +3988,7 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
                         /* For master SLR, just copy the CDO contents to chunk. No need to create seperate DMA commands like slave SLRs */
                         if (pad_bytes != 0)
                         {
-                            CdoCommandNop* cdoCmd = CdoCmdNoOperation(pad_bytes);
+                            auto cdoCmd = CdoCmdNoOperation(pad_bytes);
                             memcpy(p_buffer.data() + p_offset, cdoCmd, CDO_CMD_NOP_SIZE);
                             p_offset += CDO_CMD_NOP_SIZE;
                             if (cdoCmd->header.length > 0)
@@ -3680,7 +4005,7 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
                         LogConfigSlrDetails(chunk_num++, SlrId::MASTER, p_offset, master_chunk_size, master_index);
 
                         /* As we strip the CDO header, we are replacing that with NOP commands to ensure other alignments are not disturbed for only the first chunk */
-                        CdoCommandNop* cdoCmd = CdoCmdNoOperation(sizeof(VersalCdoHeader));
+                        auto cdoCmd = CdoCmdNoOperation(sizeof(VersalCdoHeader));
                         memcpy(p_buffer.data() + p_offset, cdoCmd, CDO_CMD_NOP_SIZE);
                         memset(p_buffer.data() + p_offset + CDO_CMD_NOP_SIZE, 0, sizeof(VersalCdoHeader) - CDO_CMD_NOP_SIZE);
                         if (part_size > sizeof(VersalCdoHeader))
@@ -3717,24 +4042,22 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
 
     size += sizeof(CdoCommandHeader);
     p_buffer.resize(size);
-    CdoCommandHeader* cmd_end = CdoCmdCdoEnd();
+    auto cmd_end = CdoCmdCdoEnd();
     memcpy(p_buffer.data() + p_offset, cmd_end, sizeof(CdoCommandHeader));
 
     /* Update CDO header lengths and checksum */
     cdoHeader->length = (size - sizeof(VersalCdoHeader)) / 4;
     cdoHeader->checksum = ~(cdoHeader->remaining_words + cdoHeader->id_word + cdoHeader->version + cdoHeader->length);
-    memcpy(p_buffer.data(), cdoHeader, sizeof(VersalCdoHeader));
+    memcpy(p_buffer.data(), cdoHeader.get(), sizeof(VersalCdoHeader));
 
     SetPartitionType(PartitionType::CONFIG_DATA_OBJ);
-    PartitionHeader* partHdr =  new VersalPartitionHeader(this, 0);
+    auto partHdr = std::make_unique<VersalPartitionHeader>(this, 0);
     partHdr->execState = 0;
     partHdr->elfEndianess = 0;
     partHdr->firstValidIndex = true;
     partHdr->partitionSize = size;
-    partHdr->partition = new VersalPartition(partHdr, p_buffer.data(), size);
-    partitionHeaderList.push_back(partHdr);
-
-    delete cmd_end;
+    partHdr.get()->partition = std::make_unique<VersalPartition>(partHdr.get(), p_buffer.data(), size);
+    partitionHeaderList.push_back(partHdr.release());
 
     for (std::vector<SsitConfigSlrInfo*>::iterator slr_info = configSlrsInfo.begin(); slr_info != configSlrsInfo.end(); slr_info++)
     {
@@ -3826,7 +4149,7 @@ void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size
             slr_info->partition_sizes.push_back(partitionhdr_offsets[1] * 4);
         }
  
-        SsitConfigPartitionSecurityInfo* partition_security_info = new SsitConfigPartitionSecurityInfo;
+        auto partition_security_info = std::make_unique<SsitConfigPartitionSecurityInfo>();
         partition_security_info->partition_index = index + 1;
         partition_security_info->checksum = Checksum::None;
         partition_security_info->authentication = Authentication::None;
@@ -3844,46 +4167,51 @@ void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size
         {
             partition_security_info->encryption = Encryption::AES;
         }
-        slr_info->security_info.push_back(partition_security_info);
+        slr_info->security_info.push_back(partition_security_info.release());
         
         offset += sizeof(VersalPartitionHeaderTableStructure);
 
         if (((partitionhdr_offsets[4] >> vphtPartitionTypeShift) & vphtPartitionTypeMask) == PartitionType::CONFIG_DATA_OBJ)
         {
-            std::string sync_addresses_filename = StringUtils::RemoveExtension(slr_info->file) + 
-                    "_" + std::to_string(partitionhdr_offsets[5]) + "_sync_offsets.txt";
-            std::ifstream offsetFile(sync_addresses_filename.c_str());
-            std::vector<uint32_t> syncpt_offsets;
-            if (!offsetFile)
+            //if (index == (iHT->partitionTotalCount - 1))
             {
-                offsetFile.close();
-            }
-            else
-            {
-                LOG_TRACE("Reading SLR Config CDO Sync Addresses from - %s", sync_addresses_filename.c_str());
-            }
+                //LOG_TRACE("Reading SLR Config CDO Sync Addresses - %s", slr_info->file.c_str());
 
-            while (offsetFile)
-            {
-                std::string word;
-                offsetFile >> word;
-                // If file vacant
-                if (word == "")
+                std::string sync_addresses_filename = StringUtils::RemoveExtension(slr_info->file) + 
+                     "_" + std::to_string(partitionhdr_offsets[5]) + "_sync_offsets.txt";
+                std::ifstream offsetFile(sync_addresses_filename.c_str());
+                std::vector<uint32_t> syncpt_offsets;
+                if (!offsetFile)
                 {
-                    return;
+                    //LOG_TRACE("SLR Config CDO Sync Addresses not found for - %s", slr_info->file.c_str());
+                    offsetFile.close();
                 }
-                if (word == "sync_offsets")
+                else
                 {
-                    while (offsetFile)
+                    LOG_TRACE("Reading SLR Config CDO Sync Addresses from - %s", sync_addresses_filename.c_str());
+                }
+
+                while (offsetFile)
+                {
+                    std::string word;
+                    offsetFile >> word;
+                    // If file vacant
+                    if (word == "")
                     {
-                        offsetFile >> word;
-                        uint32_t offset = std::stoi(word);
-                        syncpt_offsets.push_back(offset);
+                        return;
+                    }
+                    if (word == "sync_offsets")
+                    {
+                        while (offsetFile)
+                        {
+                            offsetFile >> word;
+                            uint32_t offset = std::stoi(word);
+                            syncpt_offsets.push_back(offset);
+                        }
                     }
                 }
-            }
-            if(syncpt_offsets.size() != 0)
-                syncpt_offsets.pop_back();
+                if(syncpt_offsets.size() != 0)
+                    syncpt_offsets.pop_back();
 
             num_of_sync_points = syncpt_offsets.size();
             
@@ -3944,38 +4272,38 @@ void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size
             uint32_t padLength = (partition_length % 16 != 0) ? 16 - (partition_length % 16) : 0;
             partition_length += padLength;
 
-            if (partitionhdr_offsets[2] != 0 || partitionhdr_offsets[0] != 0)
-            {
-                data_chunk -= SHA3_LENGTH_BYTES;
-                offset_shift += SHA3_LENGTH_BYTES;
-            }
-            if (partitionhdr_offsets[3] != KeySource::None)
-            {
-                data_chunk -= (SECURE_HDR_SZ + AES_GCM_TAG_SZ);
-                offset_shift += SECURE_HDR_SZ + AES_GCM_TAG_SZ;
-            }
-            
-            if (partition_length <= data_chunk)
-            {
-                // no chunking
-            }
-            else
-            {
-                num_secure_chunks = partition_length / data_chunk;
-                if (partition_length % data_chunk != 0)
+                if (partitionhdr_offsets[2] != 0 || partitionhdr_offsets[0] != 0)
                 {
-                    num_secure_chunks++;
+                    data_chunk -= SHA3_LENGTH_BYTES;
+                    offset_shift += SHA3_LENGTH_BYTES;
                 }
-            }
-            
-            if (num_of_sync_points > 0)
-            {
-                if (info_display)
+                if (partitionhdr_offsets[3] != KeySource::None)
                 {
-                    LOG_TRACE("SSIT_SYNC_MASTER command detected at following offsets:\n           Count : 0x%X", num_of_sync_points);
-                    LOG_TRACE("   slr_%d:", slr_info->index);
-                    info_display = false;
+                    data_chunk -= (SECURE_HDR_SZ + AES_GCM_TAG_SZ);
+                    offset_shift += SECURE_HDR_SZ + AES_GCM_TAG_SZ;
                 }
+                
+                if (partition_length <= data_chunk)
+                {
+                    // no chunking
+				}
+                else
+                {
+                    num_secure_chunks = partition_length / data_chunk;
+                    if (partition_length % data_chunk != 0)
+                    {
+                        num_secure_chunks++;
+                    }
+                }
+                
+                if (num_of_sync_points > 0)
+                {
+                    if (info_display)
+                    {
+                        LOG_TRACE("SSIT_SYNC_MASTER command detected at following offsets:\n           Count : 0x%X", num_of_sync_points);
+                        LOG_TRACE("   slr_%d:", slr_info->index);
+                        info_display = false;
+                    }
 
                 for (int i = 0; i < num_of_sync_points; i++)
                     {
@@ -4007,6 +4335,7 @@ void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size
         }
     }
 }
+}
 
 /******************************************************************************/
 void VersalImageHeader::ParseSlrConfigFiles(size_t* slr_total_file_size, BootImage* bi)
@@ -4021,7 +4350,18 @@ void VersalImageHeader::ParseSlrConfigFiles(size_t* slr_total_file_size, BootIma
             /* For CDO files - master CDO */
             const char* cdo_filename = (*slr_info)->file.c_str();
             CdoSequence * cdo_seq;
+            #ifndef ENABLE_WDI
+            if(isl::iostreams::xp::is_xp_format(cdo_filename))
+            {
+                cdo_seq = Decompressing_File(cdo_filename);
+            }
+            else
+            {
+                cdo_seq = cdoseq_load_cdo(cdo_filename);
+            }
+            #else
             cdo_seq = cdoseq_load_cdo(cdo_filename);
+            #endif
             if (cdo_seq == NULL)
             {
                 LOG_ERROR("Error parsing CDO file - %s", (*slr_info)->file.c_str());
@@ -4039,7 +4379,7 @@ void VersalImageHeader::ParseSlrConfigFiles(size_t* slr_total_file_size, BootIma
                 LOG_TRACE("       offset = 0x%x", offset);
             }
             /* As we strip the CDO HEADER, we are replacing that with NOP commands to ensure other alignments are not disturbed */
-            CdoCommandNop* cdoCmd = CdoCmdNoOperation(sizeof(VersalCdoHeader));
+            auto cdoCmd = CdoCmdNoOperation(sizeof(VersalCdoHeader));
             memcpy((*slr_info)->data, cdoCmd, CDO_CMD_NOP_SIZE);
             memset((*slr_info)->data + CDO_CMD_NOP_SIZE, 0, sizeof(VersalCdoHeader) - CDO_CMD_NOP_SIZE);
             free(syncpt_offsets);
@@ -4060,10 +4400,11 @@ void VersalImageHeader::ParseSlrConfigFiles(size_t* slr_total_file_size, BootIma
                 LOG_ERROR("Cannot seek to end of file - %s", (*slr_info)->file.c_str());
             }
             (*slr_info)->size = fl.tellg();
-            (*slr_info)->data = new uint8_t[(*slr_info)->size];
+            auto slr_data = std::make_unique<uint8_t[]>((*slr_info)->size);
             fl.seekg(0, std::ios::beg);
-            fl.read((char*)(*slr_info)->data, (*slr_info)->size);
+            fl.read((char*)slr_data.get(), (*slr_info)->size);
             fl.close();
+            (*slr_info)->data = slr_data.release();  // Transfer ownership to slr_info
             GetPartitionOffsets((*slr_info), (*slr_info)->data, (*slr_info)->size, bi);
             slr_sync_points[(*slr_info)->index] = (*slr_info)->sync_addresses.size();
 
@@ -4223,7 +4564,7 @@ void VersalSubSysImageHeader::Build(BootImage& bi, Binary& cache)
 
     if (VersalSubSysImageHeaderTable == NULL)
     {
-        VersalSubSysImageHeaderTable = (VersalImageHeaderStructure*)section->Data;
+        VersalSubSysImageHeaderTable = (VersalImageHeaderStructure*)section->Data.get();
         SetImageName();
         SetImageHeaderAttributes();
         SetPartitionHeaderOffset(0);
@@ -4236,7 +4577,7 @@ void VersalSubSysImageHeader::Build(BootImage& bi, Binary& cache)
 /******************************************************************************/
 void VersalSubSysImageHeader::Link(BootImage &bi, SubSysImageHeader* nextHeader)
 {
-    VersalSubSysImageHeaderTable = (VersalImageHeaderStructure*)section->Data;
+    VersalSubSysImageHeaderTable = (VersalImageHeaderStructure*)section->Data.get();
     if (imgList.front()->GetPartitionHeaderList().front()->section != NULL)
     {
         SetPartitionHeaderOffset((uint32_t)imgList.front()->GetPartitionHeaderList().front()->section->Address);
@@ -4253,27 +4594,15 @@ void VersalSubSysImageHeader::Link(BootImage &bi, SubSysImageHeader* nextHeader)
 /******************************************************************************/
 void VersalSubSysImageHeader::SetPCRMeasurementIndex(bool versalnet)
 {
-    if (versalnet)
-    {
-        VersalSubSysImageHeaderTable->pcrMeasurementIndex = GetPCRMeasurementIndex();
-    }
-    else
-    {
-        VersalSubSysImageHeaderTable->pcrMeasurementIndex = 0x00;
-    }
+    // Use default value (0xFFFF) from BIF options for all arch types
+    VersalSubSysImageHeaderTable->pcrMeasurementIndex = GetPCRMeasurementIndex();
 }
 
 /******************************************************************************/
 void VersalSubSysImageHeader::SetPCRNumber(bool versalnet)
 {
-    if (versalnet)
-    {
-        VersalSubSysImageHeaderTable->pcrNumber = GetPCRNumber();
-    }
-    else
-    {
-        VersalSubSysImageHeaderTable->pcrNumber = 0x00;
-    }
+    // Use default value (0xFFFF) from BIF options for all arch types
+    VersalSubSysImageHeaderTable->pcrNumber = GetPCRNumber();
 }
 
 /******************************************************************************/
@@ -4417,8 +4746,9 @@ VersalSubSysImageHeader::VersalSubSysImageHeader(ImageBifOptions *imgOptions)
 
     std::string name = "ImageHeader " + imageName;
     uint32_t size = sizeof(VersalImageHeaderStructure);
-    section = new Section(name, size);
-    memset(section->Data, 0, size);
+    auto temp_section = std::make_unique<Section>(name, size);
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    memset(section->Data.get(), 0, size);
     imgList.clear();
     num_of_images = 0;
 }
@@ -4454,8 +4784,9 @@ VersalSubSysImageHeader::VersalSubSysImageHeader(std::ifstream& ifs)
     uint32_t size = sizeof(VersalImageHeaderStructure);
 
     ifs.seekg(pos);
-    section = new Section("ImageHeader " + imageName, size);
-    VersalSubSysImageHeaderTable = (VersalImageHeaderStructure*)section->Data;
+    auto temp_section = std::make_unique<Section>("ImageHeader " + imageName, size);
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    VersalSubSysImageHeaderTable = (VersalImageHeaderStructure*)section->Data.get();
     ifs.read((char*)VersalSubSysImageHeaderTable, size);
 
     imageId = VersalSubSysImageHeaderTable->imageId;
@@ -4583,13 +4914,13 @@ void VersalImageHeader::CreateWriteImageStorePartition()
 
     ByteFile data(Filename);
     uint32_t p_size_pad = data.len + ((4 - (data.len & 3)) & 3);
-    uint8_t* tempBuffer = new uint8_t[p_size_pad];
-    memcpy(tempBuffer, data.bytes, p_size_pad);
+    auto tempBuffer = std::make_unique<uint8_t[]>(p_size_pad);
+    memcpy(tempBuffer.get(), data.bytes, p_size_pad);
 
     size_t size = 0;
     size_t p_offset = 0;
     /* CDO Header */
-    cdoHeader = new VersalCdoHeader;
+    cdoHeader = std::make_unique<VersalCdoHeader>();
     cdoHeader->remaining_words = CDO_REMAINING_WORDS;
     cdoHeader->id_word = CDO_IDENTIFICATION; /* CDO */
     cdoHeader->version = CDO_VERSION; /* Version - 2.0 */
@@ -4599,20 +4930,21 @@ void VersalImageHeader::CreateWriteImageStorePartition()
     cdoHeader->checksum = 0;
     size += sizeof(VersalCdoHeader);
     std::vector<uint8_t> p_buffer(size);
-    memcpy(p_buffer.data(), cdoHeader, sizeof(VersalCdoHeader));
+    memcpy(p_buffer.data(), cdoHeader.get(), sizeof(VersalCdoHeader));
     p_offset += sizeof(VersalCdoHeader);
 
-    CdoCommandWriteImageStore* cdoCmd = new CdoCommandWriteImageStore;
+    auto cdoCmd = std::make_unique<CdoCommandWriteImageStore>();
     cdoCmd->header = 0x00ff070D;
     cdoCmd->length = (p_size_pad / 4) + 2;
     cdoCmd->id = imageStorePdiInfo->id;
-    cdoCmd->data = new uint8_t[p_size_pad];
-    memset(cdoCmd->data, 0, p_size_pad);
-    memcpy(cdoCmd->data, tempBuffer, p_size_pad);
+    auto cdoCmd_data = std::make_unique<uint8_t[]>(p_size_pad);
+    memset(cdoCmd_data.get(), 0, p_size_pad);
+    memcpy(cdoCmd_data.get(), tempBuffer.get(), p_size_pad);
+    cdoCmd->data = cdoCmd_data.release();  // Transfer ownership to struct
 
     size += CDO_CMD_WRITE_IMAGE_STORE_SIZE;
     p_buffer.resize(size);
-    memcpy(p_buffer.data() + p_offset, cdoCmd, CDO_CMD_WRITE_IMAGE_STORE_SIZE);
+    memcpy(p_buffer.data() + p_offset, cdoCmd.get(), CDO_CMD_WRITE_IMAGE_STORE_SIZE);
     p_offset += CDO_CMD_WRITE_IMAGE_STORE_SIZE;
 
     size += p_size_pad;
@@ -4622,24 +4954,57 @@ void VersalImageHeader::CreateWriteImageStorePartition()
 
     size += sizeof(CdoCommandHeader);
     p_buffer.resize(size);
-    CdoCommandHeader* cmd_end = CdoCmdCdoEnd();
+    auto cmd_end = CdoCmdCdoEnd();
     memcpy(p_buffer.data() + p_offset, cmd_end, sizeof(CdoCommandHeader));
 
     /* Update CDO header lengths and checksum */
     cdoHeader->length = (size - sizeof(VersalCdoHeader)) / 4;
     cdoHeader->checksum = ~(cdoHeader->remaining_words + cdoHeader->id_word + cdoHeader->version + cdoHeader->length);
-    memcpy(p_buffer.data(), cdoHeader, sizeof(VersalCdoHeader));
+    memcpy(p_buffer.data(), cdoHeader.get(), sizeof(VersalCdoHeader));
 
     SetPartitionType(PartitionType::CONFIG_DATA_OBJ);
-    PartitionHeader* partHdr = new VersalPartitionHeader(this, imageStorePdiInfo->id);
+    auto partHdr = std::make_unique<VersalPartitionHeader>(this, imageStorePdiInfo->id);
     partHdr->execState = 0;
     partHdr->elfEndianess = 0;
     partHdr->firstValidIndex = true;
     partHdr->loadAddress = 0xFFFFFFFFFFFFFFFF;
     partHdr->execAddress = 0;
     partHdr->partitionSize = size;
-    uint8_t* buffer_copy = new uint8_t[size];
-    memcpy(buffer_copy, p_buffer.data(), size);
-    partHdr->partition = new VersalPartition(partHdr, buffer_copy, size);
-    partitionHeaderList.push_back(partHdr);
+    auto buffer_copy = std::make_unique<uint8_t[]>(size);
+    memcpy(buffer_copy.get(), p_buffer.data(), size);
+    partHdr.get()->partition = std::make_unique<VersalPartition>(partHdr.get(), buffer_copy.release(), size);  // Transfer ownership to VersalPartition
+    partitionHeaderList.push_back(partHdr.release());
+}
+
+CdoSequence * VersalImageHeader::Decompressing_File(const char * filename)
+{
+    #if defined(_WIN64) || defined(_WIN32)
+    LOG_ERROR("This is not supported in windows");
+    CdoSequence * seq = NULL;
+    return seq;
+    #endif
+
+    #if defined(__linux__)
+
+    #ifndef ENABLE_WDI
+    isl::iostreams::istream xilZipObj(filename);
+    xilZipObj.seekg(0, std::ios::end);
+
+    int length = xilZipObj.tellg();
+    char* buffer = new char[length+1];
+    buffer[length] = '\0';
+
+    xilZipObj.seekg(0, std::ios::beg);
+    xilZipObj.read(buffer, length);
+
+
+    CdoSequence * seq = cdoseq_load_cdo_from_buffer(buffer, length);
+    delete[] buffer;
+    return seq;
+    #else
+    CdoSequence * seq = NULL;
+    return seq; 
+    #endif
+
+    #endif
 }

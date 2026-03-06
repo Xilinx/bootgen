@@ -180,6 +180,8 @@ typedef enum CdoCmdType {
     CdoCmdListMaskPoll,
     CdoCmdRunProc,
     CdoCmdCdoSequence,
+    CdoCmdRegRead,
+    CdoCmdFinishCdoRead,
 
     /* The following line must be last */
     CdoCmdLast
@@ -319,9 +321,9 @@ void cdocmd_add_scatter_write(CdoSequence * seq, uint32_t value, uint32_t count,
 void cdocmd_add_scatter_write2(CdoSequence * seq, uint32_t value1, uint32_t value2, uint32_t count, void * buf, uint32_t be);
 void cdocmd_add_tamper_trigger(CdoSequence * seq, uint32_t value);
 void cdocmd_add_set_ipi_access(CdoSequence * seq, uint32_t value, uint32_t mask);
-
+void cdocmd_add_reg_read(CdoSequence * seq, uint32_t param, uint32_t count, void * buf, uint32_t be);
+void cdocmd_add_finish_cdo_read(CdoSequence * seq);
 void cdocmd_add_sem_npi_table(CdoSequence * seq, uint32_t nodeid, uint32_t flags, uint32_t count, void * buf, uint32_t be);
-
 void cdocmd_add_ldr_set_image_info(CdoSequence * seq, uint32_t nodeid, uint32_t uid, uint32_t puid, uint32_t funcid);
 void cdocmd_add_ldr_cframe_clear_check(CdoSequence * seq, uint32_t block_type);
 void cdocmd_add_em_set_action(CdoSequence * seq, uint32_t nodeid, uint32_t action, uint32_t mask);
@@ -335,12 +337,12 @@ void cdocmd_rewrite_repeat(CdoSequence * seq);
 void cdocmd_remove_comments(CdoSequence * seq);
 void cdocmd_add_pm_hnicx_npi_data_xfer(CdoSequence * seq, uint32_t addr, uint32_t value);
 
-static inline uint16_t u16swap(uint16_t v) {
-    return ((v >> 8) & 0xff) | ((v << 8) & 0xff00);
+static inline uint32_t u16swap(uint32_t v) {
+    return (((v >> 8u) & 0xff) | ((v << 8u) & 0xff00));
 }
 
 static inline uint32_t u32swap(uint32_t v) {
-    return u16swap(v >> 16) | (u16swap(v) << 16);
+    return u16swap(v >> 16u) | (u16swap(v) << 16u);
 }
 
 #if is_be_host()

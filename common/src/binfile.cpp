@@ -136,26 +136,25 @@ void BinFile::Fill(Binary::Address_t start, Binary::Address_t end, bool doFill, 
 /******************************************************************************/
 void BinFile::Write(Binary::Address_t start, Binary::Length_t length, const uint8_t *buffer)
 {
-    uint8_t* writedata = new uint8_t[length];
-    memcpy(writedata, buffer, length);
-
+    auto writedata = std::make_unique<uint8_t[]>(length);
+    memcpy(writedata.get(), buffer, length);
 
     if (qspiDualMode == QspiMode::PARALLEL_GQSPI)
     {
-        uint8_t* buffer1 = new uint8_t[length / 2];
-        uint8_t* buffer2 = new uint8_t[length / 2];
+        auto buffer1 = std::make_unique<uint8_t[]>(length / 2);
+        auto buffer2 = std::make_unique<uint8_t[]>(length / 2);
         for (uint64_t i = 0, j = 0; i < length; i += 2, j++)
         {
             buffer1[j] = (writedata[i]);
             buffer2[j] = (writedata[i + 1]);
         }
-        ofs.write((const char*)buffer1, length / 2);
-        ofs1.write((const char*)buffer2, length / 2);
+        ofs.write((const char*)buffer1.get(), length / 2);
+        ofs1.write((const char*)buffer2.get(), length / 2);
     }
     else if (qspiDualMode == QspiMode::PARALLEL_LQSPI)
     {
-        uint8_t* buffer1 = new uint8_t[length / 2];
-        uint8_t* buffer2 = new uint8_t[length / 2];
+        auto buffer1 = std::make_unique<uint8_t[]>(length / 2);
+        auto buffer2 = std::make_unique<uint8_t[]>(length / 2);
         int k = 0;
         for (uint64_t i = 0; i < length; i += 2, k++)
         {
@@ -175,8 +174,8 @@ void BinFile::Write(Binary::Address_t start, Binary::Length_t length, const uint
             buffer1[k] = (lsb << 4) | lsbNxt;
             buffer2[k] = (msb << 4) | msbNxt;
         }
-        ofs.write((const char*)buffer1, length / 2);
-        ofs1.write((const char*)buffer2, length / 2);
+        ofs.write((const char*)buffer1.get(), length / 2);
+        ofs1.write((const char*)buffer2.get(), length / 2);
     }
     else if (qspiDualMode == QspiMode::STACKED)
     {
@@ -184,23 +183,23 @@ void BinFile::Write(Binary::Address_t start, Binary::Length_t length, const uint
         Binary::Length_t write_size_2 = 0;
         if((start + length) <= qspiSizeInBytes)
         {
-            ofs.write((const char*)writedata, length);
+            ofs.write((const char*)writedata.get(), length);
         }
         else
         {
             if (start <= qspiSizeInBytes)
             {
                 write_size_1 = qspiSizeInBytes - start;
-                ofs.write((const char*)writedata, write_size_1);
+                ofs.write((const char*)writedata.get(), write_size_1);
             }
             write_size_2 = length - write_size_1;
-            ofs1.write((const char*)(writedata + write_size_1), write_size_2);
+            ofs1.write((const char*)(writedata.get() + write_size_1), write_size_2);
         }
     }
     else
     {
-        ofs.write((const char*)writedata, length);
+        ofs.write((const char*)writedata.get(), length);
     }
     totalByteOutputCount += length;
-    delete [] writedata;
+    // writedata is now a unique_ptr and will be automatically deleted
 }

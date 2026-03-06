@@ -19,6 +19,7 @@
 ************************************************* H E A D E R   F I L E S   ***
 -------------------------------------------------------------------------------
 */
+#include <memory>
 #include "partitionheadertable-spartanup.h"
 #include "bootheader-spartanup.h"
 #include "authentication-spartanup.h"
@@ -84,20 +85,18 @@ SpartanupPartitionHeader::SpartanupPartitionHeader(ImageHeader* imageheader, int
     {
         name = "PartitionHeader Null";
     }
-    section = new Section(name, sizeof(SpartanupPartitionHeaderTableStructure));
-    memset(section->Data, 0, section->Length);
+    auto temp_section = std::make_unique<Section>(name, sizeof(SpartanupPartitionHeaderTableStructure));
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    memset(section->Data.get(), 0, section->Length);
 
-    pHTable = (SpartanupPartitionHeaderTableStructure*)section->Data;
+    pHTable = (SpartanupPartitionHeaderTableStructure*)section->Data.get();
     pHTable->partitionRevokeId = imageHeader->GetPartitionRevocationId();
 }
 
 /******************************************************************************/
 SpartanupPartitionHeader::~SpartanupPartitionHeader()
 {
-    if (section != NULL)
-    {
-        delete section;
-    }
+    // section is managed by base class - do not delete manually!
 }
 
 /******************************************************************************/
@@ -150,7 +149,8 @@ void SpartanupPartitionHeader::ReadData(std::ifstream& ifs)
 {
     uint32_t dataLen = GetTotalPartitionLength();
     std::string partName = imageHeader->GetName() + "_" + std::to_string(partitionUid) + StringUtils::Format(".%d", index);
-    Section* dsection = new Section(partName, dataLen);
+    auto dsection_ptr = std::make_unique<Section>(partName, dataLen);
+    Section* dsection = dsection_ptr.get();  // Get raw pointer before releasing
     if (presigned)
     {
         ifs.seekg(GetAuthCertificateOffset());
@@ -159,16 +159,16 @@ void SpartanupPartitionHeader::ReadData(std::ifstream& ifs)
     {
         ifs.seekg(GetPartitionWordOffset());
     }
-    ifs.read((char*)dsection->Data, dsection->Length);
+    ifs.read((char*)dsection->Data.get(), dsection->Length);
     dsection->isPartitionData = true;
-    partition = new SpartanupPartition(this, dsection);
+    partition = std::make_unique<SpartanupPartition>(this, dsection_ptr.release());  // Transfer ownership to SpartanupPartition
 
     static uint8_t encryptionHeader[] =
     {
         0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xBB,0x00,0x00,0x00,
         0x44,0x00,0x22,0x11,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x66,0x55,0x99,0xAA
     };
-    preencrypted = (memcmp(dsection->Data, encryptionHeader, sizeof(encryptionHeader)) == 0);
+    preencrypted = (memcmp(dsection->Data.get(), encryptionHeader, sizeof(encryptionHeader)) == 0);
 }
 
 /******************************************************************************/
@@ -221,7 +221,7 @@ void SpartanupPartitionHeader::Link(BootImage &bi, PartitionHeader* next_part_hd
     SetPartitionId();
     if (!preencrypted)
     {
-        SetPartitionSecureHdrIv(partitionSecHdrIv);
+        SetPartitionSecureHdrIv(partitionSecHdrIv.get());
         SetPartitionKeySrc(partitionKeySrc, bi.bifOptions);
         SetPartitionGreyOrBlackIv(kekIvFile);
     }
@@ -406,13 +406,13 @@ void SpartanupPartitionHeader::SetPartitionKeySrc(KeySource::Type keyType, BifOp
 /******************************************************************************/
 void SpartanupPartitionHeader::SetPartitionGreyOrBlackIv(std::string ivFile)
 {
-    uint8_t* ivData = new uint8_t[IV_LENGTH * 4];
-    memset(ivData, 0, IV_LENGTH * 4);
+    auto ivData = std::make_unique<uint8_t[]>(IV_LENGTH * 4);
+    memset(ivData.get(), 0, IV_LENGTH * 4);
 
     if (ivFile != "")
     {
         FileImport fileReader;
-        if (!fileReader.LoadHexData(ivFile, ivData, IV_LENGTH * 4))
+        if (!fileReader.LoadHexData(ivFile, ivData.get(), IV_LENGTH * 4))
         {
             LOG_ERROR("Invalid no. of data bytes for Black/Grey Key IV.\n           Expected length for Grey/Black IV is 12 bytes");
         }
@@ -425,8 +425,7 @@ void SpartanupPartitionHeader::SetPartitionGreyOrBlackIv(std::string ivFile)
         }
     }
 
-    memcpy(&pHTable->partitionGreyOrBlackIV, ivData, IV_LENGTH * 4);
-    delete[] ivData;
+    memcpy(&pHTable->partitionGreyOrBlackIV, ivData.get(), IV_LENGTH * 4);
 }
 
 
@@ -714,13 +713,13 @@ void SpartanupPartitionHeader::SetAuthCertificateOffset(void)
     {
         /* If the image is not yet signed, partition addr + partition length - cert size */
         AuthenticationContext::SetAuthenticationKeyLength(RSA_4096_KEY_LENGTH);
-        AuthenticationContext* auth = (SpartanupAuthenticationContext*)new SpartanupAuthenticationContext(Authentication::RSA);
+        auto auth = std::make_unique<SpartanupAuthenticationContext>(Authentication::RSA);
         pHTable->authCertificateOffset = (uint32_t)((partition->section->Address + partition->section->Length - auth->GetCertificateSize()) / sizeof(uint32_t));
     }
     else if (imageHeader->GetAuthenticationType() == Authentication::ECDSA)
     {
         AuthenticationContext::SetAuthenticationKeyLength(EC_P384_KEY_LENGTH);
-        AuthenticationContext* auth = (SpartanupAuthenticationContext*)new SpartanupAuthenticationContext(Authentication::ECDSA);
+        auto auth = std::make_unique<SpartanupAuthenticationContext>(Authentication::ECDSA);
         pHTable->authCertificateOffset = (uint32_t)((partition->section->Address + partition->section->Length - auth->GetCertificateSize()) / sizeof(uint32_t));
     }
     else
@@ -771,7 +770,7 @@ void SpartanupPartitionHeader::SetChecksum(void)
 /******************************************************************************/
 void SpartanupPartitionHeader::RealignSectionDataPtr(void)
 {
-    pHTable = (SpartanupPartitionHeaderTableStructure*)section->Data;
+    pHTable = (SpartanupPartitionHeaderTableStructure*)section->Data.get();
 }
 
 /******************************************************************************/
@@ -1190,22 +1189,25 @@ void SpartanupPartitionHeaderTable::Build(BootImage & bi, Binary & cache)
 
         totalencrBlocks = bi.options.bifOptions->metaHdrAttributes.encrBlocks.size();
         uint32_t totalBlocksOverhead = (totalencrBlocks + 1) * 64;
-        bi.encryptedHeaders = new Section("EncryptedMetaHeader", bi.imageHeaderTable->metaHeaderLength + totalBlocksOverhead);
-        cache.Sections.push_back(bi.encryptedHeaders);
+        auto encHdr = std::make_unique<Section>("EncryptedMetaHeader", bi.imageHeaderTable->metaHeaderLength + totalBlocksOverhead);
+        bi.encryptedHeaders = encHdr.get();  // Store raw pointer for later use
+        cache.Sections.push_back(std::move(encHdr));  // Cache owns it
     }
     else
     {
+        // Add bi.headers sections to cache for output
         for (std::list<Section*>::iterator itr = bi.headers.begin(); itr != bi.headers.end(); itr++)
         {
-            cache.Sections.push_back(*itr);
+            cache.Sections.push_back(std::unique_ptr<Section>(*itr));
         }
+        bi.headers.clear();  // Cache now owns them
     }
 
     if (bi.bifOptions->GetHeaderAC())
     {
         LOG_INFO("Creating Header Authentication Certificate");
         ConfigureMetaHdrAuthenticationContext(bi);
-        bi.headerAC = new SpartanupAuthenticationCertificate(bi.metaHdrAuthCtx);
+        bi.headerAC = std::make_unique<SpartanupAuthenticationCertificate>(bi.metaHdrAuthCtx.get());
         bi.headerAC->Build(bi, cache, bi.imageHeaderTable->section, false, true);
     }
 
@@ -1214,7 +1216,7 @@ void SpartanupPartitionHeaderTable::Build(BootImage & bi, Binary & cache)
         bi.imageHeaderTable->hashBlockSectionLength = bi.numHashTableEntries * (bi.hash->GetHashLength() + HASH_BLOCK_INDEX_BYTES);
         bi.imageHeaderTable->hashBlockSectionLength += PADDING_16B(bi.imageHeaderTable->hashBlockSectionLength);
 
-        bi.imageHeaderTable->hashBlockSection = new Section("HashBlock", bi.imageHeaderTable->hashBlockSectionLength);
+        bi.imageHeaderTable->hashBlockSection = std::make_unique<Section>("HashBlock", bi.imageHeaderTable->hashBlockSectionLength).release();
 
         if (bi.options.bifOptions->metaHdrAttributes.authenticate != Authentication::None)
         {
@@ -1224,14 +1226,14 @@ void SpartanupPartitionHeaderTable::Build(BootImage & bi, Binary & cache)
         {
             bi.imageHeaderTable->hashBlockSection->IncreaseLengthAndPadTo(bi.imageHeaderTable->hashBlockSectionLength + AES_GCM_TAG_SZ, 0);
         }
-        cache.Sections.push_back(bi.imageHeaderTable->hashBlockSection);
+        cache.Sections.push_back(std::unique_ptr<Section>(bi.imageHeaderTable->hashBlockSection));
     }
 }
 
 /******************************************************************************/
 void SpartanupPartitionHeaderTable::ConfigureMetaHdrAuthenticationContext(BootImage & bi)
 {
-    AuthenticationContext* biAuth = NULL;
+    std::unique_ptr<AuthenticationContext> biAuth = nullptr;
     for (std::list<ImageHeader*>::iterator image = bi.imageList.begin(); image != bi.imageList.end(); image++)
     {
         if (((*image)->IsBootloader()) && ((*image)->GetAuthenticationType() == Authentication::None))
@@ -1240,7 +1242,7 @@ void SpartanupPartitionHeaderTable::ConfigureMetaHdrAuthenticationContext(BootIm
         }
     }
 
-    biAuth = (AuthenticationContext*) new SpartanupAuthenticationContext(bi.options.bifOptions->metaHdrAttributes.authenticate);
+    biAuth = std::make_unique<SpartanupAuthenticationContext>(bi.options.bifOptions->metaHdrAttributes.authenticate);
     biAuth->hashType = bi.GetAuthHashAlgo();
 
     if (bi.bifOptions->metaHdrAttributes.ppk != "")
@@ -1297,7 +1299,7 @@ void SpartanupPartitionHeaderTable::ConfigureMetaHdrAuthenticationContext(BootIm
         AuthenticationContext::SetAuthenticationKeyLength(EC_P384_KEY_LENGTH);
     }
 
-    ImageHeaderTable* iht = bi.imageHeaderTable;
+    ImageHeaderTable* iht = bi.imageHeaderTable.get();
     biAuth->ResizeIfNecessary(iht->section);
     for (std::list<ImageHeader*>::iterator ih = bi.imageList.begin(); ih != bi.imageList.end(); ih++)
     {
@@ -1309,7 +1311,7 @@ void SpartanupPartitionHeaderTable::ConfigureMetaHdrAuthenticationContext(BootIm
     }
 
     /* Header table authentication */
-    bi.metaHdrAuthCtx = (AuthenticationContext*)new SpartanupAuthenticationContext(biAuth, bi.bifOptions->metaHdrAttributes.authenticate);
+    bi.metaHdrAuthCtx = std::make_unique<SpartanupAuthenticationContext>(biAuth.get(), bi.bifOptions->metaHdrAttributes.authenticate);
     
     if (bi.bifOptions->metaHdrAttributes.presign != "")
     {
@@ -1361,7 +1363,7 @@ void SpartanupPartitionHeaderTable::UpdateAtfHandoffParams(BootImage & bi)
     {
         if ((*partHdr)->update_atf_handoff_params)
         {
-            memcpy((*partHdr)->partition->section->Data + (*partHdr)->atf_handoff_params_offset, &atf_handoff_params, sizeof(atf_handoff_params_struct));
+            memcpy((*partHdr)->partition->section->Data.get() + (*partHdr)->atf_handoff_params_offset, &atf_handoff_params, sizeof(atf_handoff_params_struct));
         }
     }
 }
@@ -1407,14 +1409,15 @@ void SpartanupPartitionHeaderTable::Link(BootImage & bi)
         bi.imageHeaderTable->metaHeaderLength = bi.imageHeaderTable->GetTotalMetaHdrLength();
     }
 
-    if (bi.imageHeaderTable->hashBlockSection != NULL)
+    if (bi.imageHeaderTable->hashBlockSection != nullptr)
     {
         /* Calculate Headers Hash */
-        uint8_t* sha_hash = new uint8_t[bi.hash->GetHashLength()];
+        auto sha_hash = std::make_unique<uint8_t[]>(bi.hash->GetHashLength());
         std::list<Section*> sections;
-        Section* headers = NULL;
+        std::unique_ptr<Section> headers_ptr = nullptr;
+        Section* headers = nullptr;
         size_t size = 0;
-        ImageHeaderTable* iHT = bi.imageHeaderTable;
+        ImageHeaderTable* iHT = bi.imageHeaderTable.get();
 
         /* Header section */
         sections.push_back(iHT->section);
@@ -1442,16 +1445,17 @@ void SpartanupPartitionHeaderTable::Link(BootImage & bi)
         }
 
         /* Create one new combined section with all the appended sections above */
-        headers = new Section("Headers", size);
+        headers_ptr = std::make_unique<Section>("Headers", size);
+        headers = headers_ptr.get();
         //headers->Address = iHT->section->Address; // not really needed, but useful for debug.
-        memset(headers->Data, bi.options.GetOutputFillByte(), headers->Length);
+        memset(headers->Data.get(), bi.options.GetOutputFillByte(), headers->Length);
 
         Binary::Address_t start = sections.front()->Address;
-        for (SectionList::iterator i = sections.begin(); i != sections.end(); i++)
+        for (std::list<Section*>::iterator i = sections.begin(); i != sections.end(); i++)
         {
             Section& section(**i);
             int offset = section.Address - start;
-            memcpy(headers->Data + offset, section.Data, section.Length);
+            memcpy(headers->Data.get() + offset, section.Data.get(), section.Length);
         }
         /* Replace sections list with the combined new section */
         sections.clear();
@@ -1459,37 +1463,30 @@ void SpartanupPartitionHeaderTable::Link(BootImage & bi)
 
         if(!bi.options.IsDl9Series())
         {
-            bi.hash->CalculateHash(true, headers->Data, size, sha_hash);
+            bi.hash->CalculateHash(true, headers->Data.get(), size, sha_hash.get());
         }
         else
         {
-            bi.hash->CalculateVersalHash(true, headers->Data, size, sha_hash);
+            bi.hash->CalculateVersalHash(true, headers->Data.get(), size, sha_hash.get());
         }
-
-        if (headers != NULL)
-        {
-            delete headers;
-        }
-        
 
         /* Copy Meta Header Hash into Hash Block 1 */
-        memset(bi.imageHeaderTable->hashBlockSection->Data, 0, bi.imageHeaderTable->hashBlockSectionLength);
-        memcpy(bi.imageHeaderTable->hashBlockSection->Data + HASH_BLOCK_INDEX_BYTES, sha_hash, bi.hash->GetHashLength());
+        memset(bi.imageHeaderTable->hashBlockSection->Data.get(), 0, bi.imageHeaderTable->hashBlockSectionLength);
+        memcpy(bi.imageHeaderTable->hashBlockSection->Data.get() + HASH_BLOCK_INDEX_BYTES, sha_hash.get(), bi.hash->GetHashLength());
 #ifdef DEBUG
         LOG_TRACE("Meta Header Length %d", bi.imageHeaderTable->metaHeaderLength);
         LOG_TRACE("Meta Header Data");
         LOG_DUMP_BYTES(headers->Data, bi.imageHeaderTable->metaHeaderLength);
         LOG_TRACE("Meta Header Hash - Copied to Hash Block 1");
-        LOG_DUMP_BYTES(sha_hash, bi.hash->GetHashLength());
+        LOG_DUMP_BYTES(sha_hash.get(), bi.hash->GetHashLength());
 #endif
-        delete[] sha_hash;
 
         /* Copy Partition Hashes into Hash Block 1 */
         for (size_t i = 1; i < bi.hashTable.size(); i++)
         {
             uint32_t partition_num = bi.hashTable[i].first;
-            memcpy(bi.imageHeaderTable->hashBlockSection->Data + (i * (HASH_BLOCK_INDEX_BYTES + bi.hash->GetHashLength())), &partition_num, HASH_BLOCK_INDEX_BYTES);
-            memcpy(bi.imageHeaderTable->hashBlockSection->Data + HASH_BLOCK_INDEX_BYTES + (i * (HASH_BLOCK_INDEX_BYTES + bi.hash->GetHashLength())), bi.hashTable[i].second, bi.hash->GetHashLength());
+            memcpy(bi.imageHeaderTable->hashBlockSection->Data.get() + (i * (HASH_BLOCK_INDEX_BYTES + bi.hash->GetHashLength())), &partition_num, HASH_BLOCK_INDEX_BYTES);
+            memcpy(bi.imageHeaderTable->hashBlockSection->Data.get() + HASH_BLOCK_INDEX_BYTES + (i * (HASH_BLOCK_INDEX_BYTES + bi.hash->GetHashLength())), bi.hashTable[i].second.get(), bi.hash->GetHashLength());
         }
 
         /* AAD for HB 1 */
@@ -1497,11 +1494,11 @@ void SpartanupPartitionHeaderTable::Link(BootImage & bi)
         {
             LOG_TRACE("Performing AAD on Hash Block 1");
             EncryptionContext* encryptCtx = bi.imageHeaderTable->GetEncryptContext();
-            encryptCtx->AesGcm256HashBlockEncrypt(bi.options, bi.imageHeaderTable->hashBlockSection->Data,
-                bi.imageHeaderTable->hashBlockSectionLength, bi.imageHeaderTable->hashBlockSection->Data + bi.imageHeaderTable->hashBlockSectionLength, 1);
+            encryptCtx->AesGcm256HashBlockEncrypt(bi.options, bi.imageHeaderTable->hashBlockSection->Data.get(),
+                bi.imageHeaderTable->hashBlockSectionLength, bi.imageHeaderTable->hashBlockSection->Data.get() + bi.imageHeaderTable->hashBlockSectionLength, 1);
 #ifdef DEBUG
             LOG_TRACE("Hash Block 1 AAD");
-            LOG_DUMP_BYTES(bi.imageHeaderTable->hashBlockSection->Data + bi.imageHeaderTable->hashBlockSectionLength, AES_GCM_TAG_SZ);
+            LOG_DUMP_BYTES(bi.imageHeaderTable->hashBlockSection->Data.get() + bi.imageHeaderTable->hashBlockSectionLength, AES_GCM_TAG_SZ);
 #endif
         }
     }

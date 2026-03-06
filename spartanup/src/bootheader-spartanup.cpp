@@ -41,16 +41,17 @@ SpartanupBootHeader::SpartanupBootHeader(Arch::Type archType)
     arch = archType;
     uint32_t pufDataLength = GetPufDataLength();
 
-    pufData = new uint8_t[pufDataLength];
-    bhKeyData = new uint8_t[BLK_GRY_KEY_LENGTH * 4];
-    ivData = new uint8_t[IV_LENGTH * 4];
+    pufData = std::make_unique<uint8_t[]>(pufDataLength);
+    bhKeyData = std::make_unique<uint8_t[]>(BLK_GRY_KEY_LENGTH * 4);
+    ivData = std::make_unique<uint8_t[]>(IV_LENGTH * 4);
     kekIvMust = false;
 
-    memset(pufData, 0, pufDataLength);
-    memset(bhKeyData, 0, BLK_GRY_KEY_LENGTH * 4);
-    memset(ivData, 0, IV_LENGTH * 4);
-    section = new Section("BootHeader", sizeof(SpartanupBootHeaderStructure));
-    bHTable = (SpartanupBootHeaderStructure*)section->Data;
+    memset(pufData.get(), 0, pufDataLength);
+    memset(bhKeyData.get(), 0, BLK_GRY_KEY_LENGTH * 4);
+    memset(ivData.get(), 0, IV_LENGTH * 4);
+    auto temp_section = std::make_unique<Section>("BootHeader", sizeof(SpartanupBootHeaderStructure));
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    bHTable = (SpartanupBootHeaderStructure*)section->Data.get();
     smapTable = (SpartanupSmapWidthTable*)bHTable->smapWords;
 }
 
@@ -61,47 +62,31 @@ SpartanupBootHeader::SpartanupBootHeader(std::ifstream& src, Arch::Type archType
     arch = archType;
     uint32_t pufDataLength = GetPufDataLength();
 
-    pufData = new uint8_t[pufDataLength];
-    bhKeyData = new uint8_t[BLK_GRY_KEY_LENGTH * 4];
-    ivData = new uint8_t[IV_LENGTH * 4];
+    pufData = std::make_unique<uint8_t[]>(pufDataLength);
+    bhKeyData = std::make_unique<uint8_t[]>(BLK_GRY_KEY_LENGTH * 4);
+    ivData = std::make_unique<uint8_t[]>(IV_LENGTH * 4);
 
-    memset(pufData, 0, pufDataLength);
-    memset(bhKeyData, 0, BLK_GRY_KEY_LENGTH * 4);
-    memset(ivData, 0, IV_LENGTH * 4);
+    memset(pufData.get(), 0, pufDataLength);
+    memset(bhKeyData.get(), 0, BLK_GRY_KEY_LENGTH * 4);
+    memset(ivData.get(), 0, IV_LENGTH * 4);
     kekIvMust = false;
 
     /* Import the Boot Header from a boot image file */
-    section = new Section("BootHeader", sizeof(SpartanupBootHeaderStructure));
-    if (!src.read((char*)section->Data, section->Length).good())
+    auto temp_section = std::make_unique<Section>("BootHeader", sizeof(SpartanupBootHeaderStructure));
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    if (!src.read((char*)section->Data.get(), section->Length).good())
     {
         LOG_ERROR("Failed to read bootheader from imported image");
     }
-    bHTable = (SpartanupBootHeaderStructure*)section->Data;
+    bHTable = (SpartanupBootHeaderStructure*)section->Data.get();
     smapTable = (SpartanupSmapWidthTable*)bHTable->smapWords;
 }
 
 /******************************************************************************/
 SpartanupBootHeader::~SpartanupBootHeader()
 {
-    if (pufData != NULL)
-    {
-        delete[] pufData;
-    }
-
-    if (bhKeyData != NULL)
-    {
-        delete[] bhKeyData;
-    }
-
-    if (ivData != NULL)
-    {
-        delete[] ivData;
-    }
-
-    if (section != NULL)
-    {
-        delete section;
-    }
+    // pufData, bhKeyData, ivData are now std::unique_ptr - automatic cleanup via RAII
+    // section is owned by cache.Sections (std::list<std::unique_ptr<Section>>)
 }
 
 /******************************************************************************/
@@ -111,10 +96,7 @@ void SpartanupBootHeader::Build(BootImage& bi, Binary& cache)
 
     SetSmapBusWidthWords(bi.bifOptions->GetSmapWidth());
 
-    if (section != NULL)
-    {
-        cache.Sections.push_back(section);
-    }
+    // NOTE: Don't push section here - it's pushed later in both prebuilt and non-prebuilt paths
 
     /* If the boot header is imported from a bootimage file, no need to build */
     if (prebuilt)
@@ -122,6 +104,13 @@ void SpartanupBootHeader::Build(BootImage& bi, Binary& cache)
         if (bi.bifOptions->GetRegInitFileName() != "")
         {
             BuildRegInitTable(bi.options);
+        }
+        
+        // Move section to cache after using it
+        if (section != nullptr)
+        {
+            cache.Sections.push_back(std::unique_ptr<Section>(section));
+
         }
         return;
     }
@@ -140,8 +129,8 @@ void SpartanupBootHeader::Build(BootImage& bi, Binary& cache)
     }
 
     SetGreyOrBlackIv(kekIvFile);
-    SetPlmSecureHdrIv(bi.options.secHdrIv);
-    SetPmcDataSecureHdrIv(bi.options.secHdrIvPmcData);
+    SetPlmSecureHdrIv(bi.options.secHdrIv.get());
+    SetPmcDataSecureHdrIv(bi.options.secHdrIvPmcData.get());
     if (bi.options.IsVersalNetSeries())
     {
         if(bi.imageList.size() != 0)
@@ -163,6 +152,13 @@ void SpartanupBootHeader::Build(BootImage& bi, Binary& cache)
     BuildRegInitTable(bi.options);
     SetPufData(bi);
     //SetSHA3Padding();
+    
+    // Move section to cache AFTER we're done using it
+    if (section != nullptr)
+    {
+        cache.Sections.push_back(std::unique_ptr<Section>(section));
+
+    }
 }
 
 /******************************************************************************/
@@ -177,7 +173,7 @@ void SpartanupBootHeader::Link(BootImage& bi)
 
     SetHashBlockSize(bi.hashBlockLength);
 
-    ImageHeaderTable* iHT = bi.imageHeaderTable;
+    ImageHeaderTable* iHT = bi.imageHeaderTable.get();
     ImageHeader* fsbl = NULL;
     if (bi.createSubSystemPdis == true)
     {
@@ -232,11 +228,11 @@ void SpartanupBootHeader::Link(BootImage& bi)
         SetPmcCdoLength(bi.bifOptions->GetPmcFwSize());
         SetTotalPlmLength(bi.bifOptions->GetTotalPmcFwSize());
         SetTotalPmcCdoLength(bi.bifOptions->GetTotalPmcFwSize());
-        SetPlmSecureHdrIv(bi.options.secHdrIv);
+        SetPlmSecureHdrIv(bi.options.secHdrIv.get());
 
         if (bi.bifOptions->GetPmcFwSize() != 0)
         {
-            SetPmcDataSecureHdrIv(bi.options.secHdrIvPmcData);
+            SetPmcDataSecureHdrIv(bi.options.secHdrIvPmcData.get());
         }
 
         if (fsbl->IsStaticFlagSet() || bi.bifOptions->GetXipMode())
@@ -261,7 +257,7 @@ void SpartanupBootHeader::Link(BootImage& bi)
     }
 
     SetHeaderChecksum(bi.options);
-    //uint8_t* tmpBh = bi.bootHeader->section->Data;
+    //uint8_t* tmpBh = bi.bootHeader->section->Data.get();
     //LOG_TRACE("BH Link");
     //LOG_DUMP_BYTES(tmpBh, bi.bootHeader->section->Length);
 
@@ -291,7 +287,7 @@ void SpartanupBootHeader::ResizeSection(BootImage &bi)
         uint32_t newBhSize = GetBootHeaderSize() + GetPufDataLength();
         section->IncreaseLengthAndPadTo(newBhSize, 0);
 
-        bHTable = (SpartanupBootHeaderStructure*)section->Data;
+        bHTable = (SpartanupBootHeaderStructure*)section->Data.get();
     }
 }
 
@@ -362,7 +358,7 @@ void SpartanupBootHeader::LinkPrebuiltBH(BootImage& bi)
 
     /* This is useful for importing the bootimage and appending new partitions.
     Total metaheader length depends on no. of partitions */
-    ImageHeaderTable* iHT = bi.imageHeaderTable;
+    ImageHeaderTable* iHT = bi.imageHeaderTable.get();
     if (iHT->section != NULL)
     {
         if (!Binary::CheckAddress(iHT->section->Address))
@@ -608,20 +604,18 @@ void SpartanupBootHeader::SetHeaderChecksum(Options& options)
 /******************************************************************************/
 void SpartanupBootHeader::SetGreyOrBlackKey(std::string keyFile)
 {
-    uint8_t* bhKeyData = new uint8_t[BLK_GRY_KEY_LENGTH * 4];
-    memset(bhKeyData, 0, BLK_GRY_KEY_LENGTH * 4);
+    auto bhKeyData = std::make_unique<uint8_t[]>(BLK_GRY_KEY_LENGTH * 4);
+    memset(bhKeyData.get(), 0, BLK_GRY_KEY_LENGTH * 4);
 
     if (keyFile != "")
     {
         FileImport fileReader;
-        if (!fileReader.LoadHexData(keyFile, bhKeyData, BLK_GRY_KEY_LENGTH * 4))
+        if (!fileReader.LoadHexData(keyFile, bhKeyData.get(), BLK_GRY_KEY_LENGTH * 4))
         {
             LOG_ERROR("Invalid no. of data bytes for Grey/Black key in BootHeader.\n           Expected length for Grey/Black key is 32 bytes");
         }
     }
-    memcpy(&bHTable->greyOrBlackKey, bhKeyData, BLK_GRY_KEY_LENGTH * 4);
-
-    delete[] bhKeyData;
+    memcpy(&bHTable->greyOrBlackKey, bhKeyData.get(), BLK_GRY_KEY_LENGTH * 4);
 }
 
 /******************************************************************************/
@@ -664,26 +658,19 @@ void SpartanupBootHeader::SetPlmSecureHdrIv(uint8_t* iv)
 /******************************************************************************/
 void SpartanupBootHeader::SetPmcDataSecureHdrIv(uint8_t* iv)
 {
-    /*if (iv == NULL)
-    {
-        memset(bHTable->pmcCdoSecureHdrIv, 0, IV_LENGTH * WORD_SIZE_IN_BYTES);
-    }
-    else
-    {
-        memcpy(bHTable->pmcCdoSecureHdrIv, iv, IV_LENGTH * WORD_SIZE_IN_BYTES);
-    }*/
+    /* Spartanup does not have pmcCdoSecureHdrIv in boot header structure */
 }
 
 /******************************************************************************/
 void SpartanupBootHeader::SetGreyOrBlackIv(std::string ivFile)
 {
-    uint8_t* ivData = new uint8_t[IV_LENGTH * 4];
-    memset(ivData, 0, IV_LENGTH * 4);
+    auto ivData = std::make_unique<uint8_t[]>(IV_LENGTH * 4);
+    memset(ivData.get(), 0, IV_LENGTH * 4);
 
     if (ivFile != "")
     {
         FileImport fileReader;
-        if (!fileReader.LoadHexData(ivFile, ivData, IV_LENGTH * 4))
+        if (!fileReader.LoadHexData(ivFile, ivData.get(), IV_LENGTH * 4))
         {
             LOG_ERROR("Invalid no. of data bytes for Black/Grey Key IV.\n           Expected length for Grey/Black IV is 12 bytes");
         }
@@ -696,8 +683,7 @@ void SpartanupBootHeader::SetGreyOrBlackIv(std::string ivFile)
         }
     }
 
-    memcpy(&bHTable->greyOrBlackIV, ivData, IV_LENGTH * 4);
-    delete[] ivData;
+    memcpy(&bHTable->greyOrBlackIV, ivData.get(), IV_LENGTH * 4);
 }
 
 /******************************************************************************/
@@ -714,24 +700,22 @@ void SpartanupBootHeader::SetPufData(BootImage &bi)
     uint32_t actualPufHDDataLength = bi.bootHeader->GetPufDataLength();
     actualPufHDDataLength = bi.bootHeader->GetPufDataLength() - PUF_DATA_LENGTH_4K_ALIGNMENT;
 
-    uint8_t* pufDataTemp = new uint8_t[bi.bootHeader->GetPufDataLength()];
-    memset(pufDataTemp, 0, bi.bootHeader->GetPufDataLength());
+    auto pufDataTemp = std::make_unique<uint8_t[]>(bi.bootHeader->GetPufDataLength());
+    memset(pufDataTemp.get(), 0, bi.bootHeader->GetPufDataLength());
     if (bi.bifOptions->GetPufHdLoc() == PufHdLoc::PUFinBH || bi.bifOptions->GetPufHdinBHFlag())
     {
         if (bi.bifOptions->GetPufHelperFile() != "")
         {
             FileImport fileReader;
-            if (!fileReader.LoadHexData(bi.bifOptions->GetPufHelperFile(), pufDataTemp, actualPufHDDataLength))
+            if (!fileReader.LoadHexData(bi.bifOptions->GetPufHelperFile(), pufDataTemp.get(), actualPufHDDataLength))
             {
                 LOG_ERROR("Invalid no. of data bytes for PUF Helper Data.\n           Expected length for PUF Helper Data is %d bytes", actualPufHDDataLength);
             }
             
             SetPufHDLength(bi.bootHeader->GetPufDataLength());
-            memcpy((uint8_t*)bHTable + GetBootHeaderSize(), pufDataTemp, GetPufDataLength());
+            memcpy((uint8_t*)bHTable + GetBootHeaderSize(), pufDataTemp.get(), GetPufDataLength());
         }
     }
-
-    delete[] pufDataTemp;
 }
 
 /******************************************************************************/
@@ -928,7 +912,7 @@ void SpartanupBootHeader::BuildRegInitTable(Options& options)
     uint32_t regTableLoc = GetBootHeaderSize() - sizeof(uint32_t) - (MAX_REG_INIT_LASSEN * 4);
 
     regTable.SetMaximunRegInitPairs(MAX_REG_INIT_LASSEN / 2);
-    regTable.Build(options, (RegisterInitTable*)(section->Data + regTableLoc));
+    regTable.Build(options, (RegisterInitTable*)(section->Data.get() + regTableLoc));
 }
 
 /******************************************************************************/

@@ -56,15 +56,15 @@ void EncryptionContext::GenerateEncryptionKeyFile(const std::string & baseFileNa
 
     if (GetAesSeed() == NULL)
     {
-        aesSeed = new uint32_t[WORDS_PER_AES_KEY];
-        memset(aesSeed, 0, WORDS_PER_AES_KEY);
+        aesSeed = std::make_unique<uint32_t[]>(WORDS_PER_AES_KEY);
+        memset(aesSeed.get(), 0, WORDS_PER_AES_KEY);
     }
     GenerateAesSeed();
 
     if (GetFixedInputData() == NULL)
     {
-        fixedInputData = new uint32_t[WORDS_PER_FID];
-        memset(fixedInputData, 0, WORDS_PER_FID);
+        fixedInputData = std::make_unique<uint32_t[]>(WORDS_PER_FID);
+        memset(fixedInputData.get(), 0, WORDS_PER_FID);
     }
     GenerateAesFixedInputData();
 
@@ -73,10 +73,10 @@ void EncryptionContext::GenerateEncryptionKeyFile(const std::string & baseFileNa
     /* The extra 1 Key pair is for Secure Header */
 
     uint32_t outBufBytes = (options.bifOptions->GetEncryptionBlocksList().size() + useOptionalKey + 1) * (AES_GCM_KEY_SZ + AES_GCM_IV_SZ);
-    outBufKDF = new uint32_t[outBufBytes];
+    outBufKDF = std::make_unique<uint32_t[]>(outBufBytes);
 
     SetKdfLogFile(options.GetEncryptionDumpFlag());
-    uint32_t ret = kdf->CounterModeKDF(aesSeed, fixedInputData, fixedInputDataByteLength, outBufKDF, outBufBytes);
+    uint32_t ret = kdf->CounterModeKDF(aesSeed.get(), fixedInputData.get(), fixedInputDataByteLength, outBufKDF.get(), outBufBytes);
     if (ret != 0)
     {
         LOG_ERROR("Error generating encryption keys from Counter Mode KDF.");
@@ -242,12 +242,12 @@ void EncryptionContext::GenerateAesSeed(void)
 /******************************************************************************/
 void EncryptionContext::SetAesFixedInputData(const uint8_t* key, uint32_t bytes)
 {
-    fixedInputData = new uint32_t[bytes/4];
+    fixedInputData = std::make_unique<uint32_t[]>(bytes/4);
     fixedInputDataByteLength = bytes;
 
     for (uint32_t index = 0; index < bytes/4; index++)
     {
-        fixedInputData[index] = ReadBigEndian32(key);
+        fixedInputData.get()[index] = ReadBigEndian32(key);
         key += sizeof(uint32_t);
     }
 }
@@ -261,10 +261,9 @@ void EncryptionContext::SetAesFixedInputDataString(const std::string& key)
         LOG_ERROR("An AES Fixed Input Data must be 60 Bytes long - %s", key.c_str());
     }
 
-    uint8_t* hexData = new uint8_t[key.size()];
-    PackHex(key, hexData);
-    SetAesFixedInputData(hexData, key.size() / 2);
-    delete[] hexData;
+    auto hexData = std::make_unique<uint8_t[]>(key.size());
+    PackHex(key, hexData.get());
+    SetAesFixedInputData(hexData.get(), key.size() / 2);
 }
 
 /******************************************************************************/

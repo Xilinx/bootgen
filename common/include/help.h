@@ -376,6 +376,7 @@ generate_keys
              |   pem : PEM format keys                                        |\n\
              |   ecdsa-p384 : ecdsap384 keys                                  |\n\
              |   ecdsa-p521 : ecdsap521 keys                                  |\n\
+             |   lms : LMS/HSS format keys                                    |\n\
 -------------+----------------------------------------------------------------+\n\
  USAGE       | For authentication :                                           |\n\
              |         bootgen -image test.bif -generate_keys rsa             |\n\
@@ -395,6 +396,34 @@ generate_keys
              | }                                                              |\n\
              | The key files are generated in the paths mentioned above       |\n\
              |----------------------------------------------------------------|\n\
+             | 1) LMS                                                         |\n\
+             | image:                                                         |\n\
+             | {                                                              |\n\
+             |     lms_key_params                                             |\n\
+             |     {                                                          |\n\
+             |         primary {lms_shake256_h5_w2}                           |\n\
+             |         secondary {lms_shake256_h5_w2}                         |\n\
+             |     }                                                          |\n\
+             |     [ppkfile] <path/ppkgenfile.txt>                            |\n\
+             |     [pskfile] <path/pskgenfile.txt>                            |\n\
+             |     [spkfile] <path/spkgenfile.txt>                            |\n\
+             |     [sskfile] <path/sskgenfile.txt>                            |\n\
+             | }                                                              |\n\
+             | 2) HSS                                                         |\n\
+             | image:                                                         |\n\
+             | {                                                              |\n\
+             |     lms_key_params                                             |\n\
+             |     {                                                          |\n\
+             |         primary {lms_shake256_h15_w2, lms_shake256_h15_w2}     |\n\
+             |         secondary {lms_shake256_h15_w2, lms_shake256_h15_w2}   |\n\
+             |     }                                                          |\n\
+             |     [ppkfile] <path/ppkgenfile.txt>                            |\n\
+             |     [pskfile] <path/pskgenfile.txt>                            |\n\
+             |     [spkfile] <path/spkgenfile.txt>                            |\n\
+             |     [sskfile] <path/sskgenfile.txt>                            |\n\
+             | }                                                              |\n\
+             | 3) Other Algorithms                                            |\n\
+             |----------------------------------------------------------------|\n\
              | For encryption :                                               |\n\
              | image:                                                         |\n\
              | {                                                              |\n\
@@ -403,7 +432,12 @@ generate_keys
              |     [familykey] familykey.txt                                  |\n\
              | }                                                              |\n\
 -------------+----------------------------------------------------------------+\n\
- NOTES       | PEM Key Format:                                                |\n\
+ NOTES       | LMS/HSS:                                                       |\n\
+             | Here h and w are <height>, <width> parameters that are         |\n\
+             | need to be specified in the BIF. Even for hss, while           |\n\
+             | generating keys the -generate_keys lms flag need to be used.   |\n\
+             |----------------------------------------------------------------|\n\
+             | PEM Key Format:                                                |\n\
              |   -----BEGIN RSA PRIVATE KEY-----                              |\n\
              |   MIIEpAIBAAKCAQEAmlJyPcZVXltASHrtm/YnOMxskf0k2RZrIajqymqZptnG |\n\
              |   kyBMalXaqmGb1kqGCgGZVvQt3FSRO3yXa....                        |\n\

@@ -29,7 +29,7 @@
 ##############################################################################
 
 OBJ = o
-CXXFLAGS ?= -std=c++0x -O -Wall -Wno-reorder -Wno-deprecated-declarations
+CXXFLAGS ?= -std=c++14 -O -Wall -Wno-reorder -Wno-deprecated-declarations -DENABLE_WDI -DENABLE_OBFUSCATED_KEY
 CFLAGS ?= -O -Wall
 
 GCCVERSIONGTEQ9 := $(shell expr `${CXX} -dumpversion | cut -f1 -d.` \>= 9)

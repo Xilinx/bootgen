@@ -23,6 +23,10 @@
 #include "bootheader-versal_2ve_2vm.h"
 #include "authentication-versal_2ve_2vm.h"
 
+extern "C" {
+#include "lms-utils.h"
+#include "hss_verify.h"
+};
 /*
 -------------------------------------------------------------------------------
 *****************************************************   F U N C T I O N S   ***
@@ -84,10 +88,11 @@ Versal_2ve_2vmPartitionHeader::Versal_2ve_2vmPartitionHeader(ImageHeader* imageh
     {
         name = "PartitionHeader Null";
     }
-    section = new Section(name, sizeof(Versal_2ve_2vmPartitionHeaderTableStructure));
-    memset(section->Data, 0, section->Length);
+    auto temp_section = std::make_unique<Section>(name, sizeof(Versal_2ve_2vmPartitionHeaderTableStructure));
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    memset(section->Data.get(), 0, section->Length);
 
-    pHTable = (Versal_2ve_2vmPartitionHeaderTableStructure*)section->Data;
+    pHTable = (Versal_2ve_2vmPartitionHeaderTableStructure*)section->Data.get();
     pHTable->partitionRevokeId = imageHeader->GetPartitionRevocationId();
 }
 
@@ -96,7 +101,6 @@ Versal_2ve_2vmPartitionHeader::~Versal_2ve_2vmPartitionHeader()
 {
     if (section != NULL)
     {
-        delete section;
     }
 }
 
@@ -149,7 +153,9 @@ void Versal_2ve_2vmPartitionHeader::ReadData(std::ifstream& ifs)
 {
     uint32_t dataLen = GetTotalPartitionLength();
     std::string partName = imageHeader->GetName() + "_" + std::to_string(partitionUid) + StringUtils::Format(".%d", index);
-    Section* dsection = new Section(partName, dataLen);
+    // BUGFIX: Use separate variable for data section - don't overwrite header section pointer!
+    auto temp_dsection = std::make_unique<Section>(partName, dataLen);
+    Section* dsection = temp_dsection.release();  // Transfer ownership to raw pointer member
     if (presigned)
     {
         ifs.seekg(GetAuthCertificateOffset());
@@ -158,16 +164,16 @@ void Versal_2ve_2vmPartitionHeader::ReadData(std::ifstream& ifs)
     {
         ifs.seekg(GetPartitionWordOffset());
     }
-    ifs.read((char*)dsection->Data, dsection->Length);
+    ifs.read((char*)dsection->Data.get(), dsection->Length);
     dsection->isPartitionData = true;
-    partition = new Versal_2ve_2vmPartition(this, dsection);
+    partition = std::make_unique<Versal_2ve_2vmPartition>(this, dsection);
 
     static uint8_t encryptionHeader[] =
     {
         0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xBB,0x00,0x00,0x00,
         0x44,0x00,0x22,0x11,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x66,0x55,0x99,0xAA
     };
-    preencrypted = (memcmp(dsection->Data, encryptionHeader, sizeof(encryptionHeader)) == 0);
+    preencrypted = (memcmp(dsection->Data.get(), encryptionHeader, sizeof(encryptionHeader)) == 0);
 }
 
 /******************************************************************************/
@@ -216,16 +222,68 @@ void Versal_2ve_2vmPartitionHeader::Link(BootImage &bi, PartitionHeader* next_pa
 
     SetPartitionAttributes();
     SetChecksumOffset();
-    SetAuthCertificateOffset();
     SetPartitionId();
     if (!preencrypted)
     {
-        SetPartitionSecureHdrIv(partitionSecHdrIv);
+        SetPartitionSecureHdrIv(partitionSecHdrIv.get());
         SetPartitionKeySrc(partitionKeySrc, bi.bifOptions);
         SetPartitionGreyOrBlackIv(kekIvFile);
     }
-    SetReserved();
+    SetReserved();  // Clears ac_offset to 0
+    
+    if (!isBootloader && ((Versal_2ve_2vmPartition*)partition.get())->hashBlockSection != NULL)
+    {
+        SetAuthCertificateOffset();
+        pHTable->authHeader1 = ac.front()->AuthContext->authAlgorithm->GetAuthHeader();
+        uint32_t hashBlockLength = ((Versal_2ve_2vmPartition*)partition.get())->hashBlockSection->Length;
+        if (ac.front()->AuthContext->authAlgorithm->Type() != Authentication::None)
+        {
+            hashBlockLength -= ac.front()->AuthContext->GetTotalHashBlockSignSize();
+        }
+        
+        if (imageHeader->GetEncryptContext()->Type() != Encryption::None && ac.front()->AuthContext->authAlgorithm->Type() == Authentication::None)
+        {
+            hashBlockLength -= AES_GCM_TAG_SZ;
+        }
+        pHTable->hashBlockLength1 = hashBlockLength / 4;
+        pHTable->hashBlockWordOffset = ((Versal_2ve_2vmPartition*)partition.get())->hashBlockSection->WordAddress();
+
+        if (ac.front()->AuthContext->authAlgorithm->Type() == Authentication::RSA)
+        {
+            pHTable->totalppkkSize1 = VERSAL_ACKEY_STRUCT_SIZE + TELLURIDE_RSA_AC_PPK_SPK_ALIGNMENT;
+            pHTable->actualppkSize1 = VERSAL_ACKEY_STRUCT_SIZE;
+            pHTable->totalHashBlockSignatureSize1 = pHTable->actualSignatureSize1 = ac.front()->AuthContext->GetSignatureLength();
+        }
+        else if (ac.front()->AuthContext->authAlgorithm->Type() == Authentication::ECDSA)
+        {
+            pHTable->totalppkkSize1 = pHTable->actualppkSize1 = 2 * EC_P384_KEY_LENGTH;
+            pHTable->totalHashBlockSignatureSize1 = pHTable->actualSignatureSize1 = ac.front()->AuthContext->GetSignatureLength();
+        }
+        else if (ac.front()->AuthContext->authAlgorithm->Type() == Authentication::ECDSAp521)
+        {
+            pHTable->actualppkSize1 = EC_P521_KEY_LENGTH2 * 2;
+            pHTable->totalppkkSize1 = EC_P521_KEY_LENGTH2 * 2 + PADDING_16B(pHTable->actualppkSize1);
+            pHTable->actualSignatureSize1 = ac.front()->AuthContext->GetSignatureLength();
+            pHTable->totalHashBlockSignatureSize1 = pHTable->actualSignatureSize1 + PADDING_16B(pHTable->actualSignatureSize1);
+            LOG_TRACE("ecdsa521");
+        }
+        else if (ac.front()->AuthContext->authAlgorithm->Type() == Authentication::LMS_SHA2_256 ||
+                 ac.front()->AuthContext->authAlgorithm->Type() == Authentication::LMS_SHAKE256)
+        {
+            pHTable->authHeader1 = ac.front()->AuthContext->authAlgorithm->GetAuthHeader(ac.front()->AuthContext->lmsOnly);
+            size_t actualLmsPpkSize1 = GetLmsPublicKeyLength(ac.front()->AuthContext->ppkFile.c_str(), ac.front()->AuthContext->lmsOnly);
+            size_t actualHashBlockSignatureLength = GetLmsSignLength(ac.front()->AuthContext->sskFile.c_str(), ac.front()->AuthContext->lmsOnly);      
+
+            pHTable->totalppkkSize1 = actualLmsPpkSize1 + PADDING_16B(actualLmsPpkSize1);
+            pHTable->actualppkSize1 = actualLmsPpkSize1;
+            pHTable->totalHashBlockSignatureSize1 = actualHashBlockSignatureLength + PADDING_16B(actualHashBlockSignatureLength);
+            pHTable->actualSignatureSize1 = actualHashBlockSignatureLength;
+        }       
+    }
+    
     SetChecksum();
+    
+ 
 }
 
 /******************************************************************************/
@@ -405,13 +463,13 @@ void Versal_2ve_2vmPartitionHeader::SetPartitionKeySrc(KeySource::Type keyType, 
 /******************************************************************************/
 void Versal_2ve_2vmPartitionHeader::SetPartitionGreyOrBlackIv(std::string ivFile)
 {
-    uint8_t* ivData = new uint8_t[IV_LENGTH * 4];
-    memset(ivData, 0, IV_LENGTH * 4);
+    auto ivData = std::make_unique<uint8_t[]>(IV_LENGTH * 4);
+    memset(ivData.get(), 0, IV_LENGTH * 4);
 
     if (ivFile != "")
     {
         FileImport fileReader;
-        if (!fileReader.LoadHexData(ivFile, ivData, IV_LENGTH * 4))
+        if (!fileReader.LoadHexData(ivFile, ivData.get(), IV_LENGTH * 4))
         {
             LOG_ERROR("Invalid no. of data bytes for Black/Grey Key IV.\n           Expected length for Grey/Black IV is 12 bytes");
         }
@@ -424,8 +482,7 @@ void Versal_2ve_2vmPartitionHeader::SetPartitionGreyOrBlackIv(std::string ivFile
         }
     }
 
-    memcpy(&pHTable->partitionGreyOrBlackIV, ivData, IV_LENGTH * 4);
-    delete[] ivData;
+    memcpy(&pHTable->partitionGreyOrBlackIV, ivData.get(), IV_LENGTH * 4);
 }
 
 
@@ -445,13 +502,7 @@ void Versal_2ve_2vmPartitionHeader::SetUnencryptedPartitionLength(uint32_t len)
 void Versal_2ve_2vmPartitionHeader::SetTotalPartitionLength(uint32_t len)
 {
     pHTable->totalPartitionLength = len / sizeof(uint32_t);
-    for (std::list<AuthenticationCertificate*>::iterator acs = ac.begin(); acs != ac.end(); acs++)
-    {
-        if (*acs && (*acs)->section)
-        {
-            pHTable->totalPartitionLength += (uint32_t)((*acs)->section->Length / sizeof(uint32_t));
-        }
-    }
+
 }
 
 /******************************************************************************/
@@ -565,6 +616,36 @@ void Versal_2ve_2vmPartitionHeader::SetHashBlockLength(uint32_t length)
 }
 
 /******************************************************************************/
+void Versal_2ve_2vmPartitionHeader::SetAuthHeader1(uint32_t value)
+{
+    pHTable->authHeader1 = value;
+}
+
+/******************************************************************************/
+void Versal_2ve_2vmPartitionHeader::SetTotalPpkkSize1(uint32_t size)
+{
+    pHTable->totalppkkSize1 = size;
+}
+
+/******************************************************************************/
+void Versal_2ve_2vmPartitionHeader::SetActualPpkSize1(uint32_t size)
+{
+    pHTable->actualppkSize1 = size;
+}
+
+/******************************************************************************/
+void Versal_2ve_2vmPartitionHeader::SetTotalHashBlockSignatureSize1(uint32_t size)
+{
+    pHTable->totalHashBlockSignatureSize1 = size;
+}
+
+/******************************************************************************/
+void Versal_2ve_2vmPartitionHeader::SetActualSignatureSize1(uint32_t size)
+{
+    pHTable->actualSignatureSize1 = size;
+}
+
+/******************************************************************************/
 void Versal_2ve_2vmPartitionHeader::SetPartitionAttributes(void)
 {
     if (authCertPresent == 0)
@@ -610,7 +691,8 @@ void Versal_2ve_2vmPartitionHeader::SetPartitionAttributes(void)
     }
     else
     {
-        checksumType = imageHeader->GetChecksumContext()->Type();
+        // checksumType = imageHeader->GetChecksumContext()->Type();
+        checksumType = Checksum::SHA3;
     }
 
     if (authBlock != 0)
@@ -695,6 +777,7 @@ void Versal_2ve_2vmPartitionHeader::SetChecksumOffset(void)
 /******************************************************************************/
 void Versal_2ve_2vmPartitionHeader::SetAuthCertificateOffset(void)
 {
+    LOG_TRACE("authcert");
     if (certificateRelativeByteOffset != 0)
     {
         /* For presigned images, partition addr + auth cert offset from start of partition */
@@ -713,14 +796,22 @@ void Versal_2ve_2vmPartitionHeader::SetAuthCertificateOffset(void)
     {
         /* If the image is not yet signed, partition addr + partition length - cert size */
         AuthenticationContext::SetAuthenticationKeyLength(RSA_4096_KEY_LENGTH);
-        AuthenticationContext* auth = (Versal_2ve_2vmAuthenticationContext*)new Versal_2ve_2vmAuthenticationContext(Authentication::RSA);
+        auto auth = std::make_unique<Versal_2ve_2vmAuthenticationContext>(Authentication::RSA);
         pHTable->authCertificateOffset = (uint32_t)((partition->section->Address + partition->section->Length - auth->GetCertificateSize()) / sizeof(uint32_t));
     }
     else if (imageHeader->GetAuthenticationType() == Authentication::ECDSA)
     {
         AuthenticationContext::SetAuthenticationKeyLength(EC_P384_KEY_LENGTH);
-        AuthenticationContext* auth = (Versal_2ve_2vmAuthenticationContext*)new Versal_2ve_2vmAuthenticationContext(Authentication::ECDSA);
+        auto auth = std::make_unique<Versal_2ve_2vmAuthenticationContext>(Authentication::ECDSA);
         pHTable->authCertificateOffset = (uint32_t)((partition->section->Address + partition->section->Length - auth->GetCertificateSize()) / sizeof(uint32_t));
+        LOG_TRACE("ECDSA");
+    }
+    else if (imageHeader->GetAuthenticationType() == Authentication::ECDSAp521)
+    {
+        AuthenticationContext::SetAuthenticationKeyLength(EC_P521_KEY_LENGTH2);
+		auto auth = std::make_unique<Versal_2ve_2vmAuthenticationContext>(Authentication::ECDSAp521);
+        pHTable->authCertificateOffset = (uint32_t)((partition->section->Address + partition->section->Length - auth->GetCertificateSize()) / sizeof(uint32_t));
+        LOG_TRACE("ECDSA521");
     }
     else
     {
@@ -744,6 +835,7 @@ void Versal_2ve_2vmPartitionHeader::SetAuthCertificateOffset(void)
 /******************************************************************************/
 void Versal_2ve_2vmPartitionHeader::SetReserved(void)
 {
+    pHTable->authCertificateOffset = 0;                 // 0x34
     pHTable->measuredBootAddress = 0;                   // 0x58
     pHTable->authHeader1 = 0;                           // 0x5C
     pHTable->totalppkkSize1 = 0;                        // 0x64
@@ -770,7 +862,7 @@ void Versal_2ve_2vmPartitionHeader::SetChecksum(void)
 /******************************************************************************/
 void Versal_2ve_2vmPartitionHeader::RealignSectionDataPtr(void)
 {
-    pHTable = (Versal_2ve_2vmPartitionHeaderTableStructure*)section->Data;
+    pHTable = (Versal_2ve_2vmPartitionHeaderTableStructure*)section->Data.get();
 }
 
 /******************************************************************************/
@@ -1189,42 +1281,122 @@ void Versal_2ve_2vmPartitionHeaderTable::Build(BootImage & bi, Binary & cache)
 
         totalencrBlocks = bi.options.bifOptions->metaHdrAttributes.encrBlocks.size();
         uint32_t totalBlocksOverhead = (totalencrBlocks + 1) * 64;
-        bi.encryptedHeaders = new Section("EncryptedMetaHeader", bi.imageHeaderTable->metaHeaderLength + totalBlocksOverhead);
-        cache.Sections.push_back(bi.encryptedHeaders);
+        auto encHdr = std::make_unique<Section>("EncryptedMetaHeader", bi.imageHeaderTable->metaHeaderLength + totalBlocksOverhead);
+        bi.encryptedHeaders = encHdr.get();  // Store raw pointer for later use
+        cache.Sections.push_back(std::move(encHdr));  // Cache owns it
     }
     else
     {
         for (std::list<Section*>::iterator itr = bi.headers.begin(); itr != bi.headers.end(); itr++)
         {
-            cache.Sections.push_back(*itr);
+            // Transfer ownership to cache (no deleter needed - cache takes ownership)
+            cache.Sections.push_back(std::unique_ptr<Section>(*itr));
         }
+        bi.headers.clear();  // Cache owns them now
     }
 
     if (bi.bifOptions->GetHeaderAC())
     {
         LOG_INFO("Creating Header Authentication Certificate");
         ConfigureMetaHdrAuthenticationContext(bi);
-        bi.headerAC = new Versal_2ve_2vmAuthenticationCertificate(bi.metaHdrAuthCtx);
+        bi.headerAC = std::make_unique<Versal_2ve_2vmAuthenticationCertificate>(bi.metaHdrAuthCtx.get());
         bi.headerAC->Build(bi, cache, bi.imageHeaderTable->section, false, true);
     }
 
-    if (bi.numHashTableEntries != 0)
+        //store partitionNumber-hashblock mapping in hashNumMap 
+    for(std::list<PartitionHeader*>::iterator partHdr = bi.partitionHeaderList.begin(); partHdr != bi.partitionHeaderList.end(); partHdr++)
     {
-        bi.imageHeaderTable->hashBlockSectionLength = bi.numHashTableEntries * (bi.hash->GetHashLength() + HASH_BLOCK_INDEX_BYTES);
-        bi.imageHeaderTable->hashBlockSectionLength += PADDING_16B(bi.imageHeaderTable->hashBlockSectionLength);
-
-        bi.imageHeaderTable->hashBlockSection = new Section("HashBlock", bi.imageHeaderTable->hashBlockSectionLength);
-
-        if (bi.options.bifOptions->metaHdrAttributes.authenticate != Authentication::None)
+        // Dont need mapping for bootloader as bootloader's hash is stored in BH hashblock
+        if((*partHdr)->IsBootloader())
         {
-            bi.imageHeaderTable->hashBlockSection->IncreaseLengthAndPadTo(bi.imageHeaderTable->hashBlockSectionLength + bi.metaHdrAuthCtx->GetTotalHashBlockSignSize(), 0);
+            continue;
         }
-        if (bi.options.bifOptions->metaHdrAttributes.encrypt != Encryption::None && bi.options.bifOptions->metaHdrAttributes.authenticate == Authentication::None)
+
+        // If partition is not authenticated store its hash in meta header's hashblock 
+        if((*partHdr)->imageHeader->GetAuthenticationType() == Authentication::None
+            || ( (*partHdr)->imageHeader->GetPskFile().size() == 0
+                && (*partHdr)->imageHeader->GetSskFile().size() == 0
+                && (*partHdr)->imageHeader->GetPpkFile().size() == 0
+                && (*partHdr)->imageHeader->GetSpkFile().size() == 0))
         {
-            bi.imageHeaderTable->hashBlockSection->IncreaseLengthAndPadTo(bi.imageHeaderTable->hashBlockSectionLength + AES_GCM_TAG_SZ, 0);
+            if(bi.IsBootloaderFound() == false)
+            {
+                bi.hashNumMap.push_back(std::pair<uint32_t, uint32_t>((*partHdr)->partitionNum+1, 0));
+            }
+            else
+            {
+                bi.hashNumMap.push_back(std::pair<uint32_t, uint32_t>((*partHdr)->partitionNum, 0));
+            }
         }
-        cache.Sections.push_back(bi.imageHeaderTable->hashBlockSection);
+        
+        else if(bi.metaHdrAuthCtx.get() != NULL
+                && (*partHdr)->imageHeader->GetPskFile() == bi.metaHdrAuthCtx->pskFile
+                && (*partHdr)->imageHeader->GetSskFile() == bi.metaHdrAuthCtx->sskFile
+                && (*partHdr)->imageHeader->GetPpkFile() == bi.metaHdrAuthCtx->ppkFile
+                && (*partHdr)->imageHeader->GetSpkFile() == bi.metaHdrAuthCtx->spkFile
+                && (*partHdr)->imageHeader->GetSpkRevocationId() == bi.metaHdrAuthCtx->spkIdentification)
+        {
+            if(bi.IsBootloaderFound() == false)
+            {
+                bi.hashNumMap.push_back(std::pair<uint32_t, uint32_t>((*partHdr)->partitionNum+1, 0));
+            }
+            else
+            {
+                bi.hashNumMap.push_back(std::pair<uint32_t, uint32_t>((*partHdr)->partitionNum, 0));
+            }
+        }
+        else
+        {
+            for(std::list<PartitionHeader*>::iterator hashBlock = bi.partitionHeaderList.begin(); hashBlock != bi.partitionHeaderList.end(); hashBlock++)
+            {
+                if(!(*hashBlock)->IsBootloader())
+                {
+                    if((*partHdr)->imageHeader->GetPskFile() == (*hashBlock)->imageHeader->GetPskFile()
+                        && (*partHdr)->imageHeader->GetSskFile() == (*hashBlock)->imageHeader->GetSskFile()
+                        && (*partHdr)->imageHeader->GetPpkFile() == (*hashBlock)->imageHeader->GetPpkFile()
+                        && (*partHdr)->imageHeader->GetSpkFile() == (*hashBlock)->imageHeader->GetSpkFile()
+                        && (*partHdr)->imageHeader->GetSpkRevocationId() == (*hashBlock)->imageHeader->GetSpkRevocationId())
+                    {
+                        if(bi.IsBootloaderFound() == false)
+                        {
+                            bi.hashNumMap.push_back(std::pair<uint32_t, uint32_t>((*partHdr)->partitionNum+1, (*hashBlock)->partitionNum+1));
+                        }
+                        else
+                        {
+                            bi.hashNumMap.push_back(std::pair<uint32_t, uint32_t>((*partHdr)->partitionNum, (*hashBlock)->partitionNum));
+                        }
+                        break;
+                    }
+                }
+            }
+        }
     }
+
+    uint32_t count = 1;     //1 extra entry for meta header hash & index in hash block 1
+    if (bi.hashNumMap.size() != 0)
+    {
+        for (size_t i = 0; i < bi.hashNumMap.size(); i++)
+        {
+            if(bi.hashNumMap[i].second == 0)
+                count++;
+        }
+    }
+	
+    bi.imageHeaderTable->hashBlockSectionLength = count * (bi.hash->GetHashLength() + HASH_BLOCK_INDEX_BYTES);
+    bi.imageHeaderTable->hashBlockSectionLength += PADDING_16B(bi.imageHeaderTable->hashBlockSectionLength);
+        auto hashBlockSectionPtr = std::make_unique<Section>("HashBlock", bi.imageHeaderTable->hashBlockSectionLength);
+        bi.imageHeaderTable->hashBlockSection = hashBlockSectionPtr.release();
+
+	if (bi.options.bifOptions->metaHdrAttributes.authenticate != Authentication::None)
+    {
+                bi.imageHeaderTable->hashBlockSection->IncreaseLengthAndPadTo(bi.imageHeaderTable->hashBlockSectionLength + bi.metaHdrAuthCtx->GetTotalHashBlockSignSize(), 0);
+    }
+    if (bi.options.bifOptions->metaHdrAttributes.encrypt != Encryption::None && bi.options.bifOptions->metaHdrAttributes.authenticate == Authentication::None)
+    {
+                bi.imageHeaderTable->hashBlockSection->IncreaseLengthAndPadTo(bi.imageHeaderTable->hashBlockSectionLength + AES_GCM_TAG_SZ, 0);
+    }
+
+            cache.Sections.push_back(std::unique_ptr<Section>(bi.imageHeaderTable->hashBlockSection));
 }
 
 /******************************************************************************/
@@ -1239,7 +1411,8 @@ void Versal_2ve_2vmPartitionHeaderTable::ConfigureMetaHdrAuthenticationContext(B
         }
     }
 
-    biAuth = (AuthenticationContext*) new Versal_2ve_2vmAuthenticationContext(bi.options.bifOptions->metaHdrAttributes.authenticate);
+    auto biAuthPtr = std::make_unique<Versal_2ve_2vmAuthenticationContext>(bi.options.bifOptions->metaHdrAttributes.authenticate);
+    biAuth = biAuthPtr.release();
     biAuth->hashType = bi.GetAuthHashAlgo();
 
     if (bi.bifOptions->metaHdrAttributes.ppk != "")
@@ -1296,7 +1469,7 @@ void Versal_2ve_2vmPartitionHeaderTable::ConfigureMetaHdrAuthenticationContext(B
         AuthenticationContext::SetAuthenticationKeyLength(EC_P384_KEY_LENGTH);
     }
 
-    ImageHeaderTable* iht = bi.imageHeaderTable;
+    ImageHeaderTable* iht = bi.imageHeaderTable.get();
     biAuth->ResizeIfNecessary(iht->section);
     for (std::list<ImageHeader*>::iterator ih = bi.imageList.begin(); ih != bi.imageList.end(); ih++)
     {
@@ -1308,7 +1481,7 @@ void Versal_2ve_2vmPartitionHeaderTable::ConfigureMetaHdrAuthenticationContext(B
     }
 
     /* Header table authentication */
-    bi.metaHdrAuthCtx = (AuthenticationContext*)new Versal_2ve_2vmAuthenticationContext(biAuth, bi.bifOptions->metaHdrAttributes.authenticate);
+    bi.metaHdrAuthCtx = std::make_unique<Versal_2ve_2vmAuthenticationContext>(biAuth, bi.bifOptions->metaHdrAttributes.authenticate);
     
     if (bi.bifOptions->metaHdrAttributes.presign != "")
     {
@@ -1360,7 +1533,7 @@ void Versal_2ve_2vmPartitionHeaderTable::UpdateAtfHandoffParams(BootImage & bi)
     {
         if ((*partHdr)->update_atf_handoff_params)
         {
-            memcpy((*partHdr)->partition->section->Data + (*partHdr)->atf_handoff_params_offset, &atf_handoff_params, sizeof(atf_handoff_params_struct));
+            memcpy((*partHdr)->partition->section->Data.get() + (*partHdr)->atf_handoff_params_offset, &atf_handoff_params, sizeof(atf_handoff_params_struct));
         }
     }
 }
@@ -1386,7 +1559,7 @@ void Versal_2ve_2vmPartitionHeaderTable::Link(BootImage & bi)
 
     if (bi.bifOptions->GetHeaderAC())
     {
-        bi.imageHeaderTable->SetTotalMetaHdrLength(bi.imageHeaderTable->metaHeaderLength + sizeof(AuthCertificate4096Sha3PaddingHBStructure));
+        bi.imageHeaderTable->SetTotalMetaHdrLength(bi.imageHeaderTable->metaHeaderLength);
         bi.imageHeaderTable->SetChecksum();
     }
 
@@ -1398,7 +1571,7 @@ void Versal_2ve_2vmPartitionHeaderTable::Link(BootImage & bi)
         bi.imageHeaderTable->SetTotalMetaHdrLength(bi.encryptedHeaders->Length);
         if (bi.bifOptions->GetHeaderAC())
         {
-            bi.imageHeaderTable->SetTotalMetaHdrLength(bi.encryptedHeaders->Length + sizeof(AuthCertificate4096Sha3PaddingHBStructure));
+            bi.imageHeaderTable->SetTotalMetaHdrLength(bi.encryptedHeaders->Length );
         }
         bi.imageHeaderTable->SetChecksum();
 
@@ -1409,11 +1582,10 @@ void Versal_2ve_2vmPartitionHeaderTable::Link(BootImage & bi)
     if (bi.imageHeaderTable->hashBlockSection != NULL)
     {
         /* Calculate Headers Hash */
-        uint8_t* sha_hash = new uint8_t[bi.hash->GetHashLength()];
+        auto sha_hash = std::make_unique<uint8_t[]>(bi.hash->GetHashLength());
         std::list<Section*> sections;
-        Section* headers = NULL;
         size_t size = 0;
-        ImageHeaderTable* iHT = bi.imageHeaderTable;
+        ImageHeaderTable* iHT = bi.imageHeaderTable.get();
 
         /* Header section */
         sections.push_back(iHT->section);
@@ -1441,72 +1613,96 @@ void Versal_2ve_2vmPartitionHeaderTable::Link(BootImage & bi)
         }
 
         /* Create one new combined section with all the appended sections above */
-        headers = new Section("Headers", size);
-        //headers->Address = iHT->section->Address; // not really needed, but useful for debug.
-        memset(headers->Data, bi.options.GetOutputFillByte(), headers->Length);
+        auto headers_ptr = std::make_unique<Section>("Headers", size);
+        //headers_ptr->Address = iHT->section->Address; // not really needed, but useful for debug.
+        memset(headers_ptr->Data.get(), bi.options.GetOutputFillByte(), headers_ptr->Length);
 
         Binary::Address_t start = sections.front()->Address;
-        for (SectionList::iterator i = sections.begin(); i != sections.end(); i++)
+        for (std::list<Section*>::iterator i = sections.begin(); i != sections.end(); i++)
         {
             Section& section(**i);
             int offset = section.Address - start;
-            memcpy(headers->Data + offset, section.Data, section.Length);
+            memcpy(headers_ptr->Data.get() + offset, section.Data.get(), section.Length);
         }
         /* Replace sections list with the combined new section */
         sections.clear();
-        sections.push_back(headers);
+        Section* headers = headers_ptr.get();  // Get raw pointer before releasing
+        sections.push_back(headers_ptr.release());  // Transfer ownership to legacy container
 
-        bi.hash->CalculateVersalHash(true, headers->Data, size, sha_hash);
 
-        if (headers != NULL)
-        {
-            delete headers;
-        }
+
         
+        bi.hash->CalculateVersalHash(true, headers->Data.get(), size, sha_hash.get());
+        
+        fprintf(stderr, "[META-HASH-RESULT] Meta header SHA3 hash (THIS IS THE CRITICAL VALUE):\n");
+        for (size_t i = 0; i < bi.hash->GetHashLength(); i++) {
+            fprintf(stderr, "%02x", sha_hash.get()[i]);
+            if ((i+1) % 16 == 0) fprintf(stderr, "\n");
+        }
+        fprintf(stderr, "\n");
+
+        // headers is now managed by sections container
 
         /* Copy Meta Header Hash into Hash Block 1 */
-        memset(bi.imageHeaderTable->hashBlockSection->Data, 0, bi.imageHeaderTable->hashBlockSectionLength);
-        memcpy(bi.imageHeaderTable->hashBlockSection->Data + HASH_BLOCK_INDEX_BYTES, sha_hash, bi.hash->GetHashLength());
+        fprintf(stderr, "[LINK-IHT-HB] imageHeaderTable->hashBlockSection=%p\n", (void*)bi.imageHeaderTable->hashBlockSection);
+        if (bi.imageHeaderTable->hashBlockSection) {
+            fprintf(stderr, "[LINK-IHT-HB] Zeroing and copying meta header hash, sectionLength=%u\n", bi.imageHeaderTable->hashBlockSectionLength);
+            memset(bi.imageHeaderTable->hashBlockSection->Data.get(), 0, bi.imageHeaderTable->hashBlockSectionLength);
+            memcpy(bi.imageHeaderTable->hashBlockSection->Data.get() + HASH_BLOCK_INDEX_BYTES, sha_hash.get(), bi.hash->GetHashLength());
+            fprintf(stderr, "[LINK-IHT-HB] Meta header hash copied to offset %u\n", HASH_BLOCK_INDEX_BYTES);
+        }
 #ifdef DEBUG
         LOG_TRACE("Meta Header Length %d", bi.imageHeaderTable->metaHeaderLength);
         LOG_TRACE("Meta Header Data");
         LOG_DUMP_BYTES(headers->Data, bi.imageHeaderTable->metaHeaderLength);
         LOG_TRACE("Meta Header Hash - Copied to Hash Block 1");
-        LOG_DUMP_BYTES(sha_hash, bi.hash->GetHashLength());
+        LOG_DUMP_BYTES(sha_hash.get(), bi.hash->GetHashLength());
 #endif
-        delete[] sha_hash;
 
-        /* Copy Partition Hashes into Hash Block 1 */
-        for (size_t i = 1; i < bi.hashTable.size(); i++)
+        /* Copy Partition Hashes for the partitions which are not authenticated into Hash Block 1 */
+        uint32_t addr = HASH_BLOCK_INDEX_BYTES + bi.hash->GetHashLength();
+        for (size_t i = 0; i < bi.hashNumMap.size(); i++)
         {
-            uint32_t partition_num = bi.hashTable[i].first;
-            memcpy(bi.imageHeaderTable->hashBlockSection->Data + (i * (HASH_BLOCK_INDEX_BYTES + bi.hash->GetHashLength())), &partition_num, HASH_BLOCK_INDEX_BYTES);
-            memcpy(bi.imageHeaderTable->hashBlockSection->Data + HASH_BLOCK_INDEX_BYTES + (i * (HASH_BLOCK_INDEX_BYTES + bi.hash->GetHashLength())), bi.hashTable[i].second, bi.hash->GetHashLength());
+            if(bi.hashNumMap[i].second == 0)
+            {
+                for (size_t j = 0; j < bi.hashTable.size(); j++)
+                {
+                    if(bi.hashNumMap[i].first == bi.hashTable[j].first)
+                    {
+                        uint32_t partition_num = bi.hashNumMap[i].first;
+                            memcpy(bi.imageHeaderTable->hashBlockSection->Data.get() + addr, &partition_num, HASH_BLOCK_INDEX_BYTES);
+                        addr += HASH_BLOCK_INDEX_BYTES;
+                            memcpy(bi.imageHeaderTable->hashBlockSection->Data.get() + addr, bi.hashTable[j].second.get(), bi.hash->GetHashLength());
+                        addr += bi.hash->GetHashLength();
+                        break;
+                    }
+                }
+            }
         }
-
+        
         /* AAD for HB 1 */
         if (bi.options.bifOptions->metaHdrAttributes.encrypt != Encryption::None && bi.options.bifOptions->metaHdrAttributes.authenticate == Authentication::None)
         {
             LOG_TRACE("Performing AAD on Hash Block 1");
             EncryptionContext* encryptCtx = bi.imageHeaderTable->GetEncryptContext();
-            encryptCtx->AesGcm256HashBlockEncrypt(bi.options, bi.imageHeaderTable->hashBlockSection->Data,
-                bi.imageHeaderTable->hashBlockSectionLength, bi.imageHeaderTable->hashBlockSection->Data + bi.imageHeaderTable->hashBlockSectionLength, 1);
+            encryptCtx->AesGcm256HashBlockEncrypt(bi.options, bi.imageHeaderTable->hashBlockSection->Data.get(),
+                bi.imageHeaderTable->hashBlockSectionLength, bi.imageHeaderTable->hashBlockSection->Data.get() + bi.imageHeaderTable->hashBlockSectionLength, 1);
 #ifdef DEBUG
             LOG_TRACE("Hash Block 1 AAD");
-            LOG_DUMP_BYTES(bi.imageHeaderTable->hashBlockSection->Data + bi.imageHeaderTable->hashBlockSectionLength, AES_GCM_TAG_SZ);
+            LOG_DUMP_BYTES(bi.imageHeaderTable->hashBlockSection->Data.get() + bi.imageHeaderTable->hashBlockSectionLength, AES_GCM_TAG_SZ);
 #endif
         }
     }
 
     {
         /* Calculate Hash Block 1 Hash */
-        uint8_t* sha_hash = new uint8_t[bi.hash->GetHashLength()];
-        bi.hash->CalculateVersalHash(true, bi.imageHeaderTable->hashBlockSection->Data, bi.imageHeaderTable->hashBlockSectionLength, sha_hash);
+        auto sha_hash = std::make_unique<uint8_t[]>(bi.hash->GetHashLength());
+        bi.hash->CalculateVersalHash(true, bi.imageHeaderTable->hashBlockSection->Data.get(), bi.imageHeaderTable->hashBlockSectionLength, sha_hash.get());
 #ifdef DEBUG
         LOG_TRACE("Hash Block 1 Data");
-        LOG_DUMP_BYTES(bi.imageHeaderTable->hashBlockSection->Data, bi.imageHeaderTable->hashBlockSectionLength);
+        LOG_DUMP_BYTES(bi.imageHeaderTable->hashBlockSection->Data.get(), bi.imageHeaderTable->hashBlockSectionLength);
         LOG_TRACE("Hash Block 1 Hash - Copied to Hash Block 0");
-        LOG_DUMP_BYTES(sha_hash, bi.hash->GetHashLength());
+        LOG_DUMP_BYTES(sha_hash.get(), bi.hash->GetHashLength());
 #endif
         /* Copy Hash Block 1 Hash into Hash Block 0 */
 
@@ -1516,13 +1712,13 @@ void Versal_2ve_2vmPartitionHeaderTable::Link(BootImage & bi)
             if (section.isBootloader)
             {
                 uint32_t hashIndex = HASH_BLOCK_HASHBLOCK1_HASH_INDEX;
-                memcpy(section.Data + (3 * (HASH_BLOCK_INDEX_BYTES + bi.hash->GetHashLength())), &hashIndex, HASH_BLOCK_INDEX_BYTES);
-                memcpy(section.Data + HASH_BLOCK_INDEX_BYTES + (3 * (HASH_BLOCK_INDEX_BYTES + bi.hash->GetHashLength())), sha_hash, bi.hash->GetHashLength());
+                size_t offset = 3 * (HASH_BLOCK_INDEX_BYTES + bi.hash->GetHashLength());
+                memcpy(section.Data.get() + offset, &hashIndex, HASH_BLOCK_INDEX_BYTES);
+                memcpy(section.Data.get() + HASH_BLOCK_INDEX_BYTES + offset, sha_hash.get(), bi.hash->GetHashLength());
 
                 break;
             }
         }
-        delete[] sha_hash;
 
         for (std::list<PartitionHeader*>::iterator partHdr = bi.partitionHeaderList.begin(); partHdr != bi.partitionHeaderList.end(); partHdr++)
         {
@@ -1531,13 +1727,13 @@ void Versal_2ve_2vmPartitionHeaderTable::Link(BootImage & bi)
                 if ((*partHdr)->imageHeader->GetEncryptContext()->Type() != Encryption::None && (*partHdr)->imageHeader->GetAuthContext()->authAlgorithm->Type() == Authentication::None)
                 {
                     LOG_TRACE("Hash Block 0");
-                    LOG_DUMP_BYTES((*partHdr)->partition->section->Data, bi.hashBlockLength);
+                    LOG_DUMP_BYTES((*partHdr)->partition->section->Data.get(), bi.hashBlockLength);
 
-                    (*partHdr)->imageHeader->GetEncryptContext()->AesGcm256HashBlockEncrypt(bi.options, (*partHdr)->partition->section->Data,
-                        bi.hashBlockLength, (*partHdr)->partition->section->Data + bi.hashBlockLength, 2);
+                    (*partHdr)->imageHeader->GetEncryptContext()->AesGcm256HashBlockEncrypt(bi.options, (*partHdr)->partition->section->Data.get(),
+                        bi.hashBlockLength, (*partHdr)->partition->section->Data.get() + bi.hashBlockLength, 2);
 
                     LOG_TRACE("GCM Tag + Hash Block 0");
-                    LOG_DUMP_BYTES((*partHdr)->partition->section->Data, bi.hashBlockLength + AES_GCM_TAG_SZ);
+                    LOG_DUMP_BYTES((*partHdr)->partition->section->Data.get(), bi.hashBlockLength + AES_GCM_TAG_SZ);
                 }
                 break;
             }

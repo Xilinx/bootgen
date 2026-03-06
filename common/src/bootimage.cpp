@@ -94,7 +94,7 @@ void BIF_File::Process(Options& options)
         options.bifOptionsList = bifOptionList = includeBifOptionList;
     }
 
-    BootImage* currentbi = NULL;
+    std::unique_ptr<BootImage> currentbi = nullptr;
     uint8_t index = 0;
     size_t itr = 0;
     std::string lastPmcDataAesFile = bifOptionList.back()->GetPmcDataAesFile();
@@ -117,11 +117,11 @@ void BIF_File::Process(Options& options)
 
         if (options.archType == Arch::ZYNQMP)
         {
-            currentbi = new ZynqMpBootImage(options, index);
+            currentbi = std::make_unique<ZynqMpBootImage>(options, index);
         }
         else if (options.archType == Arch::VERSAL)
         {
-            currentbi = new VersalBootImage(options, index);
+            currentbi = std::make_unique<VersalBootImage>(options, index);
             
             currentbi->pmcDataAesFile = (*bifoptions)->GetPmcDataAesFile();
             if ((itr+1) == bifOptionList.size())
@@ -131,7 +131,7 @@ void BIF_File::Process(Options& options)
         }
         else if (options.archType == Arch::VERSALGEN2)
         {
-            currentbi = new Versal_2ve_2vmBootImage(options, index);
+            currentbi = std::make_unique<Versal_2ve_2vmBootImage>(options, index);
 
             currentbi->pmcDataAesFile = (*bifoptions)->GetPmcDataAesFile();
             if ((itr + 1) == bifOptionList.size())
@@ -141,7 +141,7 @@ void BIF_File::Process(Options& options)
         }
         else if (options.archType == Arch::SPARTANUP)
         {
-            currentbi = new SpartanBootImage(options, index);
+            currentbi = std::make_unique<SpartanBootImage>(options, index);
 
             currentbi->pmcDataAesFile = (*bifoptions)->GetPmcDataAesFile();
             if ((itr + 1) == bifOptionList.size())
@@ -151,13 +151,12 @@ void BIF_File::Process(Options& options)
         }
         else
         {
-            currentbi = new ZynqBootImage(options, index);
+            currentbi = std::make_unique<ZynqBootImage>(options, index);
         }
 
         if (currentbi != NULL)
         {
             currentbi->Add(*bifoptions);
-        
             if (((*bifoptions)->pdiType != PartitionType::SLR_SLAVE_BOOT) && ((*bifoptions)->pdiType != PartitionType::SLR_SLAVE_CONFIG))
             {
                 if ((*bifoptions)->pdiType == PartitionType::SLR_SLAVE)
@@ -172,11 +171,18 @@ void BIF_File::Process(Options& options)
                     }
                 }
             }
-            bootImages.push_back(currentbi);
+            bootImages.push_back(std::move(currentbi));
         }
         Output(options, index);
         index++;
     }
+}
+
+/******************************************************************************/
+BIF_File::~BIF_File()
+{
+    // bootImages unique_ptrs auto-delete
+    // bifOptionList are non-owning pointers managed by Options
 }
 
 /******************************************************************************/
@@ -185,10 +191,8 @@ void BIF_File::Output(Options& options, uint8_t index)
     File::Type splitFileType = options.GetSplitType();
     std::list<std::string> outFilename = options.GetOutputFileNames();
     std::string fName = "";
-    BootImage* bi = bootImages.at(index);
+    BootImage* bi = bootImages.at(index).get();
     {
-
-
         if (options.GetAuthKeyGeneration() != GenAuthKeys::None)
         {
             bi->GenerateAuthenticationKeys();
@@ -207,7 +211,7 @@ void BIF_File::Output(Options& options, uint8_t index)
         }
 
         LOG_INFO("Building image - %s", bi->Name.c_str());
-        bi->BuildAndLink(bi->cache);
+        bi->BuildAndLink(bi->cache.get());
 
         bi->SetOutputSplitModeFormat(options.bifOptions->GetSplitMode(), options.bifOptions->GetSplitFormat());
         bi->SetOutputBitstreamModeFormat(options.GetProcessBitstreamType());
@@ -302,9 +306,9 @@ void BIF_File::Output(Options& options, uint8_t index)
                     }
                 }
             }
-            OutputFile* file = OutputFile::Factory(out_filename);
+            std::unique_ptr<OutputFile> file(OutputFile::Factory(out_filename));  // Smart pointer
             file->Output(options, *bi->cache);
-            delete file;
+            // Auto-deleted by unique_ptr
         }
 
         /* Efuse PPK hash for burning the efuse */
@@ -323,12 +327,12 @@ void BIF_File::Output(Options& options, uint8_t index)
 BootImage::BootImage(Options& options, uint8_t index)
     : options(options)
     , headerSignature_Loaded(false)
-    , headerAC(0)
+    , headerAC(nullptr)
     , XipMode(false)
     , nullPartHeaderSection(NULL)
     , core(Core::A53Singlex64)
     , legacyEncryptionEnabled(true)
-    , hash(NULL)
+    , hash(nullptr)
     , totalHeadersSize(0)
     , currentChecksumCtx(NULL)
     , pmuFwSize(0)
@@ -340,39 +344,40 @@ BootImage::BootImage(Options& options, uint8_t index)
     , bootloaderAuthenticate(false)
     , bootloaderEncrypt(false)
     , bootloaderKeySource(KeySource::None)
-    , keygen(NULL)
+    , keygen(nullptr)
     , partCount(0)
     , authHash(AuthHash::Sha3)
     , assumeEncryption(false)
     , convertAieElfToCdo(false)
     , createSubSystemPdis(false)
     , encryptedHeaders(NULL)
-    , bootHeader(NULL)
-    , imageHeaderTable(NULL)
-    , partitionHeaderTable(NULL)
-    , currentAuthCtx(NULL)
-    , currentEncryptCtx(NULL)
-    , partitionOutput(NULL)
-    , deviceKey(NULL)
-    , firstIv(NULL)
-    , firstOptKey(NULL)
+    , bootHeader(nullptr)
+    , imageHeaderTable(nullptr)
+    , partitionHeaderTable(nullptr)
+    , currentAuthCtx(nullptr)
+    , metaHdrAuthCtx(nullptr)
+    , currentEncryptCtx(nullptr)
+    , partitionOutput(nullptr)
+    , deviceKey(nullptr)
+    , firstIv(nullptr)
+    , firstOptKey(nullptr)
     , overlayCDO(NULL)
     , globalSlrId(0)
-    , iht_optional_data(NULL)
+    , iht_optional_data(nullptr)
     , iht_optional_data_length(0)
     , pmcDataAesFile("")
     , xplm_modules_data_length(0)
-    , xplm_modules_data(NULL)
+    , xplm_modules_data(nullptr)
     , authOnPartitionFound(false)
     , arch(Arch::ZYNQ)
-    , hashBlock(NULL)
+    , hashBlock(nullptr)
     , hashBlockLength(0)
-	, numHashTableEntries(0)
+    , numHashTableEntries(0)
 {
     options.bifOptions = bifOptions = options.bifOptionsList.at(index);
     Name = bifOptions->GetGroupName();
-    cache = new Binary();
-    checksumTable = new ChecksumTable();
+    cache = std::make_unique<Binary>();
+    checksumTable = std::make_unique<ChecksumTable>();
 
     SetDeviceArchitecture();
 }
@@ -380,66 +385,46 @@ BootImage::BootImage(Options& options, uint8_t index)
 /******************************************************************************/
 BootImage::~BootImage()
 {
-    if(currentAuthCtx)
-    {
-        delete currentAuthCtx;
-    }
-    if(currentEncryptCtx)
-    {
-        delete currentEncryptCtx;
-    }
+    // currentAuthCtx, metaHdrAuthCtx, currentEncryptCtx are now std::unique_ptr - auto-deleted
+    // bootHeader, imageHeaderTable, partitionHeaderTable are now std::unique_ptr - auto-deleted
+    // partitionOutput, hash are now std::unique_ptr - auto-deleted
+    // checksumTable, keygen, cache are std::unique_ptr - auto-deleted
+    
     if(currentChecksumCtx)
     {
-        delete currentChecksumCtx;
+        std::unique_ptr<ChecksumContext> checksumPtr(currentChecksumCtx);  // Wrap in smart pointer for auto-delete
     }
-    if (checksumTable)
+    // deviceKey, firstIv, firstOptKey are now unique_ptr, automatically deleted
+    // nullPartHeaderSection is owned by cache - don't delete it here!
+    
+    // CRITICAL: imageList OWNS the ImageHeader objects (via image.release())
+    // SubSysImageHeader::imgList contains NON-OWNING references to the same objects
+    // We must delete imageList items BEFORE deleting SubSysImageHeader objects
+    LOG_TRACE("BootImage destructor: Deleting %d ImageHeader objects", imageList.size());
+    for (ImageHeader* img : imageList)
     {
-        delete checksumTable;
+        if (img)
+        {
+            LOG_TRACE("  Deleting ImageHeader: %p", img);
+            delete img;
+        }
     }
-    if (cache)
+    imageList.clear();
+    
+    // Clean up subSysImageList - BootImage owns these SubSysImageHeader objects
+    // SubSysImageHeader destructor will just clear imgList (NON-OWNING pointers)
+    LOG_TRACE("BootImage destructor: Deleting %d SubSysImageHeader objects", subSysImageList.size());
+    for (SubSysImageHeader* subsys : subSysImageList)
     {
-        delete cache;
+        if (subsys)
+        {
+            delete subsys;
+        }
     }
-    if (bootHeader)
-    {
-        delete bootHeader;
-    }
-    if (imageHeaderTable)
-    {
-        delete imageHeaderTable;
-    }
-    if (partitionHeaderTable)
-    {
-        delete partitionHeaderTable;
-    }
-    if (partitionOutput)
-    {
-        delete partitionOutput;
-    }
-    if (deviceKey)
-    {
-        delete deviceKey;
-    }
-    if (firstIv)
-    {
-        delete firstIv;
-    }
-    if (firstOptKey)
-    {
-        delete firstOptKey;
-    }
-    if (keygen)
-    {
-        delete keygen;
-    }
-    if (hash)
-    {
-        delete hash;
-    }
-    if (nullPartHeaderSection)
-    {
-        delete nullPartHeaderSection;
-    }
+    subSysImageList.clear();
+    
+    // hashTable cleanup handled automatically by unique_ptr
+    hashTable.clear();
 }
 
 /******************************************************************************/
@@ -523,7 +508,7 @@ void BootImage::PrintPartitionInformation(void)
             LOG_INFO("Image: %s", (*pH)->imageHeader->GetName().c_str());
             lastImageName = (*pH)->imageHeader->GetName();
         }
-        LOG_INFO("       Partition %d: %s,  Size: %d", index++, (*pH)->partition->section->Name.c_str(), (*pH)->GetPartitionSize());
+        LOG_INFO("       Partition %d: %s,  Size: %d", index++, (*pH)->partition->GetSectionPtr()->Name.c_str(), (*pH)->GetPartitionSize());
     }
 }
 
@@ -647,7 +632,7 @@ void BootImage::GenerateAuthenticationKeys(void)
 {
     if(options.GetAuthKeyGeneration() != GenAuthKeys::None)
     {
-        keygen = new KeyGenerationStruct;
+        keygen = std::make_unique<KeyGenerationStruct>();
         keygen->format = options.GetAuthKeyGeneration();
         keygen->ppk_file = bifOptions->GetPPKFileName();
         keygen->psk_file = bifOptions->GetPSKFileName();
@@ -656,7 +641,7 @@ void BootImage::GenerateAuthenticationKeys(void)
         keygen->keyLength = currentAuthCtx->GetRsaKeyLength();
         if (keygen->format == GenAuthKeys::PEM || keygen->format == GenAuthKeys::RSA)
         {
-            Key::GenerateRsaKeys(keygen);
+            Key::GenerateRsaKeys(keygen.get());
         }
         else if (keygen->format == GenAuthKeys::ECDSA || keygen->format == GenAuthKeys::ECDSAP521)
         {
@@ -664,7 +649,7 @@ void BootImage::GenerateAuthenticationKeys(void)
             {
                 LOG_ERROR("'-generate_keys <ecdsa-p384/ecdsa-p521>' is not supported with the mentioned '-arch'.");
             }
-            Key::GenerateEcdsaKeys(keygen);
+            Key::GenerateEcdsaKeys(keygen.get());
         }
         else if (keygen->format == GenAuthKeys::LMS)
         {
@@ -672,7 +657,7 @@ void BootImage::GenerateAuthenticationKeys(void)
             {
                 LOG_ERROR("'-generate_keys <lms>' is not supported with the mentioned '-arch'.");
             }
-            Key::GenerateLmsKeys(keygen, bifOptions->GetPrimaryLmsParams(), bifOptions->GetSecondaryLmsParams());
+            Key::GenerateLmsKeys(keygen.get(), bifOptions->GetPrimaryLmsParams(), bifOptions->GetSecondaryLmsParams());
         }
     }
 }

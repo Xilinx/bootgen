@@ -26,6 +26,7 @@
 ***********************************************   H E A D E R   F I L E S   ***
 -------------------------------------------------------------------------------
 */
+#include <memory>
 #include "bootheader.h"
 #include "bootimage.h"
 //#include "bifoptions.h"
@@ -172,8 +173,8 @@ private:
     VersalSmapWidthTable *smapTable;
     bool kekIvMust;
     std::string kekIvFile;
-    uint8_t* pufData;
-    uint8_t* bhKeyData;
-    uint8_t* ivData;
+    std::unique_ptr<uint8_t[]> pufData;
+    std::unique_ptr<uint8_t[]> bhKeyData;
+    std::unique_ptr<uint8_t[]> ivData;
 };
 #endif

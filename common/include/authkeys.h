@@ -93,7 +93,7 @@ typedef struct
 {
     uint8_t     x[EC_P521_KEY_LENGTH2];          // x co-ordinate
     uint8_t     y[EC_P521_KEY_LENGTH2];          // y co-ordinate
-    uint8_t     pad[896];                       // Padding
+    // uint8_t     pad[896];                       // Padding
 } ACKeyECDSAP521;
 
 typedef struct
@@ -201,17 +201,17 @@ typedef struct
     ACKeyECDSAP521      acPpk;                   //(0x00) : 132 bytes
     uint32_t            acPpkAlignment[3];       //(0x84)
 
-    uint32_t            acSpkSize;               //(0x90) = 132
-    uint32_t            acSpkSignatureSize;      //(0x94) = 132
-    uint32_t            acSpkId;                 //(0x98)
-    uint32_t            acSpkHdrAlignment;       //(0x9C)
-                                                 //Needs Update to Above SPK Hdr
-    ACKeyECDSAP521      acSpk;                   //(0xA0) : 132 bytes
-    ACSignatureECDSA    acSpkSignature;          //(0x124): 132 bytes
-    uint32_t            acSpkAlignment[2];       //(0x1A8)
+    uint32_t            acTotalSpkSize;           //(0x90)
+    uint32_t            acActualSpkSize;          //(0x94)
+    uint32_t            acSpkTotalSignatureSize;  //(0x98)
+    uint32_t            acSpkActualSignatureSize; //(0x9C)
+    uint32_t            acSpkId;                  //(0xA0)
+    uint32_t            acSpkHdrAlignment[3];     //(0xA4)
 
-                                                 //ACSignatureECDSA    acHashBlockSignature;    //(0x1B0) : 132 Bytes
-                                                 //uint32_t            acHashBlockAlignment[3]; //(0x234)
+    ACKeyECDSAP521      acSpk;                   //(0xB0) : 132 bytes
+    uint32_t            acSpkAlignment[3];       //(0x134)
+    ACSignatureECDSAP521 acSpkSignature;         //(0x140): 132 bytes
+    uint32_t            acSpkSignatureAlignment[3]; //(0x1C4
 } AuthCertificateECDSAp521HBStructure;            //(0x240)       
 
 
@@ -233,7 +233,7 @@ typedef struct
     uint32_t      alignment[2];                       //0x38
 
     uint8_t       acPpk[RSA_4096_N_SIZE + RSA_4096_N_EXT_SIZE + RSA_4096_E_SIZE];    //0x40 //1028 Bytes
-    uint8_t       ppkAlignment[3];                    //0x444
+    uint32_t      ppkAlignment[3];                   //0x444
 
     uint32_t      totalspkSize;                       //0x450 
     uint32_t      actualspkSize;                      //0x454
@@ -243,7 +243,7 @@ typedef struct
     uint32_t      acSpkHdrAlignment[3];               //0x464
 
     uint8_t       acSpk[RSA_4096_N_SIZE + RSA_4096_N_EXT_SIZE + RSA_4096_E_SIZE];    //0x470 //1028 Bytes
-    uint8_t       spkAlignment[3];                    //0x874
+    uint32_t      spkAlignment[3];                   //0x874
 
     uint8_t       spkSignature[SIGN_LENGTH_VERSAL];   //0x880
 
@@ -314,10 +314,10 @@ public:
 
     bool Loaded;
     bool isSecret;
-    uint8_t *N;         // modulus (2048 bits)
-    uint8_t *E;         // public (encryption) exponent (32 bits)
-    uint8_t *N_ext;     // modular_ext (2048 bits)
-    uint8_t *D;         // secret (decryption) exponent (2048 bits).
+    std::unique_ptr<uint8_t[]> N;         // modulus (2048 bits)
+    std::unique_ptr<uint8_t[]> E;         // public (encryption) exponent (32 bits)
+    std::unique_ptr<uint8_t[]> N_ext;     // modular_ext (2048 bits)
+    std::unique_ptr<uint8_t[]> D;         // secret (decryption) exponent (2048 bits).
     Authentication :: Type authType;
     bool lmsOnly;
 protected:
@@ -329,8 +329,8 @@ protected:
     static void WriteRsaFile(std::string file, const RSA* rsa, bool secret, uint16_t keyLength);
     static void WritePemFile(std::string file, RSA* rsa, EC_KEY* eckey, bool secret);
 
-    uint8_t *P;
-    uint8_t *Q;
+    std::unique_ptr<uint8_t[]> P;
+    std::unique_ptr<uint8_t[]> Q;
     std::string name;
     uint16_t keySize;
     uint16_t keySizeX;

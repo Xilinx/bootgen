@@ -25,6 +25,7 @@
 -------------------------------------------------------------------------------
 */
 #include "bitutils.h"
+#include <memory>
 
 /* Forward Class Reference */
 class OutputStream_LE;
@@ -44,7 +45,7 @@ public:
     SpartanupBitFile(std::istream& stream);
     ~SpartanupBitFile();
 
-    OutputStream* GetOutputStreamType(void);
+    std::unique_ptr<OutputStream> GetOutputStreamType(void);
     bool GetBitStripFlag(void);
     bool GetBitPadFlag(bool);
     bool GetPreserveHeaderFlag(void);
@@ -55,7 +56,7 @@ public:
 
     protected:
         Encryption::Type encryptType;
-        OutputStream_BE* temp;
+        std::unique_ptr<OutputStream_BE> temp;
 };
 
 #endif

@@ -398,6 +398,10 @@ void BifOptions::AddFiles(int type, std::string filename)
             SetBHKekIVFileName(filename);
             break;
 
+        case BIF::BisonParser::token::BH_KEY_IV:
+            SetBHKekIVFileName(filename);
+            break;
+
         case BIF::BisonParser::token::BBRAM_KEK_IV:
             SetBbramKekIVFileName(filename);
             break;
@@ -994,7 +998,7 @@ std::string BifOptions::GetKeySourceName(KeySource::Type type)
 }
 
 /******************************************************************************/
-void BifOptions::CheckForSameKeyandKeySrcPair(std::vector<std::pair<KeySource::Type, uint32_t*>> aesKeyandKeySrc)
+void BifOptions::CheckForSameKeyandKeySrcPair(std::vector<std::pair<KeySource::Type, std::unique_ptr<uint32_t[]>>>& aesKeyandKeySrc)
 {
     static bool warningGiven = false;
     std::multimap<std::string, std::string> key0_keysrc;
@@ -1003,7 +1007,7 @@ void BifOptions::CheckForSameKeyandKeySrcPair(std::vector<std::pair<KeySource::T
         std::stringstream key0String;
         for (uint32_t j = 0; j < WORDS_PER_AES_KEY; j++)
         {
-            key0String << std::setfill('0') << std::setw(2) << std::hex << aesKeyandKeySrc[i].second[j];
+            key0String << std::setfill('0') << std::setw(2) << std::hex << aesKeyandKeySrc[i].second.get()[j];
         }
         key0_keysrc.insert(std::pair<std::string, std::string>(key0String.str(), GetKeySourceName(aesKeyandKeySrc[i].first)));
     }
@@ -1038,7 +1042,7 @@ void BifOptions::CheckForSameKeyandKeySrcPair(std::vector<std::pair<KeySource::T
 }
 
 /******************************************************************************/
-void BifOptions::CheckForBadKeyandKeySrcPair(std::vector<std::pair<KeySource::Type, uint32_t*>> aesKeyandKeySrc, std::string aesFilename)
+void BifOptions::CheckForBadKeyandKeySrcPair(std::vector<std::pair<KeySource::Type, std::unique_ptr<uint32_t[]>>>& aesKeyandKeySrc, std::string aesFilename)
 {
     std::string errorKeySrc = "";
     for (uint32_t i = 0; i < aesKeyandKeySrc.size(); i++)
@@ -1048,7 +1052,7 @@ void BifOptions::CheckForBadKeyandKeySrcPair(std::vector<std::pair<KeySource::Ty
         {
             if (aesKeyandKeySrc[i].first == aesKeyandKeySrc[j].first)
             {
-                if (memcmp(aesKeyandKeySrc[i].second, aesKeyandKeySrc[j].second, AES_GCM_KEY_SZ) != 0)
+                if (memcmp(aesKeyandKeySrc[i].second.get(), aesKeyandKeySrc[j].second.get(), AES_GCM_KEY_SZ) != 0)
                 {
                     if (errorKeySrc.find(GetKeySourceName(aesKeyandKeySrc[i].first)) == std::string::npos)
                     {
@@ -1254,6 +1258,12 @@ void BifOptions::SetAuthJtagDeviceDna(std::string hexString)
 void BifOptions::SetAuthJtagTimeOut(uint32_t value)
 {
     authJtagInfo.jtagTimeout = value;
+}
+
+/******************************************************************************/
+void BifOptions::SetAuthJtagSignatureFile(std::string value)
+{
+    authJtagInfo.jtagSignatureFile = value;
 }
 
 /******************************************************************************/
@@ -2094,7 +2104,7 @@ bool BifOptions::GetSpkIdGlobal()
 /******************************************************************************/
 bool BifOptions::GetHeaderAC()
 {
-    if (arch == Arch::VERSAL || arch == Arch::VERSALGEN2)
+    if (arch == Arch::VERSAL || arch == Arch::VERSALGEN2 || arch == Arch::SPARTANUP)
     {
         createHeaderAC = false;
         if (metaHdrAttributes.authenticate != Authentication::None)
@@ -2106,7 +2116,7 @@ bool BifOptions::GetHeaderAC()
 /******************************************************************************/
 bool BifOptions::GetHeaderEncyption()
 {
-    if (arch == Arch::VERSAL || arch == Arch::VERSALGEN2)
+    if (arch == Arch::VERSAL || arch == Arch::VERSALGEN2 || arch == Arch::SPARTANUP)
     {
         doHeaderEncryption = false;
         if (metaHdrAttributes.encrypt != Encryption::None)

@@ -35,22 +35,24 @@ class BootImage;
 /******************************************************************************/
 ZynqBootHeader::ZynqBootHeader(void)
 {
-    section = new Section("BootHeader", sizeof(ZynqBootHeaderStructure) + sizeof(RegisterInitTable));
-    bHTable = (ZynqBootHeaderStructure*)section->Data;
+    auto temp_section = std::make_unique<Section>("BootHeader", sizeof(ZynqBootHeaderStructure) + sizeof(RegisterInitTable));
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    bHTable = (ZynqBootHeaderStructure*)section->Data.get();
 }
 
 /******************************************************************************/
 ZynqBootHeader::ZynqBootHeader(std::ifstream& src)
 {
     prebuilt = true;
-    section = new Section("BootHeader", sizeof(ZynqBootHeaderStructure) + sizeof(RegisterInitTable));
+    auto temp_section = std::make_unique<Section>("BootHeader", sizeof(ZynqBootHeaderStructure) + sizeof(RegisterInitTable));
+    section = temp_section.release();  // Transfer ownership to raw pointer member
     
     /* Import the Boot Header from a boot image file */
-    if (!src.read((char*)section->Data, section->Length).good())
+    if (!src.read((char*)section->Data.get(), section->Length).good())
     {
         LOG_ERROR("Failed to read bootheader from imported image");
     }
-    bHTable = (ZynqBootHeaderStructure*)section->Data;
+    bHTable = (ZynqBootHeaderStructure*)section->Data.get();
 }
 
 
@@ -59,7 +61,6 @@ ZynqBootHeader::~ZynqBootHeader(void)
 {
     if (section != NULL)
     {
-        delete section;
     }
 }
 
@@ -68,7 +69,8 @@ void ZynqBootHeader::Build(BootImage& bi, Binary& cache)
 {
     if (section != NULL)
     {
-        cache.Sections.push_back(section);
+        cache.Sections.push_back(std::unique_ptr<Section>(section));
+
     }
 
     /* If the boot header is imported from a bootimage file, no need to build */
@@ -98,7 +100,7 @@ void ZynqBootHeader::Link(BootImage& bi)
         return;
     }
 
-    ImageHeaderTable* iHT = bi.imageHeaderTable;
+    ImageHeaderTable* iHT = bi.imageHeaderTable.get();
     ImageHeader* fsbl = iHT->GetFSBLImageHeader();
 
     slaveBootSplitMode = (bi.bifOptions->GetSplitMode() == SplitMode::SlaveMode) ? true : false;

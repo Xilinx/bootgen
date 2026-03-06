@@ -74,6 +74,9 @@ struct LogLevel
 /******************************************************************************/
 class Logger
 {
+    friend class std::unique_ptr<Logger>;
+    friend struct std::default_delete<Logger>;
+
 public:	
     static Logger* Instance(void);
     void Error(const char* format, ...);
@@ -97,7 +100,7 @@ private:
     std::string msg;
     std::ofstream outFile;
     LogLevel::Type log_level;
-    static Logger* logger;
+    static std::unique_ptr<Logger> logger;
 };
 
 #endif

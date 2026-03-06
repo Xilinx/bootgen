@@ -23,6 +23,7 @@
 
 void * file_to_buf(const char * path, size_t * sizep);
 CdoSequence * cdoseq_load_cdo(const char * path);
+CdoSequence * cdoseq_load_cdo_from_buffer(char * data, size_t size);
 
 char slr_id_from_binary(char ch);
 void cdoseq_extract_writes(CdoSequence * seq);

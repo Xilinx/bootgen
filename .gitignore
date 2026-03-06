@@ -1,0 +1,12 @@
+# Build artifacts
+build/
+*.o
+*.a
+
+# Temporary files
+*.log
+*.tmp
+*~
+*.swp
+*.bak
+*.backup

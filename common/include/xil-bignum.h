@@ -15,6 +15,18 @@
 #include <openssl/ossl_typ.h>
 #include <openssl/bn.h> 
 
+/*
+ * OpenSSL 1.1.0+ makes these structs opaque (forward declared only).
+ * We need to define them here to access internal members.
+ * 
+ * However, some GCC installations have include-fixed directories with
+ * old OpenSSL headers that define these structs. To avoid redefinition:
+ * - Define XIL_BIGNUM_STRUCTS_DEFINED if your compiler's include-fixed
+ *   already provides struct definitions (e.g., Batonroot GCC)
+ * - Or ensure system OpenSSL headers take precedence with -isystem
+ */
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(XIL_BIGNUM_STRUCTS_DEFINED)
+
 struct bignum_st {
     BN_ULONG *d;                /* Pointer to an array of 'BN_BITS2' bit
                                  * chunks. */
@@ -37,5 +49,7 @@ struct bn_mont_ctx_st {
                                  * before) */
     int flags;
 };
+
+#endif /* OPENSSL_VERSION_NUMBER >= 0x10100000L && !XIL_BIGNUM_STRUCTS_DEFINED */
 
 #endif

@@ -28,12 +28,14 @@
 #include <string>
 #include <utility>
 #include <iostream>
+#include <memory>
 #include "readimage.h"
 
 #include "bootheader-spartanup.h"
 #include "imageheadertable-spartanup.h"
 #include "partitionheadertable-spartanup.h"
 #include "authentication-spartanup.h"
+
 
 /* Forward Class References */
 class BootGenOptions;
@@ -57,8 +59,8 @@ public:
     SpartanupReadImage(std::string filename) : ReadImage(filename)
     {
         binFilename = filename;
-        bH = NULL;
-        iHT = NULL;
+        bH = nullptr;
+        iHT = nullptr;
         iHs.clear();
         pHTs.clear();
         partitionBuffers.clear();
@@ -105,10 +107,10 @@ public:
 
 protected:
     std::string binFilename;
-    SpartanupBootHeaderStructure* bH;
-    SpartanupImageHeaderTableStructure* iHT;
-    SpartanupImageHeaderStructure *iH;
-    SpartanupPartitionHeaderTableStructure *pHT;
+    std::unique_ptr<SpartanupBootHeaderStructure> bH;
+    std::unique_ptr<SpartanupImageHeaderTableStructure> iHT;
+    std::unique_ptr<SpartanupImageHeaderStructure> iH;
+    std::unique_ptr<SpartanupPartitionHeaderTableStructure> pHT;
     std::list<SpartanupImageHeaderStructure*> iHs;
     std::list<SpartanupPartitionHeaderTableStructure*> pHTs;
     std::list<uint8_t*> aCs;

@@ -13,7 +13,7 @@ For more details about Bootgen usage, please refer to Xilinx UG1283.
 
 ## Obfuscated Key generation
 Bootgen also supports Obfuscated Key generation using a Xilinx proprietary software.
-If you are using this proprietary flow, please contact a Xilinx® representative at 'secure.solutions@xilinx.com'for details
+If you are using this proprietary flow, please contact a Xilinxï¿½ representative at 'secure.solutions@xilinx.com'for details
 and to ensure export compliance.
 
 # Build instructions

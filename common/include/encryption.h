@@ -29,6 +29,7 @@
 #include <sstream>
 #include <vector>
 #include <string>
+#include <memory>
 
 #include "kdf.h"
 
@@ -88,25 +89,19 @@ public:
         , efuseUserKek0IVFile("")
         , efuseUserKek1IVFile("")
         , aesFilename("")
-        , aesKey(NULL)
-        , aesOptKey(NULL)
-        , aesIv(NULL)
-        , aesSeed(NULL)
-        , outBufKDF(NULL)
+        , aesKey(nullptr)
+        , aesOptKey(nullptr)
+        , aesIv(nullptr)
+        , aesSeed(nullptr)
+        , outBufKDF(nullptr)
         , fixedInputDataByteLength(0)
-        , fixedInputData(NULL)
+        , fixedInputData(nullptr)
         , fixedInputDataExits(false)
     {
-        kdf = new Kdf();
+        kdf = std::make_unique<Kdf>();
     };
 
-    virtual ~EncryptionContext()
-    {
-        if(kdf)
-        {
-            delete kdf;
-        }
-    };
+    virtual ~EncryptionContext() = default;
 
     virtual Encryption::Type Type() 
     {
@@ -159,22 +154,22 @@ public:
     void SetAesFixedInputDataString(const std::string & key);
     void SetAesFixedInputData(const uint8_t * key, uint32_t bytes);
     void GenerateAesFixedInputData(void);
-    uint32_t* GetFixedInputData(void) { return fixedInputData; };
+    uint32_t* GetFixedInputData(void) { return fixedInputData.get(); };
 
     std::string aesFilename;
-    Kdf* kdf;
+    std::unique_ptr<Kdf> kdf;
 
     virtual void AesGcm256HashBlockEncrypt(Options& options, uint8_t *aad, uint32_t aad_len, uint8_t* outBuf, uint8_t ivIncrement) {};
 
 protected:
-    uint32_t* aesKey;
-    uint32_t* aesOptKey;
-    uint32_t* aesIv;
+    std::unique_ptr<uint32_t[]> aesKey;
+    std::unique_ptr<uint32_t[]> aesOptKey;
+    std::unique_ptr<uint32_t[]> aesIv;
     std::vector<std::string> aesKeyVec;
     std::vector<std::string> aesIvVec;
-    uint32_t* aesSeed;
-    uint32_t* outBufKDF;
-    uint32_t* fixedInputData;
+    std::unique_ptr<uint32_t[]> aesSeed;
+    std::unique_ptr<uint32_t[]> outBufKDF;
+    std::unique_ptr<uint32_t[]> fixedInputData;
     uint32_t fixedInputDataByteLength;
     std::string deviceName;
     std::string metalFile;

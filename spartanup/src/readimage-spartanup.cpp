@@ -28,9 +28,11 @@
 #include <string>
 #include <iomanip>
 #include <cstring>
+#include <memory>
 
 #include "readimage-spartanup.h"
 #include "authentication-spartanup.h"
+#include "hash.h"
 
 #define SEPARATOR "--------------------------------------------------------------------------------"
 
@@ -53,28 +55,13 @@ void SpartanupReadImage::Separator(void)
 /******************************************************************************/
 SpartanupReadImage::~SpartanupReadImage()
 {
-    if (bH != NULL)
-    {
-        delete[] bH;
-    }
-    if (iH != NULL)
-    {
-        delete[] iH;
-    }
-    if (iHT != NULL)
-    {
-        delete[] iHT;
-    }
-    if (pHT != NULL)
-    {
-        delete[] pHT;
-    }
+    // Smart pointers automatically clean up memory
 }
 
 /**********************************************************************************************/
 void SpartanupReadImage::DumpPlainPartition(uint8_t *buffer,uint32_t length, std::string partition_name, bool isBootloader, uint32_t id, uint32_t index)
 {
-    uint8_t *outputBuffer = new uint8_t[length];
+    auto outputBuffer = std::make_unique<uint8_t[]>(length);
     size_t outputIndex = 0;
     size_t inputSize = length;
     size_t hashSize = 0;
@@ -91,17 +78,16 @@ void SpartanupReadImage::DumpPlainPartition(uint8_t *buffer,uint32_t length, std
         if (i + chunksize < inputSize)
         { // Not the last chunk
             size_t bytesToCopy = currentChunkSize - hashSize;
-            std::memcpy(outputBuffer + outputIndex, buffer + i, bytesToCopy);
+            std::memcpy(outputBuffer.get() + outputIndex, buffer + i, bytesToCopy);
             outputIndex += bytesToCopy;
         }
         else
         { // Last chunk
-            std::memcpy(outputBuffer + outputIndex, buffer + i, currentChunkSize);
+            std::memcpy(outputBuffer.get() + outputIndex, buffer + i, currentChunkSize);
             outputIndex += currentChunkSize;
         }
     }
-    DumpPartitions(outputBuffer, outputIndex, partition_name, id, index);
-    delete[] outputBuffer;
+    DumpPartitions(outputBuffer.get(), outputIndex, partition_name, id, index);
 }
 
 /**********************************************************************************************/
@@ -121,12 +107,12 @@ void SpartanupReadImage::ReadPartitions()
     offset = bH->sourceOffset;
     length = bH->totalPlmLength;
                 
-    uint8_t* buffer = new uint8_t[length];
+    auto buffer = std::make_unique<uint8_t[]>(length);
     /* Bootloader - compare address offset from BH and PHT */
     if (!(fseek(binFile, offset, SEEK_SET)))
     {
         bool isBootloader = false;
-        result = fread(buffer, 1, length, binFile);
+        result = fread(buffer.get(), 1, length, binFile);
         if (result != length)
         {
             LOG_ERROR("Error parsing partitions from PDI file");
@@ -140,30 +126,28 @@ void SpartanupReadImage::ReadPartitions()
         if ((dumpType == DumpOption::PLM) || (dumpType == DumpOption::BOOT_FILES))
         {
             //DumpPartitions(buffer, length, "plm", 0, 0);
-            DumpPlainPartition(buffer, length, "plm", isBootloader, 0, 0);
+            DumpPlainPartition(buffer.get(), length, "plm", isBootloader, 0, 0);
             if (dumpType == DumpOption::PLM)
             {
-                delete[] buffer;
                 fclose(binFile);
                 return;
             }
         }
         if (bH && bH->totalPmcCdoLength != 0)
         {
-            buffer = new uint8_t[bH->totalPmcCdoLength];
+            buffer = std::make_unique<uint8_t[]>(bH->totalPmcCdoLength);
             if ((dumpType == DumpOption::PARTITIONS) || (dumpType == DumpOption::PMC_CDO) || (dumpType == DumpOption::BOOT_FILES))
             {
                 if (!(fseek(binFile, bH->sourceOffset + bH->totalPlmLength, SEEK_SET)))
                 {
-                    result = fread(buffer, 1, bH->totalPmcCdoLength, binFile);
+                    result = fread(buffer.get(), 1, bH->totalPmcCdoLength, binFile);
                 }
                 if (result != bH->totalPmcCdoLength)
                 {
                     LOG_ERROR("Error parsing PMC CDO from PDI file");
                 }
                 //DumpPartitions(buffer, bH->totalPmcCdoLength, "pmc_cdo");
-                DumpPlainPartition(buffer, bH->totalPmcCdoLength, "pmc_cdo");//TODO:if ca
-                delete[] buffer;
+                DumpPlainPartition(buffer.get(), bH->totalPmcCdoLength, "pmc_cdo");//TODO:if ca
             }    
         }       
     }
@@ -217,6 +201,16 @@ uint32_t SpartanupReadImage::GetHashType(uint32_t authheader)
 /******************************************************************************/
 uint32_t SpartanupReadImage:: IdentifyAuthtype(uint32_t authheader)
 {
+    /* Check for non-secure header values first - these indicate no authentication
+     * AUTH_HDR_LASSEN_NONSECURE = 0x04 (Lassen devices)
+     * AUTH_HDR_TELLURIDE_NONSECURE = 0x110 (Telluride/DL9 devices)
+     */
+    if (authheader == AUTH_HDR_LASSEN_NONSECURE || authheader == AUTH_HDR_TELLURIDE_NONSECURE)
+    {
+        bl_auth_type_spartanuplus = Authentication::None;
+        return bl_auth_type_spartanuplus;
+    }
+
     if(dl9Series)
     {
         switch (authheader & 0x0F)
@@ -242,7 +236,7 @@ uint32_t SpartanupReadImage:: IdentifyAuthtype(uint32_t authheader)
 /******************************************************************************/
 uint32_t SpartanupReadImage::GetACLength(uint32_t AuthOffset, uint32_t ppksize)
 {
-    uint8_t* AC_spkheader = NULL;
+    auto AC_spkheader = std::make_unique<uint8_t[]>(TELLURIDE_AC_SPK_HDR_LENGTH);
     spkheaderstructure* spkheader  = NULL;
     uint32_t Acsize = 0;
     size_t result;
@@ -255,20 +249,17 @@ uint32_t SpartanupReadImage::GetACLength(uint32_t AuthOffset, uint32_t ppksize)
         LOG_ERROR("Cannot read file %s", binFilename.c_str());
     }
 
-    AC_spkheader = new uint8_t[TELLURIDE_AC_SPK_HDR_LENGTH];
-    memset(AC_spkheader, 0, TELLURIDE_AC_SPK_HDR_LENGTH);
+    memset(AC_spkheader.get(), 0, TELLURIDE_AC_SPK_HDR_LENGTH);
     if (!(fseek(binFile, AuthOffset + ppksize, SEEK_SET)))
     {
-        result = fread(AC_spkheader, 1, TELLURIDE_AC_SPK_HDR_LENGTH, binFile);
+        result = fread(AC_spkheader.get(), 1, TELLURIDE_AC_SPK_HDR_LENGTH, binFile);
         if (result != TELLURIDE_AC_SPK_HDR_LENGTH)
         {
             LOG_ERROR("Error parsing extracting SPK header from PDI file");
         }
     }
-    spkheader = (spkheaderstructure*)AC_spkheader;
+    spkheader = (spkheaderstructure*)AC_spkheader.get();
     Acsize = ppksize + TELLURIDE_AC_SPK_HDR_LENGTH + spkheader->acTotalSpkSize + spkheader->acSpkTotalSignatureSize;
-    delete AC_spkheader;
-    AC_spkheader = NULL;
     fclose(binFile);
     return Acsize;
 }
@@ -290,12 +281,32 @@ void SpartanupReadImage::ReadHeaderTableDetails()
     }
 
     // Boot Header Table Extraction
-    bH = new SpartanupBootHeaderStructure;
-    result = fread(bH, 1, sizeof(SpartanupBootHeaderStructure), binFile);
+    bH = std::make_unique<SpartanupBootHeaderStructure>();
+    result = fread(bH.get(), 1, sizeof(SpartanupBootHeaderStructure), binFile);
     if (bH->widthDetectionWord != 0x665599AA)
     {
-        delete bH;
-        bH = NULL;
+        bH.reset();
+    }
+
+    /* Auto-detect dl9Series from boot header content.
+     * - AUTH_HDR_LASSEN_NONSECURE (0x04) indicates Lassen device (dl9Series=false)
+     * - AUTH_HDR_TELLURIDE_NONSECURE (0x110) indicates DL9/Telluride device (dl9Series=true)
+     * - Hash block size can also help: 0x90 for Lassen, 0xD0 for DL9
+     */
+    if (bH)
+    {
+        if (bH->authHeader1 == AUTH_HDR_LASSEN_NONSECURE ||
+            bH->hashBlockLength1 == BH_HASH_BLOCK_BYTES_LASSEN)
+        {
+            dl9Series = false;
+            LOG_WARNING("dl3 detected");
+        }
+        else if (bH->authHeader1 == AUTH_HDR_TELLURIDE_NONSECURE ||
+                 bH->hashBlockLength1 == BH_HASH_BLOCK_BYTES_LASSEN_DL9)
+        {
+            dl9Series = true;
+            LOG_WARNING("dl9 detected");
+        }
     }
 
 
@@ -331,20 +342,19 @@ void SpartanupReadImage::ReadHeaderTableDetails()
         if(IdentifyAuthtype(bH->authHeader1) != Authentication::None)
         {
             // extracting SPK header for PLM
-            uint8_t* plm_ac = NULL;
                             
             // Extracting AC for PLM paritition     
             ac_length = GetACLength(sizeof(SpartanupBootHeaderStructure), bH->totalppkkSize1);     //Use ACLength only if Auth is enable
-            plm_ac = new uint8_t[ac_length];
+            auto plm_ac = std::make_unique<uint8_t[]>(ac_length);
             if (!(fseek(binFile, sizeof(SpartanupBootHeaderStructure), SEEK_SET)))
             {
-                result = fread(plm_ac, 1, ac_length, binFile);
+                result = fread(plm_ac.get(), 1, ac_length, binFile);
                 if (result != ac_length)
                 {
                     LOG_ERROR("Error parsing Authentication Certificates for PLM from PDI file");
                 }
             }
-            aCs.push_back(plm_ac);
+            aCs.push_back(plm_ac.release());  // Transfer ownership to container
             authtype.push_back(IdentifyAuthtype(bH->authHeader1));
         }
         else{
@@ -359,19 +369,19 @@ void SpartanupReadImage::ReadHeaderTableDetails()
         offset = sizeof(SpartanupBootHeaderStructure) + ac_length;
      else 
         offset = sizeof(SpartanupBootHeaderStructure); 
-    uint8_t* hash_block = NULL; 
+    
     if(bH && offset != 0)
     {
-        hash_block = new uint8_t[bH->hashBlockLength1];
+        auto hash_block = std::make_unique<uint8_t[]>(bH->hashBlockLength1);
         if (!(fseek(binFile, offset, SEEK_SET)))
         {
-            result = fread(hash_block, 1, bH->hashBlockLength1, binFile);
+            result = fread(hash_block.get(), 1, bH->hashBlockLength1, binFile);
             if (result != bH->hashBlockLength1)
             {
                 LOG_ERROR("Error parsing Hash Block0 from PDI file");
             }
         }
-        Hashblock_record.push_back(std::make_pair(hash_block,bH->hashBlockLength1)); 
+        Hashblock_record.push_back(std::make_pair(hash_block.release(), bH->hashBlockLength1));  // Transfer ownership 
     }
 
 // Hash Block0 signture 
@@ -379,16 +389,16 @@ void SpartanupReadImage::ReadHeaderTableDetails()
         offset = offset + bH->hashBlockLength1;
     if(bH && offset != 0)
     {
-        hash_block = new uint8_t[bH->totalSignatureSize1];
+        auto hash_block_sign = std::make_unique<uint8_t[]>(bH->totalSignatureSize1);
         if (!(fseek(binFile, offset, SEEK_SET)))
         {
-            result = fread(hash_block, 1, bH->totalSignatureSize1, binFile);
+            result = fread(hash_block_sign.get(), 1, bH->totalSignatureSize1, binFile);
             if (result != bH->totalSignatureSize1)
             {
                 LOG_ERROR("Error parsing Hash Block0 sign from PDI file");
             }
         }
-        Hashblock_record.push_back(std::make_pair(hash_block,bH->totalSignatureSize1));
+        Hashblock_record.push_back(std::make_pair(hash_block_sign.release(), bH->totalSignatureSize1));  // Transfer ownership
     }
     fclose(binFile);
     return ;
@@ -489,15 +499,19 @@ void SpartanupReadImage::DisplayBootHeader(void)
     DisplayKey("grey/black_key (0x38) : ", bH->greyOrBlackKey);
     DisplayIV("grey/black_iv (0x58) : ", bH->greyOrBlackIV);
     DisplayIV("plm_sec_hdr_iv (0x64) : ", bH->plmSecureHdrIv);
-
-    DisplayValue("puf_shutter (0x80) : ", bH->shutterValue);
+    DisplayValue("revoke_id (0x70) : ", bH->plmRevokeId);
+    DisplayValue("auth_header (0x74) : ", bH->authHeader1);
+    DisplayValue("hash_block_size (0x78) : ", bH->hashBlockLength1);
+    DisplayValue("total_ppk_size (0x7C) : ", bH->totalppkkSize1);
+    DisplayValue("actual_ppk_size (0x80) : ", bH->actualppkSize1);
+    DisplayValue("total_sign_size (0x84) : ", bH->totalSignatureSize1);
+    DisplayValue("actual_sign_size (0x88) : ", bH->actualSignatureSize1);
+    DisplayValue("puf_pdi_id (0x8C) : ", bH->pufPDIIdentificationWord);
+    DisplayValue("puf_shutter (0x90) : ", bH->shutterValue);
     DisplayValue("puf_ro_swap (0x94) : ", bH->pufRoSwapConfigVal);
-    DisplayValue("revoke_id (0x84) : ", bH->plmRevokeId);
-    DisplayValue("PUF PDI ID (0x298) : ", bH->pufPDIIdentificationWord);
-    DisplayValue("pufHDLength (0x29C) : ", bH->pufHDLength);
-    DisplayValue("PDI ID (0x2d0) : ", bH->imageHeaderByteOffset);
-
-    DisplayValue("checksum (0x113c) : ", bH->headerChecksum);
+    DisplayValue("puf_hd_length (0x98) : ", bH->pufHDLength);
+    DisplayValue("pdi_id (0xD8) : ", bH->imageHeaderByteOffset);
+    DisplayValue("checksum (0x33C) : ", bH->headerChecksum);
     std::cout << " attribute list - " << std::endl;
     DisplayBhAttributes(bH->bhAttributes);
 }
@@ -593,6 +607,7 @@ void SpartanupReadImage::DisplayAuthenicationCertificates(void)
                 }
                 else if(bH && hash_block_itr == Hashblock_record.begin())
                 {
+                    /* Lassen (non-dl9) uses 32-byte hashes (SHA3-256) */
                     Separator();
                     std::cout << "   Hash Block0" << std::endl;
                     Separator();

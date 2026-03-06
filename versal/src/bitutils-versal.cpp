@@ -39,7 +39,7 @@
 /******************************************************************************/
 VersalBitFile::VersalBitFile(std::istream& stream0)
     : BitFile(stream0),
-    temp(NULL),
+    temp(nullptr),
     encryptType(Encryption::None)
 {
 }
@@ -47,10 +47,7 @@ VersalBitFile::VersalBitFile(std::istream& stream0)
 /******************************************************************************/
 VersalBitFile::~VersalBitFile()
 {
-    if (temp)
-    {
-        delete temp;
-    }
+    // temp is automatically destroyed (unique_ptr)
 }
 
 /******************************************************************************/
@@ -123,9 +120,9 @@ void VersalBitFile::CopyNpi(OutputStream* os)
 }
 
 /******************************************************************************/
-OutputStream* VersalBitFile::GetOutputStreamType(void)
+std::unique_ptr<OutputStream> VersalBitFile::GetOutputStreamType(void)
 {
-    return new OutputStream_LE();
+    return std::make_unique<OutputStream_LE>();
 }
 
 /******************************************************************************/

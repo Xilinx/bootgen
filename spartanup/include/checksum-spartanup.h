@@ -26,6 +26,7 @@
 #include "binary.h"
 #include "bootimage.h"
 #include "checksum.h"
+#include <memory>
 
 class BootImage;
 class Section;

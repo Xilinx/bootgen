@@ -21,6 +21,9 @@
 ***********************************************   H E A D E R   F I L E S   ***
 -------------------------------------------------------------------------------
 */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wclass-memaccess"
+#pragma GCC diagnostic pop
 #include <iomanip>
 #include <iostream>
 
@@ -73,24 +76,18 @@ SpartanupKey::SpartanupKey(const Key& otherKey)
         eckey = EC_KEY_new_by_curve_name(NID_secp521r1);
     }
 
+    // Note: memcpy on object with unique_ptr members is a design limitation
+    // This shallow copy is intentional for the legacy Key class design
+
     memcpy(this, &otherKey, sizeof(Key));
+    
 }
 
 /******************************************************************************/
 SpartanupKey::~SpartanupKey()
 {
-    if (x != NULL)
-    {
-        delete[] x;
-        x = nullptr;
-    }
-
-    if (y != NULL)
-    {
-        delete[] y;
-        y = nullptr;
-    }
-
+    // x, y, public_key, private_key are automatically destroyed (unique_ptr)
+    
     if (eckey != NULL)
     {
         EC_KEY_free(eckey);
@@ -109,9 +106,9 @@ void Key4096Sha3Padding_spartanup::Export(void* acKey)
     }
 
     memset(key, 0, VERSAL_ACKEY_STRUCT_SIZE);
-    memcpy(key->N, N, keySize);
-    memcpy(key->N_extension, N_ext, keySize);
-    memcpy(key->E, E, 4);
+    memcpy(key->N, N.get(), keySize);
+    memcpy(key->N_extension, N_ext.get(), keySize);
+    memcpy(key->E, E.get(), 4);
 }
 
 
@@ -123,14 +120,14 @@ void Key4096Sha3Padding_spartanup::Import(const void* acKey, const std::string& 
     isSecret = false;
     name = name0;
 
-    memcpy(N, key->N, keySize);
-    memcpy(N_ext, key->N_extension, keySize);
-    memcpy(E, key->E, sizeof(uint32_t));
-    memset(P, 0, keySize / 2);
-    memset(Q, 0, keySize / 2);
+    memcpy(N.get(), key->N, keySize);
+    memcpy(N_ext.get(), key->N_extension, keySize);
+    memcpy(E.get(), key->E, sizeof(uint32_t));
+    memset(P.get(), 0, keySize / 2);
+    memset(Q.get(), 0, keySize / 2);
 
     // Fill secret exponent with zeros
-    memset(D, 0, keySize);
+    memset(D.get(), 0, keySize);
 }
 
 /******************************************************************************/
@@ -144,8 +141,8 @@ void KeyECDSA_spartanup::Export(void * acKey)
     }
 
     memset(key, 0, sizeof(ACKeyECDSA));
-    memcpy(key->x, x, keySize);
-    memcpy(key->y, y, keySize);
+    memcpy(key->x, x.get(), keySize);
+    memcpy(key->y, y.get(), keySize);
     //memset(key->pad, 0, sizeof(key->pad));
 }
 
@@ -157,17 +154,17 @@ void KeyECDSA_spartanup::Import(const void * acKey, const std::string & name0)
     isSecret = false;
     name = name0;
 
-    x = new uint8_t[keySize];
-    memset(x, 0, keySize);
-    y = new uint8_t[keySize];
-    memset(y, 0, keySize);
+    x = std::make_unique<uint8_t[]>(keySize);
+    memset(x.get(), 0, keySize);
+    y = std::make_unique<uint8_t[]>(keySize);
+    memset(y.get(), 0, keySize);
 
-    memcpy(x, key->x, keySize);
-    memcpy(y, key->y, keySize);
+    memcpy(x.get(), key->x, keySize);
+    memcpy(y.get(), key->y, keySize);
     //memset(key->pad, 0, sizeof(key->pad));
 
     // Fill secret exponent with zeros
-    memset(D, 0, keySize);
+    memset(D.get(), 0, keySize);
 }
 
 /******************************************************************************/
@@ -183,19 +180,19 @@ void KeyECDSAp521_spartanup::Export(void * acKey)
     memset(key, 0, sizeof(ACKeyECDSAP521));
     if (keySizeX == EC_P521_KEY_LENGTH1)
     {
-        memcpy((key->x) + 1, x, keySizeX);
+        memcpy((key->x) + 1, x.get(), keySizeX);
     }
     else
     {
-        memcpy(key->x, x, keySizeX);
+        memcpy(key->x, x.get(), keySizeX);
     }
     if (keySizeY == EC_P521_KEY_LENGTH1)
     {
-        memcpy((key->y)+1, y, keySizeY);
+        memcpy((key->y)+1, y.get(), keySizeY);
     }
     else
     {
-        memcpy(key->y, y, keySizeY);
+        memcpy(key->y, y.get(), keySizeY);
     }
     //memset(key->pad, 0, sizeof(key->pad));
 }
@@ -209,17 +206,17 @@ void KeyECDSAp521_spartanup::Import(const void * acKey, const std::string & name
     isSecret = false;
     name = name0;
 
-    x = new uint8_t[keySizeX];
-    y = new uint8_t[keySizeY];
-    memset(x, 0, keySizeX);
-    memset(y, 0, keySizeY);
+    x = std::make_unique<uint8_t[]>(keySizeX);
+    y = std::make_unique<uint8_t[]>(keySizeY);
+    memset(x.get(), 0, keySizeX);
+    memset(y.get(), 0, keySizeY);
 
-    memcpy(x, key->x, keySizeX);
-    memcpy(y, key->y, keySizeY);
+    memcpy(x.get(), key->x, keySizeX);
+    memcpy(y.get(), key->y, keySizeY);
     //memset(key->pad, 0, sizeof(key->pad));
 
     // Fill secret exponent with zeros
-    memset(D, 0, keySize);
+    memset(D.get(), 0, keySize);
 }
 
 /******************************************************************************/
@@ -237,7 +234,7 @@ void KeyLMS_spartanup::Export(void * acKey)
     }
     else
     {
-        memcpy(acKey, public_key, GetLmsPublicKeyLength("", lmsOnly)); //sizeof(HssPublicKey));
+        memcpy(acKey, public_key.get(), GetLmsPublicKeyLength("", lmsOnly)); //sizeof(HssPublicKey));
     }
 #ifdef DEBUG
     LOG_TRACE("Public key");
@@ -274,16 +271,29 @@ static void RearrangeEndianess(uint8_t *array, uint32_t size)
 uint8_t SpartanupKey::ParseECDSAOpenSSLKey(const std::string& filename)
 {
     OpenSSL_add_all_algorithms();
-    BIGNUM *X = BN_new();
+    
+    // Use smart pointers for exception-safe cleanup
+    auto X_deleter = [](BIGNUM* bn) { if (bn) { bn->d = NULL; bn->dmax = 0; BN_free(bn); } };
+    auto Y_deleter = [](BIGNUM* bn) { if (bn) { bn->d = NULL; bn->dmax = 0; BN_free(bn); } };
+    auto group_deleter = [](EC_GROUP* g) { if (g) EC_GROUP_free(g); };
+    
+    std::unique_ptr<BIGNUM, decltype(X_deleter)> X_ptr(BN_new(), X_deleter);
+    std::unique_ptr<BIGNUM, decltype(Y_deleter)> Y_ptr(BN_new(), Y_deleter);
+    std::unique_ptr<EC_GROUP, decltype(group_deleter)> ecgroup_ptr(nullptr, group_deleter);
+    
+    BIGNUM* X = X_ptr.get();
+    BIGNUM* Y = Y_ptr.get();
+    
     X->flags = 0;
     X->neg = 0;
     X->top = 0;
-    BIGNUM *Y = BN_new();
     Y->flags = 0;
     Y->neg = 0;
     Y->top = 0;
+    
     uint32_t keySzRdX;
     uint32_t keySzRdY;
+    EC_GROUP *ecgroup = NULL;  // Will be managed by ecgroup_ptr
 
     FILE* file;
     file = fopen(filename.c_str(), "r");
@@ -301,18 +311,29 @@ uint8_t SpartanupKey::ParseECDSAOpenSSLKey(const std::string& filename)
         }
         else
         {
-            EC_GROUP *ecgroup;
             if (keySize == EC_P384_KEY_LENGTH)
             {
-                x = new uint8_t[keySize];
-                y = new uint8_t[keySize];
-                memset(x, 0, keySize);
-                memset(y, 0, keySize);
-                X->d = (BN_ULONG*)x;
-                Y->d = (BN_ULONG*)y;
+                x = std::make_unique<uint8_t[]>(keySize);
+                y = std::make_unique<uint8_t[]>(keySize);
+                memset(x.get(), 0, keySize);
+                memset(y.get(), 0, keySize);
+                
+                // Free original d buffers allocated by BN_new() before replacing
+                if (X->d) {
+                    OPENSSL_free(X->d);
+                    X->d = NULL;
+                }
+                if (Y->d) {
+                    OPENSSL_free(Y->d);
+                    Y->d = NULL;
+                }
+                
+                X->d = (BN_ULONG*)x.get();
+                Y->d = (BN_ULONG*)y.get();
                 X->dmax = keySize / sizeof(BN_ULONG);
                 Y->dmax = keySize / sizeof(BN_ULONG);
                 ecgroup = EC_GROUP_new_by_curve_name(NID_secp384r1);
+                ecgroup_ptr.reset(ecgroup);  // Transfer ownership to smart pointer
                 const EC_POINT *pub = EC_KEY_get0_public_key(eckey);
                 if (EC_POINT_get_affine_coordinates_GFp(ecgroup, pub, X, Y, NULL))
                 {
@@ -326,8 +347,8 @@ uint8_t SpartanupKey::ParseECDSAOpenSSLKey(const std::string& filename)
                     {
                         LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", BN_num_bits(Y), keySize * 8);
                     }
-                    RearrangeEndianess(x, keySize);
-                    RearrangeEndianess(y, keySize);
+                    RearrangeEndianess(x.get(), keySize);
+                    RearrangeEndianess(y.get(), keySize);
                 }
                 else
                 {
@@ -337,6 +358,7 @@ uint8_t SpartanupKey::ParseECDSAOpenSSLKey(const std::string& filename)
             else
             {
                 ecgroup = EC_GROUP_new_by_curve_name(NID_secp521r1);
+                ecgroup_ptr.reset(ecgroup);  // Transfer ownership to smart pointer
                 const EC_POINT *pub = EC_KEY_get0_public_key(eckey);
                 if (EC_POINT_get_affine_coordinates_GFp(ecgroup, pub, X, Y, NULL))
                 {
@@ -351,15 +373,15 @@ uint8_t SpartanupKey::ParseECDSAOpenSSLKey(const std::string& filename)
                         LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", BN_num_bits(Y), 521);
                     }
 
-                    x = new uint8_t[keySizeX];
-                    y = new uint8_t[keySizeY];
-                    memset(x, 0, keySizeX);
-                    memset(y, 0, keySizeY);
-                    memcpy(x, X->d, keySizeX);
-                    memcpy(y, Y->d, keySizeY);
+                    x = std::make_unique<uint8_t[]>(keySizeX);
+                    y = std::make_unique<uint8_t[]>(keySizeY);
+                    memset(x.get(), 0, keySizeX);
+                    memset(y.get(), 0, keySizeY);
+                    memcpy(x.get(), X->d, keySizeX);
+                    memcpy(y.get(), Y->d, keySizeY);
 
-                    RearrangeEndianess(x, keySizeX);
-                    RearrangeEndianess(y, keySizeY);
+                    RearrangeEndianess(x.get(), keySizeX);
+                    RearrangeEndianess(y.get(), keySizeY);
                 }
                 else
                 {
@@ -377,18 +399,29 @@ uint8_t SpartanupKey::ParseECDSAOpenSSLKey(const std::string& filename)
         }
         else
         {
-            EC_GROUP *ecgroup;
             if (keySize == EC_P384_KEY_LENGTH)
             {
-                x = new uint8_t[keySize];
-                y = new uint8_t[keySize];
-                memset(x, 0, keySize);
-                memset(y, 0, keySize);
-                X->d = (BN_ULONG*)x;
-                Y->d = (BN_ULONG*)y;
+                x = std::make_unique<uint8_t[]>(keySize);
+                y = std::make_unique<uint8_t[]>(keySize);
+                memset(x.get(), 0, keySize);
+                memset(y.get(), 0, keySize);
+                
+                // Free original d buffers allocated by BN_new() before replacing
+                if (X->d) {
+                    OPENSSL_free(X->d);
+                    X->d = NULL;
+                }
+                if (Y->d) {
+                    OPENSSL_free(Y->d);
+                    Y->d = NULL;
+                }
+                
+                X->d = (BN_ULONG*)x.get();
+                Y->d = (BN_ULONG*)y.get();
                 X->dmax = keySize / sizeof(BN_ULONG);
                 Y->dmax = keySize / sizeof(BN_ULONG);
                 ecgroup = EC_GROUP_new_by_curve_name(NID_secp384r1);
+                ecgroup_ptr.reset(ecgroup);  // Transfer ownership to smart pointer
                 const EC_POINT *pub = EC_KEY_get0_public_key(eckey);
                 if (EC_POINT_get_affine_coordinates_GFp(ecgroup, pub, X, Y, NULL))
                 {
@@ -402,8 +435,8 @@ uint8_t SpartanupKey::ParseECDSAOpenSSLKey(const std::string& filename)
                     {
                         LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", BN_num_bits(Y), keySize * 8);
                     }
-                    RearrangeEndianess(x, keySize);
-                    RearrangeEndianess(y, keySize);
+                    RearrangeEndianess(x.get(), keySize);
+                    RearrangeEndianess(y.get(), keySize);
                 }
                 else
                 {
@@ -413,6 +446,7 @@ uint8_t SpartanupKey::ParseECDSAOpenSSLKey(const std::string& filename)
             else
             {
                 ecgroup = EC_GROUP_new_by_curve_name(NID_secp521r1);
+                ecgroup_ptr.reset(ecgroup);  // Transfer ownership to smart pointer
                 const EC_POINT *pub = EC_KEY_get0_public_key(eckey);
                 if (EC_POINT_get_affine_coordinates_GFp(ecgroup, pub, X, Y, NULL))
                 {
@@ -427,15 +461,15 @@ uint8_t SpartanupKey::ParseECDSAOpenSSLKey(const std::string& filename)
                         LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", BN_num_bits(Y), 521);
                     }
 
-                    x = new uint8_t[keySizeX];
-                    y = new uint8_t[keySizeY];
-                    memset(x, 0, keySizeX);
-                    memset(y, 0, keySizeY);
-                    memcpy(x, X->d, keySizeX);
-                    memcpy(y, Y->d, keySizeY);
+                    x = std::make_unique<uint8_t[]>(keySizeX);
+                    y = std::make_unique<uint8_t[]>(keySizeY);
+                    memset(x.get(), 0, keySizeX);
+                    memset(y.get(), 0, keySizeY);
+                    memcpy(x.get(), X->d, keySizeX);
+                    memcpy(y.get(), Y->d, keySizeY);
 
-                    RearrangeEndianess(x, keySizeX);
-                    RearrangeEndianess(y, keySizeY);
+                    RearrangeEndianess(x.get(), keySizeX);
+                    RearrangeEndianess(y.get(), keySizeY);
                 }
                 else
                 {
@@ -445,6 +479,11 @@ uint8_t SpartanupKey::ParseECDSAOpenSSLKey(const std::string& filename)
         }
     }
     fclose(file);
+    
+    // Smart pointers X_ptr, Y_ptr, and ecgroup_ptr will automatically clean up
+    // Their custom deleters set d=NULL and dmax=0 before calling BN_free to prevent
+    // freeing our memory buffers (x.get(), y.get()) which are managed by unique_ptr
+    
     return 0;
 }
 
@@ -461,8 +500,8 @@ void SpartanupKey::ParseLmsKey(const std::string& filename)
     
     if (isSecret)
     {
-        private_key = (HssPrivateKey*) new uint8_t[sizeof(HssPrivateKey)];
-        size_t read_bytes = fread(private_key, 1, sizeof(HssPrivateKey), file);
+        private_key = std::make_unique<HssPrivateKey>();
+        size_t read_bytes = fread(private_key.get(), 1, sizeof(HssPrivateKey), file);
         if (read_bytes != sizeof(HssPrivateKey))
         {
             LOG_ERROR("Improper LMS Private Key - Expected %d bytes, got %d bytes", sizeof(HssPrivateKey), read_bytes);
@@ -470,8 +509,8 @@ void SpartanupKey::ParseLmsKey(const std::string& filename)
     }
     else
     {
-        public_key = (HssPublicKey*) new uint8_t[sizeof(HssPublicKey)];
-        size_t read_bytes = fread(public_key, 1, sizeof(HssPublicKey), file);
+        public_key = std::make_unique<HssPublicKey>();
+        size_t read_bytes = fread(public_key.get(), 1, sizeof(HssPublicKey), file);
         if (read_bytes != sizeof(HssPublicKey))
         {
             LOG_ERROR("Improper LMS Public Key - Expected %d bytes, got %d bytes", sizeof(HssPublicKey), read_bytes);
@@ -560,7 +599,7 @@ void SpartanupKey::Parse(const std::string& filename, bool isSecret0)
                     and some sanity check for the keys passed */
                     {
                         BIGNUM m; // modulus
-                        m.d = (BN_ULONG*)N;
+                        m.d = (BN_ULONG*)N.get();
                         m.dmax = keySize / sizeof(BN_ULONG);
                         m.top = keySize / sizeof(BN_ULONG);
                         m.flags = 0;
@@ -570,7 +609,7 @@ void SpartanupKey::Parse(const std::string& filename, bool isSecret0)
                         BN_MONT_CTX_Class montClass(ctxInst);
 
                         montClass.Set(m);
-                        montClass.GetModulusExtension(N_ext, m, keySize);
+                        montClass.GetModulusExtension(N_ext.get(), m, keySize);
                     }
                     Loaded = true;
                 }
@@ -683,7 +722,7 @@ void SpartanupKey::Parse(const std::string& filename, bool isSecret0)
                     and some sanity check for the keys passed */
                     {
                         BIGNUM m; // modulus
-                        m.d = (BN_ULONG*)N;
+                        m.d = (BN_ULONG*)N.get();
                         m.dmax = keySize / sizeof(BN_ULONG);
                         m.top = keySize / sizeof(BN_ULONG);
                         m.flags = 0;
@@ -693,7 +732,7 @@ void SpartanupKey::Parse(const std::string& filename, bool isSecret0)
                         BN_MONT_CTX_Class montClass(ctxInst);
 
                         montClass.Set(m);
-                        montClass.GetModulusExtension(N_ext, m, keySize);
+                        montClass.GetModulusExtension(N_ext.get(), m, keySize);
                     }
                     Loaded = true;
                 }

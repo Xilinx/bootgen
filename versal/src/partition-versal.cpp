@@ -20,6 +20,7 @@
 ***********************************************   H E A D E R   F I L E S   ***
 -------------------------------------------------------------------------------
 */
+#include <memory>
 #include <string.h>
 
 #include "bootimage.h"
@@ -87,14 +88,15 @@ VersalPartition::VersalPartition(PartitionHeader* header0, const uint8_t* data, 
     int padding = (16 - (length & 15)) & 15;
 
     Binary::Length_t totallength = length + padding;
-    section = new Section(partName, totallength);
+    auto temp_section = std::make_unique<Section>(partName, totallength);
+    section = temp_section.release();  // Transfer ownership to raw pointer member
     section->index = header->index;
     section->isPartitionData = true;
     section->isBitStream = (header->imageHeader->GetDomain() == Domain::PL) ? true : false;
     section->isFirstElfSection = (header->firstValidIndex);
     section->isBootloader = header->imageHeader->IsBootloader();
-    memcpy(section->Data, data, length);
-    memset(section->Data + length, 0, padding);
+    memcpy(section->Data.get(), data, length);
+    memset(section->Data.get() + length, 0, padding);
 }
 
 /******************************************************************************/
@@ -335,7 +337,6 @@ void VersalPartition::ChunkifyAndHash(Section* section, bool encryptionFlag)
 {
     std::vector<uint32_t> dataChunks;
     std::vector<uint8_t*> data;
-    uint8_t* tempBuffer;
     int tempBufferSize = 0;
     /* Get the number/size data chunks and claculate the new section length*/
     size_t length = section->Length;
@@ -366,56 +367,55 @@ void VersalPartition::ChunkifyAndHash(Section* section, bool encryptionFlag)
         LOG_ERROR("Section resize issue for authentication");
     }
 
-    uint8_t* dataPtr = new uint8_t[length];
+    auto dataPtr_owner = std::make_unique<uint8_t[]>(length);
+    uint8_t* dataPtr = dataPtr_owner.get();
     memset(dataPtr, 0, length);
-    memcpy(dataPtr, section->Data, length);
+    memcpy(dataPtr, section->Data.get(), length);
     dataPtr += length;
 
-    uint8_t* newDataPtr = new uint8_t[newLength];
+    auto newDataPtr_owner = std::make_unique<uint8_t[]>(newLength);
+    uint8_t* newDataPtr = newDataPtr_owner.get();
     memset(newDataPtr, 0, newLength);
     newDataPtr += newLength;
 
     /*-------------------------------CHUNK N------------------------------------*/
     /* Insert Data */
     tempBufferSize = dataChunks[0];
-    tempBuffer = new uint8_t[tempBufferSize];
-    memset(tempBuffer, 0, tempBufferSize);
+    auto tempBufferN = std::make_unique<uint8_t[]>(tempBufferSize);
+    memset(tempBufferN.get(), 0, tempBufferSize);
 
     dataPtr -= tempBufferSize;
-    memcpy(tempBuffer, dataPtr, tempBufferSize);
+    memcpy(tempBufferN.get(), dataPtr, tempBufferSize);
     newDataPtr -= tempBufferSize;
 
-    memcpy(newDataPtr, tempBuffer, tempBufferSize);
-    delete[] tempBuffer;
+    memcpy(newDataPtr, tempBufferN.get(), tempBufferSize);
 
     /* Calculate hash */
-    uint8_t* shaHash;
-    shaHash = new uint8_t[SHA3_LENGTH_BYTES];
-    Versalcrypto_hash(shaHash, newDataPtr, dataChunks[0], true);
+    auto shaHash = std::make_unique<uint8_t[]>(SHA3_LENGTH_BYTES);
+    Versalcrypto_hash(shaHash.get(), newDataPtr, dataChunks[0], true);
     /*-------------------------------CHUNK N------------------------------------*/
 
     for (int i = 2; i <= itr; i += 2)
     {
         /* Insert previous hash */
         newDataPtr -= SHA3_LENGTH_BYTES;
-        memcpy(newDataPtr, shaHash, SHA3_LENGTH_BYTES);
-        delete[] shaHash;
+        memcpy(newDataPtr, shaHash.get(), SHA3_LENGTH_BYTES);
+        shaHash.reset();
 
         /* Insert Data */
         tempBufferSize = dataChunks[i];
-        tempBuffer = new uint8_t[tempBufferSize];
-        memset(tempBuffer, 0, tempBufferSize);
+        auto tempBuffer = std::make_unique<uint8_t[]>(tempBufferSize);
+        memset(tempBuffer.get(), 0, tempBufferSize);
 
         dataPtr -= tempBufferSize;
-        memcpy(tempBuffer, dataPtr, tempBufferSize);
+        memcpy(tempBuffer.get(), dataPtr, tempBufferSize);
         newDataPtr -= tempBufferSize;
 
-        memcpy(newDataPtr, tempBuffer, tempBufferSize);
-        delete[] tempBuffer;
+        memcpy(newDataPtr, tempBuffer.get(), tempBufferSize);
 
         /* Calculate hash */
-        shaHash = new uint8_t[SHA3_LENGTH_BYTES];
-        Versalcrypto_hash(shaHash, newDataPtr, dataChunks[i] + dataChunks[i - 1], true);
+        shaHash = std::make_unique<uint8_t[]>(SHA3_LENGTH_BYTES);
+        Versalcrypto_hash(shaHash.get(), newDataPtr, dataChunks[i] + dataChunks[i - 1], true);
     }
 
     /*-------------------------------CHUNK 1------------------------------------*/
@@ -423,38 +423,34 @@ void VersalPartition::ChunkifyAndHash(Section* section, bool encryptionFlag)
 
     /* Insert previous hash */
     newDataPtr -= SHA3_LENGTH_BYTES;
-    memcpy(newDataPtr, shaHash, SHA3_LENGTH_BYTES);
-    delete[] shaHash;
+    memcpy(newDataPtr, shaHash.get(), SHA3_LENGTH_BYTES);
+    shaHash.reset();
 
     /* Insert Data */
     tempBufferSize = dataChunks[itr];
-    tempBuffer = new uint8_t[tempBufferSize];
-    memset(tempBuffer, 0, tempBufferSize);
+    auto tempBuffer1 = std::make_unique<uint8_t[]>(tempBufferSize);
+    memset(tempBuffer1.get(), 0, tempBufferSize);
 
     dataPtr -= tempBufferSize;
-    memcpy(tempBuffer, dataPtr, tempBufferSize);
+    memcpy(tempBuffer1.get(), dataPtr, tempBufferSize);
     newDataPtr -= tempBufferSize;
 
-    memcpy(newDataPtr, tempBuffer, tempBufferSize);
-    delete[] tempBuffer;
+    memcpy(newDataPtr, tempBuffer1.get(), tempBufferSize);
     /*-------------------------------CHUNK 1------------------------------------*/
 
     if (checksum_bootloader)
     {
         /* Calculate hash of top chunk and previous hash */
-        shaHash = new uint8_t[SHA3_LENGTH_BYTES];
-        Versalcrypto_hash(shaHash, newDataPtr, tempBufferSize + SHA3_LENGTH_BYTES, true);
+        shaHash = std::make_unique<uint8_t[]>(SHA3_LENGTH_BYTES);
+        Versalcrypto_hash(shaHash.get(), newDataPtr, tempBufferSize + SHA3_LENGTH_BYTES, true);
 
         /* Place the final hash at the start of PLM partition */
         newDataPtr -= SHA3_LENGTH_BYTES;
-        memcpy(newDataPtr, shaHash, SHA3_LENGTH_BYTES);
-        delete[] shaHash;
+        memcpy(newDataPtr, shaHash.get(), SHA3_LENGTH_BYTES);
     }
 
-    delete[] dataPtr;
-
-    delete[] section->Data;
-    section->Data = newDataPtr;
+    // unique_ptr handles deletion
+    section->Data = std::unique_ptr<uint8_t[]>(newDataPtr_owner.release());
     section->Length = newLength;
 
     LOG_TRACE("First Authentication Data Chunk Size 0x%X", firstChunkSize);
@@ -542,7 +538,7 @@ void VersalPartition::Build(BootImage& bi, Binary& cache)
         std::vector<uint32_t> sync_offsets;
 
         CdoSequence * cdo_seq;
-        cdo_seq = decode_cdo_binary(header->partition->section->Data, header->partition->section->Length);
+        cdo_seq = decode_cdo_binary(header->partition->section->Data.get(), header->partition->section->Length);
 
         /* Enable the search for sync points - only needs to be done for SSIT devices */
         search_for_sync_points();
@@ -562,6 +558,7 @@ void VersalPartition::Build(BootImage& bi, Binary& cache)
 
         free(syncpt_offsets);
         free(buffer);
+        cdocmd_delete_sequence(cdo_seq);  // Free CDO sequence memory
 
         if (num_of_sync_points != 0 && (bi.options.GetOutputFileNames().size())!=0)
         {
@@ -674,24 +671,23 @@ void VersalPartition::Build(BootImage& bi, Binary& cache)
                     else if (dataChunksCount == 1 && imageHeader.GetChecksumContext()->Type() != Checksum::None)
                     {
                         size_t newLength = section->Length + SHA3_LENGTH_BYTES;
-                        uint8_t* newDataPtr = new uint8_t[newLength];
+                        auto newDataPtr_owner = std::make_unique<uint8_t[]>(newLength);
+                        uint8_t* newDataPtr = newDataPtr_owner.get();
                         memset(newDataPtr, 0, newLength);
                         newDataPtr += SHA3_LENGTH_BYTES;
-                        memcpy(newDataPtr, section->Data, section->Length);
+                        memcpy(newDataPtr, section->Data.get(), section->Length);
 
                         /* Calculate hash */
-                        uint8_t* shaHash;
-                        shaHash = new uint8_t[SHA3_LENGTH_BYTES];
-                        Versalcrypto_hash(shaHash, newDataPtr, section->Length, true);
+                        auto shaHash = std::make_unique<uint8_t[]>(SHA3_LENGTH_BYTES);
+                        Versalcrypto_hash(shaHash.get(), newDataPtr, section->Length, true);
 
                         /* Place the final hash at the start of PLM partition */
                         newDataPtr -= SHA3_LENGTH_BYTES;
-                        memcpy(newDataPtr, shaHash, SHA3_LENGTH_BYTES);
+                        memcpy(newDataPtr, shaHash.get(), SHA3_LENGTH_BYTES);
                         header->imageHeader->SetTotalFsblFwSizeIh(header->imageHeader->GetTotalFsblFwSizeIh() + SHA3_LENGTH_BYTES);
 
-                        delete[] shaHash;
-                        delete[] section->Data;
-                        section->Data = newDataPtr;
+                        // unique_ptr handles deletion
+                        section->Data = std::unique_ptr<uint8_t[]>(newDataPtr_owner.release());
                         section->Length = newLength;
                     }
                 }
@@ -740,12 +736,11 @@ void VersalPartition::Build(BootImage& bi, Binary& cache)
             // create AC/checksum section and add it to the end of the list.
             if (header->checksumSection != NULL)
             {
-                cache.Sections.push_back(header->checksumSection);
+                cache.Sections.push_back(std::unique_ptr<Section>(header->checksumSection));
             }
-            AuthenticationCertificate* tempacs;
-            tempacs = new VersalAuthenticationCertificate(currentAuthCtx);
-            tempacs->Build(bi, cache, header->partition->section, imageHeader.IsBootloader(), false);
-            header->ac.push_back(tempacs);
+            auto tempacs = std::make_unique<VersalAuthenticationCertificate>(currentAuthCtx);
+            tempacs->Build(bi, cache, header->partition->GetSectionPtr(), imageHeader.IsBootloader(), false);
+            header->ac.push_back(tempacs.release());
             currentAuthCtx->AddAuthCertSizeToTotalFSBLSize(header);
         }
     }
@@ -797,10 +792,20 @@ void VersalPartition::Build(BootImage& bi, Binary& cache)
         }
     }
 
-    /* Push the section alloted into the Main section */
-    if (section != NULL)
+    /* Transfer ownership to cache */
+    // CRITICAL: For imported/prebuilt partitions, section is already in bi.headers
+    // and will be transferred to cache later. Don't add again to avoid double-ownership!
+    //
+    // For NEW partitions, section must be added to cache for output, even though
+    // this creates a memory leak when Partition object is destroyed (same as reference)
+    if (section != nullptr && header->partition->section == header->section)
     {
-        cache.Sections.push_back(section);
+        // Imported partition - skip (already in bi.headers, will go to cache later)
+    }
+    else if (section != nullptr)
+    {
+        // NEW partition - must push to cache for output (accepting memory leak)
+        cache.Sections.push_back(std::unique_ptr<Section>(section));
     }
 }
 

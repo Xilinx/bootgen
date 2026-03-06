@@ -192,7 +192,7 @@ public:
     void SetChecksum(void);
     void SetOptionalDataSize(void);
     void SetOptionalData(uint32_t*, uint32_t);
-    void SetUserOptionalData(std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t hashTableSize = 0);
+    void SetUserOptionalData(std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t hashTableSize = 0, uint32_t isCorePsm = 0);
     void SetXplmModulesData(BootImage& bi, uint32_t*, uint32_t);
 
     uint32_t GetImageHeaderTableVersion(void);
@@ -221,6 +221,7 @@ private:
     bool prebuilt;
     DpaCM::Type dpacm;
     PufHdLoc::Type pufHDLoc;
+    bool isCorePsmFwPresent;  /* Track if PSM firmware partition exists (versal only) */
 };
 
 /******************************************************************************/
@@ -233,6 +234,7 @@ public:
     VersalImageHeader(std::ifstream& ifs, VersalImageHeaderStructure* importedIH, bool isBootloader, uint32_t index);
     ~VersalImageHeader();
     
+    CdoSequence * Decompressing_File(const char * filename);
     void ImportElf(BootImage& bi);
     void Build(BootImage& bi, Binary& cache);
     void Link(BootImage &bi, PartitionHeader* partitionHeader, ImageHeader* nextImageheader);
@@ -260,9 +262,7 @@ public:
     void CreateSlrConfigPartition(BootImage& bi);
     void ParseCdos(BootImage& bi, std::vector<std::string> filelist, uint8_t**, size_t*, bool);
     void ParseSlaveSlrConfigCdos(BootImage & bi, std::vector<std::string> filelist, uint8_t **, size_t *, bool);
-    //post-processing
     bool PostProcessCdo(const uint8_t* cdo_data, Binary::Length_t cdo_size);
-    bool PostProcessCfi(const uint8_t* cdo_data, Binary::Length_t cdo_size);
 
     void SetPartitionHeaderOffset(uint32_t addr);
     void SetDataSectionCount(uint32_t cnt);
@@ -307,7 +307,7 @@ private:
     std::vector<SsitConfigSlrInfo*> configSlrsInfo;
     std::vector<SsitConfigSlrLog*> configSlrLog;
     VersalImageHeaderStructure *imageHeader;
-    VersalCdoHeader* cdoHeader;
+    std::unique_ptr<VersalCdoHeader> cdoHeader;
  
     uint64_t aie_array_base_address;
     Binary::Address_t coreBaseAddr;
@@ -317,7 +317,7 @@ private:
     Binary::Address_t eastBankBaseAddr;
 
 protected:
-    static std::list<CdoCommandDmaWrite*> cdoSections;
+    static std::list<std::unique_ptr<CdoCommandDmaWrite>> cdoSections;  // Smart pointers
     uint8_t num_of_slrs;
 };
 

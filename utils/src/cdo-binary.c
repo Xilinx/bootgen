@@ -23,9 +23,91 @@
 #include "cdo-binary.h"
 
 static uint32_t verbose;
-static uint32_t auto_align;
+static uint32_t auto_align = 1;
 static uint32_t add_offset;
 uint32_t id_code_binary;
+
+struct cdo_device {
+    const char* name;
+    uint32_t idcode;
+} binary_device_list[] = {
+    { "xcvm1402", 0x04C08093 },
+    { "xcvm1302", 0x04C09093 },
+    { "xcv20", 0x04C0F093 },
+    { "xcvp1052", 0x04C18093 },
+    { "xcvp1002", 0x04C1B093 },
+    { "xcvm2102", 0x04C1C093 },
+    { "xcvp1402", 0x04C20093 },
+    { "xcvp1102", 0x04C22093 },
+    { "xcvm2902", 0x04C23093 },
+    { "xcvm2302", 0x04C24093 },
+    { "xcvr1352", 0x04C90093 },
+    { "xcvr1302", 0x04C91093 },
+    { "xcvc1352", 0x04C93093 },
+    { "xcvr1402", 0x04C94093 },
+    { "xcvc1702", 0x04C98093 },
+    { "xcvm1502", 0x04C99093 },
+    { "xcve1752", 0x04C9A093 },
+    { "xcvc1502", 0x04C9B093 },
+    { "xcvr1702", 0x04CA0093 },
+    { "xcvr1502", 0x04CA2093 },
+    { "xcvr1602", 0x04CA3093 },
+    { "xcvr1802", 0x04CA5093 },
+    { "xcvc1802", 0x14CA9093 },
+    { "xcvm1802", 0x14CAA093 },
+    { "xcv65", 0x14CAF093 },
+    { "xcve2102", 0x04CC0093 },
+    { "xcve2002", 0x04CC1093 },
+    { "xcve2302", 0x14CC8093 },
+    { "xcve2202", 0x14CC9093 },
+    { "xcvm1102", 0x14CCA093 },
+    { "xcvc2802", 0x14CD0093 },
+    { "xcvc2602", 0x14CD1093 },
+    { "xcve2602", 0x14CD2093 },
+    { "xcve2802", 0x14CD3093 },
+    { "xcvm2202", 0x14CD4093 },
+    { "xcv70", 0x14CD7093 },
+    { "xcvp1202", 0x14D00093 },
+    { "xcvm2502", 0x14D01093 },
+    { "xcvp1502", 0x14D08093 },
+    { "xcvp1702", 0x14D10093 },
+    { "xcvp1802", 0x14D14093 },
+    { "xcvp2502", 0x14D1C093 },
+    { "xcvp2802", 0x14D20093 },
+    { "xcvh1582", 0x14D28093 },
+    { "xcvh1542", 0x14D29093 },
+    { "xcvh1522", 0x14D2A093 },
+    { "xcvh1782", 0x14D2C093 },
+    { "xcvh1742", 0x14D2D093 },
+    { "xcv80", 0x14D2F093 },
+    { "xcvp1552", 0x14D34093 },
+    { "xcvp1752", 0x14D38093 },
+    { "xcvn3716", 0x14D80093 },
+    { "xcvn3516", 0x14D81093 },
+    { "xcvn3408", 0x14D82093 },
+    { "xcvn3708", 0x14D83093 },
+    { "xcvc1902", 0x14CA8093 },
+    { NULL, 0 }
+};
+
+uint32_t idcode_from_binary(uint32_t id)
+{
+    if (id_code_binary != 0)
+    {
+        id = id_code_binary;
+        id_code_binary = 0;
+    }
+    return id;
+}
+
+static uint32_t find_binary_device(char * name) {
+    struct cdo_device * device = binary_device_list;
+    while (device->name != NULL) {
+        if (strncmp(device->name, name, sizeof(char*)) == 0) break;
+        device++;
+    }
+    return device->idcode;
+}
 
 #define u32xe(v) (be ? u32be(v) : u32le(v))
 #define u32xe_lo(v) u32xe((uint32_t)(v))
@@ -118,6 +200,8 @@ enum {
     CMD2_LIST_MASK_WRITE = 0x129U,
     CMD2_LIST_MASK_POLL  = 0x12AU,
     CMD2_CDO_SEQUENCE    = 0x12CU,
+    CMD2_REG_READ        = 0x12FU,
+    CMD2_FINISH_CDO_READ = 0x130U,
 
     /* PM Commands */
     CMD2_PM_GET_API_VERSION	= 0x201U,
@@ -211,69 +295,6 @@ enum {
     CMD2_END             = 0xffffffffU
 };
 
-struct cdo_device {
-    const char* name;
-    uint32_t idcode;
-} binary_device_list[] = {
-    { "xcvm1402", 0x04C08093 },
-    { "xcvm1302", 0x04C09093 },
-    { "xcv20", 0x04C0F093 },
-    { "xcvp1052", 0x04C18093 },
-    { "xcvp1002", 0x04C1B093 },
-    { "xcvm2102", 0x04C1C093 },
-    { "xcvp1402", 0x04C20093 },
-    { "xcvp1102", 0x04C22093 },
-    { "xcvm2902", 0x04C23093 },
-    { "xcvm2302", 0x04C24093 },
-    { "xcvr1352", 0x04C90093 },
-    { "xcvr1302", 0x04C91093 },
-    { "xcvc1352", 0x04C93093 },
-    { "xcvr1402", 0x04C94093 },
-    { "xcvc1702", 0x04C98093 },
-    { "xcvm1502", 0x04C99093 },
-    { "xcve1752", 0x04C9A093 },
-    { "xcvc1502", 0x04C9B093 },
-    { "xcvr1702", 0x04CA0093 },
-    { "xcvr1502", 0x04CA2093 },
-    { "xcvr1602", 0x04CA3093 },
-    { "xcvr1802", 0x04CA5093 },
-    { "xcvc1802", 0x14CA9093 },
-    { "xcvm1802", 0x14CAA093 },
-    { "xcv65", 0x14CAF093 },
-    { "xcve2102", 0x04CC0093 },
-    { "xcve2002", 0x04CC1093 },
-    { "xcve2302", 0x14CC8093 },
-    { "xcve2202", 0x14CC9093 },
-    { "xcvm1102", 0x14CCA093 },
-    { "xcvc2802", 0x14CD0093 },
-    { "xcvc2602", 0x14CD1093 },
-    { "xcve2602", 0x14CD2093 },
-    { "xcve2802", 0x14CD3093 },
-    { "xcvm2202", 0x14CD4093 },
-    { "xcv70", 0x14CD7093 },
-    { "xcvp1202", 0x14D00093 },
-    { "xcvm2502", 0x14D01093 },
-    { "xcvp1502", 0x14D08093 },
-    { "xcvp1702", 0x14D10093 },
-    { "xcvp1802", 0x14D14093 },
-    { "xcvp2502", 0x14D1C093 },
-    { "xcvp2802", 0x14D20093 },
-    { "xcvh1582", 0x14D28093 },
-    { "xcvh1542", 0x14D29093 },
-    { "xcvh1522", 0x14D2A093 },
-    { "xcvh1782", 0x14D2C093 },
-    { "xcvh1742", 0x14D2D093 },
-    { "xcv80", 0x14D2F093 },
-    { "xcvp1552", 0x14D34093 },
-    { "xcvp1752", 0x14D38093 },
-    { "xcvn3716", 0x14D80093 },
-    { "xcvn3516", 0x14D81093 },
-    { "xcvn3408", 0x14D82093 },
-    { "xcvn3708", 0x14D83093 },
-    { "xcvc1902", 0x14CA8093 },
-    { NULL, 0 }
-};
-
 void cdobinary_set_verbose(uint32_t level) {
     verbose = level;
 }
@@ -293,25 +314,6 @@ static void byte_swap_buffer(uint32_t * p, uint32_t count, uint32_t be) {
             p[i] = u32swap(p[i]);
         }
     }
-}
-
-uint32_t idcode_from_binary(uint32_t id)
-{
-    if (id_code_binary != 0)
-    {
-        id = id_code_binary;
-        id_code_binary = 0;
-    }
-    return id;
-}
-
-static uint32_t  find_device(char * name) {
-    struct cdo_device * device = binary_device_list;
-    while (device->name != NULL) {
-        if (strncmp(device->name, name, sizeof(char*)) == 0) break;
-        device++;
-    }
-    return device->idcode;
 }
 
 static uint32_t decode_v1(CdoSequence * seq, uint32_t * p, uint32_t l, uint32_t be) {
@@ -750,6 +752,16 @@ static uint32_t decode_v2_cmd(CdoSequence * seq, uint32_t * p, uint32_t * ip, ui
             cdocmd_add_set_ipi_access(seq, u32xe(p[i+0]), u32xe(p[i+1]));
             break;
 
+        case CMD2_REG_READ:
+            if (args < 2) goto unexpected;
+            cdocmd_add_reg_read(seq, u32xe(p[i+0]), args - 1, &p[i+1], be);
+            break;
+
+        case CMD2_FINISH_CDO_READ:
+            if (args != 0) goto unexpected;
+            cdocmd_add_finish_cdo_read(seq);
+            break;
+
         case CMD2_NPI_SEQ:
             if (seq->version >= CDO_VERSION_2_00) goto unexpected;
             if (args != 2) goto unexpected;
@@ -1128,7 +1140,7 @@ int check_cdo_commands(void* data, uint32_t l, uint32_t * xplm_data, uint32_t xp
         cmd_id = hdr & 0xff;
         module_id = (hdr & 0xff00) >> 0x8;
         // TODO: only PLM commands are supported for now
-        if (module_id == 0x1 && xplm_length != 0){
+        if (module_id == 0x1 && xplm_length != 0){ 
            cmd_found = 0;
            size_t cmdInfo_size = sizeof(XPlmi_CmdInfo);
            for (index = 0; index < (xplm_length/ cmdInfo_size); index++) {
@@ -1254,7 +1266,7 @@ CdoSequence * decode_cdo_binary(const void * data, size_t size) {
 
     seq = cdocmd_create_sequence();
     seq->version = version;
-    if (decode(seq, p, size/4, be) != 0) {
+    if (decode(seq, p, (uint32_t)(size/4), be) != 0) {
         cdocmd_delete_sequence(seq);
         return NULL;
     }
@@ -1858,7 +1870,7 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
             pos += cmd->count;
             break;
         case CdoCmdSetBoard: {
-            uint32_t len = strlen((char *)cmd->buf);
+            uint32_t len = (uint32_t)strlen((char *)cmd->buf);
             uint32_t count = (len + 3)/4;
             hdr2(&p, &pos, CMD2_SET_BOARD, count, be);
             memset(p + pos, 0, count*4);
@@ -1873,7 +1885,7 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
             p[pos++] = u32xe(cmd->value);
             break;
         case CdoCmdLogString: {
-            uint32_t len = strlen((char *)cmd->buf);
+            uint32_t len = (uint32_t)strlen((char *)cmd->buf);
             uint32_t count = (len + 3)/4;
             hdr2(&p, &pos, CMD2_LOG_STRING, count, be);
             memset(p + pos, 0, count*4);
@@ -1893,16 +1905,12 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
             }
             break;
         case CdoCmdMarker: {
-            uint32_t len = strlen((char *)cmd->buf);
-            uint32_t count = (len + 3)/4;
-            if (cmd->value == MARKER_DEVICE || cmd->value == MARKER_DATE)
+            if (cmd->value == 0x1 || cmd->value == 0x6)
             {
                 break;
             }
-            if (cmd->value == MARKER_PART)
-            {
-                id_code_binary = find_device((char*)cmd->buf);
-            }
+            uint32_t len = (uint32_t)strlen((char *)cmd->buf);
+            uint32_t count = (len + 3)/4;
             /* Search for the START markers with string "NOC Start up", only for SSIT devices */
             if (search_sync_points && (cmd->value == 0x64 || cmd->value == 0x65) && (strcmp((char*)cmd->buf, "NOC Startup") == 0)) {
                 /* Store the offset of each of the START and END marker with "NOC Start up" string */
@@ -2033,7 +2041,7 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
             break;
         }
         case CdoCmdBegin: {
-            uint32_t len = strlen((char *)cmd->buf);
+            uint32_t len = (uint32_t)strlen((char *)cmd->buf);
             uint32_t count = (len + 3)/4;
             LINK * blockend = find_block_end(l, lh);
             uint32_t payload_start;
@@ -2103,6 +2111,16 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
             hdr2(&p, &pos, CMD2_SET_IPI_ACCESS, 2, be);
             p[pos++] = u32xe(cmd->value);
             p[pos++] = u32xe(cmd->mask);
+            break;
+        case CdoCmdRegRead:
+            hdr2(&p, &pos, CMD2_REG_READ, 1 + cmd->count, be);
+            p[pos++] = u32xe(cmd->flags);
+            memcpy(p + pos, cmd->buf, cmd->count * sizeof(uint32_t));
+            byte_swap_buffer(p + pos, cmd->count, be);
+            pos += cmd->count;
+            break;
+        case CdoCmdFinishCdoRead:
+            hdr2(&p, &pos, CMD2_FINISH_CDO_READ, 0, be);
             break;
         case CdoCmdNpiSeq:
             if (version >= CDO_VERSION_2_00) goto npi_error;
@@ -2358,7 +2376,7 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
             pos += cmd->count;
             break;
         case CdoCmdPmAddNodeName: {
-            uint32_t len = strlen((char *)cmd->buf);
+            uint32_t len = (uint32_t)strlen((char *)cmd->buf);
             uint32_t count = (len + 3)/4;
             /* This should not be necessary, but its there for now to
              * avoid null termination issues in libpm. */

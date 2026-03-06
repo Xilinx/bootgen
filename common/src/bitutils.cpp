@@ -51,7 +51,7 @@
 /******************************************************************************/
 BitFile::BitFile(std::istream& stream0) 
     : is(stream0),
-      temp(NULL),
+      temp(nullptr),  // Smart pointer initialized to nullptr
       encryptType(Encryption::None)
 { 
 }
@@ -59,10 +59,7 @@ BitFile::BitFile(std::istream& stream0)
 /******************************************************************************/
 BitFile::~BitFile()
 {
-    if (temp) 
-    {
-        delete temp;
-    }
+    // Smart pointer automatically cleans up - no manual delete needed!
 }
 
 /******************************************************************************/
@@ -260,9 +257,9 @@ void BitFile::SetEncryptionType(Encryption::Type type)
 }
 
 /******************************************************************************/
-OutputStream* ZynqBitFile::GetOutputStreamType(void)
+std::unique_ptr<OutputStream> ZynqBitFile::GetOutputStreamType(void)
 {
-    return new OutputStream_LE();
+    return std::make_unique<OutputStream_LE>();
 }
 
 /******************************************************************************/
@@ -308,15 +305,15 @@ void ZynqBitFile::ComparePartsDataBase(const std::string& packageName)
 }
 
 /******************************************************************************/
-OutputStream* ZynqMpBitFile::GetOutputStreamType(void)
+std::unique_ptr<OutputStream> ZynqMpBitFile::GetOutputStreamType(void)
 {
     if(encryptType == Encryption::AES)
     {
-        return new OutputStream_BE();
+        return std::make_unique<OutputStream_BE>();
     }
     else
     {
-        return new OutputStream_LE();
+        return std::make_unique<OutputStream_LE>();
     }
 }
 

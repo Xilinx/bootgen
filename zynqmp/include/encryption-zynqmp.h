@@ -84,6 +84,6 @@ protected:
     void ChunkifyAndEncrypt(Options& options, const uint8_t *inBuf, uint32_t inLen, uint8_t* outBuf, uint32_t& outLen);
     void GenerateGreyKey();
     void ReadBhIv(uint8_t * bhIv);
-    AesGcmEncryptionContext* encryptionAlgorithm;
+    std::unique_ptr<AesGcmEncryptionContext> encryptionAlgorithm;
 };
 #endif

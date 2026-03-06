@@ -50,7 +50,7 @@ static void RearrangeEndianess(uint8_t *array, uint32_t size)
 /*******************************************************************************/
 void ZynqMpReadImage::VerifyAuthentication(bool verifyImageOption)
 {
-    ReadBinaryFile();
+    ReadHeaderTableDetails();
 
     if (iHT->headerAuthCertificateWordOffset != 0)
     {
@@ -78,18 +78,18 @@ bool ZynqMpReadImage::VerifySignature(bool nist, uint8_t * data, size_t dataLeng
 {
     /* Find SHA-384 hash from data */
     uint8_t hashLength = SHA3_LENGTH_BYTES;
-    uint8_t* shaHash = new uint8_t[hashLength];
+    auto shaHash = std::make_unique<uint8_t[]>(hashLength);
     if (nist)
     {
-        crypto_hash_NIST_SHA3(shaHash, data, dataLength);
+        crypto_hash_NIST_SHA3(shaHash.get(), data, dataLength);
     }
     else
     {
-        crypto_hash(shaHash, data, dataLength);
+        crypto_hash(shaHash.get(), data, dataLength);
     }
 
     LOG_TRACE("Hash from data");
-    LOG_DUMP_BYTES(shaHash, hashLength);
+    LOG_DUMP_BYTES(shaHash.get(), hashLength);
 
     rsa = RSA_new();
 
@@ -120,9 +120,9 @@ bool ZynqMpReadImage::VerifySignature(bool nist, uint8_t * data, size_t dataLeng
 #endif
 
     /* Find SHA-384 hash from signature */    
-    uint8_t* opensslHashPadded = new uint8_t[RSA_4096_KEY_LENGTH]; //chnage key length to signature length
+    auto opensslHashPadded = std::make_unique<uint8_t[]>(RSA_4096_KEY_LENGTH); //chnage key length to signature length
     
-    if (RSA_public_encrypt(RSA_4096_KEY_LENGTH, signature, (unsigned char*)opensslHashPadded, rsa, RSA_NO_PADDING) < 0)
+    if (RSA_public_encrypt(RSA_4096_KEY_LENGTH, signature, (unsigned char*)opensslHashPadded.get(), rsa, RSA_NO_PADDING) < 0)
     {
         LOG_ERROR("RSA_public_encrypt error");
     }
@@ -135,24 +135,20 @@ bool ZynqMpReadImage::VerifySignature(bool nist, uint8_t * data, size_t dataLeng
     RearrangeEndianess((uint8_t*)rsa->e->d, sizeof(uint32_t));
 #endif
 
-    uint8_t* opensslHash = new uint8_t[hashLength];
-    memcpy(opensslHash,opensslHashPadded + RSA_4096_KEY_LENGTH - hashLength, hashLength);
+    auto opensslHash = std::make_unique<uint8_t[]>(hashLength);
+    memcpy(opensslHash.get(),opensslHashPadded.get() + RSA_4096_KEY_LENGTH - hashLength, hashLength);
     LOG_TRACE("Hash from signature");
-    LOG_DUMP_BYTES(opensslHash, hashLength);
+    LOG_DUMP_BYTES(opensslHash.get(), hashLength);
     
     /* compare openssl Hash with calculated shaHash */
-    if (memcmp(shaHash, opensslHash, hashLength) == 0)
+    if (memcmp(shaHash.get(), opensslHash.get(), hashLength) == 0)
     {
-        delete[] shaHash;
-        delete[] opensslHash;
-        delete[] opensslHashPadded;
+        // Cleanup handled by unique_ptr
         return true;
     }
     else
     {
-        delete[] shaHash;
-        delete[] opensslHash;
-        delete[] opensslHashPadded;
+        // Cleanup handled by unique_ptr
         return false;
     }    
 }
@@ -179,13 +175,13 @@ void ZynqMpReadImage::VerifyHeaderTableSignature()
     {
         headersSize = (pHT->partitionWordOffset * 4) - bH->imageHeaderByteOffset - RSA_4096_KEY_LENGTH;
     }
-    uint8_t* tempBuffer = new uint8_t[headersSize];
-    memset(tempBuffer, 0, headersSize);
+    auto tempBuffer = std::make_unique<uint8_t[]>(headersSize);
+    memset(tempBuffer.get(), 0, headersSize);
     offset = bH->imageHeaderByteOffset;
 
     if (!(fseek(binFile, offset, SEEK_SET)))
     {
-        result = fread(tempBuffer, 1, headersSize, binFile);
+        result = fread(tempBuffer.get(), 1, headersSize, binFile);
         if (result != headersSize)
         {
             LOG_ERROR("Error reading signature");
@@ -196,7 +192,7 @@ void ZynqMpReadImage::VerifyHeaderTableSignature()
         LOG_ERROR("Error parsing Headers from BootImage file %s", binFilename.c_str());
     }
 
-    bool signatureVerified = VerifySignature(true, tempBuffer, headersSize, &auth_cert->acSpk, (unsigned char*)(&auth_cert->acPartitionSignature));
+    bool signatureVerified = VerifySignature(true, tempBuffer.get(), headersSize, &auth_cert->acSpk, (unsigned char*)(&auth_cert->acPartitionSignature));
     if (signatureVerified)
     {
         LOG_MSG("    Header Signature Verified");
@@ -209,7 +205,7 @@ void ZynqMpReadImage::VerifyHeaderTableSignature()
     }
 
     fclose(binFile);
-    delete[] tempBuffer;
+    // Cleanup handled by unique_ptr
 }
 
 /*******************************************************************************/
@@ -226,16 +222,16 @@ void ZynqMpReadImage::VerifySPKSignature(AuthCertificate4096Structure* auth_cert
     
     // Hash of SPK - AH + SPK ID + SPK FULL + Padding
     size = sizeof(auth_cert->acHeader) + sizeof(auth_cert->spkId) + sizeof(key.N) + sizeof(key.N_extension) + sizeof(key.E) + sizeof(key.Padding);
-    uint8_t* tempBuffer = new uint8_t[size];
+    auto tempBuffer = std::make_unique<uint8_t[]>(size);
     
-    WriteLittleEndian32(tempBuffer, auth_cert->acHeader);
-    WriteLittleEndian32(tempBuffer + sizeof(auth_cert->acHeader), auth_cert->spkId);
-    memcpy(tempBuffer + sizeof(auth_cert->acHeader) + sizeof(auth_cert->spkId), auth_cert->acSpk.N, sizeof(key.N));
-    memcpy(tempBuffer + sizeof(auth_cert->acHeader) + sizeof(auth_cert->spkId) + sizeof(key.N), auth_cert->acSpk.N_extension, sizeof(key.N_extension));
-    memcpy(tempBuffer + sizeof(auth_cert->acHeader) + sizeof(auth_cert->spkId) + sizeof(key.N) + sizeof(key.N_extension), auth_cert->acSpk.E, sizeof(key.E));
-    memcpy(tempBuffer + sizeof(auth_cert->acHeader) + sizeof(auth_cert->spkId) + sizeof(key.N) + sizeof(key.N_extension) + sizeof(key.E), auth_cert->acSpk.Padding, sizeof(key.Padding));
+    WriteLittleEndian32(tempBuffer.get(), auth_cert->acHeader);
+    WriteLittleEndian32(tempBuffer.get() + sizeof(auth_cert->acHeader), auth_cert->spkId);
+    memcpy(tempBuffer.get() + sizeof(auth_cert->acHeader) + sizeof(auth_cert->spkId), auth_cert->acSpk.N, sizeof(key.N));
+    memcpy(tempBuffer.get() + sizeof(auth_cert->acHeader) + sizeof(auth_cert->spkId) + sizeof(key.N), auth_cert->acSpk.N_extension, sizeof(key.N_extension));
+    memcpy(tempBuffer.get() + sizeof(auth_cert->acHeader) + sizeof(auth_cert->spkId) + sizeof(key.N) + sizeof(key.N_extension), auth_cert->acSpk.E, sizeof(key.E));
+    memcpy(tempBuffer.get() + sizeof(auth_cert->acHeader) + sizeof(auth_cert->spkId) + sizeof(key.N) + sizeof(key.N_extension) + sizeof(key.E), auth_cert->acSpk.Padding, sizeof(key.Padding));
      
-    bool signatureVerified = VerifySignature(nist, tempBuffer, size, &auth_cert->acPpk, (unsigned char*)(&auth_cert->acSpkSignature));
+    bool signatureVerified = VerifySignature(nist, tempBuffer.get(), size, &auth_cert->acPpk, (unsigned char*)(&auth_cert->acSpkSignature));
     if (signatureVerified)
     {
         LOG_MSG("    SPK Signature Verified");
@@ -246,7 +242,7 @@ void ZynqMpReadImage::VerifySPKSignature(AuthCertificate4096Structure* auth_cert
         authenticationVerified = false;
         LOG_ERROR("Authentication verification failed on bootimage %s", binFilename.c_str());
     }
-    delete[] tempBuffer;
+    // Cleanup handled by unique_ptr
 }
 
 
@@ -283,14 +279,14 @@ void ZynqMpReadImage::VerifyPartitionSignature(void)
                     bHLength += PUF_DATA_LENGTH;
                 }
 
-                uint8_t* tempBHBuffer = new uint8_t[bHLength];
-                size_t result = fread(tempBHBuffer, 1, bHLength, binFile);
+                auto tempBHBuffer = std::make_unique<uint8_t[]>(bHLength);
+                size_t result = fread(tempBHBuffer.get(), 1, bHLength, binFile);
                 if (result != bHLength)
                 {
                     LOG_ERROR("Error reading boot header while verifying ");
                 }
 
-                bool signatureVerified = VerifySignature(false, tempBHBuffer, bHLength, &auth_cert->acSpk, (unsigned char*)(&auth_cert->acBhSignature));
+                bool signatureVerified = VerifySignature(false, tempBHBuffer.get(), bHLength, &auth_cert->acSpk, (unsigned char*)(&auth_cert->acBhSignature));
                 if (signatureVerified)
                 {
                     LOG_MSG("    BootHeader Signature Verified");
@@ -301,7 +297,7 @@ void ZynqMpReadImage::VerifyPartitionSignature(void)
                     authenticationVerified = false;
                     LOG_ERROR("Authentication verification failed on bootimage %s", binFilename.c_str());
                 }
-                delete[] tempBHBuffer;
+                // tempBHBuffer is now unique_ptr, automatically deleted
             }
 
             /* Verifying Partition SPK Signature */
@@ -315,13 +311,13 @@ void ZynqMpReadImage::VerifyPartitionSignature(void)
                 bufferLength = ((*partitionHdr)->totalPartitionLength * 4);
             }
 
-            uint8_t* tempBuffer = new uint8_t[bufferLength];
-            memset(tempBuffer, 0, bufferLength);
+            auto tempBuffer = std::make_unique<uint8_t[]>(bufferLength);
+            memset(tempBuffer.get(), 0, bufferLength);
 
             offset = (*partitionHdr)->partitionWordOffset * 4;
             if (!(fseek(binFile, offset, SEEK_SET)))
             {
-                result = fread(tempBuffer, 1, bufferLength, binFile);
+                result = fread(tempBuffer.get(), 1, bufferLength, binFile);
                 if (result != bufferLength)
                 {
                     LOG_ERROR("Error reading partition for hash calculation");
@@ -348,22 +344,22 @@ void ZynqMpReadImage::VerifyPartitionSignature(void)
                         authCertificate++;
                     }
                     AuthCertificate4096Structure* cert = (AuthCertificate4096Structure*)(*authCertificate);
-                    uint8_t* buffer = new uint8_t[ blockSize + sizeof(AuthCertificate4096Structure) - RSA_4096_KEY_LENGTH];
-                    memcpy(buffer, tempBuffer + BITSTREAM_AUTH_CHUNK_SIZE * i, blockSize);
-                    memcpy(buffer + blockSize, cert, (sizeof(AuthCertificate4096Structure) - RSA_4096_KEY_LENGTH));
-                    signatureVerified = VerifySignature(!isItBootloader, buffer, blockSize + (sizeof(AuthCertificate4096Structure) - RSA_4096_KEY_LENGTH), &auth_cert->acSpk, (unsigned char*)(&cert->acPartitionSignature));             
+                    auto buffer = std::make_unique<uint8_t[]>(blockSize + sizeof(AuthCertificate4096Structure) - RSA_4096_KEY_LENGTH);
+                    memcpy(buffer.get(), tempBuffer.get() + BITSTREAM_AUTH_CHUNK_SIZE * i, blockSize);
+                    memcpy(buffer.get() + blockSize, cert, (sizeof(AuthCertificate4096Structure) - RSA_4096_KEY_LENGTH));
+                    signatureVerified = VerifySignature(!isItBootloader, buffer.get(), blockSize + (sizeof(AuthCertificate4096Structure) - RSA_4096_KEY_LENGTH), &auth_cert->acSpk, (unsigned char*)(&cert->acPartitionSignature));             
                     if(!signatureVerified)
                     {
                         LOG_MSG("    Partition Signature Verification Failed");
                         authenticationVerified = false;
                         LOG_ERROR("Authentication verification failed on bootimage %s", binFilename.c_str());
                     }
-                    delete[] buffer;
+                    // Cleanup handled by unique_ptr
                 }
             }
             else
             {
-                signatureVerified = VerifySignature(!isItBootloader, tempBuffer, bufferLength, &auth_cert->acSpk, (unsigned char*)(&auth_cert->acPartitionSignature));
+                signatureVerified = VerifySignature(!isItBootloader, tempBuffer.get(), bufferLength, &auth_cert->acSpk, (unsigned char*)(&auth_cert->acPartitionSignature));
             }
             if (signatureVerified)
             {
@@ -375,7 +371,7 @@ void ZynqMpReadImage::VerifyPartitionSignature(void)
                 authenticationVerified = false;
                 LOG_ERROR("Authentication verification failed on bootimage %s", binFilename.c_str());
             }
-            delete[] tempBuffer;
+            // Cleanup handled by unique_ptr
         }
         else
         {

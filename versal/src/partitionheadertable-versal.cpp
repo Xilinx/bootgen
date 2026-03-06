@@ -19,6 +19,7 @@
 ************************************************* H E A D E R   F I L E S   ***
 -------------------------------------------------------------------------------
 */
+#include <memory>
 #include "partitionheadertable-versal.h"
 #include "bootheader-versal.h"
 #include "authentication-versal.h"
@@ -108,10 +109,11 @@ VersalPartitionHeader::VersalPartitionHeader(ImageHeader* imageheader, int index
     {
         name = "PartitionHeader Null";
     }
-    section = new Section(name, sizeof(VersalPartitionHeaderTableStructure));
-    memset(section->Data, 0, section->Length);
+    auto temp_section = std::make_unique<Section>(name, sizeof(VersalPartitionHeaderTableStructure));
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    memset(section->Data.get(), 0, section->Length);
 
-    pHTable = (VersalPartitionHeaderTableStructure*)section->Data;
+    pHTable = (VersalPartitionHeaderTableStructure*)section->Data.get();
     pHTable->partitionRevokeId = imageHeader->GetPartitionRevocationId();
 }
 
@@ -120,7 +122,6 @@ VersalPartitionHeader::~VersalPartitionHeader()
 {
     if (section != NULL)
     {
-        delete section;
     }
 }
 
@@ -174,7 +175,9 @@ void VersalPartitionHeader::ReadData(std::ifstream& ifs)
 {
     uint32_t dataLen = GetTotalPartitionLength();
     std::string partName = imageHeader->GetName() + "_" + std::to_string(partitionUid) + StringUtils::Format(".%d", index);
-    Section* dsection = new Section(partName, dataLen);
+    // BUGFIX: Use separate variable for data section - don't overwrite header section pointer!
+    auto temp_dsection = std::make_unique<Section>(partName, dataLen);
+    Section* dsection = temp_dsection.release();  // Transfer ownership to raw pointer member
     if (presigned)
     {
         ifs.seekg(GetAuthCertificateOffset());
@@ -183,16 +186,16 @@ void VersalPartitionHeader::ReadData(std::ifstream& ifs)
     {
         ifs.seekg(GetPartitionWordOffset());
     }
-    ifs.read((char*)dsection->Data, dsection->Length);
+    ifs.read((char*)dsection->Data.get(), dsection->Length);
     dsection->isPartitionData = true;
-    partition = new VersalPartition(this, dsection);
+    partition = std::make_unique<VersalPartition>(this, dsection);
 
     static uint8_t encryptionHeader[] =
     {
         0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xBB,0x00,0x00,0x00,
         0x44,0x00,0x22,0x11,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x66,0x55,0x99,0xAA
     };
-    preencrypted = (memcmp(dsection->Data, encryptionHeader, sizeof(encryptionHeader)) == 0);
+    preencrypted = (memcmp(dsection->Data.get(), encryptionHeader, sizeof(encryptionHeader)) == 0);
 }
 
 /******************************************************************************/
@@ -240,7 +243,7 @@ void VersalPartitionHeader::Link(BootImage &bi, PartitionHeader* next_part_hdr)
     SetPartitionId();
     if (!preencrypted)
     {
-        SetPartitionSecureHdrIv(partitionSecHdrIv);
+        SetPartitionSecureHdrIv(partitionSecHdrIv.get());
         SetPartitionKeySrc(partitionKeySrc, bi.bifOptions);
         SetPartitionGreyOrBlackIv(kekIvFile);
     }
@@ -425,13 +428,13 @@ void VersalPartitionHeader::SetPartitionKeySrc(KeySource::Type keyType, BifOptio
 /******************************************************************************/
 void VersalPartitionHeader::SetPartitionGreyOrBlackIv(std::string ivFile)
 {
-    uint8_t* ivData = new uint8_t[IV_LENGTH * 4];
-    memset(ivData, 0, IV_LENGTH * 4);
+    auto ivData = std::make_unique<uint8_t[]>(IV_LENGTH * 4);
+    memset(ivData.get(), 0, IV_LENGTH * 4);
 
     if (ivFile != "")
     {
         FileImport fileReader;
-        if (!fileReader.LoadHexData(ivFile, ivData, IV_LENGTH * 4))
+        if (!fileReader.LoadHexData(ivFile, ivData.get(), IV_LENGTH * 4))
         {
             LOG_ERROR("Invalid no. of data bytes for Black/Grey Key IV.\n           Expected length for Grey/Black IV is 12 bytes");
         }
@@ -444,8 +447,7 @@ void VersalPartitionHeader::SetPartitionGreyOrBlackIv(std::string ivFile)
         }
     }
 
-    memcpy(&pHTable->partitionGreyOrBlackIV, ivData, IV_LENGTH * 4);
-    delete[] ivData;
+    memcpy(&pHTable->partitionGreyOrBlackIV, ivData.get(), IV_LENGTH * 4);
 }
 
 
@@ -716,13 +718,13 @@ void VersalPartitionHeader::SetAuthCertificateOffset(void)
     {
         /* If the image is not yet signed, partition addr + partition length - cert size */
         AuthenticationContext::SetAuthenticationKeyLength(RSA_4096_KEY_LENGTH);
-        AuthenticationContext* auth = (VersalAuthenticationContext*)new VersalAuthenticationContext(Authentication::RSA);
+        auto auth = std::make_unique<VersalAuthenticationContext>(Authentication::RSA);
         pHTable->authCertificateOffset = (uint32_t)((partition->section->Address + partition->section->Length - auth->GetCertificateSize()) / sizeof(uint32_t));
     }
     else if (imageHeader->GetAuthenticationType() == Authentication::ECDSA)
     {
         AuthenticationContext::SetAuthenticationKeyLength(EC_P384_KEY_LENGTH);
-        AuthenticationContext* auth = (VersalAuthenticationContext*)new VersalAuthenticationContext(Authentication::ECDSA);
+        auto auth = std::make_unique<VersalAuthenticationContext>(Authentication::ECDSA);
         pHTable->authCertificateOffset = (uint32_t)((partition->section->Address + partition->section->Length - auth->GetCertificateSize()) / sizeof(uint32_t));
     }
     else
@@ -765,7 +767,7 @@ void VersalPartitionHeader::SetChecksum(void)
 /******************************************************************************/
 void VersalPartitionHeader::RealignSectionDataPtr(void)
 {
-    pHTable = (VersalPartitionHeaderTableStructure*)section->Data;
+    pHTable = (VersalPartitionHeaderTableStructure*)section->Data.get();
 }
 
 /******************************************************************************/
@@ -1044,7 +1046,7 @@ void VersalPartitionHeaderTable::Build(BootImage & bi, Binary & cache)
     {
         LOG_INFO("Creating Header Authentication Certificate");
         ConfigureMetaHdrAuthenticationContext(bi);
-        bi.headerAC = new VersalAuthenticationCertificate(bi.metaHdrAuthCtx);
+        bi.headerAC = std::make_unique<VersalAuthenticationCertificate>(bi.metaHdrAuthCtx.get());
         bi.headerAC->Build(bi, cache, bi.imageHeaderTable->section, false, true);
     }
 
@@ -1198,22 +1200,25 @@ void VersalPartitionHeaderTable::Build(BootImage & bi, Binary & cache)
 
         totalencrBlocks = bi.options.bifOptions->metaHdrAttributes.encrBlocks.size();
         uint32_t totalBlocksOverhead = (totalencrBlocks + 1) * 64;
-        bi.encryptedHeaders = new Section("EncryptedMetaHeader", bi.imageHeaderTable->metaHeaderLength + totalBlocksOverhead);
-        cache.Sections.push_back(bi.encryptedHeaders);
+        auto encHdr = std::make_unique<Section>("EncryptedMetaHeader", bi.imageHeaderTable->metaHeaderLength + totalBlocksOverhead);
+        bi.encryptedHeaders = encHdr.get();  // Store raw pointer for later use
+        cache.Sections.push_back(std::move(encHdr));  // Cache owns it
     }
     else
     {
+        // Transfer bi.headers sections to cache ownership
         for (std::list<Section*>::iterator itr = bi.headers.begin(); itr != bi.headers.end(); itr++)
         {
-            cache.Sections.push_back(*itr);
+            cache.Sections.push_back(std::unique_ptr<Section>(*itr));
         }
+        bi.headers.clear();  // Cache now owns them
     }
 }
 
 /******************************************************************************/
 void VersalPartitionHeaderTable::ConfigureMetaHdrAuthenticationContext(BootImage & bi)
 {
-    AuthenticationContext* biAuth = NULL;
+    std::unique_ptr<AuthenticationContext> biAuth = nullptr;
     for (std::list<ImageHeader*>::iterator image = bi.imageList.begin(); image != bi.imageList.end(); image++)
     {
         if (((*image)->IsBootloader()) && ((*image)->GetAuthenticationType() == Authentication::None))
@@ -1222,7 +1227,7 @@ void VersalPartitionHeaderTable::ConfigureMetaHdrAuthenticationContext(BootImage
         }
     }
 
-    biAuth = (AuthenticationContext*) new VersalAuthenticationContext(bi.options.bifOptions->metaHdrAttributes.authenticate);
+    biAuth = std::make_unique<VersalAuthenticationContext>(bi.options.bifOptions->metaHdrAttributes.authenticate);
     biAuth->hashType = bi.GetAuthHashAlgo();
 
     if (bi.bifOptions->metaHdrAttributes.ppk != "")
@@ -1278,19 +1283,20 @@ void VersalPartitionHeaderTable::ConfigureMetaHdrAuthenticationContext(BootImage
         AuthenticationContext::SetAuthenticationKeyLength(EC_P384_KEY_LENGTH);
     }
 
-    ImageHeaderTable* iht = bi.imageHeaderTable;
-    biAuth->ResizeIfNecessary(iht->section);
+    ImageHeaderTable* iht = bi.imageHeaderTable.get();
+    biAuth->ResizeIfNecessary(iht->GetSectionPtr());  // Use saved pointer after move
+    iht->RealignSectionDataPtr();  // CRITICAL: Refresh pointer after reallocation!
     for (std::list<ImageHeader*>::iterator ih = bi.imageList.begin(); ih != bi.imageList.end(); ih++)
     {
-        biAuth->ResizeIfNecessary((*ih)->section);
+        biAuth->ResizeIfNecessary((*ih)->GetSectionPtr());  // Use saved pointer
     }
     for (std::list<PartitionHeader*>::iterator partHdr = bi.partitionHeaderList.begin(); partHdr != bi.partitionHeaderList.end(); partHdr++)
     {
-        biAuth->ResizeIfNecessary((*partHdr)->section);
+        biAuth->ResizeIfNecessary((*partHdr)->GetSectionPtr());  // Use saved pointer
     }
 
     /* Header table authentication */
-    bi.metaHdrAuthCtx = (AuthenticationContext*)new VersalAuthenticationContext(biAuth, bi.bifOptions->metaHdrAttributes.authenticate);
+    bi.metaHdrAuthCtx = std::make_unique<VersalAuthenticationContext>(biAuth.get(), bi.bifOptions->metaHdrAttributes.authenticate);
     
     if (bi.bifOptions->metaHdrAttributes.presign != "")
     {
@@ -1342,7 +1348,7 @@ void VersalPartitionHeaderTable::UpdateAtfHandoffParams(BootImage & bi)
     {
         if ((*partHdr)->update_atf_handoff_params)
         {
-            memcpy((*partHdr)->partition->section->Data + (*partHdr)->atf_handoff_params_offset, &atf_handoff_params, sizeof(atf_handoff_params_struct));
+            memcpy((*partHdr)->partition->section->Data.get() + (*partHdr)->atf_handoff_params_offset, &atf_handoff_params, sizeof(atf_handoff_params_struct));
         }
     }
 }

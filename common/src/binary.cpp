@@ -39,10 +39,7 @@
 /******************************************************************************/
 Binary::~Binary()
 {
-    for(SectionList::iterator i=Sections.begin(); i!=Sections.end(); i++) 
-    {
-           delete *i;
-    }
+    // unique_ptr automatically deletes all sections - RAII cleanup
     Sections.clear();
 }
 
@@ -55,7 +52,7 @@ void Binary::StackAndAlign(Options& options)
 
     for (SectionList::iterator i = Sections.begin(); i != Sections.end(); i++)
     {
-        Section& sec(**i);
+        Section& sec(*(*i));
 
         if (!sec.continuation)
         {
@@ -137,8 +134,8 @@ Section::Section(const std::string& name, Binary::Length_t length)
     , partitionNum(0xFF)
 {
     std::string logmsg;
-    Data = new uint8_t[length];
-    if (Data == 0) 
+    Data = std::make_unique<uint8_t[]>(length);
+    if (Data.get() == 0) 
     {
         LOG_ERROR("Memory allocation error, size = %d" , length);
     }
@@ -147,7 +144,7 @@ Section::Section(const std::string& name, Binary::Length_t length)
 /******************************************************************************/
 Section::~Section() 
 {
-    delete[] Data;
+    // unique_ptr handles deletion automatically
 }
 
 /******************************************************************************/
@@ -160,19 +157,19 @@ void Section::PadToWordAlignment(uint32_t headPad, uint32_t tailPad)
 
     /* The aligned byte size will be anywhere from 0 to 6 bytes longer than the original section data. */
     Binary::Length_t newLength = Length + headPad + tailPad;
-    uint8_t* newData = new uint8_t[newLength];
+    auto newData = std::make_unique<uint8_t[]>(newLength);
     
     /* Pad the head */
-    memset(newData, 0, headPad);
+    memset(newData.get(), 0, headPad);
 
     /* Move the bulk */
-    memmove(newData + headPad, Data, Length );
+    memmove(newData.get() + headPad, Data.get(), Length );
 
     /* Pad the tail */
-    memset(newData + Length + headPad, 0, tailPad); 
+    memset(newData.get() + Length + headPad, 0, tailPad); 
     
-    delete[] Data;
-    Data = newData;
+    // unique_ptr handles deletion
+    Data = std::unique_ptr<uint8_t[]>(newData.release());
     Length = newLength;
 }
 
@@ -184,12 +181,12 @@ void Section::IncreaseLengthAndPadTo(Binary::Length_t newLength, uint8_t padding
         LOG_DEBUG(DEBUG_STAMP, "Resize length is less than original length");
         LOG_ERROR("Section resize issue for authentication");
     }
-    uint8_t* newDataPtr = new uint8_t[newLength];
-    memcpy(newDataPtr, Data, Length);
-    memset(newDataPtr+Length, padding, newLength - Length);
+    auto newDataPtr = std::make_unique<uint8_t[]>(newLength);
+    memcpy(newDataPtr.get(), Data.get(), Length);
+    memset(newDataPtr.get()+Length, padding, newLength - Length);
 
-    delete[] Data;
-    Data = newDataPtr;
+    // unique_ptr handles deletion
+    Data = std::unique_ptr<uint8_t[]>(newDataPtr.release());
     Length = newLength;
 }
 
@@ -214,13 +211,13 @@ void Section::IncreaseLengthAndPadSHA3(Binary::Length_t newLength)
         LOG_ERROR("Section resize issue for authentication");
     }
 
-    uint8_t* newDataPtr = new uint8_t[newLength];
-    memset(newDataPtr, 0, newLength);
-    memcpy(newDataPtr, Data, Length);
-    newDataPtr[Length] = 0x6;
-    newDataPtr[newLength - 1] |= 0x80;
+    auto newDataPtr = std::make_unique<uint8_t[]>(newLength);
+    memset(newDataPtr.get(), 0, newLength);
+    memcpy(newDataPtr.get(), Data.get(), Length);
+    newDataPtr.get()[Length] = 0x6;
+    newDataPtr.get()[newLength - 1] |= 0x80;
 
-    delete[] Data;
-    Data = newDataPtr;
+    // unique_ptr handles deletion
+    Data = std::unique_ptr<uint8_t[]>(newDataPtr.release());
     Length = newLength;
 }

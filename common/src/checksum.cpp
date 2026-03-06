@@ -43,10 +43,11 @@
 /******************************************************************************/
 Section* MD5ChecksumContext::Build(Binary& cache, const uint8_t* data, const Binary::Length_t length) 
 {
-    Section* section = new Section("md5checksum", Size());
+    auto section_ptr = std::make_unique<Section>("md5checksum", Size());
+    Section* section = section_ptr.get();
     if(section != NULL)
     {
-        cache.Sections.push_back(section);
+        cache.Sections.push_back(std::move(section_ptr));
     }
     return section;
 }
@@ -55,27 +56,27 @@ Section* MD5ChecksumContext::Build(Binary& cache, const uint8_t* data, const Bin
 void MD5ChecksumContext::Link(bool bootloader, const uint8_t* data, const Binary::Length_t length, Section* section) 
 {
     uint32_t size = Size();
-    uint8_t* cksum_data = new uint8_t [size];
-    MD5( data, length, cksum_data);
+    auto cksum_data = std::make_unique<uint8_t[]>(size);
+    MD5( data, length, cksum_data.get());
 
     if(bootloader)
     {
-        memcpy(section->Data + length, cksum_data, size);    
+        memcpy(section->Data.get() + length, cksum_data.get(), size);    
     }
     else
     {
-        memcpy(section->Data, cksum_data, size);
+        memcpy(section->Data.get(), cksum_data.get(), size);
     }
-    delete [] cksum_data;
 }
 
 /******************************************************************************/
 Section* SHA2ChecksumContext::Build(Binary& cache, const uint8_t* data, const Binary::Length_t length) 
 {
-    Section* section = new Section("sha2checksum", Size());
+    auto section_ptr = std::make_unique<Section>("sha2checksum", Size());
+    Section* section = section_ptr.get();
     if(section != NULL)
     {
-        cache.Sections.push_back(section);
+        cache.Sections.push_back(std::move(section_ptr));
     }
     return section;
 }
@@ -84,27 +85,27 @@ Section* SHA2ChecksumContext::Build(Binary& cache, const uint8_t* data, const Bi
 void SHA2ChecksumContext::Link(bool bootloader, const uint8_t* data, const Binary::Length_t length, Section* section) 
 {
     uint32_t size = Size();
-    uint8_t* cksum_data = new uint8_t [size];
-    SHA256(data, length, cksum_data);
+    auto cksum_data = std::make_unique<uint8_t[]>(size);
+    SHA256(data, length, cksum_data.get());
 
     if(bootloader)
     {
-        memcpy(section->Data + length, cksum_data, size);    
+        memcpy(section->Data.get() + length, cksum_data.get(), size);    
     }
     else
     {
-        memcpy(section->Data, cksum_data, size);
+        memcpy(section->Data.get(), cksum_data.get(), size);
     }
-    delete [] cksum_data;
 }
 
 /******************************************************************************/
 Section* SHA3ChecksumContext::Build(Binary& cache, const uint8_t* data, const Binary::Length_t length) 
 {
-    Section* section = new Section("sha3checksum", Size());
+    auto section_ptr = std::make_unique<Section>("sha3checksum", Size());
+    Section* section = section_ptr.get();
     if(section != NULL)
     {
-        cache.Sections.push_back(section);
+        cache.Sections.push_back(std::move(section_ptr));
     }
     return section;
 }
@@ -113,39 +114,38 @@ Section* SHA3ChecksumContext::Build(Binary& cache, const uint8_t* data, const Bi
 void SHA3ChecksumContext::Link(bool bootloader, const uint8_t* data, const Binary::Length_t length, Section* section) 
 {
     uint32_t size = Size();
-    uint8_t* cksum_data = new uint8_t [size];
+    auto cksum_data = std::make_unique<uint8_t[]>(size);
     if(bootloader)
     {
-        crypto_hash(cksum_data, data, length);
-        memcpy(section->Data + length, cksum_data, size);    
+        crypto_hash(cksum_data.get(), data, length);
+        memcpy(section->Data.get() + length, cksum_data.get(), size);    
     }
     else
     {
-        crypto_hash_NIST_SHA3(cksum_data, data, length);
-        memcpy(section->Data, cksum_data, size);
+        crypto_hash_NIST_SHA3(cksum_data.get(), data, length);
+        memcpy(section->Data.get(), cksum_data.get(), size);
     }
-    delete [] cksum_data;
 }
 
 /******************************************************************************/
 void ChecksumTable::Build(BootImage& bi, Binary& cache) 
 {
-    for(std::list<ImageHeader*>::iterator i = bi.imageList.begin(); i!= bi.imageList.end(); i++)
+    for(std::list<ImageHeader*>::iterator i = bi.imageList.begin(); i!= bi.imageList.end(); i++) 
     {
-        ImageHeader hdr(**i);
-        std::list<PartitionHeader*> pHList = hdr.GetPartitionHeaderList();
+        ImageHeader* hdr = *i;
+        std::list<PartitionHeader*> pHList = hdr->GetPartitionHeaderList();
         for(std::list<PartitionHeader*>::iterator j = pHList.begin(); j != pHList.end(); j++)
         {
             PartitionHeader& partHdr(**j);
             if(partHdr.IsBootloader())
             {
                 /* For FSBL, checksum should be like Bootimage Integrity, the checksum should be attached right at the end of the FSBL */
-                partHdr.partition->section->IncreaseLengthAndPadTo(partHdr.partition->section->Length + hdr.GetChecksumContext()->Size(), 0);
+                partHdr.partition->section->IncreaseLengthAndPadTo(partHdr.partition->section->Length + hdr->GetChecksumContext()->Size(), 0);
             }
             else 
             {
                 /* For other partitions, a new checksum section is created and added at the end of image. */
-                Section* s = hdr.GetChecksumContext()->Build(cache, partHdr.partition->section->Data, partHdr.partition->section->Length);
+                Section* s = hdr->GetChecksumContext()->Build(cache, partHdr.partition->section->Data.get(), partHdr.partition->section->Length);
                 partHdr.checksumSection = s;
             }
         }
@@ -157,15 +157,14 @@ void ChecksumTable::Link(BootImage& bi)
 {
     for(std::list<ImageHeader*>::iterator i = bi.imageList.begin(); i!= bi.imageList.end(); i++) 
     {
-        ImageHeader hdr(**i);
-        std::list<PartitionHeader*> pHList = hdr.GetPartitionHeaderList();
+        ImageHeader* hdr = *i;
+        std::list<PartitionHeader*> pHList = hdr->GetPartitionHeaderList();
         for(std::list<PartitionHeader*>::iterator j = pHList.begin(); j != pHList.end(); j++) 
         {
             PartitionHeader& partHdr(**j);
             if(partHdr.IsBootloader())
             {
-                hdr.GetChecksumContext()->Link(partHdr.IsBootloader(), partHdr.partition->section->Data, partHdr.partition->section->Length - hdr.GetChecksumContext()->Size(), partHdr.partition->section);
-                
+                hdr->GetChecksumContext()->Link(partHdr.IsBootloader(), partHdr.partition->section->Data.get(), partHdr.partition->section->Length - hdr->GetChecksumContext()->Size(), partHdr.partition->section);
             }
             else 
             {
@@ -174,15 +173,14 @@ void ChecksumTable::Link(BootImage& bi)
                     if ((*acs) && (*acs)->section)
                     {
                         uint32_t len = partHdr.partition->section->Length + (*acs)->section->Length;
-                        uint8_t* buffer = new uint8_t[len];
-                        memcpy(buffer, partHdr.partition->section->Data, partHdr.partition->section->Length);
-                        memcpy(buffer + partHdr.partition->section->Length, (*acs)->section->Data, (*acs)->section->Length);
-                        hdr.GetChecksumContext()->Link(partHdr.IsBootloader(), buffer, len, partHdr.checksumSection);
-                        delete[] buffer;
+                        auto buffer = std::make_unique<uint8_t[]>(len);
+                        memcpy(buffer.get(), partHdr.partition->section->Data.get(), partHdr.partition->section->Length);
+                        memcpy(buffer.get() + partHdr.partition->section->Length, (*acs)->section->Data.get(), (*acs)->section->Length);
+                        hdr->GetChecksumContext()->Link(partHdr.IsBootloader(), buffer.get(), len, partHdr.checksumSection);
                     }
                     else
                     {
-                        hdr.GetChecksumContext()->Link(partHdr.IsBootloader(), partHdr.partition->section->Data, partHdr.partition->section->Length, partHdr.checksumSection);
+                        hdr->GetChecksumContext()->Link(partHdr.IsBootloader(), partHdr.partition->section->Data.get(), partHdr.partition->section->Length, partHdr.checksumSection);
                     }
                 }
             }

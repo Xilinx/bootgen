@@ -57,14 +57,15 @@ Partition::Partition(PartitionHeader* header0, const uint8_t* data, Binary::Leng
 #endif
     Binary::Length_t totallength = length + padding;
 
-    section = new Section(partName, totallength);
+    auto temp_section = std::make_unique<Section>(partName, totallength);
+    section = temp_section.release();  // Transfer ownership to raw pointer member
     section->index = header->index;
     section->isPartitionData = true;
     section->isBitStream = (header->imageHeader->GetDomain() == Domain::PL) ? true : false;
     section->isFirstElfSection = (header->firstValidIndex);
     section->isBootloader = header->imageHeader->IsBootloader();
-    memcpy(section->Data, data, length);
-    memset(section->Data+length, 0, padding);
+    memcpy(section->Data.get(), data, length);
+    memset(section->Data.get()+length, 0, padding);
 }
 
 /******************************************************************************/
@@ -80,7 +81,7 @@ void Partition::Build( BootImage& bi, Binary& cache)
     /* Push the section alloted into the Main section */
     if(section != NULL)
     {
-        cache.Sections.push_back(section);
+        cache.Sections.push_back(std::unique_ptr<Section>(section));
     }
 
     /* Get the image header from this partition header */
@@ -224,19 +225,19 @@ void Partition::Build( BootImage& bi, Binary& cache)
             while (len < (header->partition->section->Length))
             {
                 len += hashPartLen;
-                AuthenticationCertificate* tempacs = NULL;
+                std::unique_ptr<AuthenticationCertificate> tempacs = nullptr;
                 if (bi.options.archType == Arch::ZYNQ)
                 {
-                    tempacs = new RSA2048AuthenticationCertificate(currentAuthCtx);
+                    tempacs = std::make_unique<RSA2048AuthenticationCertificate>(currentAuthCtx);
                 }
                 else if (bi.options.archType == Arch::ZYNQMP)
                 {
-                    tempacs = new RSA4096AuthenticationCertificate(currentAuthCtx);
+                    tempacs = std::make_unique<RSA4096AuthenticationCertificate>(currentAuthCtx);
                 }
-                if(tempacs != NULL)
+                if(tempacs != nullptr)
                 {
                     tempacs->Build(bi, cache, header->partition->section, imageHeader.IsBootloader(), false);
-                    header->ac.push_back(tempacs);
+                    header->ac.push_back(tempacs.release()); // Transfer ownership to list
                 }
             }
             currentAuthCtx->AddAuthCertSizeToTotalFSBLSize(header);

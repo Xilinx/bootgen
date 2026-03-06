@@ -57,10 +57,11 @@ ZynqMpPartitionHeader::ZynqMpPartitionHeader(ImageHeader* imageheader, int index
     {
         name = "PartitionHeader Null";
     }
-    section = new Section(name, sizeof(ZynqMpPartitionHeaderTableStructure));
-    memset(section->Data, 0, section->Length);
+    auto temp_section = std::make_unique<Section>(name, sizeof(ZynqMpPartitionHeaderTableStructure));
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    memset(section->Data.get(), 0, section->Length);
 
-    pHTable = (ZynqMpPartitionHeaderTableStructure*)section->Data;
+    pHTable = (ZynqMpPartitionHeaderTableStructure*)section->Data.get();
 }
 
 /******************************************************************************/
@@ -68,7 +69,6 @@ ZynqMpPartitionHeader::~ZynqMpPartitionHeader()
 {
     if (section != NULL)
     {
-        delete section;
     }
 }
 
@@ -119,18 +119,20 @@ void ZynqMpPartitionHeader::ReadData(std::ifstream& ifs)
 {
     uint32_t data_len = GetTotalPartitionLength();
     std::string part_name = imageHeader->GetName() + StringUtils::Format(".%d", index);
-    Section* dsection = new Section(part_name, data_len);
+    // BUGFIX: Use separate variable for data section - don't overwrite header section pointer!
+    auto temp_dsection = std::make_unique<Section>(part_name, data_len);
+    Section* dsection = temp_dsection.release();  // Transfer ownership to raw pointer member
     ifs.seekg(GetPartitionWordOffset());
-    ifs.read((char*)dsection->Data, dsection->Length);
+    ifs.read((char*)dsection->Data.get(), dsection->Length);
 
-    partition = new Partition(this, dsection);
+    partition = std::make_unique<Partition>(this, dsection);
 
     static uint8_t encryptionHeader[] =
     {
         0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xBB,0x00,0x00,0x00,
         0x44,0x00,0x22,0x11,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x66,0x55,0x99,0xAA
     };
-    preencrypted = (memcmp(dsection->Data, encryptionHeader, sizeof(encryptionHeader)) == 0);
+    preencrypted = (memcmp(dsection->Data.get(), encryptionHeader, sizeof(encryptionHeader)) == 0);
 }
 
 /******************************************************************************/
@@ -164,7 +166,7 @@ void ZynqMpPartitionHeader::SetNextPartitionHeaderOffset(void)
     static PartitionHeader* prev_part_hdr = NULL;
     if (prev_part_hdr != NULL)
     {
-        ZynqMpPartitionHeaderTableStructure* prev_pht = (ZynqMpPartitionHeaderTableStructure*)prev_part_hdr->section->Data;
+        ZynqMpPartitionHeaderTableStructure* prev_pht = (ZynqMpPartitionHeaderTableStructure*)prev_part_hdr->section->Data.get();
         prev_pht->nextPartitionHeaderOffset = (uint32_t)(section->Address / sizeof(uint32_t));
         if (slaveBootSplitMode && (prev_pht->nextPartitionHeaderOffset != 0))
         {
@@ -391,7 +393,7 @@ void ZynqMpPartitionHeader::SetChecksum(void)
 /******************************************************************************/
 void ZynqMpPartitionHeader::RealignSectionDataPtr(void)
 {
-    pHTable = (ZynqMpPartitionHeaderTableStructure*)section->Data;
+    pHTable = (ZynqMpPartitionHeaderTableStructure*)section->Data.get();
 }
 
 /******************************************************************************/

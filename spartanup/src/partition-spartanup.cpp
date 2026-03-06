@@ -21,6 +21,7 @@
 -------------------------------------------------------------------------------
 */
 #include <string.h>
+#include <memory>
 
 #include "bootimage.h"
 #include "binary.h"
@@ -74,51 +75,50 @@ void SpartanupPartition::DumpPCRHashes(BootImage & bi)
 {
     if (getenv("BOOTGEN_GENERATE_PCR_HASHES") != NULL)
     {
-        uint8_t* sha_hash = new uint8_t[chunkificationHashLength];
-        memset(sha_hash, 0, chunkificationHashLength);
+        auto sha_hash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+        memset(sha_hash.get(), 0, chunkificationHashLength);
         if (header->partition->section->isBootloader)
         {
             //PLM HASH
             size_t length = header->imageHeader->GetTotalFsblFwSizeIh();
             if (!dl9Series)
             {
-                bi.hash->CalculateHash(true, header->partition->section->Data, length, sha_hash);
+                bi.hash->CalculateHash(true, header->partition->section->Data.get(), length, sha_hash.get());
             }
             else
             {
-                bi.hash->CalculateVersalHash(true, header->partition->section->Data, length, sha_hash);
+                bi.hash->CalculateVersalHash(true, header->partition->section->Data.get(), length, sha_hash.get());
             }
             LOG_TRACE("PLM_PCR_HASH");
-            LOG_DUMP_BYTES(sha_hash, chunkificationHashLength);
+            LOG_DUMP_BYTES(sha_hash.get(), chunkificationHashLength);
 
             //PMC_DATA HASH
             if (header->imageHeader->GetTotalPmcFwSizeIh() != 0)
             {
-                memset(sha_hash, 0, chunkificationHashLength);
+                memset(sha_hash.get(), 0, chunkificationHashLength);
                 if (!dl9Series)
                 {
-                    bi.hash->CalculateHash(true, header->partition->section->Data + length, header->imageHeader->GetTotalPmcFwSizeIh(), sha_hash);
+                    bi.hash->CalculateHash(true, header->partition->section->Data.get() + length, header->imageHeader->GetTotalPmcFwSizeIh(), sha_hash.get());
                 }
                 else
                 {
-                    bi.hash->CalculateVersalHash(true, header->partition->section->Data + length, header->imageHeader->GetTotalPmcFwSizeIh(), sha_hash);
+                    bi.hash->CalculateVersalHash(true, header->partition->section->Data.get() + length, header->imageHeader->GetTotalPmcFwSizeIh(), sha_hash.get());
                 }
                 LOG_TRACE("PMC_DATA_PCR_HASH");
-                LOG_DUMP_BYTES(sha_hash, chunkificationHashLength);
+                LOG_DUMP_BYTES(sha_hash.get(), chunkificationHashLength);
             }
         }
         else
         {
             if (!dl9Series)
             {
-                bi.hash->CalculateHash(true, header->partition->section->Data, header->partition->section->Length, sha_hash);
+                bi.hash->CalculateHash(true, header->partition->section->Data.get(), header->partition->section->Length, sha_hash.get());
             }
             else
             {
-                bi.hash->CalculateVersalHash(true, header->partition->section->Data, header->partition->section->Length, sha_hash);
+                bi.hash->CalculateVersalHash(true, header->partition->section->Data.get(), header->partition->section->Length, sha_hash.get());
             }
         }
-        delete sha_hash;
     }
 }
 
@@ -171,14 +171,15 @@ SpartanupPartition::SpartanupPartition(PartitionHeader* header0, const uint8_t* 
     int padding = (16 - (length & 15)) & 15;
 
     Binary::Length_t totallength = length + padding;
-    section = new Section(partName, totallength);
+    auto temp_section = std::make_unique<Section>(partName, totallength);
+    section = temp_section.release();  // Transfer ownership to raw pointer member
     section->index = header->index;
     section->isPartitionData = true;
     section->isBitStream = (header->imageHeader->GetDomain() == Domain::PL) ? true : false;
     section->isFirstElfSection = (header->firstValidIndex);
     section->isBootloader = header->imageHeader->IsBootloader();
-    memcpy(section->Data, data, length);
-    memset(section->Data + length, 0, padding);
+    memcpy(section->Data.get(), data, length);
+    memset(section->Data.get() + length, 0, padding);
 }
 
 /******************************************************************************/
@@ -427,18 +428,15 @@ void SpartanupPartition::ChunkifyAndHash(Section* section, bool encryptionFlag)
     //Need to bring Hash Context here or bi//
     std::vector<uint32_t> dataChunks;
     std::vector<uint8_t*> data;
-    uint8_t* tempBuffer;
     int tempBufferSize = 0;
     /* Get the number/size data chunks and claculate the new section length */
     size_t length = section->Length;
     size_t newLength = 0;
     bool checksum_bootloader = false;
-    uint8_t* pmcDataHash;
-    pmcDataHash = new uint8_t[chunkificationHashLength];
+    auto pmcDataHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
 
-    uint8_t* partitionHash;
-    partitionHash = new uint8_t[chunkificationHashLength];
-    memset(partitionHash, 0, chunkificationHashLength);
+    auto partitionHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+    memset(partitionHash.get(), 0, chunkificationHashLength);
 
     if (section->isBootloader)
     {
@@ -464,16 +462,18 @@ void SpartanupPartition::ChunkifyAndHash(Section* section, bool encryptionFlag)
         LOG_ERROR("Section resize issue for authentication");
     }
 
-    uint8_t* dataPtr = new uint8_t[length];
+    auto dataPtr_owner = std::make_unique<uint8_t[]>(length);
+    uint8_t* dataPtr = dataPtr_owner.get();
     memset(dataPtr, 0, length);
-    memcpy(dataPtr, section->Data, length);
+    memcpy(dataPtr, section->Data.get(), length);
     dataPtr += length;
 
-    uint8_t* newDataPtr = new uint8_t[newLength];
+    auto newDataPtr_owner = std::make_unique<uint8_t[]>(newLength);
+    uint8_t* newDataPtr_base = newDataPtr_owner.get();  // Save base pointer
+    uint8_t* newDataPtr = newDataPtr_base;
     memset(newDataPtr, 0, newLength);
     newDataPtr += newLength;
 
-    uint8_t* shaHash;
 
     //PMC DATA
     int itr = 0;
@@ -482,23 +482,21 @@ void SpartanupPartition::ChunkifyAndHash(Section* section, bool encryptionFlag)
         if (pmcdataChunkCount == 1)
         {
             tempBufferSize = dataChunks[itr];
-            tempBuffer = new uint8_t[tempBufferSize];
-            memset(tempBuffer, 0, tempBufferSize);
+            auto tempBuffer = std::make_unique<uint8_t[]>(tempBufferSize);
+            memset(tempBuffer.get(), 0, tempBufferSize);
 
             dataPtr -= tempBufferSize;
-            memcpy(tempBuffer, dataPtr, tempBufferSize);
+            memcpy(tempBuffer.get(), dataPtr, tempBufferSize);
             newDataPtr -= tempBufferSize;
 
-            memcpy(newDataPtr, tempBuffer, tempBufferSize);
-            delete[] tempBuffer;
+            memcpy(newDataPtr, tempBuffer.get(), tempBufferSize);
 
-            shaHash = new uint8_t[chunkificationHashLength];
-            CalculateChunkificationHash(shaHash, newDataPtr, tempBufferSize, true);
+            auto shaHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+            CalculateChunkificationHash(shaHash.get(), newDataPtr, tempBufferSize, true);
 
-            memcpy(pmcDataHash, shaHash, chunkificationHashLength);
+            memcpy(pmcDataHash.get(), shaHash.get(), chunkificationHashLength);
             LOG_TRACE("PMC DATA HASH");
-            LOG_DUMP_BYTES(pmcDataHash, chunkificationHashLength);
-            delete[] shaHash;
+            LOG_DUMP_BYTES(pmcDataHash.get(), chunkificationHashLength);
         }
         else
         {
@@ -507,43 +505,44 @@ void SpartanupPartition::ChunkifyAndHash(Section* section, bool encryptionFlag)
             /*-------------------------------CHUNK N------------------------------------*/
             /* Insert Data */
             tempBufferSize = dataChunks[0];
-            tempBuffer = new uint8_t[tempBufferSize];
-            memset(tempBuffer, 0, tempBufferSize);
+            {
+                auto tempBuffer = std::make_unique<uint8_t[]>(tempBufferSize);
+                memset(tempBuffer.get(), 0, tempBufferSize);
 
-            dataPtr -= tempBufferSize;
-            memcpy(tempBuffer, dataPtr, tempBufferSize);
-            newDataPtr -= tempBufferSize;
+                dataPtr -= tempBufferSize;
+                memcpy(tempBuffer.get(), dataPtr, tempBufferSize);
+                newDataPtr -= tempBufferSize;
 
-            memcpy(newDataPtr, tempBuffer, tempBufferSize);
-            delete[] tempBuffer;
+                memcpy(newDataPtr, tempBuffer.get(), tempBufferSize);
+            }
 
             /* Calculate hash */
-            shaHash = new uint8_t[chunkificationHashLength];
-            CalculateChunkificationHash(shaHash, newDataPtr, dataChunks[0], true);
+            auto shaHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+            CalculateChunkificationHash(shaHash.get(), newDataPtr, dataChunks[0], true);
             /*-------------------------------CHUNK N------------------------------------*/
 
             for (int i = 2; i <= itr; i += 2)
             {
                 /* Insert previous hash */
                 newDataPtr -= chunkificationHashLength;
-                memcpy(newDataPtr, shaHash, chunkificationHashLength);
-                delete[] shaHash;
+                memcpy(newDataPtr, shaHash.get(), chunkificationHashLength);
 
                 /* Insert Data */
                 tempBufferSize = dataChunks[i];
-                tempBuffer = new uint8_t[tempBufferSize];
-                memset(tempBuffer, 0, tempBufferSize);
+                {
+                    auto tempBuffer = std::make_unique<uint8_t[]>(tempBufferSize);
+                    memset(tempBuffer.get(), 0, tempBufferSize);
 
-                dataPtr -= tempBufferSize;
-                memcpy(tempBuffer, dataPtr, tempBufferSize);
-                newDataPtr -= tempBufferSize;
+                    dataPtr -= tempBufferSize;
+                    memcpy(tempBuffer.get(), dataPtr, tempBufferSize);
+                    newDataPtr -= tempBufferSize;
 
-                memcpy(newDataPtr, tempBuffer, tempBufferSize);
-                delete[] tempBuffer;
+                    memcpy(newDataPtr, tempBuffer.get(), tempBufferSize);
+                }
 
                 /* Calculate hash */
-                shaHash = new uint8_t[chunkificationHashLength];
-                CalculateChunkificationHash(shaHash, newDataPtr, dataChunks[i] + dataChunks[i - 1], true);
+                shaHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+                CalculateChunkificationHash(shaHash.get(), newDataPtr, dataChunks[i] + dataChunks[i - 1], true);
             }
 
             /*-------------------------------CHUNK 1------------------------------------*/
@@ -551,30 +550,29 @@ void SpartanupPartition::ChunkifyAndHash(Section* section, bool encryptionFlag)
 
             /* Insert previous hash */
             newDataPtr -= chunkificationHashLength;
-            memcpy(newDataPtr, shaHash, chunkificationHashLength);
-            delete[] shaHash;
+            memcpy(newDataPtr, shaHash.get(), chunkificationHashLength);
 
             /* Insert Data */
             tempBufferSize = dataChunks[itr];
-            tempBuffer = new uint8_t[tempBufferSize];
-            memset(tempBuffer, 0, tempBufferSize);
+            {
+                auto tempBuffer = std::make_unique<uint8_t[]>(tempBufferSize);
+                memset(tempBuffer.get(), 0, tempBufferSize);
 
-            dataPtr -= tempBufferSize;
-            memcpy(tempBuffer, dataPtr, tempBufferSize);
-            newDataPtr -= tempBufferSize;
+                dataPtr -= tempBufferSize;
+                memcpy(tempBuffer.get(), dataPtr, tempBufferSize);
+                newDataPtr -= tempBufferSize;
 
-            memcpy(newDataPtr, tempBuffer, tempBufferSize);
-            delete[] tempBuffer;
+                memcpy(newDataPtr, tempBuffer.get(), tempBufferSize);
+            }
             /*-------------------------------CHUNK 1------------------------------------*/
 
             /* Calculate hash of top chunk and previous hash */
-            shaHash = new uint8_t[chunkificationHashLength];
-            CalculateChunkificationHash(shaHash, newDataPtr, tempBufferSize + chunkificationHashLength, true);
+            shaHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+            CalculateChunkificationHash(shaHash.get(), newDataPtr, tempBufferSize + chunkificationHashLength, true);
 
-            memcpy(pmcDataHash, shaHash, chunkificationHashLength);
+            memcpy(pmcDataHash.get(), shaHash.get(), chunkificationHashLength);
             LOG_TRACE("PMC DATA HASH");
-            LOG_DUMP_BYTES(pmcDataHash, chunkificationHashLength);
-            delete[] shaHash;
+            LOG_DUMP_BYTES(pmcDataHash.get(), chunkificationHashLength);
         }
     }
     dataChunks.erase(dataChunks.begin(), dataChunks.begin() + pmcdataChunkCount);
@@ -585,28 +583,26 @@ void SpartanupPartition::ChunkifyAndHash(Section* section, bool encryptionFlag)
         if (dataChunks.size() == 1)
         {
             tempBufferSize = dataChunks[itr];
-            tempBuffer = new uint8_t[tempBufferSize];
-            memset(tempBuffer, 0, tempBufferSize);
+            auto tempBuffer = std::make_unique<uint8_t[]>(tempBufferSize);
+            memset(tempBuffer.get(), 0, tempBufferSize);
 
             dataPtr -= tempBufferSize;
-            memcpy(tempBuffer, dataPtr, tempBufferSize);
+            memcpy(tempBuffer.get(), dataPtr, tempBufferSize);
             newDataPtr -= tempBufferSize;
 
-            memcpy(newDataPtr, tempBuffer, tempBufferSize);
-            delete[] tempBuffer;
+            memcpy(newDataPtr, tempBuffer.get(), tempBufferSize);
 
-            shaHash = new uint8_t[chunkificationHashLength];
-            CalculateChunkificationHash(shaHash, newDataPtr, tempBufferSize, true);
+            auto shaHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+            CalculateChunkificationHash(shaHash.get(), newDataPtr, tempBufferSize, true);
 
-            memcpy(partitionHash, shaHash, chunkificationHashLength);
+            memcpy(partitionHash.get(), shaHash.get(), chunkificationHashLength);
             if (section->isBootloader)
             {
                 LOG_TRACE("PLM HASH");
-                LOG_DUMP_BYTES(partitionHash, chunkificationHashLength);
+                LOG_DUMP_BYTES(partitionHash.get(), chunkificationHashLength);
             }
             //LOG_TRACE("Partition Data HASHed");
             //LOG_DUMP_BYTES(newDataPtr, tempBufferSize);
-            delete[] shaHash;
         }
         else
         {
@@ -615,43 +611,44 @@ void SpartanupPartition::ChunkifyAndHash(Section* section, bool encryptionFlag)
             /*-------------------------------CHUNK N------------------------------------*/
             /* Insert Data */
             tempBufferSize = dataChunks[0];
-            tempBuffer = new uint8_t[tempBufferSize];
-            memset(tempBuffer, 0, tempBufferSize);
+            {
+                auto tempBuffer = std::make_unique<uint8_t[]>(tempBufferSize);
+                memset(tempBuffer.get(), 0, tempBufferSize);
 
-            dataPtr -= tempBufferSize;
-            memcpy(tempBuffer, dataPtr, tempBufferSize);
-            newDataPtr -= tempBufferSize;
+                dataPtr -= tempBufferSize;
+                memcpy(tempBuffer.get(), dataPtr, tempBufferSize);
+                newDataPtr -= tempBufferSize;
 
-            memcpy(newDataPtr, tempBuffer, tempBufferSize);
-            delete[] tempBuffer;
+                memcpy(newDataPtr, tempBuffer.get(), tempBufferSize);
+            }
 
             /* Calculate hash */
-            shaHash = new uint8_t[chunkificationHashLength];
-            CalculateChunkificationHash(shaHash, newDataPtr, dataChunks[0], true);
+            auto shaHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+            CalculateChunkificationHash(shaHash.get(), newDataPtr, dataChunks[0], true);
             /*-------------------------------CHUNK N------------------------------------*/
 
             for (int i = 2; i <= itr; i += 2)
             {
                 /* Insert previous hash */
                 newDataPtr -= chunkificationHashLength;
-                memcpy(newDataPtr, shaHash, chunkificationHashLength);
-                delete[] shaHash;
+                memcpy(newDataPtr, shaHash.get(), chunkificationHashLength);
 
                 /* Insert Data */
                 tempBufferSize = dataChunks[i];
-                tempBuffer = new uint8_t[tempBufferSize];
-                memset(tempBuffer, 0, tempBufferSize);
+                {
+                    auto tempBuffer = std::make_unique<uint8_t[]>(tempBufferSize);
+                    memset(tempBuffer.get(), 0, tempBufferSize);
 
-                dataPtr -= tempBufferSize;
-                memcpy(tempBuffer, dataPtr, tempBufferSize);
-                newDataPtr -= tempBufferSize;
+                    dataPtr -= tempBufferSize;
+                    memcpy(tempBuffer.get(), dataPtr, tempBufferSize);
+                    newDataPtr -= tempBufferSize;
 
-                memcpy(newDataPtr, tempBuffer, tempBufferSize);
-                delete[] tempBuffer;
+                    memcpy(newDataPtr, tempBuffer.get(), tempBufferSize);
+                }
 
                 /* Calculate hash */
-                shaHash = new uint8_t[chunkificationHashLength];
-                CalculateChunkificationHash(shaHash, newDataPtr, dataChunks[i] + dataChunks[i - 1], true);
+                shaHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+                CalculateChunkificationHash(shaHash.get(), newDataPtr, dataChunks[i] + dataChunks[i - 1], true);
             }
 
             /*-------------------------------CHUNK 1------------------------------------*/
@@ -659,35 +656,34 @@ void SpartanupPartition::ChunkifyAndHash(Section* section, bool encryptionFlag)
 
             /* Insert previous hash */
             newDataPtr -= chunkificationHashLength;
-            memcpy(newDataPtr, shaHash, chunkificationHashLength);
-            delete[] shaHash;
+            memcpy(newDataPtr, shaHash.get(), chunkificationHashLength);
 
             /* Insert Data */
             tempBufferSize = dataChunks[itr];
-            tempBuffer = new uint8_t[tempBufferSize];
-            memset(tempBuffer, 0, tempBufferSize);
+            {
+                auto tempBuffer = std::make_unique<uint8_t[]>(tempBufferSize);
+                memset(tempBuffer.get(), 0, tempBufferSize);
 
-            dataPtr -= tempBufferSize;
-            memcpy(tempBuffer, dataPtr, tempBufferSize);
-            newDataPtr -= tempBufferSize;
+                dataPtr -= tempBufferSize;
+                memcpy(tempBuffer.get(), dataPtr, tempBufferSize);
+                newDataPtr -= tempBufferSize;
 
-            memcpy(newDataPtr, tempBuffer, tempBufferSize);
-            delete[] tempBuffer;
+                memcpy(newDataPtr, tempBuffer.get(), tempBufferSize);
+            }
             /*-------------------------------CHUNK 1------------------------------------*/
 
             /* Calculate hash of top chunk and previous hash */
-            shaHash = new uint8_t[chunkificationHashLength];
-            CalculateChunkificationHash(shaHash, newDataPtr, tempBufferSize + chunkificationHashLength, true);
+            shaHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+            CalculateChunkificationHash(shaHash.get(), newDataPtr, tempBufferSize + chunkificationHashLength, true);
 
-            memcpy(partitionHash, shaHash, chunkificationHashLength);
+            memcpy(partitionHash.get(), shaHash.get(), chunkificationHashLength);
             if (section->isBootloader)
             {
                 LOG_TRACE("PLM HASH");
-                LOG_DUMP_BYTES(partitionHash, chunkificationHashLength);
+                LOG_DUMP_BYTES(partitionHash.get(), chunkificationHashLength);
             }
             //LOG_TRACE("PLM Data HASHed");
             //LOG_DUMP_BYTES(newDataPtr, tempBufferSize + chunkificationHashLength);
-            delete[] shaHash;
         }
     }
     if (checksum_bootloader)
@@ -710,7 +706,7 @@ void SpartanupPartition::ChunkifyAndHash(Section* section, bool encryptionFlag)
         {
             /* Place the PMC DATA hash at the third position in Hash Block of PLM partition */
             newDataPtr -= chunkificationHashLength;
-            memcpy(newDataPtr, pmcDataHash, chunkificationHashLength);
+            memcpy(newDataPtr, pmcDataHash.get(), chunkificationHashLength);
 
             hashIndex = HASH_BLOCK_PMCDATA_HASH_INDEX;
             newDataPtr -= HASH_BLOCK_INDEX_BYTES;
@@ -724,7 +720,7 @@ void SpartanupPartition::ChunkifyAndHash(Section* section, bool encryptionFlag)
 
         /* Place the final hash at the second position in Hash Block of PLM partition */
         newDataPtr -= chunkificationHashLength;
-        memcpy(newDataPtr, partitionHash, chunkificationHashLength);
+        memcpy(newDataPtr, partitionHash.get(), chunkificationHashLength);
 
         hashIndex = HASH_BLOCK_PLM_HASH_INDEX;
         newDataPtr -= HASH_BLOCK_INDEX_BYTES;
@@ -735,12 +731,9 @@ void SpartanupPartition::ChunkifyAndHash(Section* section, bool encryptionFlag)
         newDataPtr -= HASH_BLOCK_INDEX_BYTES;
     }
 
-    delete[] dataPtr;
-    delete[] pmcDataHash;
-    delete[] partitionHash;
-
-    delete[] section->Data;
-    section->Data = newDataPtr;
+    // Transfer ownership from newDataPtr_owner to section->Data
+    // Note: newDataPtr should now equal newDataPtr_base after all the decrements
+    section->Data = std::move(newDataPtr_owner);
     section->Length = newLength;
 
     LOG_TRACE("First Authentication Data Chunk Size 0x%X", firstChunkSize);
@@ -832,24 +825,24 @@ void SpartanupPartition::Build(BootImage& bi, Binary& cache)
         uint8_t num_of_sync_points = 0;
 
         CdoSequence * cdo_seq;
-        cdo_seq = decode_cdo_binary(header->partition->section->Data, header->partition->section->Length);
+        cdo_seq = decode_cdo_binary(header->partition->section->Data.get(), header->partition->section->Length);
 
         /* Enable the search for sync points - only needs to be done for SSIT devices */
         search_for_sync_points();
 
         uint8_t* buffer = (uint8_t*)cdoseq_to_binary(cdo_seq, &buffer_size, 0);
+        std::unique_ptr<uint8_t[]> buffer_owner(buffer);
 
         /* Get no. of sync points and sync points offsets */
         num_of_sync_points = get_num_of_sync_points();
         syncpt_offsets = get_slr_sync_point_offsets();
+        std::unique_ptr<uint32_t[]> syncpt_offsets_owner(syncpt_offsets);
 
         for (int i = 0; i < num_of_sync_points; i++)
         {
             size_t offset = (*(syncpt_offsets + i) * 4);
             bi.sync_offsets.push_back(offset);
         }
-        delete syncpt_offsets;
-        delete buffer;
     }
     /*******************************************************************************/
     
@@ -920,7 +913,9 @@ void SpartanupPartition::Build(BootImage& bi, Binary& cache)
                         {
                             newLength += totalHashBlockSignatureLength;
                         }
-                        uint8_t* newDataPtr = new uint8_t[newLength];
+                        auto newDataPtr_owner = std::make_unique<uint8_t[]>(newLength);
+                        uint8_t* newDataPtr_base = newDataPtr_owner.get();  // Save base pointer
+                        uint8_t* newDataPtr = newDataPtr_base;
                         memset(newDataPtr, 0, newLength);
 
                         newDataPtr += hashBlockLength;
@@ -933,15 +928,14 @@ void SpartanupPartition::Build(BootImage& bi, Binary& cache)
                             newDataPtr += totalHashBlockSignatureLength;
                         }
 
-                        memcpy(newDataPtr, section->Data, section->Length);
+                        memcpy(newDataPtr, section->Data.get(), section->Length);
 
                         /* Calculate hash */
-                        uint8_t* shaHash;
-                        shaHash = new uint8_t[chunkificationHashLength];
+                        auto shaHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
                         
-                        CalculateChunkificationHash(shaHash, newDataPtr, section->Length, true);
+                        CalculateChunkificationHash(shaHash.get(), newDataPtr, section->Length, true);
                         LOG_TRACE("PLM HASH");
-                        LOG_DUMP_BYTES(shaHash, chunkificationHashLength);
+                        LOG_DUMP_BYTES(shaHash.get(), chunkificationHashLength);
                         //LOG_TRACE("PLM Data HASHed");
                         //LOG_DUMP_BYTES(newDataPtr, section->Length);
 
@@ -960,7 +954,7 @@ void SpartanupPartition::Build(BootImage& bi, Binary& cache)
                         newDataPtr -= (2 * (chunkificationHashLength + HASH_BLOCK_INDEX_BYTES)); //Reserved Hashes, including pmc data hash
 
                         newDataPtr -= chunkificationHashLength;
-                        memcpy(newDataPtr, shaHash, chunkificationHashLength);
+                        memcpy(newDataPtr, shaHash.get(), chunkificationHashLength);
 
                         uint32_t hashIndex = HASH_BLOCK_PLM_HASH_INDEX;
                         newDataPtr -= HASH_BLOCK_INDEX_BYTES;
@@ -972,9 +966,9 @@ void SpartanupPartition::Build(BootImage& bi, Binary& cache)
                         newDataPtr -= chunkificationHashLength;
                         newDataPtr -= HASH_BLOCK_INDEX_BYTES;
 
-                        delete[] shaHash;
-                        delete[] section->Data;
-                        section->Data = newDataPtr;
+                        // Transfer ownership from newDataPtr_owner to section->Data
+                        // Note: newDataPtr should now equal newDataPtr_base after all the increments/decrements
+                        section->Data = std::move(newDataPtr_owner);
                         section->Length = newLength;
                     }
                 }
@@ -1001,9 +995,8 @@ void SpartanupPartition::Build(BootImage& bi, Binary& cache)
                 }
                 Binary::Length_t dataChunksCount = (chunkOnLength / secureChunkSize) + ((((chunkOnLength) % secureChunkSize) == 0 ? 0 : 1));
 
-                uint8_t* shaHash = new uint8_t[chunkificationHashLength];
-                uint8_t* hash = new uint8_t[chunkificationHashLength];
-                bi.hashTable.push_back(std::pair<uint32_t, uint8_t*>(header->partitionNum, hash));
+                auto shaHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+                auto hash = std::make_unique<uint8_t[]>(chunkificationHashLength);
 
                 if (dataChunksCount != 1)
                 {
@@ -1012,63 +1005,61 @@ void SpartanupPartition::Build(BootImage& bi, Binary& cache)
                     header->firstChunkSize = currentAuthCtx->GetFirstChunkSize();
                     header->partition->section->firstChunkSize = header->firstChunkSize;
 
-                    CalculateChunkificationHash(shaHash, section->Data, firstChunkSize + chunkificationHashLength, true);
+                    CalculateChunkificationHash(shaHash.get(), section->Data.get(), firstChunkSize + chunkificationHashLength, true);
                 }
                 if (dataChunksCount == 1)
                 {
-                    CalculateChunkificationHash(shaHash, section->Data, section->Length, true);
+                    CalculateChunkificationHash(shaHash.get(), section->Data.get(), section->Length, true);
                 }
 
-                memcpy(hash, shaHash, chunkificationHashLength);
+                memcpy(hash.get(), shaHash.get(), chunkificationHashLength);
                 LOG_TRACE("%s , Partition Index : %d \n           Hash :", header->section->Name.c_str(), header->partitionNum);
-                LOG_DUMP_BYTES(hash, chunkificationHashLength);
-
-                delete[] shaHash;
+                LOG_DUMP_BYTES(hash.get(), chunkificationHashLength);
+                
+                bi.hashTable.push_back(std::make_pair(header->partitionNum, std::move(hash)));  // Transfer ownership to container
             }
         }
 
         // create AC/checksum section and add it to the end of the list.
-        AuthenticationCertificate* tempacs;
-        tempacs = new SpartanupAuthenticationCertificate(currentAuthCtx);
+        auto tempacs = std::make_unique<SpartanupAuthenticationCertificate>(currentAuthCtx);
         tempacs->Build(bi, cache, header->partition->section, imageHeader.IsBootloader(), false);
-        header->ac.push_back(tempacs);
+        header->ac.push_back(tempacs.release());  // Transfer ownership to container
     }
 
     if (imageHeader.IsBootloader() == true)
     {
         if (encryptCtx->Type() != Encryption::None && currentAuthCtx->authAlgorithm->Type() == Authentication::None)
         {
-            uint8_t* tmpBh = bi.bootHeader->section->Data + 0x10;
-            uint8_t* sha_hash = new uint8_t[chunkificationHashLength];
+            uint8_t* tmpBh = bi.bootHeader->section->Data.get() + 0x10;
+            auto sha_hash = std::make_unique<uint8_t[]>(chunkificationHashLength);
 
-            SpartanupBootHeaderStructure* bh = (SpartanupBootHeaderStructure*)bi.bootHeader->section->Data;
+            SpartanupBootHeaderStructure* bh = (SpartanupBootHeaderStructure*)bi.bootHeader->section->Data.get();
             bh->sourceOffset = bi.bootHeader->section->Length + hashBlockLength + AES_GCM_TAG_SZ;
             bh->hashBlockLength1 = hashBlockLength;
             bh->totalPlmLength = header->imageHeader->GetTotalFsblFwSizeIh();
-            bh->headerChecksum = bi.bootHeader->ComputeWordChecksum(&bh->widthDetectionWord, bi.bootHeader->GetBHChecksumDataSize());
-            bh->imageHeaderByteOffset = bi.bifOptions->GetPdiId(); 
+            bh->imageHeaderByteOffset = bi.bifOptions->GetPdiId();
+            bh->headerChecksum = bi.bootHeader->ComputeWordChecksum(&bh->widthDetectionWord, bi.bootHeader->GetBHChecksumDataSize()); 
 
             if (!bi.options.IsDl9Series())
             {
-                bi.hash->CalculateHash(true, tmpBh, bi.bootHeader->GetBootHeaderSize() - sizeof(SpartanupSmapWidthTable), sha_hash);
+                bi.hash->CalculateHash(true, tmpBh, bi.bootHeader->GetBootHeaderSize() - sizeof(SpartanupSmapWidthTable), sha_hash.get());
             }
             else
             {
-                bi.hash->CalculateVersalHash(true, tmpBh, bi.bootHeader->GetBootHeaderSize() - sizeof(SpartanupSmapWidthTable), sha_hash);
+                bi.hash->CalculateVersalHash(true, tmpBh, bi.bootHeader->GetBootHeaderSize() - sizeof(SpartanupSmapWidthTable), sha_hash.get());
             }
             LOG_TRACE("BH before AAD");
             LOG_DUMP_BYTES(tmpBh, bi.bootHeader->GetBootHeaderSize() - sizeof(SpartanupSmapWidthTable));
             /* Copy BH Hash */
-            memcpy(header->partition->section->Data + HASH_BLOCK_INDEX_BYTES, sha_hash, chunkificationHashLength);
+            memcpy(header->partition->section->Data.get() + HASH_BLOCK_INDEX_BYTES, sha_hash.get(), chunkificationHashLength);
             LOG_TRACE("hash block 0");
-            LOG_DUMP_BYTES(header->partition->section->Data, hashBlockLength);
-            delete[] sha_hash;
+            LOG_DUMP_BYTES(header->partition->section->Data.get(), hashBlockLength);
 
-            encryptCtx->AesGcm256HashBlockEncrypt(bi.options, header->partition->section->Data,
-                hashBlockLength, header->partition->section->Data + hashBlockLength, 2);
+            encryptCtx->AesGcm256HashBlockEncrypt(bi.options, header->partition->section->Data.get(),
+                hashBlockLength, header->partition->section->Data.get() + hashBlockLength, 2);
 
             LOG_TRACE("GCM Tag + Hash Block 0");
-            LOG_DUMP_BYTES(header->partition->section->Data, hashBlockLength + AES_GCM_TAG_SZ);
+            LOG_DUMP_BYTES(header->partition->section->Data.get(), hashBlockLength + AES_GCM_TAG_SZ);
         }
         if (bi.bifOptions->GetPmcdataFile() == "")
         {
@@ -1118,7 +1109,7 @@ void SpartanupPartition::Build(BootImage& bi, Binary& cache)
     /* Push the section alloted into the Main section */
     if (section != NULL)
     {
-        cache.Sections.push_back(section);
+        cache.Sections.push_back(std::unique_ptr<Section>(section));
     }
 }
 

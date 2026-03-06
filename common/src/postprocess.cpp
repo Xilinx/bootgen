@@ -23,7 +23,8 @@ extern "C" {
 #include "cdo-npi.h"
 };
 
-bool VersalImageHeader::PostProcessCdo(const uint8_t* cdo_data, Binary::Length_t cdo_size) {
+bool VersalImageHeader::PostProcessCdo(const uint8_t* cdo_data, Binary::Length_t cdo_size) 
+{
     void * new_data = NULL;
     size_t new_size = 0;
     if (cdocmd_post_process_cdo(cdo_data, cdo_size, &new_data, &new_size)) {
@@ -32,12 +33,12 @@ bool VersalImageHeader::PostProcessCdo(const uint8_t* cdo_data, Binary::Length_t
     }
     if (new_data == NULL) return false;
     SetPartitionType(PartitionType::CONFIG_DATA_OBJ);
-    PartitionHeader* hdr = new VersalPartitionHeader(this, 0);
+    auto hdr = std::make_unique<VersalPartitionHeader>(this, 0);
     hdr->firstValidIndex = true;
     hdr->execAddress = 0;
     hdr->loadAddress = 0xFFFFFFFFFFFFFFFF;
     hdr->partitionSize = hdr->transferSize = new_size;
-    hdr->partition = new VersalPartition(hdr, (uint8_t*)new_data, new_size);
-    partitionHeaderList.push_back(hdr);
+    hdr->partition = std::make_unique<VersalPartition>(hdr.get(), (uint8_t*)new_data, new_size);
+    partitionHeaderList.push_back(hdr.release()); // Transfer ownership to list
     return true;
 }

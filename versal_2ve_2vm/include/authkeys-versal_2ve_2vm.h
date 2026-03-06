@@ -113,13 +113,13 @@ public:
     void Parse(const std::string& filename, bool isSecret0);
     uint8_t ParseECDSAOpenSSLKey(const std::string& filename);
 
-    EC_KEY *eckey;
-    uint8_t *x;    // x co-ordinate (384 bits)
-    uint8_t *y;    // y co-ordinate (384 bits)
+    EC_KEY *eckey;  // OpenSSL managed pointer, don't wrap in unique_ptr
+    std::unique_ptr<uint8_t[]> x;    // x co-ordinate (384 bits)
+    std::unique_ptr<uint8_t[]> y;    // y co-ordinate (384 bits)
 
     // PM-TODO Create a separate class
-    HssPublicKey *public_key;
-    HssPrivateKey *private_key;
+    std::unique_ptr<HssPublicKey> public_key;
+    std::unique_ptr<HssPrivateKey> private_key;
     void ParseLmsKey(const std::string& filename); 
 };
 
@@ -128,7 +128,7 @@ class Key4096Sha3Padding_versal_2ve_2vm : public Versal_2ve_2vmKey
 {
 public:
     Key4096Sha3Padding_versal_2ve_2vm(const std::string& name0) : Versal_2ve_2vmKey(name0) { }
-    Key4096Sha3Padding_versal_2ve_2vm(const Key4096Sha3Padding_versal_2ve_2vm& otherKey) : Versal_2ve_2vmKey(otherKey) { }
+    Key4096Sha3Padding_versal_2ve_2vm(const Key4096Sha3Padding_versal_2ve_2vm& otherKey) = delete;  // Disable copy due to unique_ptr
 
     void Export(void* dst);
     void Import(const void* acKey, const std::string& name0);
@@ -140,7 +140,7 @@ class KeyECDSA_versal_2ve_2vm : public Versal_2ve_2vmKey
 {
 public:
     KeyECDSA_versal_2ve_2vm(const std::string& name0) : Versal_2ve_2vmKey(name0) { }
-    KeyECDSA_versal_2ve_2vm(const KeyECDSA_versal_2ve_2vm& otherKey) : Versal_2ve_2vmKey(otherKey) { }
+    KeyECDSA_versal_2ve_2vm(const KeyECDSA_versal_2ve_2vm& otherKey) = delete;  // Disable copy due to unique_ptr
 
     void Export(void* dst);
     void Import(const void* acKey, const std::string& name0);
@@ -151,7 +151,7 @@ class KeyECDSAp521_versal_2ve_2vm : public Versal_2ve_2vmKey
 {
 public:
     KeyECDSAp521_versal_2ve_2vm(const std::string& name0) : Versal_2ve_2vmKey(name0) { }
-    KeyECDSAp521_versal_2ve_2vm(const KeyECDSAp521_versal_2ve_2vm& otherKey) : Versal_2ve_2vmKey(otherKey) { }
+    KeyECDSAp521_versal_2ve_2vm(const KeyECDSAp521_versal_2ve_2vm& otherKey) = delete;  // Disable copy due to unique_ptr
 
     void Export(void* dst);
     void Import(const void* acKey, const std::string& name0);
@@ -162,7 +162,7 @@ class KeyLMS_versal_2ve_2vm : public Versal_2ve_2vmKey
 {
 public:
     KeyLMS_versal_2ve_2vm(const std::string& name0) : Versal_2ve_2vmKey(name0) { }
-    KeyLMS_versal_2ve_2vm(const KeyLMS_versal_2ve_2vm& otherKey) : Versal_2ve_2vmKey(otherKey) { }
+    KeyLMS_versal_2ve_2vm(const KeyLMS_versal_2ve_2vm& otherKey) = delete;  // Disable copy due to unique_ptr
 
     void Export(void* dst);
     void Import(const void* acKey, const std::string& name0);

@@ -187,6 +187,11 @@ public:
     void SetPartitionWordOffset(uint32_t addr);
     void SetHashBlockWordOffset(uint32_t addr);
     void SetHashBlockLength(uint32_t length);
+    void SetAuthHeader1(uint32_t value);
+    void SetTotalPpkkSize1(uint32_t size);
+    void SetActualPpkSize1(uint32_t size);
+    void SetTotalHashBlockSignatureSize1(uint32_t size);
+    void SetActualSignatureSize1(uint32_t size);
     void SetPartitionAttributes(void);
     void SetSectionCount(uint32_t cnt);
     void SetChecksumOffset(void);
@@ -261,6 +266,7 @@ public:
 /******************************************************************************/
 class Versal_2ve_2vmPartition : public Partition
 {
+    
 public:
     Versal_2ve_2vmPartition(PartitionHeader* hdr, Section* section0);
     Versal_2ve_2vmPartition(PartitionHeader* hdr, const uint8_t* data, Binary::Length_t length);
@@ -270,14 +276,16 @@ public:
     void Build(BootImage& bi, Binary& cache);
     void Link(BootImage& bi);
     void CalculateChunkificationHash(uint8_t* hash, uint8_t* data, size_t inlen, bool padding);
+    Section* hashBlockSection;
+    uint32_t hashBlockSectionLength;
+    uint64_t hashBlockLength;
+    PartitionHeader* header;
 
     void DumpPCRHashes(BootImage & bi);
 
 private:
-    PartitionHeader* header;
     uint64_t firstChunkSize;
     uint64_t secureChunkSize;
-    uint64_t hashBlockLength;
     int pmcdataChunkCount;
     uint8_t chunkificationHashLength;
     size_t totalHashBlockSignatureLength;

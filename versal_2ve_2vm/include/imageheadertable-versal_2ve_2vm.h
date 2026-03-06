@@ -159,7 +159,7 @@ public:
     void SetChecksum(void);
     void SetOptionalDataSize(void);
     void SetOptionalData(uint32_t*, uint32_t);
-    void SetUserOptionalData(std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t hashTableSize = 0);
+    void SetUserOptionalData(std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t hashTableSize = 0, uint32_t isCorePsm = 0);
     void SetXplmModulesData(BootImage& bi, uint32_t*, uint32_t);
 
     uint32_t GetImageHeaderTableVersion(void);
@@ -226,7 +226,6 @@ public:
     void ParseCdos(BootImage& bi, std::vector<std::string> filelist, uint8_t**, size_t*, bool);
 
     bool PostProcessCdo(const uint8_t* cdo_data, Binary::Length_t cdo_size);
-    bool PostProcessCfi(const uint8_t* cdo_data, Binary::Length_t cdo_size);
 
     void SetPartitionHeaderOffset(uint32_t addr);
     void SetDataSectionCount(uint32_t cnt);
@@ -262,7 +261,7 @@ private:
     void CreateWriteImageStorePartition();
     
     Versal_2ve_2vmImageHeaderStructure *imageHeader;
-    VersalCdoHeader* cdoHeader;
+    std::unique_ptr<VersalCdoHeader> cdoHeader;
  
     uint64_t aie_array_base_address;
     Binary::Address_t coreBaseAddr;
@@ -272,7 +271,7 @@ private:
     Binary::Address_t eastBankBaseAddr;
 
 protected:
-    static std::list<CdoCommandDmaWrite*> cdoSections;
+    static std::list<std::unique_ptr<CdoCommandDmaWrite>> cdoSections;  // Smart pointers
     uint8_t num_of_slrs;
 };
 

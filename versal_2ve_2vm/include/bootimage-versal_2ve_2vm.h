@@ -65,6 +65,7 @@ public:
     void OutputOptionalSecureDebugImage();
     void ConfigureEncryptionBlocks(ImageHeader * image, PartitionBifOptions* partitionBifOptions);
     void SetPmcdataFile(const std::string & filename);
+
     uint32_t current_image_block;
     uint32_t prev_image_block;
     uint64_t GetSecureChunkSize(bool isBootloader);

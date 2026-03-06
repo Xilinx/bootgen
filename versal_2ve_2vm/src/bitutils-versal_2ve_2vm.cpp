@@ -39,7 +39,7 @@
 /******************************************************************************/
 Versal_2ve_2vmBitFile::Versal_2ve_2vmBitFile(std::istream& stream0)
     : BitFile(stream0),
-    temp(NULL),
+    temp(nullptr),
     encryptType(Encryption::None)
 {
 }
@@ -47,10 +47,7 @@ Versal_2ve_2vmBitFile::Versal_2ve_2vmBitFile(std::istream& stream0)
 /******************************************************************************/
 Versal_2ve_2vmBitFile::~Versal_2ve_2vmBitFile()
 {
-    if (temp)
-    {
-        delete temp;
-    }
+    // temp is a unique_ptr - automatically destroyed
 }
 
 /******************************************************************************/
@@ -138,9 +135,9 @@ void Versal_2ve_2vmBitFile::CopyNpi(OutputStream* os)
 }
 
 /******************************************************************************/
-OutputStream* Versal_2ve_2vmBitFile::GetOutputStreamType(void)
+std::unique_ptr<OutputStream> Versal_2ve_2vmBitFile::GetOutputStreamType(void)
 {
-    return new OutputStream_LE();
+    return std::make_unique<OutputStream_LE>();
 }
 
 /******************************************************************************/

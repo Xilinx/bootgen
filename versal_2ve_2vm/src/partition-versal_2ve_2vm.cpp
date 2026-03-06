@@ -71,36 +71,38 @@ void Versal_2ve_2vmPartition::DumpPCRHashes(BootImage & bi)
 {
     if (getenv("BOOTGEN_GENERATE_PCR_HASHES") != NULL)
     {
-        uint8_t* sha_hash = new uint8_t[chunkificationHashLength];
-        memset(sha_hash, 0, chunkificationHashLength);
+        auto sha_hash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+        memset(sha_hash.get(), 0, chunkificationHashLength);
         if (header->partition->section->isBootloader)
         {
             //PLM HASH
             size_t length = header->imageHeader->GetTotalFsblFwSizeIh();
-            bi.hash->CalculateVersalHash(true, header->partition->section->Data, length, sha_hash);
+            bi.hash->CalculateVersalHash(true, header->partition->section->Data.get(), length, sha_hash.get());
             LOG_TRACE("PLM_PCR_HASH");
-            LOG_DUMP_BYTES(sha_hash, chunkificationHashLength);
+            LOG_DUMP_BYTES(sha_hash.get(), chunkificationHashLength);
 
             //PMC_DATA HASH
             if (header->imageHeader->GetTotalPmcFwSizeIh() != 0)
             {
-                memset(sha_hash, 0, chunkificationHashLength);
-                bi.hash->CalculateVersalHash(true, header->partition->section->Data + length, header->imageHeader->GetTotalPmcFwSizeIh(), sha_hash);
+                memset(sha_hash.get(), 0, chunkificationHashLength);
+                bi.hash->CalculateVersalHash(true, header->partition->section->Data.get() + length, header->imageHeader->GetTotalPmcFwSizeIh(), sha_hash.get());
                 LOG_TRACE("PMC_DATA_PCR_HASH");
-                LOG_DUMP_BYTES(sha_hash, chunkificationHashLength);
+                LOG_DUMP_BYTES(sha_hash.get(), chunkificationHashLength);
             }
         }
         else
         {
-            bi.hash->CalculateVersalHash(true, header->partition->section->Data, header->partition->section->Length, sha_hash);
+            bi.hash->CalculateVersalHash(true, header->partition->section->Data.get(), header->partition->section->Length, sha_hash.get());
         }
-        delete sha_hash;
+        // sha_hash auto-deletes, no manual delete needed
     }
 }
 
 /******************************************************************************/
 Versal_2ve_2vmPartition::Versal_2ve_2vmPartition(PartitionHeader* header0, Section* section0)
     : Partition(header0, section0)
+    , hashBlockSection(NULL)  // raw pointer, owned by cache
+    , hashBlockSectionLength(0)
     , header(header0)
     , firstChunkSize(0)
     , secureChunkSize(SECURE_32K_CHUNK)
@@ -119,10 +121,12 @@ Versal_2ve_2vmPartition::Versal_2ve_2vmPartition(PartitionHeader* header0, Secti
 /******************************************************************************/
 Versal_2ve_2vmPartition::Versal_2ve_2vmPartition(PartitionHeader* header0, const uint8_t* data, Binary::Length_t length)
     : Partition(header0, data, length)
+    , hashBlockSection(NULL)  // raw pointer, owned by cache
+    , hashBlockSectionLength(0)
     , header(header0)
     , firstChunkSize(0)
     , secureChunkSize(SECURE_32K_CHUNK)
-	, hashBlockLength(0)
+    , hashBlockLength(0)
     , pmcdataChunkCount(0)
     , chunkificationHashLength(SHA3_LENGTH_BYTES)
     , totalHashBlockSignatureLength(0)
@@ -145,14 +149,15 @@ Versal_2ve_2vmPartition::Versal_2ve_2vmPartition(PartitionHeader* header0, const
     int padding = (16 - (length & 15)) & 15;
 
     Binary::Length_t totallength = length + padding;
-    section = new Section(partName, totallength);
+    auto temp_section = std::make_unique<Section>(partName, totallength);
+    section = temp_section.release();  // Transfer ownership to raw pointer member
     section->index = header->index;
     section->isPartitionData = true;
     section->isBitStream = (header->imageHeader->GetDomain() == Domain::PL) ? true : false;
     section->isFirstElfSection = (header->firstValidIndex);
     section->isBootloader = header->imageHeader->IsBootloader();
-    memcpy(section->Data, data, length);
-    memset(section->Data + length, 0, padding);
+    memcpy(section->Data.get(), data, length);
+    memset(section->Data.get() + length, 0, padding);
 }
 
 /******************************************************************************/
@@ -206,7 +211,7 @@ size_t Versal_2ve_2vmPartition::GetTotalDataChunks(Binary::Length_t partitionSiz
 /******************************************************************************/
 size_t Versal_2ve_2vmPartition::GetBootloaderTotalDataChunks(Binary::Length_t partitionSize, std::vector<uint32_t>& dataChunks, bool encryptionFlag)
 {
-    size_t newSectionLength;
+    size_t newSectionLength = 0;  // Initialize to avoid uninitialized warning
 
     if(!header->imageHeader->GetPrebuilt()){
         newSectionLength = partitionSize;
@@ -432,18 +437,15 @@ void Versal_2ve_2vmPartition::ChunkifyAndHash(Section* section, bool encryptionF
     //Need to bring Hash Context here or bi//
     std::vector<uint32_t> dataChunks;
     std::vector<uint8_t*> data;
-    uint8_t* tempBuffer;
     int tempBufferSize = 0;
     /* Get the number/size data chunks and claculate the new section length */
     size_t length = section->Length;
     size_t newLength = 0;
     bool checksum_bootloader = false;
-    uint8_t* pmcDataHash;
-    pmcDataHash = new uint8_t[chunkificationHashLength];
+    auto pmcDataHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
 
-    uint8_t* partitionHash;
-    partitionHash = new uint8_t[chunkificationHashLength];
-    memset(partitionHash, 0, chunkificationHashLength);
+    auto partitionHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+    memset(partitionHash.get(), 0, chunkificationHashLength);
 
     if (section->isBootloader)
     {
@@ -472,16 +474,16 @@ void Versal_2ve_2vmPartition::ChunkifyAndHash(Section* section, bool encryptionF
         LOG_ERROR("Section resize issue for authentication");
     }
 
-    uint8_t* dataPtr = new uint8_t[length];
-    memset(dataPtr, 0, length);
-    memcpy(dataPtr, section->Data, length);
-    dataPtr += length;
+    auto dataPtr = std::make_unique<uint8_t[]>(length);
+    memset(dataPtr.get(), 0, length);
+    memcpy(dataPtr.get(), section->Data.get(), length);
+    uint8_t* dataPtrRaw = dataPtr.get() + length;
 
-    uint8_t* newDataPtr = new uint8_t[newLength];
-    memset(newDataPtr, 0, newLength);
-    newDataPtr += newLength;
+    auto newDataPtr = std::make_unique<uint8_t[]>(newLength);
+    memset(newDataPtr.get(), 0, newLength);
+    uint8_t* newDataPtrRaw = newDataPtr.get() + newLength;
 
-    uint8_t* shaHash;
+    std::unique_ptr<uint8_t[]> shaHash;
 
     //PMC DATA
     int itr = 0;
@@ -492,23 +494,22 @@ void Versal_2ve_2vmPartition::ChunkifyAndHash(Section* section, bool encryptionF
             if (pmcdataChunkCount == 1)
             {
                 tempBufferSize = dataChunks[itr];
-                tempBuffer = new uint8_t[tempBufferSize];
-                memset(tempBuffer, 0, tempBufferSize);
+                auto tempBuffer = std::make_unique<uint8_t[]>(tempBufferSize);
+                memset(tempBuffer.get(), 0, tempBufferSize);
 
-                dataPtr -= tempBufferSize;
-                memcpy(tempBuffer, dataPtr, tempBufferSize);
-                newDataPtr -= tempBufferSize;
+                dataPtrRaw -= tempBufferSize;
+                memcpy(tempBuffer.get(), dataPtrRaw, tempBufferSize);
+                newDataPtrRaw -= tempBufferSize;
 
-                memcpy(newDataPtr, tempBuffer, tempBufferSize);
-                delete[] tempBuffer;
+                memcpy(newDataPtrRaw, tempBuffer.get(), tempBufferSize);
+                // unique_ptr handles deletion
 
-                shaHash = new uint8_t[chunkificationHashLength];
-                CalculateChunkificationHash(shaHash, newDataPtr, tempBufferSize, true);
+                shaHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+                CalculateChunkificationHash(shaHash.get(), newDataPtrRaw, tempBufferSize, true);
 
-                memcpy(pmcDataHash, shaHash, chunkificationHashLength);
+                memcpy(pmcDataHash.get(), shaHash.get(), chunkificationHashLength);
                 LOG_TRACE("PMC DATA HASH");
-                LOG_DUMP_BYTES(pmcDataHash, chunkificationHashLength);
-                delete[] shaHash;
+                LOG_DUMP_BYTES(pmcDataHash.get(), chunkificationHashLength);
             }
             else
             {
@@ -517,98 +518,97 @@ void Versal_2ve_2vmPartition::ChunkifyAndHash(Section* section, bool encryptionF
                 /*-------------------------------CHUNK N------------------------------------*/
                 /* Insert Data */
                 tempBufferSize = dataChunks[0];
-                tempBuffer = new uint8_t[tempBufferSize];
-                memset(tempBuffer, 0, tempBufferSize);
+                auto tempBuffer = std::make_unique<uint8_t[]>(tempBufferSize);
+                memset(tempBuffer.get(), 0, tempBufferSize);
 
-                dataPtr -= tempBufferSize;
-                memcpy(tempBuffer, dataPtr, tempBufferSize);
-                newDataPtr -= tempBufferSize;
+                dataPtrRaw -= tempBufferSize;
+                memcpy(tempBuffer.get(), dataPtrRaw, tempBufferSize);
+                newDataPtrRaw -= tempBufferSize;
 
-                memcpy(newDataPtr, tempBuffer, tempBufferSize);
-                delete[] tempBuffer;
+                memcpy(newDataPtrRaw, tempBuffer.get(), tempBufferSize);
+                // unique_ptr handles deletion
 
                 /* Calculate hash */
-                shaHash = new uint8_t[chunkificationHashLength];
-                CalculateChunkificationHash(shaHash, newDataPtr, dataChunks[0], true);
+                shaHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+                CalculateChunkificationHash(shaHash.get(), newDataPtrRaw, dataChunks[0], true);
                 /*-------------------------------CHUNK N------------------------------------*/
 
                 for (int i = 2; i <= itr; i += 2)
                 {
                     /* Insert previous hash */
-                    newDataPtr -= chunkificationHashLength;
-                    memcpy(newDataPtr, shaHash, chunkificationHashLength);
-                    delete[] shaHash;
+                    newDataPtrRaw -= chunkificationHashLength;
+                    memcpy(newDataPtrRaw, shaHash.get(), chunkificationHashLength);
 
                     /* Insert Data */
                     tempBufferSize = dataChunks[i];
-                    tempBuffer = new uint8_t[tempBufferSize];
-                    memset(tempBuffer, 0, tempBufferSize);
+                    auto tempBuffer = std::make_unique<uint8_t[]>(tempBufferSize);
+                    memset(tempBuffer.get(), 0, tempBufferSize);
 
-                    dataPtr -= tempBufferSize;
-                    memcpy(tempBuffer, dataPtr, tempBufferSize);
-                    newDataPtr -= tempBufferSize;
+                    dataPtrRaw -= tempBufferSize;
+                    memcpy(tempBuffer.get(), dataPtrRaw, tempBufferSize);
+                    newDataPtrRaw -= tempBufferSize;
 
-                    memcpy(newDataPtr, tempBuffer, tempBufferSize);
-                    delete[] tempBuffer;
+                    memcpy(newDataPtrRaw, tempBuffer.get(), tempBufferSize);
+                    // unique_ptr handles deletion
 
                     /* Calculate hash */
-                    shaHash = new uint8_t[chunkificationHashLength];
-                    CalculateChunkificationHash(shaHash, newDataPtr, dataChunks[i] + dataChunks[i - 1], true);
+                    shaHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+                    CalculateChunkificationHash(shaHash.get(), newDataPtrRaw, dataChunks[i] + dataChunks[i - 1], true);
                 }
 
                 /*-------------------------------CHUNK 1------------------------------------*/
                 itr += 2;
 
                 /* Insert previous hash */
-                newDataPtr -= chunkificationHashLength;
-                memcpy(newDataPtr, shaHash, chunkificationHashLength);
-                delete[] shaHash;
+                newDataPtrRaw -= chunkificationHashLength;
+                memcpy(newDataPtrRaw, shaHash.get(), chunkificationHashLength);
 
                 /* Insert Data */
                 tempBufferSize = dataChunks[itr];
-                tempBuffer = new uint8_t[tempBufferSize];
-                memset(tempBuffer, 0, tempBufferSize);
+                {
+                    auto tempBuffer = std::make_unique<uint8_t[]>(tempBufferSize);
+                    memset(tempBuffer.get(), 0, tempBufferSize);
 
-                dataPtr -= tempBufferSize;
-                memcpy(tempBuffer, dataPtr, tempBufferSize);
-                newDataPtr -= tempBufferSize;
+                    dataPtrRaw -= tempBufferSize;
+                    memcpy(tempBuffer.get(), dataPtrRaw, tempBufferSize);
+                    newDataPtrRaw -= tempBufferSize;
 
-                memcpy(newDataPtr, tempBuffer, tempBufferSize);
-                delete[] tempBuffer;
+                    memcpy(newDataPtrRaw, tempBuffer.get(), tempBufferSize);
+                    // unique_ptr handles deletion
+                }
                 /*-------------------------------CHUNK 1------------------------------------*/
 
                 /* Calculate hash of top chunk and previous hash */
-                shaHash = new uint8_t[chunkificationHashLength];
-                CalculateChunkificationHash(shaHash, newDataPtr, tempBufferSize + chunkificationHashLength, true);
+                shaHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+                CalculateChunkificationHash(shaHash.get(), newDataPtrRaw, tempBufferSize + chunkificationHashLength, true);
 
-                memcpy(pmcDataHash, shaHash, chunkificationHashLength);
+                memcpy(pmcDataHash.get(), shaHash.get(), chunkificationHashLength);
                 LOG_TRACE("PMC DATA HASH");
-                LOG_DUMP_BYTES(pmcDataHash, chunkificationHashLength);
-                delete[] shaHash;
+                LOG_DUMP_BYTES(pmcDataHash.get(), chunkificationHashLength);
             }
         }
     }
     else
 	{
-        dataPtr -= header->imageHeader->GetTotalPmcFwSizeIh();
-        shaHash = new uint8_t[chunkificationHashLength];
-        CalculateChunkificationHash(shaHash, dataPtr, secureChunkSize + chunkificationHashLength, true);
-        memcpy(pmcDataHash, shaHash, chunkificationHashLength);
+        dataPtrRaw -= header->imageHeader->GetTotalPmcFwSizeIh();
+        shaHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+        CalculateChunkificationHash(shaHash.get(), dataPtrRaw, secureChunkSize + chunkificationHashLength, true);
+        memcpy(pmcDataHash.get(), shaHash.get(), chunkificationHashLength);
         LOG_TRACE("PMC DATA HASH");
-        LOG_DUMP_BYTES(pmcDataHash, chunkificationHashLength);
-        dataPtr += header->imageHeader->GetTotalPmcFwSizeIh();
+        LOG_DUMP_BYTES(pmcDataHash.get(), chunkificationHashLength);
+        dataPtrRaw += header->imageHeader->GetTotalPmcFwSizeIh();
 
         tempBufferSize = header->imageHeader->GetTotalPmcFwSizeIh();
         //tempBufferSize = header->imageHeader->GetPmcFwSizeIh();
-        tempBuffer = new uint8_t[tempBufferSize];
-        memset(tempBuffer, 0, tempBufferSize);
+        auto tempBuffer = std::make_unique<uint8_t[]>(tempBufferSize);
+        memset(tempBuffer.get(), 0, tempBufferSize);
 
-        dataPtr -= tempBufferSize;
-        memcpy(tempBuffer, dataPtr, tempBufferSize);
-        newDataPtr -= tempBufferSize;
+        dataPtrRaw -= tempBufferSize;
+        memcpy(tempBuffer.get(), dataPtrRaw, tempBufferSize);
+        newDataPtrRaw -= tempBufferSize;
 
-        memcpy(newDataPtr, tempBuffer, tempBufferSize);
-        delete[] tempBuffer;
+        memcpy(newDataPtrRaw, tempBuffer.get(), tempBufferSize);
+        // unique_ptr handles deletion
     }
     dataChunks.erase(dataChunks.begin(), dataChunks.begin() + pmcdataChunkCount);
     //PLM
@@ -620,28 +620,27 @@ void Versal_2ve_2vmPartition::ChunkifyAndHash(Section* section, bool encryptionF
             if (dataChunks.size() == 1)
             {
                 tempBufferSize = dataChunks[itr];
-                tempBuffer = new uint8_t[tempBufferSize];
-                memset(tempBuffer, 0, tempBufferSize);
+                auto tempBuffer = std::make_unique<uint8_t[]>(tempBufferSize);
+                memset(tempBuffer.get(), 0, tempBufferSize);
 
-                dataPtr -= tempBufferSize;
-                memcpy(tempBuffer, dataPtr, tempBufferSize);
-                newDataPtr -= tempBufferSize;
+                dataPtrRaw -= tempBufferSize;
+                memcpy(tempBuffer.get(), dataPtrRaw, tempBufferSize);
+                newDataPtrRaw -= tempBufferSize;
 
-                memcpy(newDataPtr, tempBuffer, tempBufferSize);
-                delete[] tempBuffer;
+                memcpy(newDataPtrRaw, tempBuffer.get(), tempBufferSize);
+                // unique_ptr handles deletion
 
-                shaHash = new uint8_t[chunkificationHashLength];
-                CalculateChunkificationHash(shaHash, newDataPtr, tempBufferSize, true);
+                shaHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+                CalculateChunkificationHash(shaHash.get(), newDataPtrRaw, tempBufferSize, true);
 
-                memcpy(partitionHash, shaHash, chunkificationHashLength);
+                memcpy(partitionHash.get(), shaHash.get(), chunkificationHashLength);
                 if (section->isBootloader)
                 {
                     LOG_TRACE("PLM HASH");
-                    LOG_DUMP_BYTES(partitionHash, chunkificationHashLength);
+                    LOG_DUMP_BYTES(partitionHash.get(), chunkificationHashLength);
                 }
                 //LOG_TRACE("Partition Data HASHed");
-                //LOG_DUMP_BYTES(newDataPtr, tempBufferSize);
-                delete[] shaHash;
+                //LOG_DUMP_BYTES(newDataPtrRaw, tempBufferSize);
             }
             else
             {
@@ -650,79 +649,78 @@ void Versal_2ve_2vmPartition::ChunkifyAndHash(Section* section, bool encryptionF
                 /*-------------------------------CHUNK N------------------------------------*/
                 /* Insert Data */
                 tempBufferSize = dataChunks[0];
-                tempBuffer = new uint8_t[tempBufferSize];
-                memset(tempBuffer, 0, tempBufferSize);
+                auto tempBuffer = std::make_unique<uint8_t[]>(tempBufferSize);
+                memset(tempBuffer.get(), 0, tempBufferSize);
 
-                dataPtr -= tempBufferSize;
-                memcpy(tempBuffer, dataPtr, tempBufferSize);
-                newDataPtr -= tempBufferSize;
+                dataPtrRaw -= tempBufferSize;
+                memcpy(tempBuffer.get(), dataPtrRaw, tempBufferSize);
+                newDataPtrRaw -= tempBufferSize;
 
-                memcpy(newDataPtr, tempBuffer, tempBufferSize);
-                delete[] tempBuffer;
+                memcpy(newDataPtrRaw, tempBuffer.get(), tempBufferSize);
+                // unique_ptr handles deletion
 
                 /* Calculate hash */
-                shaHash = new uint8_t[chunkificationHashLength];
-                CalculateChunkificationHash(shaHash, newDataPtr, dataChunks[0], true);
+                shaHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+                CalculateChunkificationHash(shaHash.get(), newDataPtrRaw, dataChunks[0], true);
                 /*-------------------------------CHUNK N------------------------------------*/
 
                 for (int i = 2; i <= itr; i += 2)
                 {
                     /* Insert previous hash */
-                    newDataPtr -= chunkificationHashLength;
-                    memcpy(newDataPtr, shaHash, chunkificationHashLength);
-                    delete[] shaHash;
+                    newDataPtrRaw -= chunkificationHashLength;
+                    memcpy(newDataPtrRaw, shaHash.get(), chunkificationHashLength);
 
                     /* Insert Data */
                     tempBufferSize = dataChunks[i];
-                    tempBuffer = new uint8_t[tempBufferSize];
-                    memset(tempBuffer, 0, tempBufferSize);
+                    auto tempBuffer = std::make_unique<uint8_t[]>(tempBufferSize);
+                    memset(tempBuffer.get(), 0, tempBufferSize);
 
-                    dataPtr -= tempBufferSize;
-                    memcpy(tempBuffer, dataPtr, tempBufferSize);
-                    newDataPtr -= tempBufferSize;
+                    dataPtrRaw -= tempBufferSize;
+                    memcpy(tempBuffer.get(), dataPtrRaw, tempBufferSize);
+                    newDataPtrRaw -= tempBufferSize;
 
-                    memcpy(newDataPtr, tempBuffer, tempBufferSize);
-                    delete[] tempBuffer;
+                    memcpy(newDataPtrRaw, tempBuffer.get(), tempBufferSize);
+                    // unique_ptr handles deletion
 
                     /* Calculate hash */
-                    shaHash = new uint8_t[chunkificationHashLength];
-                    CalculateChunkificationHash(shaHash, newDataPtr, dataChunks[i] + dataChunks[i - 1], true);
+                    shaHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+                    CalculateChunkificationHash(shaHash.get(), newDataPtrRaw, dataChunks[i] + dataChunks[i - 1], true);
                 }
 
                 /*-------------------------------CHUNK 1------------------------------------*/
                 itr += 2;
 
                 /* Insert previous hash */
-                newDataPtr -= chunkificationHashLength;
-                memcpy(newDataPtr, shaHash, chunkificationHashLength);
-                delete[] shaHash;
+                newDataPtrRaw -= chunkificationHashLength;
+                memcpy(newDataPtrRaw, shaHash.get(), chunkificationHashLength);
 
                 /* Insert Data */
                 tempBufferSize = dataChunks[itr];
-                tempBuffer = new uint8_t[tempBufferSize];
-                memset(tempBuffer, 0, tempBufferSize);
+                {
+                    auto tempBuffer = std::make_unique<uint8_t[]>(tempBufferSize);
+                    memset(tempBuffer.get(), 0, tempBufferSize);
 
-                dataPtr -= tempBufferSize;
-                memcpy(tempBuffer, dataPtr, tempBufferSize);
-                newDataPtr -= tempBufferSize;
+                    dataPtrRaw -= tempBufferSize;
+                    memcpy(tempBuffer.get(), dataPtrRaw, tempBufferSize);
+                    newDataPtrRaw -= tempBufferSize;
 
-                memcpy(newDataPtr, tempBuffer, tempBufferSize);
-                delete[] tempBuffer;
+                    memcpy(newDataPtrRaw, tempBuffer.get(), tempBufferSize);
+                    // unique_ptr handles deletion
+                }
                 /*-------------------------------CHUNK 1------------------------------------*/
 
                 /* Calculate hash of top chunk and previous hash */
-                shaHash = new uint8_t[chunkificationHashLength];
-                CalculateChunkificationHash(shaHash, newDataPtr, tempBufferSize + chunkificationHashLength, true);
+                shaHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+                CalculateChunkificationHash(shaHash.get(), newDataPtrRaw, tempBufferSize + chunkificationHashLength, true);
 
-                memcpy(partitionHash, shaHash, chunkificationHashLength);
+                memcpy(partitionHash.get(), shaHash.get(), chunkificationHashLength);
                 if (section->isBootloader)
                 {
                     LOG_TRACE("PLM HASH");
-                    LOG_DUMP_BYTES(partitionHash, chunkificationHashLength);
+                    LOG_DUMP_BYTES(partitionHash.get(), chunkificationHashLength);
                 }
                 //LOG_TRACE("PLM Data HASHed");
                 //LOG_DUMP_BYTES(newDataPtr, tempBufferSize + chunkificationHashLength);
-                delete[] shaHash;
             }
         }
     }
@@ -730,46 +728,46 @@ void Versal_2ve_2vmPartition::ChunkifyAndHash(Section* section, bool encryptionF
 	{
         if(section->isBootloader && !header->imageHeader->GetReplacePlm())
         {
-            dataPtr -= header->imageHeader->GetTotalFsblFwSizeIh();
-            shaHash = new uint8_t[chunkificationHashLength];
-            CalculateChunkificationHash(shaHash, dataPtr, secureChunkSize + chunkificationHashLength, true);
-            memcpy(partitionHash, shaHash, chunkificationHashLength);
+            dataPtrRaw -= header->imageHeader->GetTotalFsblFwSizeIh();
+            shaHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+            CalculateChunkificationHash(shaHash.get(), dataPtrRaw, secureChunkSize + chunkificationHashLength, true);
+            memcpy(partitionHash.get(), shaHash.get(), chunkificationHashLength);
             if (section->isBootloader)
             {
                 LOG_TRACE("PLM HASH");
-                LOG_DUMP_BYTES(partitionHash, chunkificationHashLength);
+                LOG_DUMP_BYTES(partitionHash.get(), chunkificationHashLength);
             }
-            dataPtr += header->imageHeader->GetTotalFsblFwSizeIh();
+            dataPtrRaw += header->imageHeader->GetTotalFsblFwSizeIh();
 
             tempBufferSize = header->imageHeader->GetTotalFsblFwSizeIh();
-            tempBuffer = new uint8_t[tempBufferSize];
-            memset(tempBuffer, 0, tempBufferSize);
+            auto tempBuffer = std::make_unique<uint8_t[]>(tempBufferSize);
+            memset(tempBuffer.get(), 0, tempBufferSize);
 
-            dataPtr -= tempBufferSize;
-            memcpy(tempBuffer, dataPtr, tempBufferSize);
-            newDataPtr -= tempBufferSize;
+            dataPtrRaw -= tempBufferSize;
+            memcpy(tempBuffer.get(), dataPtrRaw, tempBufferSize);
+            newDataPtrRaw -= tempBufferSize;
 
-            memcpy(newDataPtr, tempBuffer, tempBufferSize);
-            delete[] tempBuffer;
+            memcpy(newDataPtrRaw, tempBuffer.get(), tempBufferSize);
+            // unique_ptr handles deletion
         }
         else if(!header->imageHeader->GetReplacePsm())
         {
-            dataPtr -= length;
-            shaHash = new uint8_t[chunkificationHashLength];
-            CalculateChunkificationHash(shaHash, dataPtr, secureChunkSize + chunkificationHashLength, true);
-            memcpy(partitionHash, shaHash, chunkificationHashLength);
-            dataPtr += length;
+            dataPtrRaw -= length;
+            shaHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+            CalculateChunkificationHash(shaHash.get(), dataPtrRaw, secureChunkSize + chunkificationHashLength, true);
+            memcpy(partitionHash.get(), shaHash.get(), chunkificationHashLength);
+            dataPtrRaw += length;
 
             tempBufferSize = length;
-            tempBuffer = new uint8_t[tempBufferSize];
-            memset(tempBuffer, 0, tempBufferSize);
+            auto tempBuffer = std::make_unique<uint8_t[]>(tempBufferSize);
+            memset(tempBuffer.get(), 0, tempBufferSize);
 
-            dataPtr -= tempBufferSize;
-            memcpy(tempBuffer, dataPtr, tempBufferSize);
-            newDataPtr -= tempBufferSize;
+            dataPtrRaw -= tempBufferSize;
+            memcpy(tempBuffer.get(), dataPtrRaw, tempBufferSize);
+            newDataPtrRaw -= tempBufferSize;
 
-            memcpy(newDataPtr, tempBuffer, tempBufferSize);
-            delete[] tempBuffer;
+            memcpy(newDataPtrRaw, tempBuffer.get(), tempBufferSize);
+            // unique_ptr handles deletion
         }
     }
     if (checksum_bootloader)
@@ -777,54 +775,50 @@ void Versal_2ve_2vmPartition::ChunkifyAndHash(Section* section, bool encryptionF
         /* GCM Tag sits in the end of Hash Block */
         if (encryptionFlag && (header->imageHeader->GetAuthenticationType() == Authentication::None))
         {
-            newDataPtr -= AES_GCM_TAG_SZ;
+            newDataPtrRaw -= AES_GCM_TAG_SZ;
         }
 
         if (header->imageHeader->GetAuthenticationType() != Authentication::None)
         {
-            newDataPtr -= totalHashBlockSignatureLength;
+            newDataPtrRaw -= totalHashBlockSignatureLength;
         }
 
-        newDataPtr -= HASH_BLOCK_ALIGNMENT_BYTES_TELLURIDE;
-        newDataPtr -= (3 * (chunkificationHashLength + HASH_BLOCK_INDEX_BYTES)); //Reserved Hashes
+        newDataPtrRaw -= HASH_BLOCK_ALIGNMENT_BYTES_TELLURIDE;
+        newDataPtrRaw -= (3 * (chunkificationHashLength + HASH_BLOCK_INDEX_BYTES)); //Reserved Hashes
 
         uint32_t hashIndex = 0;
 
         if (header->imageHeader->GetTotalPmcFwSizeIh() != 0)
         {
             /* Place the PMC DATA hash at the third position in Hash Block of PLM partition */
-            newDataPtr -= chunkificationHashLength;
-            memcpy(newDataPtr, pmcDataHash, chunkificationHashLength);
+            newDataPtrRaw -= chunkificationHashLength;
+            memcpy(newDataPtrRaw, pmcDataHash.get(), chunkificationHashLength);
 
             hashIndex = HASH_BLOCK_PMCDATA_HASH_INDEX;
-            newDataPtr -= HASH_BLOCK_INDEX_BYTES;
-            memcpy(newDataPtr, &hashIndex, sizeof(uint32_t));
+            newDataPtrRaw -= HASH_BLOCK_INDEX_BYTES;
+            memcpy(newDataPtrRaw, &hashIndex, sizeof(uint32_t));
         }
         else
         {
-            newDataPtr -= chunkificationHashLength;
-            newDataPtr -= HASH_BLOCK_INDEX_BYTES;
+            newDataPtrRaw -= chunkificationHashLength;
+            newDataPtrRaw -= HASH_BLOCK_INDEX_BYTES;
         }
 
         /* Place the final hash at the second position in Hash Block of PLM partition */
-        newDataPtr -= chunkificationHashLength;
-        memcpy(newDataPtr, partitionHash, chunkificationHashLength);
+        newDataPtrRaw -= chunkificationHashLength;
+        memcpy(newDataPtrRaw, partitionHash.get(), chunkificationHashLength);
 
         hashIndex = HASH_BLOCK_PLM_HASH_INDEX;
-        newDataPtr -= HASH_BLOCK_INDEX_BYTES;
-        memcpy(newDataPtr, &hashIndex, sizeof(uint32_t));
+        newDataPtrRaw -= HASH_BLOCK_INDEX_BYTES;
+        memcpy(newDataPtrRaw, &hashIndex, sizeof(uint32_t));
 
         /* Place the BH hash at the start of Hash Block of PLM partition */
-        newDataPtr -= chunkificationHashLength;
-        newDataPtr -= HASH_BLOCK_INDEX_BYTES;
+        newDataPtrRaw -= chunkificationHashLength;
+        newDataPtrRaw -= HASH_BLOCK_INDEX_BYTES;
     }
+    // unique_ptr handles deletion
 
-    delete[] dataPtr;
-    delete[] pmcDataHash;
-    delete[] partitionHash;
-
-    delete[] section->Data;
-    section->Data = newDataPtr;
+    section->Data = std::unique_ptr<uint8_t[]>(newDataPtr.release());
     section->Length = newLength;
 
     LOG_TRACE("First Authentication Data Chunk Size 0x%X", firstChunkSize);
@@ -911,28 +905,27 @@ void Versal_2ve_2vmPartition::Build(BootImage& bi, Binary& cache)
     if ((imageHeader.GetPartitionType() == PartitionType::CONFIG_DATA_OBJ) && (encryptCtx->Type() != Encryption::None))
     {
         size_t buffer_size = 0;
-        uint32_t* syncpt_offsets = NULL;
         uint8_t num_of_sync_points = 0;
 
         CdoSequence * cdo_seq;
-        cdo_seq = decode_cdo_binary(header->partition->section->Data, header->partition->section->Length);
+        cdo_seq = decode_cdo_binary(header->partition->section->Data.get(), header->partition->section->Length);
 
         /* Enable the search for sync points - only needs to be done for SSIT devices */
         search_for_sync_points();
 
-        uint8_t* buffer = (uint8_t*)cdoseq_to_binary(cdo_seq, &buffer_size, 0);
+        // Wrap C-allocated pointers in unique_ptr for automatic cleanup
+        std::unique_ptr<uint8_t[]> buffer((uint8_t*)cdoseq_to_binary(cdo_seq, &buffer_size, 0));
 
         /* Get no. of sync points and sync points offsets */
         num_of_sync_points = get_num_of_sync_points();
-        syncpt_offsets = get_slr_sync_point_offsets();
+        std::unique_ptr<uint32_t[]> syncpt_offsets(get_slr_sync_point_offsets());
 
         for (int i = 0; i < num_of_sync_points; i++)
         {
-            size_t offset = (*(syncpt_offsets + i) * 4);
+            size_t offset = (syncpt_offsets[i] * 4);  // Use array indexing instead of pointer arithmetic
             bi.sync_offsets.push_back(offset);
         }
-        delete syncpt_offsets;
-        delete buffer;
+        // Auto-deleted by unique_ptr destructors
     }
     /*******************************************************************************/
     
@@ -1012,62 +1005,60 @@ void Versal_2ve_2vmPartition::Build(BootImage& bi, Binary& cache)
                         {
                             newLength += totalHashBlockSignatureLength;
                         }
-                        uint8_t* newDataPtr = new uint8_t[newLength];
-                        memset(newDataPtr, 0, newLength);
+                        auto newDataPtr = std::make_unique<uint8_t[]>(newLength);
+                        memset(newDataPtr.get(), 0, newLength);
 
-                        newDataPtr += hashBlockLength;
+                        uint8_t* newDataPtrRaw = newDataPtr.get() + newLength;
+                        newDataPtrRaw += hashBlockLength;
                         if ((encryptCtx->Type() != Encryption::None) && currentAuthCtx->authAlgorithm->Type() == Authentication::None)
                         {
-                            newDataPtr += AES_GCM_TAG_SZ;
+                            newDataPtrRaw += AES_GCM_TAG_SZ;
                         }
                         if (header->imageHeader->GetAuthenticationType() != Authentication::None)
                         {
-                            newDataPtr += totalHashBlockSignatureLength;
+                            newDataPtrRaw += totalHashBlockSignatureLength;
                         }
 
-                        memcpy(newDataPtr, section->Data, section->Length);
+                        memcpy(newDataPtrRaw, section->Data.get(), section->Length);
 
                         /* Calculate hash */
-                        uint8_t* shaHash;
-                        shaHash = new uint8_t[chunkificationHashLength];
+                        auto shaHash_local = std::make_unique<uint8_t[]>(chunkificationHashLength);
                         
-                        CalculateChunkificationHash(shaHash, newDataPtr, section->Length, true);
+                        CalculateChunkificationHash(shaHash_local.get(), newDataPtrRaw, section->Length, true);
                         LOG_TRACE("PLM HASH");
-                        LOG_DUMP_BYTES(shaHash, chunkificationHashLength);
+                        LOG_DUMP_BYTES(shaHash_local.get(), chunkificationHashLength);
                         //LOG_TRACE("PLM Data HASHed");
                         //LOG_DUMP_BYTES(newDataPtr, section->Length);
 
                         /* GCM Tag sits in the end of Hash Block */
                         if ((encryptCtx->Type() != Encryption::None) && currentAuthCtx->authAlgorithm->Type() == Authentication::None)
                         {
-                            newDataPtr -= AES_GCM_TAG_SZ;
+                            newDataPtrRaw -= AES_GCM_TAG_SZ;
                         }
 
                         /* Place the final hash at the start of PLM partition */
                         if (header->imageHeader->GetAuthenticationType() != Authentication::None)
                         {
-                            newDataPtr -= totalHashBlockSignatureLength;
+                            newDataPtrRaw -= totalHashBlockSignatureLength;
                         }
 
-                        newDataPtr -= HASH_BLOCK_ALIGNMENT_BYTES_TELLURIDE;
-                        newDataPtr -= (4 * (chunkificationHashLength + HASH_BLOCK_INDEX_BYTES)); //Reserved Hashes, including pmc data hash
+                        newDataPtrRaw -= HASH_BLOCK_ALIGNMENT_BYTES_TELLURIDE;
+                        newDataPtrRaw -= (4 * (chunkificationHashLength + HASH_BLOCK_INDEX_BYTES)); //Reserved Hashes, including pmc data hash
 
-                        newDataPtr -= chunkificationHashLength;
-                        memcpy(newDataPtr, shaHash, chunkificationHashLength);
+                        newDataPtrRaw -= chunkificationHashLength;
+                        memcpy(newDataPtrRaw, shaHash_local.get(), chunkificationHashLength);
 
                         uint32_t hashIndex = HASH_BLOCK_PLM_HASH_INDEX;
-                        newDataPtr -= HASH_BLOCK_INDEX_BYTES;
-                        memcpy(newDataPtr, &hashIndex, sizeof(uint32_t));
+                        newDataPtrRaw -= HASH_BLOCK_INDEX_BYTES;
+                        memcpy(newDataPtrRaw, &hashIndex, sizeof(uint32_t));
 
                         header->imageHeader->SetTotalFsblFwSizeIh(header->imageHeader->GetTotalFsblFwSizeIh());
 
                         /* For BH Hash */
-                        newDataPtr -= chunkificationHashLength;
-                        newDataPtr -= HASH_BLOCK_INDEX_BYTES;
-
-                        delete[] shaHash;
-                        delete[] section->Data;
-                        section->Data = newDataPtr;
+                        newDataPtrRaw -= chunkificationHashLength;
+                        newDataPtrRaw -= HASH_BLOCK_INDEX_BYTES;
+                        // unique_ptr handles deletion
+                        section->Data = std::move(newDataPtr);
                         section->Length = newLength;
                     }
                 }
@@ -1096,9 +1087,16 @@ void Versal_2ve_2vmPartition::Build(BootImage& bi, Binary& cache)
                 }
                 Binary::Length_t dataChunksCount = (chunkOnLength / secureChunkSize) + ((((chunkOnLength) % secureChunkSize) == 0 ? 0 : 1));
 
-                uint8_t* shaHash = new uint8_t[chunkificationHashLength];
-                uint8_t* hash = new uint8_t[chunkificationHashLength];
-                bi.hashTable.push_back(std::pair<uint32_t, uint8_t*>(header->partitionNum, hash));
+                auto shaHash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+                auto hash = std::make_unique<uint8_t[]>(chunkificationHashLength);
+                
+                // IMAGE_STORE: Use adjusted partition number in hashTable when no bootloader
+                uint32_t hashTablePartNum = header->partitionNum;
+                if(bi.IsBootloaderFound() == false)
+                    hashTablePartNum = header->partitionNum + 1;
+                    
+                bi.hashTable.push_back(std::make_pair(hashTablePartNum, std::move(hash)));
+
 
                 if (dataChunksCount != 1)
                 {
@@ -1109,55 +1107,49 @@ void Versal_2ve_2vmPartition::Build(BootImage& bi, Binary& cache)
                     header->firstChunkSize = currentAuthCtx->GetFirstChunkSize();
                     header->partition->section->firstChunkSize = header->firstChunkSize;
 
-                    CalculateChunkificationHash(shaHash, section->Data, firstChunkSize + chunkificationHashLength, true);
+                    CalculateChunkificationHash(shaHash.get(), section->Data.get(), firstChunkSize + chunkificationHashLength, true);
                 }
                 if (dataChunksCount == 1)
                 {
-                    CalculateChunkificationHash(shaHash, section->Data, section->Length, true);
+                    CalculateChunkificationHash(shaHash.get(), section->Data.get(), section->Length, true);
                 }
 
-                memcpy(hash, shaHash, chunkificationHashLength);
+                memcpy(bi.hashTable.back().second.get(), shaHash.get(), chunkificationHashLength);
                 LOG_TRACE("%s , Partition Index : %d \n           Hash :", header->section->Name.c_str(), header->partitionNum);
-                LOG_DUMP_BYTES(hash, chunkificationHashLength);
-
-                delete[] shaHash;
+                LOG_DUMP_BYTES(bi.hashTable.back().second.get(), chunkificationHashLength);
             }
         }
-
-        AuthenticationCertificate* tempacs;
-        tempacs = new Versal_2ve_2vmAuthenticationCertificate(currentAuthCtx);
-        tempacs->Build(bi, cache, header->partition->section, imageHeader.IsBootloader(), false);
-        header->ac.push_back(tempacs);
+        
+        // AC creation moved to after hashBlockSection creation (line ~1242)
     }
 
     if (imageHeader.IsBootloader() == true)
     {
         if (encryptCtx->Type() != Encryption::None && currentAuthCtx->authAlgorithm->Type() == Authentication::None)
         {
-            uint8_t* tmpBh = bi.bootHeader->section->Data + 0x10;
-            uint8_t* sha_hash = new uint8_t[chunkificationHashLength];
+            uint8_t* tmpBh = bi.bootHeader->section->Data.get() + 0x10;
+            auto sha_hash = std::make_unique<uint8_t[]>(chunkificationHashLength);
 
-            Versal_2ve_2vmBootHeaderStructure* bh = (Versal_2ve_2vmBootHeaderStructure*)bi.bootHeader->section->Data;
+            Versal_2ve_2vmBootHeaderStructure* bh = (Versal_2ve_2vmBootHeaderStructure*)bi.bootHeader->section->Data.get();
             bh->sourceOffset = bi.bootHeader->section->Length + hashBlockLength + AES_GCM_TAG_SZ;
             bh->hashBlockLength1 = hashBlockLength;
             bh->totalPlmLength = header->imageHeader->GetTotalFsblFwSizeIh();
             bh->imageHeaderByteOffset = bi.bootHeader->section->Length + hashBlockLength + AES_GCM_TAG_SZ + bh->totalPlmLength + bh->totalPmcCdoLength;
             bh->headerChecksum = bi.bootHeader->ComputeWordChecksum(&bh->widthDetectionWord, bi.bootHeader->GetBHChecksumDataSize());
-            bi.hash->CalculateVersalHash(true, tmpBh, bi.bootHeader->GetBootHeaderSize() - sizeof(Versal_2ve_2vmSmapWidthTable), sha_hash);
+            bi.hash->CalculateVersalHash(true, tmpBh, bi.bootHeader->GetBootHeaderSize() - sizeof(Versal_2ve_2vmSmapWidthTable), sha_hash.get());
 
             LOG_TRACE("BH before AAD");
             LOG_DUMP_BYTES(tmpBh, bi.bootHeader->GetBootHeaderSize() - sizeof(Versal_2ve_2vmSmapWidthTable));
             /* Copy BH Hash */
-            memcpy(header->partition->section->Data + HASH_BLOCK_INDEX_BYTES, sha_hash, chunkificationHashLength);
+            memcpy(header->partition->section->Data.get() + HASH_BLOCK_INDEX_BYTES, sha_hash.get(), chunkificationHashLength);
             LOG_TRACE("hash block 0");
-            LOG_DUMP_BYTES(header->partition->section->Data, hashBlockLength);
-            delete[] sha_hash;
+            LOG_DUMP_BYTES(header->partition->section->Data.get(), hashBlockLength);
 
-            encryptCtx->AesGcm256HashBlockEncrypt(bi.options, header->partition->section->Data,
-                hashBlockLength, header->partition->section->Data + hashBlockLength, 2);
+            encryptCtx->AesGcm256HashBlockEncrypt(bi.options, header->partition->section->Data.get(),
+                hashBlockLength, header->partition->section->Data.get() + hashBlockLength, 2);
 
             LOG_TRACE("GCM Tag + Hash Block 0");
-            LOG_DUMP_BYTES(header->partition->section->Data, hashBlockLength + AES_GCM_TAG_SZ);
+            LOG_DUMP_BYTES(header->partition->section->Data.get(), hashBlockLength + AES_GCM_TAG_SZ);
         }
         /* FsblFwSizeIh : PLM */
         /* PmcFwSizeIh : PMC DATA */
@@ -1206,22 +1198,127 @@ void Versal_2ve_2vmPartition::Build(BootImage& bi, Binary& cache)
         }
     }
 
+    
+    if (!section->isBootloader && (header->imageHeader->GetChecksumContext()->Type() != Checksum::None
+                || header->imageHeader->GetAuthenticationType() != Authentication::None
+                || (encryptCtx->Type() != Encryption::None || header->preencrypted) != false))
+    {
+        uint32_t count = 0;
+        // Adjust partition number if no bootloader (to match hashNumMap adjustment)
+        uint32_t adjustedPartNum = header->partitionNum;
+        if (bi.IsBootloaderFound() == false)
+            adjustedPartNum = header->partitionNum + 1;
+            
+        for (size_t i = 0; i < bi.hashNumMap.size(); i++)
+        {            
+            if(adjustedPartNum == bi.hashNumMap[i].second)
+                count++;
+        }
+        
+        
+        
+        if(count > 0)
+        {
+            uint32_t totalHashBlockSectionLength = ((sizeof(uint32_t) + chunkificationHashLength) * count);
+            totalHashBlockSectionLength += PADDING_16B(totalHashBlockSectionLength);
+            
+            // Use smart pointer for allocation, then release to raw pointer (owned by cache)
+            auto hashBlockPtr = std::make_unique<Section>("HashBlock", totalHashBlockSectionLength);
+            memset(hashBlockPtr->Data.get(), 0, hashBlockPtr->Length);
+            hashBlockSection = hashBlockPtr.release();
+            
+            fprintf(stderr, "[BUILD-PART] Created hashBlockSection for partition %d: length=%u, count=%u\n", 
+                    header->partitionNum, totalHashBlockSectionLength, count);
+
+            if (header->imageHeader->GetAuthenticationType() != Authentication::None)
+            {
+                hashBlockSection->IncreaseLengthAndPadTo(hashBlockSection->Length + currentAuthCtx->GetTotalHashBlockSignSize(), 0);
+            }
+            if (encryptCtx->Type() != Encryption::None && header->imageHeader->GetAuthenticationType() == Authentication::None)
+            {
+                hashBlockSection->IncreaseLengthAndPadTo(hashBlockSection->Length + AES_GCM_TAG_SZ, 0);
+            }
+        }
+    }
+    
+    // IMAGE_STORE: Create AC if bootloader OR hashBlockSection exists
+    if(imageHeader.IsBootloader() || hashBlockSection != NULL)
+    {
+        // Use smart pointer locally, then release() for legacy container
+        auto tempacs = std::make_unique<Versal_2ve_2vmAuthenticationCertificate>(currentAuthCtx);
+        tempacs->Build(bi, cache, header->partition->section, imageHeader.IsBootloader(), false);
+        header->ac.push_back(tempacs.release());  // Release ownership to legacy container
+    }
+
     /* Push the section alloted into the Main section */
+    if(hashBlockSection != NULL)
+    {
+        cache.Sections.push_back(std::unique_ptr<Section>(hashBlockSection));  // Transfer ownership to cache
+    }
     if (section != NULL)
     {
-        cache.Sections.push_back(section);
+        cache.Sections.push_back(std::unique_ptr<Section>(section));
+
     }
 }
 
 /******************************************************************************/
 void Versal_2ve_2vmPartition::Link(BootImage &bi)
 {
+    // IMAGE_STORE: Populate hashBlockSection with partition hashes
+    if(hashBlockSection != NULL && bi.hashNumMap.size() != 0)
+    {
+        for (size_t i = 0; i < bi.hashNumMap.size(); i++)
+        {
+            uint32_t partNum = header->partitionNum;
+            if(bi.IsBootloaderFound() == false)
+                partNum = partNum+1;
+
+            if(partNum == bi.hashNumMap[i].second)
+            {
+                //start with index 1 in hashTable because we dont need meta header hash here
+                for (size_t j=1; j < bi.hashTable.size(); j++)
+                {
+
+                    if(bi.hashNumMap[i].first == bi.hashTable[j].first)
+                    {
+                        uint32_t hashIndex = bi.hashTable[j].first;
+                        
+                        memcpy(hashBlockSection->Data.get() + hashBlockSectionLength, &hashIndex, sizeof(uint32_t));
+                        hashBlockSectionLength += sizeof(uint32_t);
+                        memcpy(hashBlockSection->Data.get() + hashBlockSectionLength, bi.hashTable[j].second.get(), chunkificationHashLength);
+                        hashBlockSectionLength += chunkificationHashLength;
+                        
+
+                        break;
+                    }
+                }
+            }
+        }        
+        hashBlockSectionLength += PADDING_16B(hashBlockSectionLength);
+        
+    }
+    
     for (std::list<AuthenticationCertificate*>::iterator acs = header->ac.begin(); acs != header->ac.end(); acs++)
     {
         if ((*acs))
         {
-            (*acs)->Link(bi, header->partition->section);
+            // IMAGE_STORE: Pass partition object (not section) so AuthContext can access hashBlockSection
+            (*acs)->Link(bi, this);  // Pass partition pointer like lstclone does
         }
+    }
+    
+    // IMAGE_STORE: Encrypt hashBlockSection if needed (no authentication)
+    if (hashBlockSection != NULL && header->imageHeader->GetEncryptContext()->Type() != Encryption::None 
+        && header->imageHeader->GetAuthenticationType() == Authentication::None)
+    {
+        LOG_TRACE("Performing AAD on Hash Block");
+        header->imageHeader->GetEncryptContext()->AesGcm256HashBlockEncrypt(bi.options, hashBlockSection->Data.get(),
+            hashBlockSectionLength, hashBlockSection->Data.get() + hashBlockSectionLength, 1);
+#ifdef DEBUG
+        LOG_TRACE("Hash Block AAD");
+        LOG_DUMP_BYTES(hashBlockSection->Data.get() + hashBlockSectionLength, AES_GCM_TAG_SZ);
+#endif
     }
 }
 

@@ -39,7 +39,7 @@
 /******************************************************************************/
 SpartanupBitFile::SpartanupBitFile(std::istream& stream0)
     : BitFile(stream0),
-    temp(NULL),
+    temp(nullptr),
     encryptType(Encryption::None)
 {
 }
@@ -47,10 +47,7 @@ SpartanupBitFile::SpartanupBitFile(std::istream& stream0)
 /******************************************************************************/
 SpartanupBitFile::~SpartanupBitFile()
 {
-    if (temp)
-    {
-        delete temp;
-    }
+    // temp is now std::unique_ptr - automatic cleanup via RAII
 }
 
 /******************************************************************************/
@@ -138,9 +135,9 @@ void SpartanupBitFile::CopyNpi(OutputStream* os)
 }
 
 /******************************************************************************/
-OutputStream* SpartanupBitFile::GetOutputStreamType(void)
+std::unique_ptr<OutputStream> SpartanupBitFile::GetOutputStreamType(void)
 {
-    return new OutputStream_LE();
+    return std::make_unique<OutputStream_LE>();
 }
 
 /******************************************************************************/

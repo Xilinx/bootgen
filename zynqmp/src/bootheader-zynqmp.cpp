@@ -32,80 +32,65 @@
 /******************************************************************************/
 ZynqMpBootHeader::ZynqMpBootHeader(void)
 {
-    pufData = new uint8_t[PUF_DATA_LENGTH];
-    bhKeyData = new uint8_t[BLK_GRY_KEY_LENGTH * 4];
-    ivData = new uint8_t[IV_LENGTH * 4];
+    pufData = std::make_unique<uint8_t[]>(PUF_DATA_LENGTH);
+    bhKeyData = std::make_unique<uint8_t[]>(BLK_GRY_KEY_LENGTH * 4);
+    ivData = std::make_unique<uint8_t[]>(IV_LENGTH * 4);
     keyIvMust = false;
 
-    memset(pufData, 0, PUF_DATA_LENGTH);
-    memset(bhKeyData, 0, BLK_GRY_KEY_LENGTH * 4);
-    memset(ivData, 0, IV_LENGTH * 4);
+    memset(pufData.get(), 0, PUF_DATA_LENGTH);
+    memset(bhKeyData.get(), 0, BLK_GRY_KEY_LENGTH * 4);
+    memset(ivData.get(), 0, IV_LENGTH * 4);
 
-    section = new Section("BootHeader", sizeof(ZynqMpBootHeaderStructure) + sizeof(RegisterInitTable));
-    bHTable = (ZynqMpBootHeaderStructure*)section->Data;
+    auto temp_section = std::make_unique<Section>("BootHeader", sizeof(ZynqMpBootHeaderStructure) + sizeof(RegisterInitTable));
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    bHTable = (ZynqMpBootHeaderStructure*)section->Data.get();
 }
 
 /******************************************************************************/
 ZynqMpBootHeader::ZynqMpBootHeader(std::ifstream& src)
 {
     prebuilt = true;
-    pufData = new uint8_t[PUF_DATA_LENGTH];
-    bhKeyData = new uint8_t[BLK_GRY_KEY_LENGTH * 4];
-    ivData = new uint8_t[IV_LENGTH * 4];
+    pufData = std::make_unique<uint8_t[]>(PUF_DATA_LENGTH);
+    bhKeyData = std::make_unique<uint8_t[]>(BLK_GRY_KEY_LENGTH * 4);
+    ivData = std::make_unique<uint8_t[]>(IV_LENGTH * 4);
 
-    memset(pufData, 0, PUF_DATA_LENGTH);
-    memset(bhKeyData, 0, BLK_GRY_KEY_LENGTH * 4);
-    memset(ivData, 0, IV_LENGTH * 4);
+    memset(pufData.get(), 0, PUF_DATA_LENGTH);
+    memset(bhKeyData.get(), 0, BLK_GRY_KEY_LENGTH * 4);
+    memset(ivData.get(), 0, IV_LENGTH * 4);
     keyIvMust = false;
 
     /* Import the Boot Header from a boot image file */
-    section = new Section("BootHeader", sizeof(ZynqMpBootHeaderStructure) + sizeof(RegisterInitTable));
-    if (!src.read((char*)section->Data, section->Length).good())
+    auto temp_section = std::make_unique<Section>("BootHeader", sizeof(ZynqMpBootHeaderStructure) + sizeof(RegisterInitTable));
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    if (!src.read((char*)section->Data.get(), section->Length).good())
     {
         LOG_ERROR("Failed to read bootheader from imported image");
     }
-    bHTable = (ZynqMpBootHeaderStructure*)section->Data;
+    bHTable = (ZynqMpBootHeaderStructure*)section->Data.get();
 
     /* If PUF is present in BH, increase the BH size */
     if (((bHTable->fsblAttributes >> PUF_HD_BIT_SHIFT) & PUF_HD_BIT_MASK) == 0x3)
     {
         uint32_t newBhSize = sizeof(ZynqMpBootHeaderStructure) + sizeof(RegisterInitTable) + PUF_DATA_LENGTH;
-        uint8_t* newDataPtr = new uint8_t[newBhSize];
-        memcpy(newDataPtr, section->Data, section->Length);
-        if (!src.read((char*)newDataPtr + section->Length, newBhSize - section->Length).good())
+        auto newDataPtr = std::make_unique<uint8_t[]>(newBhSize);
+        memcpy(newDataPtr.get(), section->Data.get(), section->Length);
+        if (!src.read((char*)newDataPtr.get() + section->Length, newBhSize - section->Length).good())
         {
             LOG_ERROR("Failed to read bootheader from imported image");
         }
 
-        delete[] section->Data;
-        section->Data = newDataPtr;
+        // unique_ptr handles deletion
+        section->Data = std::move(newDataPtr);
         section->Length = newBhSize;
-        bHTable = (ZynqMpBootHeaderStructure*)section->Data;
+        bHTable = (ZynqMpBootHeaderStructure*)section->Data.get();
     }
 }
 
 /******************************************************************************/
 ZynqMpBootHeader::~ZynqMpBootHeader(void)
 {
-    if (pufData != NULL)
-    {
-        delete[] pufData;
-    }
-
-    if (bhKeyData != NULL)
-    {
-        delete[] bhKeyData;
-    }
-
-    if (ivData != NULL)
-    {
-        delete[] ivData;
-    }
-
-    if (section != NULL)
-    {
-        delete[] section;
-    }
+    // pufData, bhKeyData, ivData are unique_ptr, automatically managed
+    // section is unique_ptr, automatically managed
 }
 
 /******************************************************************************/
@@ -114,7 +99,8 @@ void ZynqMpBootHeader::Build(BootImage& bi, Binary& cache)
     ResizeSection(bi);
     if (section != NULL)
     {
-        cache.Sections.push_back(section);
+        cache.Sections.push_back(std::unique_ptr<Section>(section));
+
     }
 
     /* If the boot header is imported from a bootimage file, no need to build */
@@ -134,7 +120,7 @@ void ZynqMpBootHeader::Build(BootImage& bi, Binary& cache)
     SetUdf(bi.options.bifOptions->GetUdfBhFile());
     SetGreyOrBlackKey(bi.bifOptions->GetBhKeyFile());
     SetGreyOrBlackKekIV(bi.bifOptions->GetBHKekIVFile());
-    SetSecureHdrIv(bi.options.secHdrIv);
+    SetSecureHdrIv(bi.options.secHdrIv.get());
     BuildRegInitTable(bi.options);
     SetPufData(bi);
 }
@@ -175,7 +161,7 @@ void ZynqMpBootHeader::Link(BootImage& bi)
         return;
     }
 
-    ImageHeaderTable* iHT = bi.imageHeaderTable;
+    ImageHeaderTable* iHT = bi.imageHeaderTable.get();
     ImageHeader* fsbl = iHT->GetFSBLImageHeader();
 
     slaveBootSplitMode = (bi.bifOptions->GetSplitMode() == SplitMode::SlaveMode) ? true : false;
@@ -201,7 +187,7 @@ void ZynqMpBootHeader::Link(BootImage& bi)
         
         SetPmuFwLength(bi.GetPmuFwSize());
         SetTotalPmuFwLength(bi.GetTotalPmuFwSize());
-        SetSecureHdrIv(bi.options.secHdrIv);
+        SetSecureHdrIv(bi.options.secHdrIv.get());
 
         if (fsbl->IsStaticFlagSet() || bi.bifOptions->GetXipMode())
         {
@@ -245,7 +231,7 @@ void ZynqMpBootHeader::ResizeSection(BootImage &bi)
         uint32_t newBhSize = sizeof(ZynqMpBootHeaderStructure) + sizeof(RegisterInitTable) + PUF_DATA_LENGTH;
         section->IncreaseLengthAndPadTo(newBhSize, 0);
     }
-    bHTable = (ZynqMpBootHeaderStructure*)section->Data;
+    bHTable = (ZynqMpBootHeaderStructure*)section->Data.get();
 }
 
 /******************************************************************************/
@@ -397,7 +383,7 @@ void ZynqMpBootHeader::SetBHForSinglePartitionImage(BootImage& bi)
     SetPmuFwLength(0);
     SetTotalPmuFwLength(0);
     SetFsblLength(0);
-    SetSecureHdrIv(bi.options.secHdrIv);
+    SetSecureHdrIv(bi.options.secHdrIv.get());
     SetTotalFsblLength(0);
 }
 
@@ -456,20 +442,20 @@ void ZynqMpBootHeader::SetHeaderChecksum(void)
 /******************************************************************************/
 void ZynqMpBootHeader::SetGreyOrBlackKey(std::string keyFile)
 {
-    uint8_t* bhKeyData = new uint8_t[BLK_GRY_KEY_LENGTH * 4];
-    memset(bhKeyData, 0, BLK_GRY_KEY_LENGTH * 4);
+    auto bhKeyData = std::make_unique<uint8_t[]>(BLK_GRY_KEY_LENGTH * 4);
+    memset(bhKeyData.get(), 0, BLK_GRY_KEY_LENGTH * 4);
 
     if (keyFile != "")
     {
         FileImport fileReader;
-        if (!fileReader.LoadHexData(keyFile, bhKeyData, BLK_GRY_KEY_LENGTH * 4))
+        if (!fileReader.LoadHexData(keyFile, bhKeyData.get(), BLK_GRY_KEY_LENGTH * 4))
         {
             LOG_ERROR("Invalid no. of data bytes for Grey/Black key in BootHeader.\n           Expected length for Grey/Black key is 32 bytes");
         }
     }
-    memcpy(&bHTable->greyOrBlackKey, bhKeyData, BLK_GRY_KEY_LENGTH * 4);
+    memcpy(&bHTable->greyOrBlackKey, bhKeyData.get(), BLK_GRY_KEY_LENGTH * 4);
 
-    delete[] bhKeyData;
+    // Cleanup handled by unique_ptr
 }
 
 /******************************************************************************/
@@ -528,13 +514,13 @@ void ZynqMpBootHeader::SetSecureHdrIv(uint8_t* iv)
 /******************************************************************************/
 void ZynqMpBootHeader::SetGreyOrBlackKekIV(std::string ivFile)
 {
-    uint8_t* ivData = new uint8_t[IV_LENGTH * 4];
-    memset(ivData, 0, IV_LENGTH * 4);
+    auto ivData = std::make_unique<uint8_t[]>(IV_LENGTH * 4);
+    memset(ivData.get(), 0, IV_LENGTH * 4);
 
     if (ivFile != "")
     {
         FileImport fileReader;
-        if (!fileReader.LoadHexData(ivFile, ivData, IV_LENGTH * 4))
+        if (!fileReader.LoadHexData(ivFile, ivData.get(), IV_LENGTH * 4))
         {
             LOG_ERROR("Invalid no. of data bytes for Black/Grey Key IV.\n           Expected length for Grey/Black IV is 12 bytes");
         }
@@ -546,8 +532,8 @@ void ZynqMpBootHeader::SetGreyOrBlackKekIV(std::string ivFile)
             LOG_ERROR("Black/Grey IV is mandatory in case of Black/Grey key sources\n          Please use [bh_key_iv] to specify the IV in BIF file");
         }
     }
-    memcpy(&bHTable->greyOrBlackIV, ivData, IV_LENGTH * 4);
-    delete[] ivData;
+    memcpy(&bHTable->greyOrBlackIV, ivData.get(), IV_LENGTH * 4);
+    // Cleanup handled by unique_ptr
 }
 
 /******************************************************************************/
@@ -555,20 +541,20 @@ void ZynqMpBootHeader::SetPufData(BootImage &bi)
 {
     if (bi.bifOptions->GetPufHdLoc() == PufHdLoc::PUFinBH)
     {
-        uint8_t* pufData = new uint8_t[PUF_DATA_LENGTH];
-        memset(pufData, 0, PUF_DATA_LENGTH);
+        auto pufData = std::make_unique<uint8_t[]>(PUF_DATA_LENGTH);
+        memset(pufData.get(), 0, PUF_DATA_LENGTH);
 
         if (bi.bifOptions->GetPufHelperFile() != "")
         {
             FileImport fileReader;
-            if (!fileReader.LoadHexData(bi.bifOptions->GetPufHelperFile(), pufData, PUF_DATA_LENGTH))
+            if (!fileReader.LoadHexData(bi.bifOptions->GetPufHelperFile(), pufData.get(), PUF_DATA_LENGTH))
             {
                 LOG_ERROR("Invalid no. of data bytes for PUF Helper Data.\n           Expected length for PUF Helper Data is 1544 bytes");
             }
         }
 
-        memcpy((uint8_t*)bHTable + GetBootHeaderSize() + GetRegInitTableSize(), pufData, PUF_DATA_LENGTH);
-        delete[] pufData;
+        memcpy((uint8_t*)bHTable + GetBootHeaderSize() + GetRegInitTableSize(), pufData.get(), PUF_DATA_LENGTH);
+        // Cleanup handled by unique_ptr
     }
 }
 

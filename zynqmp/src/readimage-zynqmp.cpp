@@ -27,22 +27,8 @@
 /*******************************************************************************/
 ZynqMpReadImage::~ZynqMpReadImage()
 {
-    if (bH != NULL)
-    {
-        delete[] bH;
-    }
-    if (iH != NULL)
-    {
-        delete[] iH;
-    }
-    if (iHT != NULL)
-    {
-        delete[] iHT;
-    }
-    if (pHT != NULL)
-    {
-        delete[] pHT;
-    }
+    // bH, iHT, and pHT cleanup all handled by unique_ptr
+    // iH is managed by iHs list (no separate delete needed)
 }
 
 /**********************************************************************************************/
@@ -61,13 +47,13 @@ void ZynqMpReadImage::ReadPartitions()
     for (std::list<ZynqMpPartitionHeaderTableStructure*>::iterator partitionHdr = pHTs.begin(); partitionHdr != pHTs.end(); partitionHdr++, partitionName++)
     {
         uint32_t bufferLength = ((*partitionHdr)->encryptedPartitionLength * 4);
-        uint8_t* tempBuffer = new uint8_t[bufferLength];
-        memset(tempBuffer, 0, bufferLength);
+        auto tempBuffer = std::make_unique<uint8_t[]>(bufferLength);
+        memset(tempBuffer.get(), 0, bufferLength);
 
         offset = (*partitionHdr)->partitionWordOffset * 4;
         if (!(fseek(binFile, offset, SEEK_SET)))
         {
-            result = fread(tempBuffer, 1, bufferLength, binFile);
+            result = fread(tempBuffer.get(), 1, bufferLength, binFile);
             if (result != bufferLength)
             {
                 LOG_ERROR("Error reading partition for hash calculation");
@@ -78,11 +64,11 @@ void ZynqMpReadImage::ReadPartitions()
             } 
             if (dumpType == DumpOption::BOOT_FILES)
             {
-                DumpPartitions(tempBuffer, bufferLength, *partitionName);
+                DumpPartitions(tempBuffer.get(), bufferLength, *partitionName);
             }
             if (dumpType == DumpOption::PARTITIONS)
             {
-                DumpPartitions(tempBuffer, bufferLength, *partitionName);
+                DumpPartitions(tempBuffer.get(), bufferLength, *partitionName);
             }    
         }
         else
@@ -124,8 +110,8 @@ void ZynqMpReadImage::ReadHeaderTableDetails()
     }
 
     /* Boot Header Extraction */
-    bH = new ZynqMpBootHeaderStructure;
-    result = fread(bH, 1, sizeof(ZynqMpBootHeaderStructure), binFile);
+    bH = std::make_unique<ZynqMpBootHeaderStructure>();
+    result = fread(bH.get(), 1, sizeof(ZynqMpBootHeaderStructure), binFile);
     if (result != sizeof(ZynqMpBootHeaderStructure))
     {
         LOG_ERROR("Error reading Boot header");
@@ -149,7 +135,7 @@ void ZynqMpReadImage::ReadHeaderTableDetails()
         filePtr = fopen(fName.c_str(), "wb");
         if (filePtr != NULL)
         {
-            result = fwrite(bH, 1, size_t(sizeof(ZynqMpBootHeaderStructure)), filePtr);
+            result = fwrite(bH.get(), 1, size_t(sizeof(ZynqMpBootHeaderStructure)), filePtr);
             if (result != sizeof(ZynqMpBootHeaderStructure))
             {
                 LOG_ERROR("Error dumping Boot Header to a file");
@@ -163,8 +149,8 @@ void ZynqMpReadImage::ReadHeaderTableDetails()
     offset = bH->imageHeaderByteOffset;
     if (!(fseek(binFile, offset, SEEK_SET)))
     {
-        iHT = new ZynqMpImageHeaderTableStructure;
-        result = fread(iHT, 1, sizeof(ZynqMpImageHeaderTableStructure), binFile);
+        iHT = std::make_unique<ZynqMpImageHeaderTableStructure>();
+        result = fread(iHT.get(), 1, sizeof(ZynqMpImageHeaderTableStructure), binFile);
         if (result != sizeof(ZynqMpImageHeaderTableStructure))
         {
             LOG_ERROR("Error reading Image header table");
@@ -190,7 +176,7 @@ void ZynqMpReadImage::ReadHeaderTableDetails()
     offset = 4 * (iHT->firstImageHeaderWordOffset);
     do
     {
-        iH = new ZynqMpImageHeaderStructure;
+        iH = new ZynqMpImageHeaderStructure();  // Manual allocation - will be owned by iHs list
         memset(iH, 0, sizeof(ZynqMpImageHeaderStructure));
         if (!(fseek(binFile, offset, SEEK_SET)))
         {
@@ -234,15 +220,15 @@ void ZynqMpReadImage::ReadHeaderTableDetails()
     offset = 4 * (iHT->firstPartitionHeaderWordOffset);
     for (index = 0; index < iHT->partitionTotalCount; index++)
     {
-        pHT = new ZynqMpPartitionHeaderTableStructure;
+        pHT = std::make_unique<ZynqMpPartitionHeaderTableStructure>();
         if (!(fseek(binFile, offset, SEEK_SET)))
         {
-            result = fread(pHT, 1, sizeof(ZynqMpPartitionHeaderTableStructure), binFile);
+            result = fread(pHT.get(), 1, sizeof(ZynqMpPartitionHeaderTableStructure), binFile);
             if (result != sizeof(ZynqMpPartitionHeaderTableStructure))
             {
                 LOG_ERROR("Error reading Partition header table");
             }
-            pHTs.push_back(pHT);
+            pHTs.push_back(pHT.release());
         }
         else
         {
@@ -267,15 +253,16 @@ void ZynqMpReadImage::ReadHeaderTableDetails()
     uint8_t*  header_ac = NULL;
     if (iHT->headerAuthCertificateWordOffset != 0)
     {
-        header_ac = new uint8_t[sizeof(AuthCertificate4096Structure)];
+        auto header_ac_ptr = std::make_unique<uint8_t[]>(sizeof(AuthCertificate4096Structure));
         if (!(fseek(binFile, 4 * (iHT->headerAuthCertificateWordOffset), SEEK_SET)))
         {
-            result = fread(header_ac, 1, sizeof(AuthCertificate4096Structure), binFile);
+            result = fread(header_ac_ptr.get(), 1, sizeof(AuthCertificate4096Structure), binFile);
             if (result != sizeof(AuthCertificate4096Structure))
             {
                 LOG_ERROR("Error reading header authentication certificate");
             }
         }
+        header_ac = header_ac_ptr.release();
     }
     aCs.push_back(header_ac);
     aCNames.push_back("Headers");
@@ -302,10 +289,10 @@ void ZynqMpReadImage::ReadHeaderTableDetails()
 
             for (int i = 0; i < acCount; i++)
             {
-                aC = new uint8_t[sizeof(AuthCertificate4096Structure)];
+                auto aC_ptr = std::make_unique<uint8_t[]>(sizeof(AuthCertificate4096Structure));
                 if (!(fseek(binFile, offset, SEEK_SET)))
                 {
-                    result = fread(aC, 1, sizeof(AuthCertificate4096Structure), binFile);
+                    result = fread(aC_ptr.get(), 1, sizeof(AuthCertificate4096Structure), binFile);
                     if (result != sizeof(AuthCertificate4096Structure))
                     {
                         LOG_ERROR("Error reading header authentication certificate");
@@ -313,6 +300,7 @@ void ZynqMpReadImage::ReadHeaderTableDetails()
                 }
 
                 offset += sizeof(AuthCertificate4096Structure);
+                aC = aC_ptr.release();
                 aCs.push_back(aC);
                 aCNames.push_back(*pHTName);
             }

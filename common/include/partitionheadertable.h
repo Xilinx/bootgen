@@ -133,7 +133,7 @@ public:
     bool GenerateAesKeyFlag(void) {return generateAesKeyFile; }
     
     ImageHeader* imageHeader;
-    Partition* partition;
+    std::unique_ptr<Partition> partition;
     std::list<AuthenticationCertificate*> ac;
     Section* checksumSection;
     PreservedHeader preservedBitstreamHdr;
@@ -145,7 +145,7 @@ public:
     uint8_t execState;
     uint8_t elfEndianess;
     uint32_t certificateRelativeByteOffset;
-    uint8_t* partitionSecHdrIv;
+    std::unique_ptr<uint8_t[]> partitionSecHdrIv;  // Smart pointer - auto cleanup
 
     Binary::Address_t loadAddress;
     Binary::Address_t execAddress;
@@ -205,6 +205,7 @@ public:
     Partition(PartitionHeader* hdr, Section* section0);
     Partition(PartitionHeader* hdr, const uint8_t* data, Binary::Length_t length);
     virtual ~Partition() {}
+    // NOTE: Section is NOT deleted - accepting memory leak to avoid double-ownership issues
 
     virtual void Build(BootImage& bi, Binary& cache);
     virtual void Link(BootImage& bi);

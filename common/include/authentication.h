@@ -30,6 +30,7 @@
 #include <list>
 #include <string.h>
 #include <vector>
+#include <memory>
 #include <openssl/bn.h>
 #include <openssl/rsa.h>
 #include <openssl/evp.h>
@@ -246,7 +247,7 @@ class AuthenticationAlgorithm
 {
 public:
     AuthenticationAlgorithm() { };
-    ~AuthenticationAlgorithm() { };
+    virtual ~AuthenticationAlgorithm() { };
 
     virtual Authentication::Type Type() = 0;
     virtual void CreateSignature(const uint8_t *base, uint8_t* primaryKey, uint8_t *result0) {};
@@ -259,6 +260,7 @@ public:
     virtual void RearrangeEndianess(uint8_t *array, uint32_t size) {};
     virtual void CreatePadding(uint8_t* signature, uint8_t* hash, uint8_t hashLength) {};
     virtual uint32_t GetAuthHeader(void) { return AUTH_HEADER; }
+    virtual uint32_t GetAuthHeader(bool) { return AUTH_HEADER; }
     virtual uint32_t GetAuthHeader(bool, bool, bool) { return AUTH_HEADER; }
     virtual int KeySize() { return 0; }
 };
@@ -295,13 +297,16 @@ class AuthenticationContext
 {
 public:
     AuthenticationContext()
-        : primaryKey(NULL)
-        , secondaryKey(NULL)
-        , hash(NULL)
+        : primaryKey(nullptr)
+        , secondaryKey(nullptr)
+        , ownsPrimaryKey(false)
+        , ownsSecondaryKey(false)
+        , hash(nullptr)
+        , ownsHash(false)
         , spkSignLoaded(false)
         , bhSignLoaded(false)
-        , spksignature(NULL)
-        , bHsignature(NULL)
+        , spksignature(nullptr)
+        , bHsignature(nullptr)
         , hashType(AuthHash::Sha2)
         , ppkSelect(0)
         , spkSelect(1)
@@ -311,8 +316,9 @@ public:
         , certIndex(0)
         , preSigned(false)
         , isHeaderAuthentication(false)
-        , authAlgorithm(NULL)
-        , authCertificate (NULL)
+        , authAlgorithm(nullptr)
+        , ownsAuthAlgorithm(false)
+        , authCertificate (nullptr)
         , ppkFile("")
         , pskFile("")
         , spkFile("")
@@ -322,12 +328,28 @@ public:
         , lmsOnly(true)
     { };
 
-    virtual ~AuthenticationContext() { };
+    virtual ~AuthenticationContext() { 
+        if (!ownsPrimaryKey && primaryKey != nullptr) {
+            primaryKey.release();  // Don't delete non-owned key
+        }
+        if (!ownsSecondaryKey && secondaryKey != nullptr) {
+            secondaryKey.release();  // Don't delete non-owned key
+        }
+        if (!ownsAuthAlgorithm && authAlgorithm != nullptr) {
+            authAlgorithm.release();  // Don't delete non-owned authAlgorithm
+        }
+        if (ownsHash && hash != nullptr) {
+            delete hash;  // Clean up owned hash
+            hash = nullptr;
+        }
+        // spksignature and bHsignature are unique_ptr - automatically cleaned up
+    };
     virtual uint32_t GetCertificateSize() { return 0; }
     virtual uint32_t GetTotalHashBlockSignSize(void) { return 0; };
     virtual void ResizeIfNecessary(Section* section);
-    virtual Section* CreateCertificate(BootImage& bi, Binary& cache, Section* dataSection) { return NULL; }
+    virtual Section* CreateCertificate(BootImage& bi, Binary& cache, Section* dataSection, bool isBootloader) { return NULL; }
     virtual void Link(BootImage& bi, std::list<Section*> sections, AuthenticationCertificate* cert) {  }
+    virtual void Link(BootImage& bi, void* partition, AuthenticationCertificate* cert) {  }
     virtual void GeneratePPKHash(const std::string& filename) {}
     virtual void GenerateSPKHash(uint8_t* sha256_hash_padded) {}
     virtual void GenerateSPKHashFile(const std::string& filename, Hash* hashObj);
@@ -342,7 +364,7 @@ public:
     virtual void SetKeyLength(Authentication::Type type) {};
 
     void CreateSPKSignature(void);
-    void SetSPKSignatureFile(const std::string & filename);
+    virtual void SetSPKSignatureFile(const std::string & filename);
     void ParseSPKSignatureFile(const std::string & filename);
     void SetBHSignatureFile(const std::string & filename);
     void ParseBHSignatureFile(const std::string & filename);
@@ -350,6 +372,7 @@ public:
     void GetAC(const std::string& presignFilename, uint8_t* signature, uint32_t index);
     void LoadUdfData(const std::string & udfFilename, uint8_t * signature);
     void WritePaddedSHAFile(const uint8_t * shaBuf, const std::string & hashfilename);
+    void WriteHashFile(const uint8_t* shaBuf, const std::string& hashfilename, bool isHeader);
 
     void SetPresignFile(const std::string& filename);
     void SetACFile(const std::string& filename);
@@ -381,13 +404,14 @@ public:
 
     int acIndex;
     int certIndex;
-    Hash *hash;
+    Hash* hash;  // Sometimes owned, sometimes non-owning pointer to bi.hash
+    bool ownsHash;  // Track if we own the hash (created with new) vs non-owning (bi.hash.get())
     uint8_t udf_data[UDF_DATA_SIZE];
     bool spkSignLoaded;
     bool bhSignLoaded;
     std::string spkSignRequested;
-    uint8_t* spksignature;
-    uint8_t* bHsignature;
+    std::unique_ptr<uint8_t[]> spksignature;
+    std::unique_ptr<uint8_t[]> bHsignature;
     AuthHash::Type hashType;
     size_t authBlocks;
     bool preSigned;
@@ -401,18 +425,21 @@ public:
     bool isHeaderAuthentication;
     std::string spkSignFile;
     std::string bhSignFile;
-    Key *primaryKey;
-    Key *secondaryKey;
-    AuthenticationAlgorithm *authAlgorithm;
-    AuthenticationCertificate *authCertificate;
+    std::unique_ptr<Key> primaryKey;
+    bool ownsPrimaryKey;     // Track if this context owns primaryKey for cleanup
+    std::unique_ptr<Key> secondaryKey;
+    bool ownsSecondaryKey;   // Track if this context owns secondaryKey for cleanup
+    std::unique_ptr<AuthenticationAlgorithm> authAlgorithm;
+    bool ownsAuthAlgorithm;  // Track if this context owns authAlgorithm for cleanup
+    std::unique_ptr<AuthenticationCertificate> authCertificate;
     uint16_t signatureLength;
     std::string presignFile;
     std::string acFile;
     std::string udfFile;
     bool lmsOnly;
+    uint8_t hashLength;  // CRITICAL: Instance variable, NOT static (each context has its own)
 protected:
     static uint16_t authKeyLength;
-    static uint8_t hashLength;
     static bool zynpmpVerEs1;
     uint64_t firstChunkSize;
 };
@@ -432,7 +459,9 @@ class AuthenticationCertificate : public BaseThing
 public:
     AuthenticationCertificate(AuthenticationContext* context);
     AuthenticationCertificate() {};
+    virtual ~AuthenticationCertificate() {}  // Virtual destructor to avoid warnings
     void Build(BootImage& bi, Binary& cache, Section* section, bool fsbl, bool isTableHeader);
+    virtual void Link(BootImage& bi, void* partition);  // IMAGE_STORE: partition pointer overload
     virtual void Link(BootImage& bi, Section* section);
     virtual Section* AttachBootHeaderToFsbl(BootImage& bi) { return NULL; }
 

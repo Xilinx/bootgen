@@ -44,7 +44,7 @@ class Binary;
 #define WORD_SIZE_IN_BYTES      4
 #define VERSAL_AC_SIZE          0xE60
 
-typedef std::list<Section*> SectionList;
+// SectionList is now defined in the base binary.h class
 
 /*
 -------------------------------------------------------------------------------

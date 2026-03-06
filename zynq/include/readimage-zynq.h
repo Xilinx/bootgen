@@ -68,11 +68,11 @@ public:
     void DumpPartitions(uint8_t* buffer, uint32_t length, std::string name);
 
 protected:
-    ZynqBootHeaderStructure* bH;
-    ZynqImageHeaderTableStructure* iHT;
-    ZynqImageHeaderStructure* iH;
-    ZynqPartitionHeaderTableStructure* pHT;
-    std::list<ZynqImageHeaderStructure*> iHs;
-    std::list<ZynqPartitionHeaderTableStructure*> pHTs;
+    std::unique_ptr<ZynqBootHeaderStructure> bH;
+    std::unique_ptr<ZynqImageHeaderTableStructure> iHT;
+    std::unique_ptr<ZynqImageHeaderStructure> iH;
+    std::unique_ptr<ZynqPartitionHeaderTableStructure> pHT;
+    std::list<std::unique_ptr<ZynqImageHeaderStructure>> iHs;
+    std::list<std::unique_ptr<ZynqPartitionHeaderTableStructure>> pHTs;
 };
 #endif

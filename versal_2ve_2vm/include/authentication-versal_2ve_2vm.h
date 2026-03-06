@@ -29,7 +29,9 @@
 #include <string>
 #include <list>
 #include <string.h>
+#include <memory>
 #include "binary.h"
+
 //#include "baseclass.h"
 #include "bootgenenum.h"
 #include <openssl/bn.h>
@@ -75,6 +77,19 @@ class Key;
 #define AUTH_HDR_TELLURIDE_ECDSA_P521    0x113       //0001 0001 0011
 #define AUTH_HDR_TELLURIDE_HSS_LMS       0x114       //0001 0001 0100
 #define AUTH_HDR_TELLURIDE_LMS           0x115       //0001 0001 0101
+
+#define TELLURIDE_EC_P521_AC_PPK_OFFSET                  (0x00)
+#define TELLURIDE_EC_P521_AC_PPK_ALIGNMENT_OFFSET        (0x84)
+#define TELLURIDE_EC_P521_AC_TOTAL_SPK_SIZE_OFFSET       (0x90)
+#define TELLURIDE_EC_P521_AC_ACTUAL_SPK_SIZE_OFFSET      (0x94)
+#define TELLURIDE_EC_P521_AC_TOTAL_SPK_SIGN_SIZE_OFFSET  (0x98)
+#define TELLURIDE_EC_P521_AC_ACTUAL_SPK_SIGN_SIZE_OFFSET (0x9C)
+#define TELLURIDE_EC_P521_AC_SPK_ID_OFFSET               (0xA0)
+#define TELLURIDE_EC_P521_AC_SPK_HDR_ALIGNMENT_OFFSET    (0xA4)
+#define TELLURIDE_EC_P521_AC_SPK_OFFSET                  (0xB0)
+#define TELLURIDE_EC_P521_AC_SPK_ALIGNMENT_OFFSET        (0x134)
+#define TELLURIDE_EC_P521_AC_SPK_SIGN_OFFSET             (0x140)
+#define TELLURIDE_EC_P521_AC_SPK_SIGN_ALIGNMENT_OFFSET   (0x1C4)
 
 #define AC_HDR_PPK_SELECT_BIT_SHIFT 16
 
@@ -215,7 +230,7 @@ public:
     Authentication::Type authType;
     void RearrangeEndianess(uint8_t* array, uint32_t size) { };
     //uint32_t GetAuthHeader(void);
-    uint32_t GetAuthHeader(bool lmsOnly, bool IsLassenSeries, bool IsDl9Series);
+    uint32_t GetAuthHeader(bool lmsOnly);
 
 private:
     uint32_t certSize;
@@ -230,15 +245,17 @@ public:
     Versal_2ve_2vmAuthenticationContext(const AuthCertificate4096Sha3PaddingHBStructure* existingCert, Authentication::Type authtype);
     ~Versal_2ve_2vmAuthenticationContext();
 
+    void Link(BootImage& bi, void* partition, AuthenticationCertificate* cert);
     void Link(BootImage& bi, std::list<Section*> sections, AuthenticationCertificate* cert);
 
     uint32_t getCertificateSize(void) { return certSize; }
     void AddAuthCertSizeToTotalFSBLSize(PartitionHeader* header);
-    Section* CreateCertificate(BootImage& bi, Binary& cache, Section* dataSection);
+    Section* CreateCertificate(BootImage& bi, Binary& cache, Section* dataSection, bool isBootloader);
     void GenerateIHTHash(BootImage& bi, uint8_t* sha_hash_padded);
     void GenerateBHHash(BootImage& bi, uint8_t* sha_hash_padded);
     void GenerateSPKHash(uint8_t * sha_hash_padded);
     void GeneratePPKHash(const std::string& filename);
+    void CopyPartitionSignature(BootImage& bi, std::list<Section*> sections, size_t hashBlockLength, uint8_t* signatureBlock, Section* acSection);
     void CopyPartitionSignature(BootImage& bi, std::list<Section*> sections, uint8_t* signatureBlock, Section* acSection);
     static void GetPresign(const std::string& presignFilename, uint8_t* signature, uint32_t index);
     void SetSPKSignatureFile(const std::string& filename);
@@ -249,7 +266,7 @@ public:
     void CreateSPKSignature(BootImage& bi);
     void CreateAuthJtagImage(uint8_t * buffer, AuthJtagInfo authJtagAttributes);
     void SetKeyLength(Authentication::Type type);
-    AuthenticationAlgorithm* GetAuthenticationAlgorithm(Authentication::Type type);
+    std::unique_ptr<AuthenticationAlgorithm> GetAuthenticationAlgorithm(Authentication::Type type);
     uint32_t GetCertificateSize();
     uint32_t GetTotalHashBlockSignSize(void);
 private:
@@ -267,6 +284,7 @@ class Versal_2ve_2vmAuthenticationCertificate : public AuthenticationCertificate
 public:
     Versal_2ve_2vmAuthenticationCertificate(AuthenticationContext* context) : AuthenticationCertificate(context) {}
     Section* AttachBootHeaderToFsbl(BootImage& bi) { return NULL; }
+    void Link(BootImage& bi, void* partition);  // IMAGE_STORE: partition pointer overload
     void Link(BootImage& bi, Section* section);
     //AuthCertificate4096Sha3PaddingStructure *acStructure;
 };

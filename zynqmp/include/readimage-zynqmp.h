@@ -47,10 +47,10 @@ class ZynqMpReadImage : public ReadImage
 public:
     ZynqMpReadImage(std::string filename) : ReadImage(filename)
     {
-        bH = NULL;
-        iHT = NULL;
+        bH = nullptr;
+        iHT = nullptr;
         iH = NULL;
-        pHT = NULL;
+        pHT = nullptr;
         iHs.clear();
         pHTs.clear();
         authenticationVerified = true;
@@ -79,10 +79,10 @@ public:
     bool VerifySignature(bool nist, uint8_t * data, size_t dataLength, ACKey4096 * acKey, uint8_t * signature);
 
 protected:
-    ZynqMpBootHeaderStructure* bH;
-    ZynqMpImageHeaderTableStructure* iHT;
-    ZynqMpImageHeaderStructure* iH;
-    ZynqMpPartitionHeaderTableStructure* pHT;
+    std::unique_ptr<ZynqMpBootHeaderStructure> bH;
+    std::unique_ptr<ZynqMpImageHeaderTableStructure> iHT;
+    ZynqMpImageHeaderStructure* iH;  // Legacy pointer (managed by iHs list)
+    std::unique_ptr<ZynqMpPartitionHeaderTableStructure> pHT;
     std::list<ZynqMpImageHeaderStructure*> iHs;
     std::list<ZynqMpPartitionHeaderTableStructure*> pHTs;
     bool authenticationVerified;

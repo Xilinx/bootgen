@@ -82,8 +82,10 @@ public:
     void PackNextIv(uint8_t * aesIvNext, int aesIvPtr);
     void GetNextKey(uint8_t* keyNext, int ptr);
     void GetNextIv(uint8_t* keyNext, int ptr);
+    void ReadBhIv(uint8_t* bhIv);
 
     void GenerateRemainingKeys(Options& options);
+    void GenerateGreyKey();
     void AesGcm256HashBlockEncrypt(Options& options, uint8_t *aad, uint32_t aad_len, uint8_t* outBuf, uint8_t ivIncrement);
 private:
     bool isBootloader;
@@ -101,6 +103,6 @@ private:
         unsigned char* gcm_ct, int ct_len, unsigned char* gcm_tag);
 
 protected:
-    AesGcmEncryptionContext* encryptionAlgorithm;
+    std::unique_ptr<AesGcmEncryptionContext> encryptionAlgorithm;
 };
 #endif

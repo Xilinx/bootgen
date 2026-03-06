@@ -126,7 +126,7 @@ public:
     void ImportFpgaDataFile(BootImage & bi);
     void ImportBit(BootImage & bi);
     void ImportBin(BootImage & bi);
-    void CreateElfPartitions(BootImage& bi, ElfFormat* elf, uint8_t proc_state);
+    void CreateElfPartitions(BootImage& bi, std::unique_ptr<ElfFormat>& elf, uint8_t proc_state);
     uint64_t GetExecAddrForXip(uint64_t execAddr);
     
     void SetNextImageHeaderOffset(uint32_t addr);

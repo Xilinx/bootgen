@@ -37,16 +37,19 @@
 /******************************************************************************/
 VersalBootHeader::VersalBootHeader(void)
 {
-    pufData = new uint8_t[PUF_DATA_LENGTH];
-    bhKeyData = new uint8_t[BLK_GRY_KEY_LENGTH * 4];
-    ivData = new uint8_t[IV_LENGTH * 4];
+    LOG_INFO("VersalBootHeader::VersalBootHeader() constructor called, this=%p", this);
+    pufData = std::make_unique<uint8_t[]>(PUF_DATA_LENGTH);
+    bhKeyData = std::make_unique<uint8_t[]>(BLK_GRY_KEY_LENGTH * 4);
+    ivData = std::make_unique<uint8_t[]>(IV_LENGTH * 4);
     kekIvMust = false;
 
-    memset(pufData, 0, PUF_DATA_LENGTH);
-    memset(bhKeyData, 0, BLK_GRY_KEY_LENGTH * 4);
-    memset(ivData, 0, IV_LENGTH * 4);
-    section = new Section("BootHeader", sizeof(VersalBootHeaderStructure));
-    bHTable = (VersalBootHeaderStructure*)section->Data;
+    memset(pufData.get(), 0, PUF_DATA_LENGTH);
+    memset(bhKeyData.get(), 0, BLK_GRY_KEY_LENGTH * 4);
+    memset(ivData.get(), 0, IV_LENGTH * 4);
+    auto temp_section = std::make_unique<Section>("BootHeader", sizeof(VersalBootHeaderStructure));
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    LOG_INFO("VersalBootHeader constructor: created section=%p", section);
+    bHTable = (VersalBootHeaderStructure*)section->Data.get();
     smapTable = (VersalSmapWidthTable*)bHTable->smapWords;
 }
 
@@ -54,47 +57,31 @@ VersalBootHeader::VersalBootHeader(void)
 VersalBootHeader::VersalBootHeader(std::ifstream& src)
 {
     prebuilt = true;
-    pufData = new uint8_t[PUF_DATA_LENGTH];
-    bhKeyData = new uint8_t[BLK_GRY_KEY_LENGTH * 4];
-    ivData = new uint8_t[IV_LENGTH * 4];
+    pufData = std::make_unique<uint8_t[]>(PUF_DATA_LENGTH);
+    bhKeyData = std::make_unique<uint8_t[]>(BLK_GRY_KEY_LENGTH * 4);
+    ivData = std::make_unique<uint8_t[]>(IV_LENGTH * 4);
 
-    memset(pufData, 0, PUF_DATA_LENGTH);
-    memset(bhKeyData, 0, BLK_GRY_KEY_LENGTH * 4);
-    memset(ivData, 0, IV_LENGTH * 4);
+    memset(pufData.get(), 0, PUF_DATA_LENGTH);
+    memset(bhKeyData.get(), 0, BLK_GRY_KEY_LENGTH * 4);
+    memset(ivData.get(), 0, IV_LENGTH * 4);
     kekIvMust = false;
 
     /* Import the Boot Header from a boot image file */
-    section = new Section("BootHeader", sizeof(VersalBootHeaderStructure));
-    if (!src.read((char*)section->Data, section->Length).good())
+    auto temp_section = std::make_unique<Section>("BootHeader", sizeof(VersalBootHeaderStructure));
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    if (!src.read((char*)section->Data.get(), section->Length).good())
     {
         LOG_ERROR("Failed to read bootheader from imported image");
     }
-    bHTable = (VersalBootHeaderStructure*)section->Data;
+    bHTable = (VersalBootHeaderStructure*)section->Data.get();
     smapTable = (VersalSmapWidthTable*)bHTable->smapWords;
 }
 
 /******************************************************************************/
 VersalBootHeader::~VersalBootHeader()
 {
-    if (pufData != NULL)
-    {
-        delete[] pufData;
-    }
-
-    if (bhKeyData != NULL)
-    {
-        delete[] bhKeyData;
-    }
-
-    if (ivData != NULL)
-    {
-        delete[] ivData;
-    }
-
-    if (section != NULL)
-    {
-        delete section;
-    }
+    // pufData, bhKeyData, ivData are automatically destroyed (unique_ptr)
+    // section is also unique_ptr, automatically managed
 }
 
 /******************************************************************************/
@@ -106,16 +93,20 @@ void VersalBootHeader::Build(BootImage& bi, Binary& cache)
     {
         if (bi.bifOptions->GetSmapWidth() != 0)
         {
-            section = new Section("SmapHeader", sizeof(VersalSmapWidthTable));
-            smapTable = (VersalSmapWidthTable*)section->Data;
+            auto temp_section = std::make_unique<Section>("SmapHeader", sizeof(VersalSmapWidthTable));
+            section = temp_section.release();  // Transfer ownership to raw pointer member
+            smapTable = (VersalSmapWidthTable*)section->Data.get();
             memcpy(smapTable, bHTable, SMAP_BUS_WIDTH * sizeof(uint32_t));
-            cache.Sections.push_back(section);
+            cache.Sections.push_back(std::unique_ptr<Section>(section));
+
         }
         return;
     }
-    if (section != NULL)
+    
+    if (section != nullptr)
     {
-        cache.Sections.push_back(section);
+        cache.Sections.push_back(std::unique_ptr<Section>(section));
+
     }
 
     /* If the boot header is imported from a bootimage file, no need to build */
@@ -142,8 +133,8 @@ void VersalBootHeader::Build(BootImage& bi, Binary& cache)
     }
 
     SetGreyOrBlackIv(kekIvFile);
-    SetPlmSecureHdrIv(bi.options.secHdrIv);
-    SetPmcDataSecureHdrIv(bi.options.secHdrIvPmcData);
+    SetPlmSecureHdrIv(bi.options.secHdrIv.get());
+    SetPmcDataSecureHdrIv(bi.options.secHdrIvPmcData.get());
     if (bi.options.IsVersalNetSeries())
     {
         SetRevokeId(bi.imageList.front()->GetPartitionRevocationId());
@@ -157,6 +148,9 @@ void VersalBootHeader::Build(BootImage& bi, Binary& cache)
     BuildRegInitTable(bi.options);
     SetPufData(bi);
     SetSHA3Padding();
+    
+    // Section already added to cache at the start of Build()
+    // Cache stores non-owning raw pointer, BootHeader keeps ownership
 }
 
 /******************************************************************************/
@@ -174,7 +168,7 @@ void VersalBootHeader::Link(BootImage& bi)
         return;
     }
 
-    ImageHeaderTable* iHT = bi.imageHeaderTable;
+    ImageHeaderTable* iHT = bi.imageHeaderTable.get();
     ImageHeader* fsbl = NULL;
     if (bi.createSubSystemPdis == true)
     {
@@ -218,11 +212,11 @@ void VersalBootHeader::Link(BootImage& bi)
         SetPmcCdoLength(bi.bifOptions->GetPmcFwSize());
         SetTotalPlmLength(bi.bifOptions->GetTotalPmcFwSize());
         SetTotalPmcCdoLength(bi.bifOptions->GetTotalPmcFwSize());
-        SetPlmSecureHdrIv(bi.options.secHdrIv);
+        SetPlmSecureHdrIv(bi.options.secHdrIv.get());
 
         if (bi.bifOptions->GetPmcFwSize() != 0)
         {
-            SetPmcDataSecureHdrIv(bi.options.secHdrIvPmcData);
+            SetPmcDataSecureHdrIv(bi.options.secHdrIvPmcData.get());
         }
 
         if (fsbl->IsStaticFlagSet() || bi.bifOptions->GetXipMode())
@@ -320,7 +314,7 @@ void VersalBootHeader::LinkPrebuiltBH(BootImage& bi)
 
     /* This is useful for importing the bootimage and appending new partitions.
     Total metaheader length depends on no. of partitions */
-    ImageHeaderTable* iHT = bi.imageHeaderTable;
+    ImageHeaderTable* iHT = bi.imageHeaderTable.get();
     if (iHT->section != NULL)
     {
         if (!Binary::CheckAddress(iHT->section->Address))
@@ -569,20 +563,18 @@ void VersalBootHeader::SetHeaderChecksum(void)
 /******************************************************************************/
 void VersalBootHeader::SetGreyOrBlackKey(std::string keyFile)
 {
-    uint8_t* bhKeyData = new uint8_t[BLK_GRY_KEY_LENGTH * 4];
-    memset(bhKeyData, 0, BLK_GRY_KEY_LENGTH * 4);
+    auto bhKeyData = std::make_unique<uint8_t[]>(BLK_GRY_KEY_LENGTH * 4);
+    memset(bhKeyData.get(), 0, BLK_GRY_KEY_LENGTH * 4);
 
     if (keyFile != "")
     {
         FileImport fileReader;
-        if (!fileReader.LoadHexData(keyFile, bhKeyData, BLK_GRY_KEY_LENGTH * 4))
+        if (!fileReader.LoadHexData(keyFile, bhKeyData.get(), BLK_GRY_KEY_LENGTH * 4))
         {
             LOG_ERROR("Invalid no. of data bytes for Grey/Black key in BootHeader.\n           Expected length for Grey/Black key is 32 bytes");
         }
     }
-    memcpy(&bHTable->greyOrBlackKey, bhKeyData, BLK_GRY_KEY_LENGTH * 4);
-
-    delete[] bhKeyData;
+    memcpy(&bHTable->greyOrBlackKey, bhKeyData.get(), BLK_GRY_KEY_LENGTH * 4);
 }
 
 /******************************************************************************/
@@ -638,13 +630,13 @@ void VersalBootHeader::SetPmcDataSecureHdrIv(uint8_t* iv)
 /******************************************************************************/
 void VersalBootHeader::SetGreyOrBlackIv(std::string ivFile)
 {
-    uint8_t* ivData = new uint8_t[IV_LENGTH * 4];
-    memset(ivData, 0, IV_LENGTH * 4);
+    auto ivData = std::make_unique<uint8_t[]>(IV_LENGTH * 4);
+    memset(ivData.get(), 0, IV_LENGTH * 4);
 
     if (ivFile != "")
     {
         FileImport fileReader;
-        if (!fileReader.LoadHexData(ivFile, ivData, IV_LENGTH * 4))
+        if (!fileReader.LoadHexData(ivFile, ivData.get(), IV_LENGTH * 4))
         {
             LOG_ERROR("Invalid no. of data bytes for Black/Grey Key IV.\n           Expected length for Grey/Black IV is 12 bytes");
         }
@@ -657,30 +649,27 @@ void VersalBootHeader::SetGreyOrBlackIv(std::string ivFile)
         }
     }
 
-    memcpy(&bHTable->greyOrBlackIV, ivData, IV_LENGTH * 4);
-    delete[] ivData;
+    memcpy(&bHTable->greyOrBlackIV, ivData.get(), IV_LENGTH * 4);
 }
 
 /******************************************************************************/
 void VersalBootHeader::SetPufData(BootImage &bi)
 {
-    uint8_t* pufData = new uint8_t[PUF_DATA_LENGTH];
-    memset(pufData, 0, PUF_DATA_LENGTH);
+    auto pufData = std::make_unique<uint8_t[]>(PUF_DATA_LENGTH);
+    memset(pufData.get(), 0, PUF_DATA_LENGTH);
     if (bi.bifOptions->GetPufHdLoc() == PufHdLoc::PUFinBH || bi.bifOptions->GetPufHdinBHFlag())
     {
         if (bi.bifOptions->GetPufHelperFile() != "")
         {
             FileImport fileReader;
-            if (!fileReader.LoadHexData(bi.bifOptions->GetPufHelperFile(), pufData, PUF_DATA_LENGTH))
+            if (!fileReader.LoadHexData(bi.bifOptions->GetPufHelperFile(), pufData.get(), PUF_DATA_LENGTH))
             {
                 LOG_ERROR("Invalid no. of data bytes for PUF Helper Data.\n           Expected length for PUF Helper Data is 1544 bytes");
             }
         }
     }
     uint32_t pufLoc = GetBootHeaderSize() - sizeof(uint32_t) - (SHA3_PAD_SIZE_VERSAL * 4) - PUF_DATA_LENGTH;
-    memcpy((uint8_t*)bHTable + pufLoc, pufData, PUF_DATA_LENGTH);
-
-    delete[] pufData;
+    memcpy((uint8_t*)bHTable + pufLoc, pufData.get(), PUF_DATA_LENGTH);
 }
 
 /******************************************************************************/
@@ -831,8 +820,14 @@ uint32_t VersalBootHeader::CalcHeaderChecksum(void* addr, size_t len)
 /******************************************************************************/
 void VersalBootHeader::BuildRegInitTable(Options& options)
 {
+    LOG_INFO("BuildRegInitTable: this=%p, section=%p", this, section);
+    if (!section)
+    {
+        LOG_ERROR("CRITICAL BUG: section is NULL in BuildRegInitTable!");
+        return;
+    }
     uint32_t regTableLoc = GetBootHeaderSize() - sizeof(uint32_t) - (SHA3_PAD_SIZE_VERSAL * 4) - PUF_DATA_LENGTH - (MAX_REGISTER_INITS * 4 * 2);
-    regTable.Build(options, (RegisterInitTable*)(section->Data + regTableLoc));
+    regTable.Build(options, (RegisterInitTable*)(section->Data.get() + regTableLoc));
 }
 
 /******************************************************************************/

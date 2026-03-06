@@ -53,18 +53,18 @@ extern "C" {
 SpartanupAuthenticationContext::SpartanupAuthenticationContext(Authentication::Type type)
 {
     signatureLength = SIGN_LENGTH_VERSAL;
-    //spksignature = new uint8_t[signatureLength];
-    bHsignature = new uint8_t[signatureLength];
+    //spksignature = std::make_unique<uint8_t[]>(signatureLength);
+    bHsignature = std::make_unique<uint8_t[]>(signatureLength);
     spkSignLoaded = false;
     memset(udf_data, 0, UDF_DATA_SIZE);
-    memset(bHsignature, 0, signatureLength);
+    memset(bHsignature.get(), 0, signatureLength);
     bhSignLoaded = false;
     hashType = AuthHash::Sha3;
     authAlgorithm = GetAuthenticationAlgorithm(type);
     if (type == Authentication::RSA)
     {
-        primaryKey = new Key4096Sha3Padding_spartanup("Primary Key");
-        secondaryKey = new Key4096Sha3Padding_spartanup("Secondary Key");
+        primaryKey = std::make_unique<Key4096Sha3Padding_spartanup>("Primary Key");
+        secondaryKey = std::make_unique<Key4096Sha3Padding_spartanup>("Secondary Key");
         primaryKey->authType = Authentication::RSA;
         secondaryKey->authType = Authentication::RSA;
 
@@ -73,8 +73,8 @@ SpartanupAuthenticationContext::SpartanupAuthenticationContext(Authentication::T
     }
     else if (type == Authentication::ECDSA)
     {
-        primaryKey = new KeyECDSA_spartanup("Primary Key");
-        secondaryKey = new KeyECDSA_spartanup("Secondary Key");
+        primaryKey = std::make_unique<KeyECDSA_spartanup>("Primary Key");
+        secondaryKey = std::make_unique<KeyECDSA_spartanup>("Secondary Key");
         primaryKey->authType = Authentication::ECDSA;
         secondaryKey->authType = Authentication::ECDSA;
 
@@ -83,8 +83,8 @@ SpartanupAuthenticationContext::SpartanupAuthenticationContext(Authentication::T
     }
     else if (type == Authentication::ECDSAp521)
     {
-        primaryKey = new KeyECDSAp521_spartanup("Primary Key");
-        secondaryKey = new KeyECDSAp521_spartanup("Secondary Key");
+        primaryKey = std::make_unique<KeyECDSAp521_spartanup>("Primary Key");
+        secondaryKey = std::make_unique<KeyECDSAp521_spartanup>("Secondary Key");
         primaryKey->authType = Authentication::ECDSAp521;
         secondaryKey->authType = Authentication::ECDSAp521;
 
@@ -93,35 +93,39 @@ SpartanupAuthenticationContext::SpartanupAuthenticationContext(Authentication::T
     }
     else if ((type == Authentication::LMS_SHA2_256) || (type == Authentication::LMS_SHAKE256))
     {
-        primaryKey = new KeyLMS_spartanup("Primary Key");
-        secondaryKey = new KeyLMS_spartanup("Secondary Key");
+        primaryKey = std::make_unique<KeyLMS_spartanup>("Primary Key");
+        secondaryKey = std::make_unique<KeyLMS_spartanup>("Secondary Key");
         primaryKey->lmsOnly = secondaryKey->lmsOnly = lmsOnly;
         if (type == Authentication::LMS_SHA2_256)
         {
             primaryKey->authType = Authentication::LMS_SHA2_256;
             secondaryKey->authType = Authentication::LMS_SHA2_256;
             hashType = AuthHash::Sha2;
-            hash = new HashSha2();
+            auto hashPtr = std::make_unique<HashSha2>();
+            hash = hashPtr.release();  // Transfer ownership to raw pointer
+            ownsHash = true;  // We own this hash
         }
         else
         {
             primaryKey->authType = Authentication::LMS_SHAKE256;
             secondaryKey->authType = Authentication::LMS_SHAKE256;
             hashType = AuthHash::Shake256;
-            hash = new HashShake256();
+            auto hashPtr = std::make_unique<HashShake256>();
+            hash = hashPtr.release();  // Transfer ownership to raw pointer
+            ownsHash = true;  // We own this hash
         }
-        signatureLength = GetLmsSignLength(pskFile.c_str(),lmsOnly);
+        signatureLength = GetLmsSignatureLength(pskFile.c_str(), ppkFile.c_str(), lmsOnly);
         certSize = GetCertificateSize();
     }
-    spksignature = new uint8_t[signatureLength];
+    spksignature = std::make_unique<uint8_t[]>(signatureLength);
 }
 
 /******************************************************************************/
 SpartanupAuthenticationContext::SpartanupAuthenticationContext(const AuthenticationContext* refAuthContext, Authentication::Type authtype)
 {
     signatureLength = SIGN_LENGTH_VERSAL;
-    //spksignature = new uint8_t[signatureLength];
-    bHsignature = new uint8_t[signatureLength];
+    //spksignature = std::make_unique<uint8_t[]>(signatureLength);
+    bHsignature = std::make_unique<uint8_t[]>(signatureLength);
 
     authAlgorithm = GetAuthenticationAlgorithm(authtype);
     hashType = AuthHash::Sha3;
@@ -137,8 +141,8 @@ SpartanupAuthenticationContext::SpartanupAuthenticationContext(const Authenticat
 
     if (authtype == Authentication::RSA)
     {
-        primaryKey = new Key4096Sha3Padding_spartanup("Primary Key");
-        secondaryKey = new Key4096Sha3Padding_spartanup("Secondary Key");
+        primaryKey = std::make_unique<Key4096Sha3Padding_spartanup>("Primary Key");
+        secondaryKey = std::make_unique<Key4096Sha3Padding_spartanup>("Secondary Key");
         primaryKey->authType = Authentication :: RSA;
         secondaryKey->authType = Authentication :: RSA;
 
@@ -147,8 +151,8 @@ SpartanupAuthenticationContext::SpartanupAuthenticationContext(const Authenticat
     }
     else if(authtype == Authentication::ECDSA)
     {
-        primaryKey = new KeyECDSA_spartanup("Primary Key");
-        secondaryKey = new KeyECDSA_spartanup("Secondary Key");
+        primaryKey = std::make_unique<KeyECDSA_spartanup>("Primary Key");
+        secondaryKey = std::make_unique<KeyECDSA_spartanup>("Secondary Key");
         primaryKey->authType = Authentication :: ECDSA;
         secondaryKey->authType = Authentication :: ECDSA;
 
@@ -157,8 +161,8 @@ SpartanupAuthenticationContext::SpartanupAuthenticationContext(const Authenticat
     }
     else if (authtype == Authentication::ECDSAp521)
     {
-        primaryKey = new KeyECDSAp521_spartanup("Primary Key");
-        secondaryKey = new KeyECDSAp521_spartanup("Secondary Key");
+        primaryKey = std::make_unique<KeyECDSAp521_spartanup>("Primary Key");
+        secondaryKey = std::make_unique<KeyECDSAp521_spartanup>("Secondary Key");
         primaryKey->authType = Authentication :: ECDSAp521;
         secondaryKey->authType = Authentication :: ECDSAp521;
 
@@ -167,29 +171,33 @@ SpartanupAuthenticationContext::SpartanupAuthenticationContext(const Authenticat
     }
     else if ((authtype == Authentication::LMS_SHA2_256) || (authtype == Authentication::LMS_SHAKE256))
     {
-        primaryKey = new KeyLMS_spartanup("Primary Key");
-        secondaryKey = new KeyLMS_spartanup("Secondary Key");
+        primaryKey = std::make_unique<KeyLMS_spartanup>("Primary Key");
+        secondaryKey = std::make_unique<KeyLMS_spartanup>("Secondary Key");
         primaryKey->lmsOnly = secondaryKey->lmsOnly = lmsOnly;
         if (authtype == Authentication::LMS_SHA2_256)
         {
             primaryKey->authType = Authentication::LMS_SHA2_256;
             secondaryKey->authType = Authentication::LMS_SHA2_256;
             hashType = AuthHash::Sha2;
-            hash = new HashSha2();
+            auto hashPtr = std::make_unique<HashSha2>();
+            hash = hashPtr.release();  // Transfer ownership to raw pointer
+            ownsHash = true;  // We own this hash
         }
         else
         {
             primaryKey->authType = Authentication::LMS_SHAKE256;
             secondaryKey->authType = Authentication::LMS_SHAKE256;
             hashType = AuthHash::Shake256;
-            hash = new HashShake256();
+            auto hashPtr = std::make_unique<HashShake256>();
+            hash = hashPtr.release();  // Transfer ownership to raw pointer
+            ownsHash = true;  // We own this hash
         }
-        signatureLength = GetLmsSignLength(pskFile.c_str(), lmsOnly);
+        signatureLength = GetLmsSignatureLength(pskFile.c_str(), ppkFile.c_str(), lmsOnly);
         certSize = GetCertificateSize();
     }
 
-    spksignature = new uint8_t[signatureLength];
-    bHsignature = new uint8_t[signatureLength];
+    spksignature = std::make_unique<uint8_t[]>(signatureLength);
+    bHsignature = std::make_unique<uint8_t[]>(signatureLength);
 
     if (pskFile != "" || ppkFile != "")
     {
@@ -209,7 +217,9 @@ SpartanupAuthenticationContext::SpartanupAuthenticationContext(const Authenticat
     }
     else
     {
-        primaryKey = refAuthContext->primaryKey;
+        // Note: Ownership semantics need review - using raw pointer reference for now
+        // TODO: Consider if this should be a deep copy or shared ownership
+        primaryKey.reset(refAuthContext->primaryKey.get());
     }
 
     if (spkFile != "" || sskFile != "")
@@ -229,7 +239,9 @@ SpartanupAuthenticationContext::SpartanupAuthenticationContext(const Authenticat
     }
     else
     {
-        secondaryKey = refAuthContext->secondaryKey;
+        // Note: Ownership semantics need review - using raw pointer reference for now
+        // TODO: Consider if this should be a deep copy or shared ownership
+        secondaryKey.reset(refAuthContext->secondaryKey.get());
     }
     if (spkSignFile != "")
     {
@@ -237,7 +249,7 @@ SpartanupAuthenticationContext::SpartanupAuthenticationContext(const Authenticat
     }
     else
     {
-        memcpy(spksignature, refAuthContext->spksignature, signatureLength);
+        memcpy(spksignature.get(), refAuthContext->spksignature.get(), signatureLength);
     }
 
     if (bhSignFile != "")
@@ -246,7 +258,7 @@ SpartanupAuthenticationContext::SpartanupAuthenticationContext(const Authenticat
     }
     else
     {
-        memcpy(bHsignature, refAuthContext->bHsignature, signatureLength);
+        memcpy(bHsignature.get(), refAuthContext->bHsignature.get(), signatureLength);
     }
     memcpy(udf_data, refAuthContext->udf_data, sizeof(udf_data));
     bhSignLoaded = refAuthContext->bhSignLoaded;
@@ -261,16 +273,16 @@ SpartanupAuthenticationContext::SpartanupAuthenticationContext(const Authenticat
 SpartanupAuthenticationContext::SpartanupAuthenticationContext(const AuthCertificate4096Sha3PaddingHBStructure* existingCert, Authentication::Type authtype)
 {
     signatureLength = SIGN_LENGTH_VERSAL;
-    //spksignature = new uint8_t[signatureLength];
+    //spksignature = std::make_unique<uint8_t[]>(signatureLength);
     spkSignLoaded = true;
-    bHsignature = new uint8_t[signatureLength];
+    bHsignature = std::make_unique<uint8_t[]>(signatureLength);
     bhSignLoaded = true;
     authAlgorithm = GetAuthenticationAlgorithm(authtype);
 
     if (authtype == Authentication::RSA)
     {
-        primaryKey = new Key4096Sha3Padding_spartanup("Primary Key");
-        secondaryKey = new Key4096Sha3Padding_spartanup("Secondary Key");
+        primaryKey = std::make_unique<Key4096Sha3Padding_spartanup>("Primary Key");
+        secondaryKey = std::make_unique<Key4096Sha3Padding_spartanup>("Secondary Key");
         primaryKey->authType = Authentication::RSA;
         secondaryKey->authType = Authentication::RSA;
 
@@ -279,8 +291,8 @@ SpartanupAuthenticationContext::SpartanupAuthenticationContext(const AuthCertifi
     }
     else if (authtype == Authentication::ECDSA)
     {
-        primaryKey = new KeyECDSA_spartanup("Primary Key");
-        secondaryKey = new KeyECDSA_spartanup("Secondary Key");
+        primaryKey = std::make_unique<KeyECDSA_spartanup>("Primary Key");
+        secondaryKey = std::make_unique<KeyECDSA_spartanup>("Secondary Key");
         primaryKey->authType = Authentication::ECDSA;
         secondaryKey->authType = Authentication::ECDSA;
 
@@ -289,53 +301,59 @@ SpartanupAuthenticationContext::SpartanupAuthenticationContext(const AuthCertifi
     }
     else if (authtype == Authentication::ECDSAp521)
     {
-        primaryKey = new KeyECDSAp521_spartanup("Primary Key");
-        secondaryKey = new KeyECDSAp521_spartanup("Secondary Key");
+        primaryKey = std::make_unique<KeyECDSAp521_spartanup>("Primary Key");
+        secondaryKey = std::make_unique<KeyECDSAp521_spartanup>("Secondary Key");
         primaryKey->authType = Authentication::ECDSAp521;
         secondaryKey->authType = Authentication::ECDSAp521;
         hashType = AuthHash::Sha3;
-        hash = new HashSha3();
+        auto hashPtr = std::make_unique<HashSha3>();
+        hash = hashPtr.release();  // Transfer ownership to raw pointer
+        ownsHash = true;  // We own this hash
         certSize = sizeof(AuthCertificateECDSAp521HBStructure);
         signatureLength = EC_P521_KEY_LENGTH2 * 2;
     }
     else if((authtype == Authentication::LMS_SHA2_256) || (authtype == Authentication::LMS_SHAKE256))
     {
-        primaryKey = new KeyLMS_spartanup("Primary Key");
-        secondaryKey = new KeyLMS_spartanup("Secondary Key");
+        primaryKey = std::make_unique<KeyLMS_spartanup>("Primary Key");
+        secondaryKey = std::make_unique<KeyLMS_spartanup>("Secondary Key");
         primaryKey->lmsOnly = secondaryKey->lmsOnly = lmsOnly;
         if (authtype == Authentication::LMS_SHA2_256)
         {
             primaryKey->authType = Authentication::LMS_SHA2_256;
             secondaryKey->authType = Authentication::LMS_SHA2_256;
             hashType = AuthHash::Sha2;
-            hash = new HashSha2();
+            auto hashPtr = std::make_unique<HashSha2>();
+            hash = hashPtr.release();  // Transfer ownership to raw pointer
+            ownsHash = true;  // We own this hash
         }
         else
         {
             primaryKey->authType = Authentication::LMS_SHAKE256;
             secondaryKey->authType = Authentication::LMS_SHAKE256;
             hashType = AuthHash::Shake256;
-            hash = new HashShake256();
+            auto hashPtr = std::make_unique<HashShake256>();
+            hash = hashPtr.release();  // Transfer ownership to raw pointer
+            ownsHash = true;  // We own this hash
         }
-        signatureLength = GetLmsSignLength(pskFile.c_str(),lmsOnly);
+        signatureLength = GetLmsSignatureLength(pskFile.c_str(), ppkFile.c_str(), lmsOnly);
         certSize = GetCertificateSize();
     }
     else {
     }
 
-    spksignature = new uint8_t[signatureLength];
+    spksignature = std::make_unique<uint8_t[]>(signatureLength);
     primaryKey->Import(&existingCert->acPpk, "Primary Key");
     secondaryKey->Import(&existingCert->acSpk, "Secondary Key");
     hashType = AuthHash::Sha3;
 
-    authAlgorithm->RearrangeEndianess(primaryKey->N, sizeof(existingCert->acPpk.N));
-    authAlgorithm->RearrangeEndianess(primaryKey->N_ext, sizeof(existingCert->acPpk.N_extension));
-    authAlgorithm->RearrangeEndianess(primaryKey->E, sizeof(existingCert->acPpk.E));
+    authAlgorithm->RearrangeEndianess(primaryKey->N.get(), sizeof(existingCert->acPpk.N));
+    authAlgorithm->RearrangeEndianess(primaryKey->N_ext.get(), sizeof(existingCert->acPpk.N_extension));
+    authAlgorithm->RearrangeEndianess(primaryKey->E.get(), sizeof(existingCert->acPpk.E));
 
-    authAlgorithm->RearrangeEndianess(secondaryKey->N, sizeof(existingCert->acSpk.N));
-    authAlgorithm->RearrangeEndianess(secondaryKey->N_ext, sizeof(existingCert->acSpk.N_extension));
-    authAlgorithm->RearrangeEndianess(secondaryKey->E, sizeof(existingCert->acSpk.E));
-    memcpy(spksignature, existingCert->acSpkSignature.Signature, signatureLength);
+    authAlgorithm->RearrangeEndianess(secondaryKey->N.get(), sizeof(existingCert->acSpk.N));
+    authAlgorithm->RearrangeEndianess(secondaryKey->N_ext.get(), sizeof(existingCert->acSpk.N_extension));
+    authAlgorithm->RearrangeEndianess(secondaryKey->E.get(), sizeof(existingCert->acSpk.E));
+    memcpy(spksignature.get(), existingCert->acSpkSignature.Signature, signatureLength);
     //memcpy(bHsignature, existingCert->acHeaderSignature.Signature, signatureLength);
     //memcpy(udf_data, existingCert->acUdf, UDF_DATA_SIZE);
     //spkIdentification = existingCert->spkId;
@@ -343,22 +361,22 @@ SpartanupAuthenticationContext::SpartanupAuthenticationContext(const AuthCertifi
 }
 
 /******************************************************************************/
-AuthenticationAlgorithm* SpartanupAuthenticationContext::GetAuthenticationAlgorithm(Authentication::Type type)
+std::unique_ptr<AuthenticationAlgorithm> SpartanupAuthenticationContext::GetAuthenticationAlgorithm(Authentication::Type type)
 {
     if (type == Authentication::ECDSA)
     {
         SetAuthenticationKeyLength(EC_P384_KEY_LENGTH);
-        return new ECDSAHBAuthenticationAlgorithm();
+        return std::make_unique<ECDSAHBAuthenticationAlgorithm>();
     }
     else if (type == Authentication::ECDSAp521)
     {
         //SetAuthenticationKeyLength(EC_P521_KEY_LENGTH);
-        return new ECDSAP521HBAuthenticationAlgorithm();
+        return std::make_unique<ECDSAP521HBAuthenticationAlgorithm>();
     }
     else if(type == Authentication::RSA)
     {
         SetAuthenticationKeyLength(RSA_4096_KEY_LENGTH);
-        return new RSA4096Sha3PaddingHBAuthenticationAlgorithm();
+        return std::make_unique<RSA4096Sha3PaddingHBAuthenticationAlgorithm>();
     }
     else if((type == Authentication::LMS_SHA2_256)|| (type == Authentication::LMS_SHAKE256))
     {
@@ -370,23 +388,23 @@ AuthenticationAlgorithm* SpartanupAuthenticationContext::GetAuthenticationAlgori
         {
             hashType = AuthHash::Shake256;
         }
-        return new LMSAuthenticationAlgorithm(type);
+        return std::make_unique<LMSAuthenticationAlgorithm>(type);
     }
     else
     {
-        return NULL;
+        return nullptr;
     }
 }
 
 /******************************************************************************/
-static void FillSha3Padding(uint8_t* pad, uint32_t sha3PadLength)
+// Note: This function is currently unused but kept for potential future use
+[[maybe_unused]] static void FillSha3Padding(uint8_t* pad, uint32_t sha3PadLength)
 {
-    uint8_t *sha3 = new uint8_t[sha3PadLength];
-    memset(sha3, 0, sha3PadLength);
+    auto sha3 = std::make_unique<uint8_t[]>(sha3PadLength);
+    memset(sha3.get(), 0, sha3PadLength);
     sha3[0] = 0x6;
     sha3[(sha3PadLength)-1] |= 0x80;
-    memcpy(pad, sha3, sha3PadLength);
-    delete[] sha3;
+    memcpy(pad, sha3.get(), sha3PadLength);
 }
 
 /******************************************************************************/
@@ -425,7 +443,8 @@ uint32_t SpartanupAuthenticationContext::GetCertificateSize(void)
         size_t spkLength = GetLmsPublicKeyLength(spkFile.c_str(), lmsOnly);
         spkLength += PADDING_16B(spkLength);
         
-        size_t spkSignLength = GetLmsSignLength(pskFile.c_str(), lmsOnly);
+        size_t spkSignLength = 0;
+        spkSignLength = GetLmsSignatureLength(pskFile.c_str(), ppkFile.c_str(), lmsOnly);
         spkSignLength += PADDING_16B(spkSignLength);
         
         return (ppkLength + spkHdrLength + spkLength + spkSignLength);
@@ -441,7 +460,7 @@ uint32_t SpartanupAuthenticationContext::GetTotalHashBlockSignSize(void)
 {
     if ((authAlgorithm->Type() == Authentication::LMS_SHA2_256) || (authAlgorithm->Type() == Authentication::LMS_SHAKE256))
     {
-        size_t totalHashBlockSignatureLength = GetLmsSignLength(sskFile.c_str(), lmsOnly);
+        size_t totalHashBlockSignatureLength = GetLmsSignatureLength(sskFile.c_str(), spkFile.c_str(), lmsOnly);
         totalHashBlockSignatureLength += PADDING_16B(totalHashBlockSignatureLength);
         
         return totalHashBlockSignatureLength;
@@ -455,41 +474,29 @@ uint32_t SpartanupAuthenticationContext::GetTotalHashBlockSignSize(void)
 /******************************************************************************/
 SpartanupAuthenticationContext::~SpartanupAuthenticationContext()
 {
-    if (spksignature != NULL)
-    {
-        delete[] spksignature;
-        spksignature = nullptr;
-    }
-
-    if (bHsignature != NULL)
-    {
-        delete[] bHsignature;
-        bHsignature = nullptr;
-    }
-
-    if (primaryKey != NULL)
-    {
-        delete primaryKey;
-        primaryKey = nullptr;
-    }
-
-    if (secondaryKey != NULL)
-    {
-        delete secondaryKey;
-        secondaryKey = nullptr;
-    }
+    // Smart pointers automatically clean up memory - no manual delete needed!
+    // spksignature, bHsignature, primaryKey, secondaryKey, hash, authAlgorithm
+    // are all automatically destroyed when the object goes out of scope
 }
 
 /******************************************************************************/
-Section* SpartanupAuthenticationContext::CreateCertificate(BootImage& bi, Binary& cache, Section* dataSection)
+Section* SpartanupAuthenticationContext::CreateCertificate(BootImage& bi, Binary& cache, Section* dataSection, bool isBootloader)
 {
     LOG_INFO("Creating Authentication Certificate for section - %s", dataSection->Name.c_str());
+
+    // Variable to save the original hash if we need to use bi.hash temporarily
+    Hash* savedHash = nullptr;
+    bool savedOwnsHash = false;
 
     /* PM-TODO - Check this and update */
     if ((authAlgorithm->Type() != Authentication::LMS_SHA2_256) && (authAlgorithm->Type() != Authentication::LMS_SHAKE256))
     {
         hashType = bi.GetAuthHashAlgo();
-        hash = bi.hash;
+        // Temporarily save our hash and point to bi.hash (non-owning)
+        savedHash = hash;
+        savedOwnsHash = ownsHash;
+        hash = bi.hash.get();
+        ownsHash = false;  // Non-owning pointer to bi.hash
     }
     hashLength = hash->GetHashLength();
     std::string hashExtension = hash->GetHashFileExtension();
@@ -556,11 +563,12 @@ Section* SpartanupAuthenticationContext::CreateCertificate(BootImage& bi, Binary
     {
         name = GetCertificateName(name);
     }
-    Section* acSection = new Section(name + hashExtension, certSize);
+    auto acSection_ptr = std::make_unique<Section>(name + hashExtension, certSize);
+    Section* acSection = acSection_ptr.get();  // Get raw pointer before move
     acSection->isCertificate = true;
     acSection->index = dataSection->index;
-    cache.Sections.push_back(acSection);
-    uint8_t* authCert = acSection->Data;
+    cache.Sections.push_back(std::move(acSection_ptr));  // Transfer ownership
+    uint8_t* authCert = acSection->Data.get();
     LOG_TRACE("Creating new section for certificate - %s", acSection->Name.c_str());
 
     uint32_t x = sizeof(AuthCertificate4096Sha3PaddingHBStructure);
@@ -582,7 +590,7 @@ Section* SpartanupAuthenticationContext::CreateCertificate(BootImage& bi, Binary
     
     uint32_t acHdr = authAlgorithm->GetAuthHeader();
     
-    uint8_t* headerData = bi.bootHeader->section->Data;
+    uint8_t* headerData = bi.bootHeader->section->Data.get();
     uint32_t authHeader1Offset = BH_AC_HEADER_OFFSET_SUP;
     uint32_t totalppkkSize1Offset = BH_TOTAL_PPK_SIZE1_OFFSET_SUP;
     uint32_t actualppkSize1Offset = BH_ACTUAL_PPK_SIZE1_OFFSET_SUP;
@@ -590,7 +598,7 @@ Section* SpartanupAuthenticationContext::CreateCertificate(BootImage& bi, Binary
     uint32_t actualSignatureSize1Offset = BH_ACTUAL_SIGN_SIZE1_OFFSET_SUP;
     if (name == "MetaHeader")
     {
-        headerData = bi.imageHeaderTable->section->Data;
+        headerData = bi.imageHeaderTable->section->Data.get();
         authHeader1Offset = IHT_AC_HEADER_OFFSET;
         totalppkkSize1Offset = IHT_TOTAL_PPK_SIZE1_OFFSET;
         actualppkSize1Offset = IHT_ACTUAL_PPK_SIZE1_OFFSET;
@@ -601,11 +609,13 @@ Section* SpartanupAuthenticationContext::CreateCertificate(BootImage& bi, Binary
     WriteLittleEndian32(headerData + authHeader1Offset, acHdr);
     if (authAlgorithm->Type() == Authentication::RSA)
     {
+        if(isBootloader || name == "MetaHeader"){
+            
         WriteLittleEndian32(headerData + totalppkkSize1Offset, RSA_4096_N_SIZE + RSA_4096_N_EXT_SIZE + RSA_4096_E_SIZE + TELLURIDE_RSA_AC_PPK_SPK_ALIGNMENT);
         WriteLittleEndian32(headerData + actualppkSize1Offset, RSA_4096_N_SIZE + RSA_4096_N_EXT_SIZE + RSA_4096_E_SIZE);
         WriteLittleEndian32(headerData + totalHashBlockSignatureSize1Offset, signatureLength);
         WriteLittleEndian32(headerData + actualSignatureSize1Offset, signatureLength);
-
+        }
         primaryKey->Export(authCert + TELLURIDE_RSA_AC_PPK_OFFSET);
         authAlgorithm->RearrangeEndianess(authCert + TELLURIDE_RSA_AC_PPK_OFFSET + RSA_4096_N, RSA_4096_N_SIZE);
         authAlgorithm->RearrangeEndianess(authCert + TELLURIDE_RSA_AC_PPK_OFFSET + RSA_4096_N_EXT, RSA_4096_N_EXT_SIZE);
@@ -628,11 +638,14 @@ Section* SpartanupAuthenticationContext::CreateCertificate(BootImage& bi, Binary
     }
     else if (authAlgorithm->Type() == Authentication::ECDSA)
     {
+            if(isBootloader || name == "MetaHeader")
+            {
         WriteLittleEndian32(headerData + totalppkkSize1Offset, EC_P384_KEY_LENGTH * 2);
         WriteLittleEndian32(headerData + actualppkSize1Offset, EC_P384_KEY_LENGTH * 2);
 
         WriteLittleEndian32(headerData + totalHashBlockSignatureSize1Offset, EC_P384_KEY_LENGTH * 2);
         WriteLittleEndian32(headerData + actualSignatureSize1Offset, EC_P384_KEY_LENGTH * 2);
+            }
 
         primaryKey->Export(authCert + TELLURIDE_EC_P384_AC_PPK_OFFSET);
 
@@ -670,18 +683,29 @@ Section* SpartanupAuthenticationContext::CreateCertificate(BootImage& bi, Binary
     else 
     {
         // LMS_SHA256 || LMS_SHAKE256
-        acHdr = authAlgorithm->GetAuthHeader(lmsOnly, true, bi.options.IsDl9Series());
+        // For spartanup (Lassen series): use LASSEN header for non-DL9, TELLURIDE header for DL9
+        if (bi.options.IsDl9Series())
+        {
+            acHdr = lmsOnly ? AUTH_HDR_TELLURIDE_LMS : AUTH_HDR_TELLURIDE_HSS_LMS;
+        }
+        else
+        {
+            acHdr = AUTH_HDR_LASSEN_HSS_LMS;
+        }
 
-		size_t actualSpkSignatureLength = GetLmsSignLength(pskFile.c_str(), lmsOnly);
-		size_t actualHashBlockSignatureLength = GetLmsSignLength(sskFile.c_str(), lmsOnly);
+		size_t actualSpkSignatureLength = GetLmsSignatureLength(pskFile.c_str(), ppkFile.c_str(), lmsOnly);
+		size_t actualHashBlockSignatureLength = GetLmsSignatureLength(sskFile.c_str(), spkFile.c_str(), lmsOnly);
         size_t actualLmsPpkSize1 = GetLmsPublicKeyLength(ppkFile.c_str(), lmsOnly);
         size_t actualLmsSpkSize1 = GetLmsPublicKeyLength(spkFile.c_str(), lmsOnly);
 
-        WriteLittleEndian32(headerData + authHeader1Offset, acHdr);
-        WriteLittleEndian32(headerData + totalppkkSize1Offset, actualLmsPpkSize1 + PADDING_16B(actualLmsPpkSize1));
-        WriteLittleEndian32(headerData + actualppkSize1Offset, actualLmsPpkSize1);
-        WriteLittleEndian32(headerData + totalHashBlockSignatureSize1Offset, actualHashBlockSignatureLength + PADDING_16B(actualHashBlockSignatureLength));
-        WriteLittleEndian32(headerData + actualSignatureSize1Offset, actualHashBlockSignatureLength);
+            if(isBootloader || name == "MetaHeader")
+            {
+                WriteLittleEndian32(headerData + authHeader1Offset, acHdr);
+                WriteLittleEndian32(headerData + totalppkkSize1Offset, actualLmsPpkSize1 + PADDING_16B(actualLmsPpkSize1));
+                WriteLittleEndian32(headerData + actualppkSize1Offset, actualLmsPpkSize1);
+                WriteLittleEndian32(headerData + totalHashBlockSignatureSize1Offset, actualHashBlockSignatureLength + PADDING_16B(actualHashBlockSignatureLength));
+                WriteLittleEndian32(headerData + actualSignatureSize1Offset, actualHashBlockSignatureLength);
+            }
 
         primaryKey->Export(authCert + TELLURIDE_LMS_AC_PPK_OFFSET);
         WriteLittleEndian32(authCert + TELLURIDE_LMS_AC_TOTAL_SPK_SIZE_OFFSET(lmsOnly), actualLmsSpkSize1 + PADDING_16B(actualLmsSpkSize1));
@@ -695,6 +719,12 @@ Section* SpartanupAuthenticationContext::CreateCertificate(BootImage& bi, Binary
         CopySPKSignature(bi, authCert + TELLURIDE_LMS_AC_SPK_SIGN_OFFSET(lmsOnly));
     }
 
+    // Restore the original hash if we temporarily used bi.hash
+    if (savedHash)
+    {
+        hash = savedHash;
+        ownsHash = savedOwnsHash;
+    }
 
     certIndex++;
     return acSection;
@@ -704,25 +734,25 @@ Section* SpartanupAuthenticationContext::CreateCertificate(BootImage& bi, Binary
 void SpartanupAuthenticationContext::Link(BootImage& bi, std::list<Section*> sections, AuthenticationCertificate* cert)
 {
     /* Copy bhSignature when bootloader */
-    //memset(cert->section->Data + AC_BH_SIGN_OFFSET, 0, signatureLength); /*check*/
+    //memset(cert->section->Data.get() + AC_BH_SIGN_OFFSET, 0, signatureLength); /*check*/
     if (sections.front()->isBootloader)
     {
-        //CopybHSignature(bi, cert->section->Data + AC_BH_SIGN_OFFSET);
+        //CopybHSignature(bi, cert->section->Data.get() + AC_BH_SIGN_OFFSET);
 
         //CopyBhHash
         LOG_TRACE("Calculating the Boot Header Hash");
         /* Donot include SMAP data to calculate BH hash */
-        uint8_t* tmpBh = bi.bootHeader->section->Data + 0x10;
+        uint8_t* tmpBh = bi.bootHeader->section->Data.get() + 0x10;
         
         /* Calculate the BH hash with SHA3 rather than LMS hashing algo */
-        uint8_t* sha_hash = new uint8_t[bi.hash->GetHashLength()];
+        auto sha_hash = std::make_unique<uint8_t[]>(bi.hash->GetHashLength());
         if (!bi.options.IsDl9Series())
         {
-            bi.hash->CalculateHash(true, tmpBh, bi.bootHeader->GetBootHeaderSize() - sizeof(SpartanupSmapWidthTable), sha_hash);
+            bi.hash->CalculateHash(true, tmpBh, bi.bootHeader->GetBootHeaderSize() - sizeof(SpartanupSmapWidthTable), sha_hash.get());
         }
         else
         {
-            bi.hash->CalculateVersalHash(true, tmpBh, bi.bootHeader->GetBootHeaderSize() - sizeof(SpartanupSmapWidthTable), sha_hash);
+            bi.hash->CalculateVersalHash(true, tmpBh, bi.bootHeader->GetBootHeaderSize() - sizeof(SpartanupSmapWidthTable), sha_hash.get());
         }
         
         /*if (bi.options.DoGenerateHashes())
@@ -731,25 +761,23 @@ void SpartanupAuthenticationContext::Link(BootImage& bi, std::list<Section*> sec
             WritePaddedSHAFile(sha_hash_padded, hashfilename);
         }*/
 
-        memcpy(bi.partitionHeaderList.front()->partition->section->Data + HASH_BLOCK_INDEX_BYTES, sha_hash, bi.hash->GetHashLength());
-
-        delete[] sha_hash;
+        memcpy(bi.partitionHeaderList.front()->partition->section->Data.get() + HASH_BLOCK_INDEX_BYTES, sha_hash.get(), bi.hash->GetHashLength());
     }
 
     /*  Copy meta header Signature when headers */
     if (sections.front()->Name == "Headers")
     {
-        //CopyIHTSignature(bi, cert->section->Data + AC_BH_SIGN_OFFSET);
+        //CopyIHTSignature(bi, cert->section->Data.get() + AC_BH_SIGN_OFFSET);
     }
 
     if (presignFile == "")
     {
         if (sections.front()->Name == "Headers")
-            CopyPartitionSignature(bi, sections, bi.imageHeaderTable->hashBlockSection->Data + bi.imageHeaderTable->hashBlockSectionLength, cert->section);
+            CopyPartitionSignature(bi, sections, bi.imageHeaderTable->hashBlockSection->Data.get() + bi.imageHeaderTable->hashBlockSectionLength, cert->section);
         else
-            CopyPartitionSignature(bi, sections, sections.front()->Data + bi.hashBlockLength, cert->section);
+            CopyPartitionSignature(bi, sections, sections.front()->Data.get() + bi.hashBlockLength, cert->section);
 
-        //CopyPartitionSignature(bi, sections, cert->section->Data + AC_PARTITION_SIGN_OFFSET, cert->section);
+        //CopyPartitionSignature(bi, sections, cert->section->Data.get() + AC_PARTITION_SIGN_OFFSET, cert->section);
     }
     else
     {
@@ -758,16 +786,29 @@ void SpartanupAuthenticationContext::Link(BootImage& bi, std::list<Section*> sec
         {
             index = cert->section->index;
         }
-        //GetPresign(presignFile, cert->section->Data + AC_PARTITION_SIGN_OFFSET, index);
+        (void)index;  // Suppress unused variable warning
+        if (cert->fsbl)
+        {
+            if(authAlgorithm->Type() == Authentication::LMS_SHA2_256 || authAlgorithm->Type() == Authentication::LMS_SHAKE256)
+            {
+                signatureLength = GetLmsSignatureLength(sskFile.c_str(), spkFile.c_str(), lmsOnly);
+            }
+            // GetPresign(presignFile,((SpartanupPartition*)Partition)->header->partition->section->Data.get() + ((SpartanupPartition*)Partition)->hashBlockLength, index);
+            //GetPresign(presignFile, cert->section->Data.get() + AC_PARTITION_SIGN_OFFSET, index);
+        }
+        //GetPresign(presignFile, cert->section->Data.get() + AC_PARTITION_SIGN_OFFSET, index);
+        /*
         if (authAlgorithm->Type() == Authentication::RSA)
-            GetPresign(presignFile, sections.front()->Data + bi.hashBlockLength, index);
+            GetPresign(presignFile, sections.front()->Data.get() + bi.hashBlockLength, index);
         else if (authAlgorithm->Type() == Authentication::ECDSA)
-            GetPresign(presignFile, sections.front()->Data + bi.hashBlockLength, index);
+            GetPresign(presignFile, sections.front()->Data.get() + bi.hashBlockLength, index);
         else
         {
             //EC-p521 
             //LMS
         }
+        */
+
         acIndex++;
     }
 }
@@ -775,45 +816,45 @@ void SpartanupAuthenticationContext::Link(BootImage& bi, std::list<Section*> sec
 /******************************************************************************/
 void SpartanupAuthenticationContext::CopybHSignature(BootImage& bi, uint8_t* ptr)
 {
-    uint8_t* sha_hash_padded = new uint8_t[signatureLength];
-    uint8_t* bHsignaturetmp = new uint8_t[signatureLength];
-    memset(bHsignaturetmp, 0, signatureLength);
-    memset(sha_hash_padded, 0, signatureLength);
+    auto sha_hash_padded = std::make_unique<uint8_t[]>(signatureLength);
+    auto bHsignaturetmp = std::make_unique<uint8_t[]>(signatureLength);
+    memset(bHsignaturetmp.get(), 0, signatureLength);
+    memset(sha_hash_padded.get(), 0, signatureLength);
 
-    GenerateBHHash(bi, sha_hash_padded);
+    GenerateBHHash(bi, sha_hash_padded.get());
     if (bi.options.DoGenerateHashes())
     {
         std::string hashfilename = "bootheader" + hash->GetHashFileExtension();
-        WritePaddedSHAFile(sha_hash_padded, hashfilename);
+        WritePaddedSHAFile(sha_hash_padded.get(), hashfilename);
     }
 
     if (primaryKey->Loaded && primaryKey->isSecret)
     {
         LOG_TRACE("Creating Boot Header Signature");
-        authAlgorithm->RearrangeEndianess(sha_hash_padded, signatureLength);
+        authAlgorithm->RearrangeEndianess(sha_hash_padded.get(), signatureLength);
         if (authAlgorithm->Type() == Authentication::LMS_SHA2_256 || authAlgorithm->Type() == Authentication::LMS_SHAKE256)
         {
-            authAlgorithm->CreateSignature(sha_hash_padded, hashLength, sskFile.c_str(), 
-                bHsignaturetmp, signatureLength, lmsOnly, spkFile.c_str());
+            authAlgorithm->CreateSignature(sha_hash_padded.get(), hashLength, sskFile.c_str(), 
+                bHsignaturetmp.get(), signatureLength, lmsOnly, spkFile.c_str());
         }
         else
         {
-            authAlgorithm->CreateSignature(sha_hash_padded, (uint8_t*)secondaryKey, bHsignaturetmp);
+            authAlgorithm->CreateSignature(sha_hash_padded.get(), (uint8_t*)secondaryKey.get(), bHsignaturetmp.get());
         }
-        authAlgorithm->RearrangeEndianess(bHsignaturetmp, signatureLength);
+        authAlgorithm->RearrangeEndianess(bHsignaturetmp.get(), signatureLength);
 
         if (bhSignLoaded)
         {
-            if (memcmp(bHsignature, bHsignaturetmp, signatureLength) != 0)
+            if (memcmp(bHsignature.get(), bHsignaturetmp.get(), signatureLength) != 0)
             {
                 LOG_ERROR("Authentication Error !!!\n           Loaded BH Signature does not match calculated BH Signature");
             }
         }
-        memcpy(ptr, bHsignaturetmp, signatureLength);
+        memcpy(ptr, bHsignaturetmp.get(), signatureLength);
     }
     else if (bhSignLoaded)
     {
-        memcpy(ptr, bHsignature, signatureLength);
+        memcpy(ptr, bHsignature.get(), signatureLength);
     }
     else if (bi.options.DoGenerateHashes() && !bhSignLoaded)
     {
@@ -829,32 +870,23 @@ void SpartanupAuthenticationContext::CopybHSignature(BootImage& bi, uint8_t* ptr
         LOG_ERROR("Authentication Error !!!\n          Either Secret Key Pair or BH signature file must be specified in BIF file");
     }
 
-    // Clean up
-    if (sha_hash_padded)
-    {
-        delete[] sha_hash_padded;
-    }
-
-    if (bHsignaturetmp)
-    {
-        delete[] bHsignaturetmp;
-    }
+    // Smart pointers automatically clean up - no manual delete needed!
     LOG_TRACE("Boot Header Signature copied into Authentication Certificate");
 }
 
 /******************************************************************************/
 void SpartanupAuthenticationContext::CopyIHTSignature(BootImage & bi, uint8_t * ptr)
 {
-    uint8_t* sha_hash_padded = new uint8_t[signatureLength];
-    uint8_t* signaturetmp = new uint8_t[signatureLength];
-    memset(signaturetmp, 0, signatureLength);
-    memset(sha_hash_padded, 0, signatureLength);
+    auto sha_hash_padded = std::make_unique<uint8_t[]>(signatureLength);
+    auto signaturetmp = std::make_unique<uint8_t[]>(signatureLength);
+    memset(signaturetmp.get(), 0, signatureLength);
+    memset(sha_hash_padded.get(), 0, signatureLength);
 
-    GenerateIHTHash(bi, sha_hash_padded);
+    GenerateIHTHash(bi, sha_hash_padded.get());
     if (bi.options.DoGenerateHashes())
     {
         std::string hashfilename = "imageheadertable" + hash->GetHashFileExtension();
-        WritePaddedSHAFile(sha_hash_padded, hashfilename);
+        WritePaddedSHAFile(sha_hash_padded.get(), hashfilename);
     }
 
     if (primaryKey->Loaded && primaryKey->isSecret)
@@ -862,35 +894,35 @@ void SpartanupAuthenticationContext::CopyIHTSignature(BootImage & bi, uint8_t * 
         LOG_TRACE("Creating Image Header Table Signature");
         if (authAlgorithm->Type() == Authentication::LMS_SHA2_256 || authAlgorithm->Type() == Authentication::LMS_SHAKE256)
         { 
-            authAlgorithm->CreateSignature(sha_hash_padded, hashLength, sskFile.c_str(), 
-                signaturetmp, signatureLength, lmsOnly, spkFile.c_str());
+            authAlgorithm->CreateSignature(sha_hash_padded.get(), hashLength, sskFile.c_str(), 
+                signaturetmp.get(), signatureLength, lmsOnly, spkFile.c_str());
         }
         else
         {
             if (authAlgorithm->Type() != Authentication::ECDSA)
             {
-                authAlgorithm->RearrangeEndianess(sha_hash_padded, signatureLength);
+                authAlgorithm->RearrangeEndianess(sha_hash_padded.get(), signatureLength);
             }
-            authAlgorithm->CreateSignature(sha_hash_padded, (uint8_t*)secondaryKey, signaturetmp);
+            authAlgorithm->CreateSignature(sha_hash_padded.get(), (uint8_t*)secondaryKey.get(), signaturetmp.get());
             if (authAlgorithm->Type() != Authentication::ECDSA)
             {
-                authAlgorithm->RearrangeEndianess(signaturetmp, signatureLength);
+                authAlgorithm->RearrangeEndianess(signaturetmp.get(), signatureLength);
             }
         }
         
         /* if (bhSignLoaded)
         {
-        if (memcmp(bHsignature, bHsignaturetmp, rsaKeyLength) != 0)
+        if (memcmp(bHsignature.get(), bHsignaturetmp, rsaKeyLength) != 0)
         {
         LOG_ERROR("Authentication Error !!!\n           Loaded BH Signature does not match calculated BH Signature");
         }
         } */
-        memcpy(ptr, signaturetmp, signatureLength);
+        memcpy(ptr, signaturetmp.get(), signatureLength);
     }
     else if (bi.bifOptions->GetHeaderSignatureFile() != "")
     {
-        GetPresign(bi.bifOptions->GetHeaderSignatureFile(), signaturetmp, 0);
-        memcpy(ptr, signaturetmp, signatureLength);
+        GetPresign(bi.bifOptions->GetHeaderSignatureFile(), signaturetmp.get(), 0);
+        memcpy(ptr, signaturetmp.get(), signatureLength);
     }
     else if (bi.options.DoGenerateHashes() && (bi.bifOptions->GetHeaderSignatureFile() == ""))
     {
@@ -906,15 +938,7 @@ void SpartanupAuthenticationContext::CopyIHTSignature(BootImage & bi, uint8_t * 
         LOG_ERROR("Authentication Error !!!\n          Either Secret Key Pair or BH signature file must be specified in BIF file");
     }
 
-    // Clean up
-    if (sha_hash_padded)
-    {
-        delete[] sha_hash_padded;
-    }
-    if (signaturetmp)
-    {
-        delete[] signaturetmp;
-    }
+    // Smart pointers automatically clean up - no manual delete needed!
     LOG_TRACE("Image Header Table Signature copied into Authentication Certificate");
 }
 
@@ -922,18 +946,17 @@ void SpartanupAuthenticationContext::CopyIHTSignature(BootImage & bi, uint8_t * 
 void SpartanupAuthenticationContext::GenerateIHTHash(BootImage& bi, uint8_t* sha_hash_padded)
 {
     LOG_TRACE("Calculating Image Header Table Hash");
-    uint8_t* tmpIht = bi.imageHeaderTable->section->Data;
-    uint8_t* sha_hash = new uint8_t[hashLength];
+    uint8_t* tmpIht = bi.imageHeaderTable->section->Data.get();
+    auto sha_hash = std::make_unique<uint8_t[]>(hashLength);
     if (authAlgorithm->Type() == Authentication::LMS_SHA2_256 || authAlgorithm->Type() == Authentication::LMS_SHAKE256)
     {
-        hash->CalculateHash(true, tmpIht, bi.imageHeaderTable->section->Length, sha_hash);
+        hash->CalculateHash(true, tmpIht, bi.imageHeaderTable->section->Length, sha_hash.get());
     }
     else
     {
-        hash->CalculateVersalHash(true,tmpIht, bi.imageHeaderTable->section->Length, sha_hash);
+        hash->CalculateVersalHash(true,tmpIht, bi.imageHeaderTable->section->Length, sha_hash.get());
     }
-    authAlgorithm->CreatePadding(sha_hash_padded, sha_hash, hashLength);
-    delete[] sha_hash;
+    authAlgorithm->CreatePadding(sha_hash_padded, sha_hash.get(), hashLength);
 }
 
 /******************************************************************************/
@@ -941,30 +964,28 @@ void SpartanupAuthenticationContext::GenerateBHHash(BootImage& bi, uint8_t* sha_
 {
     LOG_TRACE("Calculating the Boot Header Hash");
     /* Donot include SMAP data to calculate BH hash */
-    uint8_t* tmpBh = bi.bootHeader->section->Data + 0x10;
-    uint8_t* sha_hash = new uint8_t[hashLength];
+    uint8_t* tmpBh = bi.bootHeader->section->Data.get() + 0x10;
+    auto sha_hash = std::make_unique<uint8_t[]>(hashLength);
     if (authAlgorithm->Type() == Authentication::LMS_SHA2_256 || authAlgorithm->Type() == Authentication::LMS_SHAKE256)
     {
         if (!bi.options.IsDl9Series())
         {
-            bi.hash->CalculateHash(true, tmpBh, bi.bootHeader->GetBootHeaderSize() - sizeof(SpartanupSmapWidthTable) , sha_hash);
+            bi.hash->CalculateHash(true, tmpBh, bi.bootHeader->GetBootHeaderSize() - sizeof(SpartanupSmapWidthTable) , sha_hash.get());
         }
         else
         {
-            hash->CalculateHash(true, tmpBh, bi.bootHeader->GetBootHeaderSize() - sizeof(SpartanupSmapWidthTable), sha_hash);
+            hash->CalculateHash(true, tmpBh, bi.bootHeader->GetBootHeaderSize() - sizeof(SpartanupSmapWidthTable), sha_hash.get());
         }
     }
     else
     {
-        hash->CalculateVersalHash(true, tmpBh, bi.bootHeader->section->Length - 0x10, sha_hash);
+        hash->CalculateVersalHash(true, tmpBh, bi.bootHeader->section->Length - 0x10, sha_hash.get());
     }
     
     
-    authAlgorithm->CreatePadding(sha_hash_padded, sha_hash, hashLength);
+    authAlgorithm->CreatePadding(sha_hash_padded, sha_hash.get(), hashLength);
 
-    memcpy(bi.partitionHeaderList.front()->section->Data + HASH_BLOCK_INDEX_BYTES, sha_hash, hashLength);
-
-    delete[] sha_hash;
+    memcpy(bi.partitionHeaderList.front()->section->Data.get() + HASH_BLOCK_INDEX_BYTES, sha_hash.get(), hashLength);
 }
 
 /******************************************************************************/
@@ -989,11 +1010,11 @@ void SpartanupAuthenticationContext::GenerateSPKHash(uint8_t* sha_hash_padded)
     {
         actualKeySize = GetLmsPublicKeyLength(spkFile.c_str(), lmsOnly);
         totalKeySize = actualKeySize + PADDING_16B(actualKeySize);
-		signatureLength = GetLmsSignLength(pskFile.c_str(), lmsOnly);
+		signatureLength = GetLmsSignatureLength(pskFile.c_str(), ppkFile.c_str(), lmsOnly);
         totalSignatureLength = signatureLength + PADDING_16B(signatureLength);
     }
 
-    uint8_t* spkFull = new uint8_t[actualKeySize];
+    auto spkFull = std::make_unique<uint8_t[]>(actualKeySize);
 
     //uint8_t spkSHA3Padding[4] = { 0,0,0,0 };
     //FillSha3Padding(spkSHA3Padding, sizeof(spkSHA3Padding));
@@ -1002,14 +1023,16 @@ void SpartanupAuthenticationContext::GenerateSPKHash(uint8_t* sha_hash_padded)
     {
         ParseSPKeyFile(spkFile);
     }
-    secondaryKey->Export(spkFull);
+    secondaryKey->Export(spkFull.get());
     hashLength = hash->GetHashLength();
-    uint8_t* shaHash = new uint8_t[hashLength];
+    auto shaHash = std::make_unique<uint8_t[]>(hashLength);
+    std::unique_ptr<uint8_t[]> tempBufPtr;
     if (authAlgorithm->Type() == Authentication::LMS_SHA2_256 || authAlgorithm->Type() == Authentication::LMS_SHAKE256)
     {
         // acTotalSpkSize; acActualSpkSize; acSpkTotalSignatureSize; acSpkActualSignatureSize; acSpkId; acSpkHdrAlignment[3]; , acSpk
         //acSpkSize, acSpkSignatureSize, acSpkId, acSpkHdrAlignment, acSpk
-        tempBuffer = new uint8_t[totalKeySize + TELLURIDE_AC_SPK_HDR_LENGTH];
+        tempBufPtr = std::make_unique<uint8_t[]>(totalKeySize + TELLURIDE_AC_SPK_HDR_LENGTH);
+        tempBuffer = tempBufPtr.get();
         memset(tempBuffer, 0, totalKeySize + TELLURIDE_AC_SPK_HDR_LENGTH);
         
         WriteLittleEndian32(tempBuffer, totalKeySize);
@@ -1017,18 +1040,19 @@ void SpartanupAuthenticationContext::GenerateSPKHash(uint8_t* sha_hash_padded)
         WriteLittleEndian32(tempBuffer + (2 * sizeof(uint32_t)), totalSignatureLength);
         WriteLittleEndian32(tempBuffer + (3 * sizeof(uint32_t)), signatureLength);
         WriteLittleEndian32(tempBuffer + (4 * sizeof(uint32_t)), spkIdentification);
-        memcpy(tempBuffer + TELLURIDE_AC_SPK_HDR_LENGTH, (uint8_t*)spkFull, actualKeySize);
+        memcpy(tempBuffer + TELLURIDE_AC_SPK_HDR_LENGTH, (uint8_t*)spkFull.get(), actualKeySize);
 #ifdef DEBUG
         LOG_TRACE("DATA being Hashed for SPK Sign");
         LOG_DUMP_BYTES(tempBuffer, actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH);
 #endif
-        hash->CalculateHash(true, (uint8_t*)tempBuffer, actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH, shaHash);
+        hash->CalculateHash(true, (uint8_t*)tempBuffer, actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH, shaHash.get());
     }
     else
     {
         // acTotalSpkSize; acActualSpkSize; acSpkTotalSignatureSize; acSpkActualSignatureSize; acSpkId; acSpkHdrAlignment[3]; , acSpk
         //acSpkSize, acSpkSignatureSize, acSpkId, acSpkHdrAlignment, acSpk
-        tempBuffer = new uint8_t[actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH];
+        tempBufPtr = std::make_unique<uint8_t[]>(actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH);
+        tempBuffer = tempBufPtr.get();
         memset(tempBuffer, 0, actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH);
 
         WriteLittleEndian32(tempBuffer, totalKeySize);
@@ -1037,23 +1061,23 @@ void SpartanupAuthenticationContext::GenerateSPKHash(uint8_t* sha_hash_padded)
         WriteLittleEndian32(tempBuffer + (3 * sizeof(uint32_t)), signatureLength);
         WriteLittleEndian32(tempBuffer + (4 * sizeof(uint32_t)), spkIdentification);
 
-        authAlgorithm->RearrangeEndianess(spkFull + RSA_4096_N, RSA_4096_N_SIZE);
-        authAlgorithm->RearrangeEndianess(spkFull + RSA_4096_N_EXT, RSA_4096_N_EXT_SIZE);
-        authAlgorithm->RearrangeEndianess(spkFull + RSA_4096_E, RSA_4096_E_SIZE);
-        memcpy(tempBuffer + TELLURIDE_AC_SPK_HDR_LENGTH, (uint8_t*)spkFull, actualKeySize);
+        authAlgorithm->RearrangeEndianess(spkFull.get() + RSA_4096_N, RSA_4096_N_SIZE);
+        authAlgorithm->RearrangeEndianess(spkFull.get() + RSA_4096_N_EXT, RSA_4096_N_EXT_SIZE);
+        authAlgorithm->RearrangeEndianess(spkFull.get() + RSA_4096_E, RSA_4096_E_SIZE);
+        memcpy(tempBuffer + TELLURIDE_AC_SPK_HDR_LENGTH, (uint8_t*)spkFull.get(), actualKeySize);
 #ifdef DEBUG
         LOG_TRACE("DATA being Hashed for SPK Sign");
         LOG_DUMP_BYTES(tempBuffer, actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH);
 #endif
-        hash->CalculateVersalHash(true, (uint8_t*)tempBuffer, actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH, shaHash);
+        hash->CalculateVersalHash(true, (uint8_t*)tempBuffer, actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH, shaHash.get());
     }
 #ifdef DEBUG
     LOG_TRACE("Hash");
-    LOG_DUMP_BYTES(shaHash, hashLength);
+    LOG_DUMP_BYTES(shaHash.get(), hashLength);
     LOG_TRACE("Hash with PKCS Padding");
 #endif
     // Create PKCS padding
-    authAlgorithm->CreatePadding(sha_hash_padded, shaHash, hashLength);
+    authAlgorithm->CreatePadding(sha_hash_padded, shaHash.get(), hashLength);
     if (authAlgorithm->Type() == Authentication::LMS_SHA2_256 || authAlgorithm->Type() == Authentication::LMS_SHAKE256)
     {
         LOG_DUMP_BYTES(sha_hash_padded, hashLength);
@@ -1062,16 +1086,27 @@ void SpartanupAuthenticationContext::GenerateSPKHash(uint8_t* sha_hash_padded)
     {
         LOG_DUMP_BYTES(sha_hash_padded, signatureLength);
     }
-    delete[] shaHash;
-    delete[] tempBuffer;
+    // Smart pointers automatically clean up!
 }
 
 /******************************************************************************/
 void SpartanupAuthenticationContext::CopySPKSignature(BootImage& bi, uint8_t* ptr)
 {
-    CreateSPKSignature(bi);
+    if (spkSignLoaded)
+    {
+        uint32_t index = 0;
+        if(authAlgorithm->Type() == Authentication::LMS_SHA2_256 || authAlgorithm->Type() == Authentication::LMS_SHAKE256)
+        {
+            signatureLength = GetLmsSignatureLength(pskFile.c_str(), ppkFile.c_str(), lmsOnly);
+        }
+        GetPresign(spkSignFile, signatureLength, spksignature.get(), index);
+    }
+    else
+    {
+        CreateSPKSignature(bi);
+    }
     LOG_TRACE("Copying the SPK signature into the Authentication Certificate");
-    memcpy(ptr, spksignature, signatureLength);
+    memcpy(ptr, spksignature.get(), signatureLength);
 }
 
 /******************************************************************************/
@@ -1099,23 +1134,25 @@ void SpartanupAuthenticationContext::GeneratePPKHash(const std::string& filename
         ppkSize = 2 * EC_P521_KEY_LENGTH2;
     if ((authAlgorithm->Type() == Authentication::LMS_SHA2_256) || (authAlgorithm->Type() == Authentication::LMS_SHAKE256))
     {
-        hash = new HashSha3_256();
+        auto hashPtr = std::make_unique<HashSha3_256>();
+        hash = hashPtr.release();  // Transfer ownership to raw pointer
+        ownsHash = true;  // We own this hash
         ppkSize = GetLmsPublicKeyLength(ppkFile.c_str(), lmsOnly); // sizeof(HssPublicKey);
     }
     hashLength = hash->GetHashLength();
-    uint8_t* ppkTemp = new uint8_t[ppkSize];
-    memset(ppkTemp, 0, ppkSize);
-    primaryKey->Export(ppkTemp);
+    auto ppkTemp = std::make_unique<uint8_t[]>(ppkSize);
+    memset(ppkTemp.get(), 0, ppkSize);
+    primaryKey->Export(ppkTemp.get());
     if ((authAlgorithm->Type() != Authentication::LMS_SHA2_256) && (authAlgorithm->Type() != Authentication::LMS_SHAKE256))
     {
-        authAlgorithm->RearrangeEndianess(ppkTemp + RSA_4096_N, RSA_4096_N_SIZE);
-        authAlgorithm->RearrangeEndianess(ppkTemp + RSA_4096_N_EXT, RSA_4096_N_EXT_SIZE);
-        authAlgorithm->RearrangeEndianess(ppkTemp + RSA_4096_E, RSA_4096_E_SIZE);
+        authAlgorithm->RearrangeEndianess(ppkTemp.get() + RSA_4096_N, RSA_4096_N_SIZE);
+        authAlgorithm->RearrangeEndianess(ppkTemp.get() + RSA_4096_N_EXT, RSA_4096_N_EXT_SIZE);
+        authAlgorithm->RearrangeEndianess(ppkTemp.get() + RSA_4096_E, RSA_4096_E_SIZE);
     }
 
-    uint8_t* ppkHash = new uint8_t[hashLength];
+    auto ppkHash = std::make_unique<uint8_t[]>(hashLength);
 
-    hash->CalculateHash(true, ppkTemp, ppkSize, ppkHash);
+    hash->CalculateHash(true, ppkTemp.get(), ppkSize, ppkHash.get());
 
     FILE* filePtr;
     if ((filePtr = fopen(filename.c_str(), "w")) == NULL)
@@ -1134,7 +1171,7 @@ void SpartanupAuthenticationContext::GeneratePPKHash(const std::string& filename
     fclose(filePtr);
     LOG_INFO("Efuse PPK bits written to file %s successfully", filename.c_str());
 
-    delete[] ppkTemp;
+    // Smart pointers automatically clean up!
 }
 
 /******************************************************************************/
@@ -1142,7 +1179,7 @@ void SpartanupAuthenticationContext::CopyPartitionSignature(BootImage& bi, std::
 {
     LOG_TRACE("Copying the partition (%s) signature into Authentication Certificate", acSection->Name.c_str());
     /* calculate hash first */
-    uint8_t* shaHash = new uint8_t[hashLength];
+    auto shaHash = std::make_unique<uint8_t[]>(hashLength);
     std::list<Section*>::iterator section = sections.begin();
 
     /* Calculate the final hash */
@@ -1152,63 +1189,84 @@ void SpartanupAuthenticationContext::CopyPartitionSignature(BootImage& bi, std::
         hashBlockLength = bi.imageHeaderTable->hashBlockSectionLength;
     }
 
-    uint8_t *hashBlock = new uint8_t[hashBlockLength];
-    memset(hashBlock, 0, hashBlockLength);
+    auto hashBlock = std::make_unique<uint8_t[]>(hashBlockLength);
+    memset(hashBlock.get(), 0, hashBlockLength);
 
     if (sections.front()->Name == "Headers")
-        memcpy(hashBlock, bi.imageHeaderTable->hashBlockSection->Data, hashBlockLength);
+        memcpy(hashBlock.get(), bi.imageHeaderTable->hashBlockSection->Data.get(), hashBlockLength);
     else
-        memcpy(hashBlock, (*section)->Data, hashBlockLength);
+        memcpy(hashBlock.get(), (*section)->Data.get(), hashBlockLength);
 
     if (authAlgorithm->Type() == Authentication::LMS_SHA2_256 || authAlgorithm->Type() == Authentication::LMS_SHAKE256)
     { 
         if(!bi.options.IsDl9Series())
         {
-            hash->CalculateHash(true, hashBlock, hashBlockLength, shaHash);
+            hash->CalculateHash(true, hashBlock.get(), hashBlockLength, shaHash.get());
         }
-        signatureLength = GetLmsSignLength(sskFile.c_str(), lmsOnly);
+        signatureLength = GetLmsSignatureLength(sskFile.c_str(), spkFile.c_str(), lmsOnly);
     }
     else
     {
-        Spartanupcrypto_hash(shaHash, hashBlock, hashBlockLength, true);
+        Spartanupcrypto_hash(shaHash.get(), hashBlock.get(), hashBlockLength, true);
     }
     LOG_TRACE("Hash of %s (LE):", acSection->Name.c_str());
-    LOG_DUMP_BYTES(shaHash, hashLength);
+    LOG_DUMP_BYTES(shaHash.get(), hashLength);
     /* Create the PKCS padding for the hash */
-    uint8_t* shaHashPadded = new uint8_t[signatureLength];
-    memset(shaHashPadded, 0, signatureLength);
-    authAlgorithm->CreatePadding(shaHashPadded, shaHash, hashLength);
+    auto shaHashPadded = std::make_unique<uint8_t[]>(signatureLength);
+    memset(shaHashPadded.get(), 0, signatureLength);
+    authAlgorithm->CreatePadding(shaHashPadded.get(), shaHash.get(), hashLength);
 
     /* Generate hashes, if requested from command line option "-generate_hashes" */
     if (bi.options.DoGenerateHashes())
     {
         std::string hashfilename = acSection->Name;
-        WritePaddedSHAFile(shaHashPadded, hashfilename);
+        WritePaddedSHAFile(shaHashPadded.get(), hashfilename);
     }
-    authAlgorithm->RearrangeEndianess(shaHashPadded, signatureLength);
+    authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
 #ifdef DEBUG
     LOG_TRACE("Hash Block Data ", acSection->Name.c_str());
-    LOG_DUMP_BYTES(hashBlock, hashBlockLength);
+    LOG_DUMP_BYTES(hashBlock.get(), hashBlockLength);
 #endif
     /* Now sign the hash */
     if (authAlgorithm->Type() == Authentication::LMS_SHA2_256 || authAlgorithm->Type() == Authentication::LMS_SHAKE256)
     {
         if(!bi.options.IsDl9Series())
         {
-            //authAlgorithm->CreateSignature(shaHashPadded, hashLength, sskFile.c_str(), signatureBlock);
-            authAlgorithm->CreateSignature(shaHashPadded, hashLength, sskFile.c_str(), 
-                signatureBlock, signatureLength, lmsOnly, spkFile.c_str());
+            if (bi.options.DoGenerateHashes())
+            {
+                // In generate_hashes mode, hash file already written above
+            }
+            else
+            {
+                //authAlgorithm->CreateSignature(shaHashPadded, hashLength, sskFile.c_str(), signatureBlock);
+                authAlgorithm->CreateSignature(shaHashPadded.get(), hashLength, sskFile.c_str(), 
+                    signatureBlock, signatureLength, lmsOnly, spkFile.c_str());
+            }
         }
         else
         {
-            authAlgorithm->CreateSignature(hashBlock, hashBlockLength, sskFile.c_str(), 
-                signatureBlock, signatureLength, lmsOnly, spkFile.c_str());
-            authAlgorithm->VerifySignature(hashBlock, hashBlockLength, spkFile.c_str(), signatureBlock, signatureLength, lmsOnly);
+            if (bi.options.DoGenerateHashes())
+            {
+                // In generate_hashes mode, hash file already written above
+            }
+            else
+            {
+                authAlgorithm->CreateSignature(hashBlock.get(), hashBlockLength, sskFile.c_str(), 
+                    signatureBlock, signatureLength, lmsOnly, spkFile.c_str());
+                authAlgorithm->VerifySignature(hashBlock.get(), hashBlockLength, spkFile.c_str(), signatureBlock, signatureLength, lmsOnly);
+            }
         }
     }
     else
     {
-        authAlgorithm->CreateSignature(shaHashPadded, (uint8_t*)secondaryKey, signatureBlock);
+        if (bi.options.DoGenerateHashes())
+        {
+            // In generate_hashes mode, hash file already written above
+        }
+        else
+        {
+            authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)secondaryKey.get(), signatureBlock);
+        }
     }
     
     authAlgorithm->RearrangeEndianess(signatureBlock, signatureLength);
@@ -1216,9 +1274,7 @@ void SpartanupAuthenticationContext::CopyPartitionSignature(BootImage& bi, std::
     LOG_TRACE("The partition signature is copied into Authentication Certificate");
     LOG_DUMP_BYTES(signatureBlock, signatureLength);
 #endif
-    /* Delete the temporarily created arrays */
-    delete[] shaHash;
-    delete[] shaHashPadded;
+    /* Smart pointers automatically clean up! */
     acIndex++;
 }
 
@@ -1234,6 +1290,79 @@ void SpartanupAuthenticationContext::AddAuthCertSizeToTotalFSBLSize(PartitionHea
                 header->imageHeader->SetTotalFsblFwSizeIh(header->imageHeader->GetTotalFsblFwSizeIh() + (*acs)->section->Length);
             }
         }
+    }
+}
+
+/******************************************************************************/
+void SpartanupAuthenticationContext::GetPresign(const std::string& presignFilename, uint16_t signatureLength, uint8_t* signature, uint32_t index)
+{
+    std::string filename(presignFilename);
+    std::string baseFile = StringUtils::BaseName(filename);
+
+    if (index > 9)
+    {
+        LOG_DEBUG(DEBUG_STAMP, "Partition index count %d too high", index);
+        LOG_ERROR("Presign file should have proper index (0-9)");
+    }
+
+    if (index != 0)
+    {
+        size_t x = filename.find(".0.");
+        if (x == std::string::npos)
+        {
+            LOG_ERROR("Presign file %s does not have partition index (*.0.*)", baseFile.c_str());
+        }
+        filename[x + 1] = (char)(filename[x + 1] + index); // nudge the '0' to '1' ... '9'.
+    }
+    LOG_TRACE("Reading presign file (4-param) - %s, signatureLength=%u", filename.c_str(), signatureLength);
+    FILE* filePtr;
+    filePtr = fopen(filename.c_str(), "rb");
+
+    if (filePtr)
+    {
+        fseek(filePtr, 0, SEEK_END);   // non-portable
+        long size = ftell(filePtr);
+        fclose(filePtr);
+        LOG_TRACE("GetPresign (4-param): file size=%ld, expected signatureLength=%u", size, signatureLength);
+        if (size == signatureLength)
+        {
+            // read binary - exact size match
+            filePtr = fopen(filename.c_str(), "rb");
+            long read_size = fread(signature, 1, signatureLength, filePtr);
+            if (read_size != signatureLength)
+            {
+                LOG_ERROR("Authentication Error !!!\n           Presign file %s should be of %d bytes", baseFile.c_str(), signatureLength);
+            }
+            fclose(filePtr);
+        }
+        else if (size > SIGN_LENGTH_VERSAL)
+        {
+            // Large file (LMS/HSS) - read as binary even if size doesn't match exactly
+            // This handles cases where signatureLength estimate is slightly off
+            filePtr = fopen(filename.c_str(), "rb");
+            long read_size = fread(signature, 1, size < signatureLength ? size : signatureLength, filePtr);
+            LOG_TRACE("GetPresign (4-param): Read %ld bytes from large binary file", read_size);
+            fclose(filePtr);
+        }
+        else
+        {
+            // read ascii
+            filePtr = fopen(filename.c_str(), "r");
+            for (int i = 0; i < signatureLength; i++)
+            {
+                int x;
+                if (fscanf(filePtr, "%2X", &x) != 1)
+                {
+                    LOG_ERROR("Failure reading presign file - %s", baseFile.c_str());
+                }
+                signature[i] = x;
+            }
+            fclose(filePtr);
+        }
+    }
+    else
+    {
+        LOG_ERROR("Failure opening presign file - %s", baseFile.c_str());
     }
 }
 
@@ -1303,13 +1432,42 @@ void SpartanupAuthenticationContext::GetPresign(const std::string& presignFilena
 /******************************************************************************/
 void SpartanupAuthenticationContext::SetSPKSignatureFile(const std::string& filename)
 {
+    // If filename is empty, nothing to do
+    if (filename.empty())
+    {
+        return;
+    }
+    
     FILE* filePtr;
-    filePtr = fopen(filename.c_str(), "r");
+    filePtr = fopen(filename.c_str(), "rb");
 
+    LOG_TRACE("SetSPKSignatureFile called with: %s", filename.c_str());
+    
     if (filePtr)
     {
+        // Get file size first to determine if this is an LMS/HSS signature
+        fseek(filePtr, 0, SEEK_END);
+        long fileSize = ftell(filePtr);
         fclose(filePtr);
-        GetPresign(filename, spksignature, 0);
+        
+        LOG_TRACE("SetSPKSignatureFile: fileSize=%ld, current signatureLength=%u, SIGN_LENGTH_VERSAL=%d", 
+                  fileSize, signatureLength, SIGN_LENGTH_VERSAL);
+        
+        // If file is larger than SIGN_LENGTH_VERSAL, it's an LMS/HSS signature file
+        // Use the file size as the signature length
+        if (fileSize > SIGN_LENGTH_VERSAL)
+        {
+            signatureLength = fileSize;
+            LOG_TRACE("SetSPKSignatureFile: Updated signatureLength to %u", signatureLength);
+        }
+        
+        // Ensure spksignature buffer is allocated with correct size
+        spksignature.reset();
+        spksignature = std::make_unique<uint8_t[]>(signatureLength);
+        memset(spksignature.get(), 0, signatureLength);
+        
+        LOG_TRACE("SetSPKSignatureFile: Calling GetPresign with signatureLength=%u", signatureLength);
+        GetPresign(filename, signatureLength, spksignature.get(), 0);
         spkSignLoaded = true;
         spkSignRequested = "";
     }
@@ -1328,7 +1486,7 @@ void SpartanupAuthenticationContext::SetBHSignatureFile(const std::string& filen
     if (filePtr)
     {
         fclose(filePtr);
-        GetPresign(filename, bHsignature, 0);
+        GetPresign(filename, signatureLength, bHsignature.get(), 0);
         bhSignLoaded = true;
     }
     else
@@ -1342,14 +1500,14 @@ void SpartanupAuthenticationContext::GenerateSPKSignature(const std::string& fil
 {
     if (primaryKey->Loaded && primaryKey->isSecret)
     {
-        uint8_t* shaHashPadded = new uint8_t[signatureLength];
-        uint8_t* spkSignatureTemp = new uint8_t[signatureLength];
-        memset(shaHashPadded, 0, signatureLength);
-        memset(spkSignatureTemp, 0, signatureLength);
-        GenerateSPKHash(shaHashPadded);
-        authAlgorithm->RearrangeEndianess(shaHashPadded, signatureLength);
-        authAlgorithm->CreateSignature(shaHashPadded, (uint8_t*)primaryKey, spkSignatureTemp);
-        authAlgorithm->RearrangeEndianess(spkSignatureTemp, signatureLength);
+        auto shaHashPadded = std::make_unique<uint8_t[]>(signatureLength);
+        auto spkSignatureTemp = std::make_unique<uint8_t[]>(signatureLength);
+        memset(shaHashPadded.get(), 0, signatureLength);
+        memset(spkSignatureTemp.get(), 0, signatureLength);
+        GenerateSPKHash(shaHashPadded.get());
+        authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
+        authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)primaryKey.get(), spkSignatureTemp.get());
+        authAlgorithm->RearrangeEndianess(spkSignatureTemp.get(), signatureLength);
         LOG_INFO("SPK Signature generated successfully");
 
         if (filename != "")
@@ -1374,8 +1532,7 @@ void SpartanupAuthenticationContext::GenerateSPKSignature(const std::string& fil
                 LOG_ERROR("-spksignature error !!!           Failure writing the SPK signature file - %s", StringUtils::BaseName(filename).c_str());
             }
         }
-        delete[] spkSignatureTemp;
-        delete[] shaHashPadded;
+        // Smart pointers automatically clean up!
     }
     else
     {
@@ -1437,7 +1594,7 @@ void SpartanupAuthenticationContext::CreateSPKSignature(BootImage& bi)
 {
     LOG_TRACE("Creating the SPK signature");
 
-    uint8_t* shaHashPadded = NULL;
+    std::unique_ptr<uint8_t[]> shaHashPadded;
     /* SPK is signed with PSK (Primary Secret Key)
     Check if PSK is given */
     if (primaryKey->Loaded && primaryKey->isSecret)
@@ -1447,85 +1604,97 @@ void SpartanupAuthenticationContext::CreateSPKSignature(BootImage& bi)
         {
             if(!bi.options.IsDl9Series())
             {
-                shaHashPadded = new uint8_t[hashLength];
-                memset(shaHashPadded, 0, hashLength);
-                signatureLength = GetLmsSignLength(pskFile.c_str(), lmsOnly);
-                spksignature = new uint8_t[signatureLength];
-                memset(spksignature, 0, signatureLength);
+                shaHashPadded = std::make_unique<uint8_t[]>(hashLength);
+                memset(shaHashPadded.get(), 0, hashLength);
+                signatureLength = GetLmsSignatureLength(pskFile.c_str(), ppkFile.c_str(), lmsOnly);
+                spksignature = std::make_unique<uint8_t[]>(signatureLength);
+                memset(spksignature.get(), 0, signatureLength);
                 // Calulate the SPK hash with PKCS padding
-                GenerateSPKHash(shaHashPadded);
-                authAlgorithm->RearrangeEndianess(shaHashPadded, hashLength);
-                //authAlgorithm->CreateSignature(shaHashPadded, hashLength, pskFile.c_str(), spksignature);
-                authAlgorithm->CreateSignature(shaHashPadded, hashLength, pskFile.c_str(),
-                    spksignature, signatureLength, lmsOnly, ppkFile.c_str());
-                authAlgorithm->VerifySignature(shaHashPadded, hashLength, ppkFile.c_str(),
-                    spksignature, signatureLength, lmsOnly);
+                GenerateSPKHash(shaHashPadded.get());
+                authAlgorithm->RearrangeEndianess(shaHashPadded.get(), hashLength);
+                //authAlgorithm->CreateSignature(shaHashPadded.get(), hashLength, pskFile.c_str(), spksignature.get());
+                authAlgorithm->CreateSignature(shaHashPadded.get(), hashLength, pskFile.c_str(),
+                    spksignature.get(), signatureLength, lmsOnly, ppkFile.c_str());
+                authAlgorithm->VerifySignature(shaHashPadded.get(), hashLength, ppkFile.c_str(),
+                    spksignature.get(), signatureLength, lmsOnly);
             }
             else
             {
-                uint8_t* tempBuffer = NULL;
                 uint16_t totalSignatureLength = 0;
                 size_t totalKeySize = 0;
                 size_t actualKeySize = 0;
                 actualKeySize = GetLmsPublicKeyLength(spkFile.c_str(), lmsOnly);
                 totalKeySize = actualKeySize + PADDING_16B(actualKeySize);
-                signatureLength = GetLmsSignLength(pskFile.c_str(), lmsOnly);
+                signatureLength = GetLmsSignatureLength(pskFile.c_str(), ppkFile.c_str(), lmsOnly);
                 totalSignatureLength = signatureLength + PADDING_16B(signatureLength);
 
-                uint8_t* spkFull = new uint8_t[actualKeySize];
+                auto spkFull = std::make_unique<uint8_t[]>(actualKeySize);
 
                 if (!secondaryKey->Loaded)
                 {
                     ParseSPKeyFile(spkFile);
                 }
-                secondaryKey->Export(spkFull);
+                secondaryKey->Export(spkFull.get());
 
                 // acTotalSpkSize; acActualSpkSize; acSpkTotalSignatureSize; acSpkActualSignatureSize; acSpkId; acSpkHdrAlignment[3]; , acSpk
                 //acSpkSize, acSpkSignatureSize, acSpkId, acSpkHdrAlignment, acSpk
-                tempBuffer = new uint8_t[totalKeySize + TELLURIDE_AC_SPK_HDR_LENGTH];
-                memset(tempBuffer, 0, totalKeySize + TELLURIDE_AC_SPK_HDR_LENGTH);
+                auto tempBuffer = std::make_unique<uint8_t[]>(totalKeySize + TELLURIDE_AC_SPK_HDR_LENGTH);
+                memset(tempBuffer.get(), 0, totalKeySize + TELLURIDE_AC_SPK_HDR_LENGTH);
 
-                WriteLittleEndian32(tempBuffer, totalKeySize);
-                WriteLittleEndian32(tempBuffer + sizeof(uint32_t), actualKeySize);
-                WriteLittleEndian32(tempBuffer + (2 * sizeof(uint32_t)), totalSignatureLength);
-                WriteLittleEndian32(tempBuffer + (3 * sizeof(uint32_t)), signatureLength);
-                WriteLittleEndian32(tempBuffer + (4 * sizeof(uint32_t)), spkIdentification);
-                memcpy(tempBuffer + TELLURIDE_AC_SPK_HDR_LENGTH, (uint8_t*)spkFull, actualKeySize);
+                WriteLittleEndian32(tempBuffer.get(), totalKeySize);
+                WriteLittleEndian32(tempBuffer.get() + sizeof(uint32_t), actualKeySize);
+                WriteLittleEndian32(tempBuffer.get() + (2 * sizeof(uint32_t)), totalSignatureLength);
+                WriteLittleEndian32(tempBuffer.get() + (3 * sizeof(uint32_t)), signatureLength);
+                WriteLittleEndian32(tempBuffer.get() + (4 * sizeof(uint32_t)), spkIdentification);
+                memcpy(tempBuffer.get() + TELLURIDE_AC_SPK_HDR_LENGTH, (uint8_t*)spkFull.get(), actualKeySize);
     #ifdef DEBUG
                 LOG_TRACE("DATA being Hashed for SPK Sign");
-                LOG_DUMP_BYTES(tempBuffer, actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH);
+                LOG_DUMP_BYTES(tempBuffer.get(), actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH);
     #endif
-                authAlgorithm->CreateSignature(tempBuffer, actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH, pskFile.c_str(),
-                    spksignature, signatureLength, lmsOnly, ppkFile.c_str());
+                authAlgorithm->CreateSignature(tempBuffer.get(), actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH, pskFile.c_str(),
+                    spksignature.get(), signatureLength, lmsOnly, ppkFile.c_str());
     #ifdef DEBUG
                 LOG_TRACE("spksignature");
-                LOG_DUMP_BYTES(spksignature, signatureLength);
+                LOG_DUMP_BYTES(spksignature.get(), signatureLength);
     #endif
-                authAlgorithm->VerifySignature(tempBuffer, actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH, ppkFile.c_str(),
-                    spksignature, signatureLength, lmsOnly);
-                //authAlgorithm->CreateSignature(shaHashPadded, hashLength, pskFile.c_str(), spksignature, signatureLength, lmsOnly);
+                authAlgorithm->VerifySignature(tempBuffer.get(), actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH, ppkFile.c_str(),
+                    spksignature.get(), signatureLength, lmsOnly);
+                //authAlgorithm->CreateSignature(shaHashPadded.get(), hashLength, pskFile.c_str(), spksignature.get(), signatureLength, lmsOnly);
             }
         }
         else
         {
-            shaHashPadded = new uint8_t[signatureLength];
-            memset(shaHashPadded, 0, signatureLength);
-            memset(spksignature, 0, signatureLength);
+            shaHashPadded = std::make_unique<uint8_t[]>(signatureLength);
+            memset(shaHashPadded.get(), 0, signatureLength);
+            memset(spksignature.get(), 0, signatureLength);
             // Calulate the SPK hash with PKCS padding
-            GenerateSPKHash(shaHashPadded);
-            authAlgorithm->RearrangeEndianess(shaHashPadded, signatureLength);
-            authAlgorithm->CreateSignature(shaHashPadded, (uint8_t*)primaryKey, spksignature);
+            GenerateSPKHash(shaHashPadded.get());
+            authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
+            authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)primaryKey.get(), spksignature.get());
         }
 
-        authAlgorithm->RearrangeEndianess(spksignature, signatureLength);
+        authAlgorithm->RearrangeEndianess(spksignature.get(), signatureLength);
 
-        delete[] shaHashPadded;
+        // Smart pointers automatically clean up!
     }
     /* If SPK signature file or PSK is not given in BIF file, cannot get SPK signature for the auth certificate
     Throw error */
     else if (!spkSignLoaded)
     {
-        LOG_ERROR("Authentication Error !!!\n          PSK or SPK signature missing, must specify atleast one");
+        if (bi.options.DoGenerateHashes())
+        {
+            // In generate_hashes mode without PSK, write the hash file for offline signing
+            std::string hashfilename = bi.bifOptions->GetSPKFileName() + hash->GetHashFileExtension();
+            auto shaHashPadded = std::make_unique<uint8_t[]>(hashLength);
+            memset(shaHashPadded.get(), 0, hashLength);
+            GenerateSPKHash(shaHashPadded.get());
+            LOG_TRACE("Hash file %s generated successfully", hashfilename.c_str());
+            WritePaddedSHAFile(shaHashPadded.get(), hashfilename);
+        }
+        else
+        {
+            LOG_ERROR("Authentication Error !!!\n          PSK or SPK signature missing, must specify atleast one");
+        }
     }
     LOG_INFO("SPK signature created successfully");
 }
@@ -1553,10 +1722,10 @@ void SpartanupAuthenticationContext::CreateAuthJtagImage(uint8_t* buffer, AuthJt
             WriteLittleEndian32(&authJtagImage->authJtagImageLength, sizeof(AuthenticatedJtagRSAImageStructure));
 
             hashLength = hash->GetHashLength();
-            uint8_t* shaHash = new uint8_t[hashLength];
-            uint8_t* shaHashPadded = new uint8_t[signatureLength];
-            memset(shaHash, 0, hashLength);
-            memset(shaHashPadded, 0, signatureLength);
+            auto shaHash = std::make_unique<uint8_t[]>(hashLength);
+            auto shaHashPadded = std::make_unique<uint8_t[]>(signatureLength);
+            memset(shaHash.get(), 0, hashLength);
+            memset(shaHashPadded.get(), 0, signatureLength);
 
             uint32_t acHdr = authAlgorithm->GetAuthHeader();
 
@@ -1598,23 +1767,22 @@ void SpartanupAuthenticationContext::CreateAuthJtagImage(uint8_t* buffer, AuthJt
 
             //SPK Sign
             //SPK Header Offset - 0x450, size to be signed - 20 +  
-            hash->CalculateVersalHash(true, (uint8_t*)authJtagImage + 0x450, 0x20 + VERSAL_ACKEY_STRUCT_SIZE + TELLURIDE_RSA_AC_PPK_SPK_ALIGNMENT, shaHash);
-            authAlgorithm->CreatePadding(shaHashPadded, shaHash, hashLength);
-            authAlgorithm->RearrangeEndianess(shaHashPadded, signatureLength);
+            hash->CalculateVersalHash(true, (uint8_t*)authJtagImage + 0x450, 0x20 + VERSAL_ACKEY_STRUCT_SIZE + TELLURIDE_RSA_AC_PPK_SPK_ALIGNMENT, shaHash.get());
+            authAlgorithm->CreatePadding(shaHashPadded.get(), shaHash.get(), hashLength);
+            authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
 
-            authAlgorithm->CreateSignature(shaHashPadded, (uint8_t*)primaryKey, authJtagImage->spkSignature);
+            authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)primaryKey.get(), authJtagImage->spkSignature);
             authAlgorithm->RearrangeEndianess(authJtagImage->authJtagSignature, signatureLength);
 
             //Auth Jtag Msg Sign
-            hash->CalculateVersalHash(true, (uint8_t*)authJtagImage, sizeof(AuthenticatedJtagRSAImageStructure) - signatureLength, shaHash);
-            authAlgorithm->CreatePadding(shaHashPadded, shaHash, hashLength);
-            authAlgorithm->RearrangeEndianess(shaHashPadded, signatureLength);
+            hash->CalculateVersalHash(true, (uint8_t*)authJtagImage, sizeof(AuthenticatedJtagRSAImageStructure) - signatureLength, shaHash.get());
+            authAlgorithm->CreatePadding(shaHashPadded.get(), shaHash.get(), hashLength);
+            authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
 
-            authAlgorithm->CreateSignature(shaHashPadded, (uint8_t*)secondaryKey, authJtagImage->authJtagSignature);
+            authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)secondaryKey.get(), authJtagImage->authJtagSignature);
             authAlgorithm->RearrangeEndianess(authJtagImage->authJtagSignature, signatureLength);
 
-            delete[] shaHash;
-            delete[] shaHashPadded;
+            // Smart pointers automatically clean up!
         }
         else
         {
@@ -1630,10 +1798,10 @@ void SpartanupAuthenticationContext::CreateAuthJtagImage(uint8_t* buffer, AuthJt
             WriteLittleEndian32(&authJtagImage->authJtagImageLength, sizeof(AuthenticatedJtagRSAImageStructure));
 
             hashLength = hash->GetHashLength();
-            uint8_t* shaHash = new uint8_t[hashLength];
-            uint8_t* shaHashPadded = new uint8_t[signatureLength];
-            memset(shaHash, 0, hashLength);
-            memset(shaHashPadded, 0, signatureLength);
+            auto shaHash = std::make_unique<uint8_t[]>(hashLength);
+            auto shaHashPadded = std::make_unique<uint8_t[]>(signatureLength);
+            memset(shaHash.get(), 0, hashLength);
+            memset(shaHashPadded.get(), 0, signatureLength);
 
             uint32_t acHdr = authAlgorithm->GetAuthHeader();
 
@@ -1676,22 +1844,21 @@ void SpartanupAuthenticationContext::CreateAuthJtagImage(uint8_t* buffer, AuthJt
 
             //SPK Sign
             //SPK Header Offset - 0xA0, size to be signed - 20 +  
-            hash->CalculateVersalHash(true, (uint8_t*)authJtagImage + 0xA0, 0x20 + 2 * EC_P384_KEY_LENGTH, shaHash);
-            authAlgorithm->CreatePadding(shaHashPadded, shaHash, hashLength);
-            authAlgorithm->RearrangeEndianess(shaHashPadded, signatureLength);
+            hash->CalculateVersalHash(true, (uint8_t*)authJtagImage + 0xA0, 0x20 + 2 * EC_P384_KEY_LENGTH, shaHash.get());
+            authAlgorithm->CreatePadding(shaHashPadded.get(), shaHash.get(), hashLength);
+            authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
 
-            authAlgorithm->CreateSignature(shaHashPadded, (uint8_t*)primaryKey, authJtagImage->spkSignature);
+            authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)primaryKey.get(), authJtagImage->spkSignature);
             authAlgorithm->RearrangeEndianess(authJtagImage->authJtagSignature, signatureLength);
 
             //Auth Jtag Msg Sign
-            hash->CalculateVersalHash(false, (uint8_t*)authJtagImage, sizeof(AuthenticatedJtagRSAImageStructure) - signatureLength, shaHash);
-            authAlgorithm->CreatePadding(shaHashPadded, shaHash, hashLength);
-            authAlgorithm->RearrangeEndianess(shaHashPadded, signatureLength);
+            hash->CalculateVersalHash(false, (uint8_t*)authJtagImage, sizeof(AuthenticatedJtagRSAImageStructure) - signatureLength, shaHash.get());
+            authAlgorithm->CreatePadding(shaHashPadded.get(), shaHash.get(), hashLength);
+            authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
 
-            authAlgorithm->CreateSignature(shaHashPadded, (uint8_t*)secondaryKey, authJtagImage->authJtagSignature);
+            authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)secondaryKey.get(), authJtagImage->authJtagSignature);
             authAlgorithm->RearrangeEndianess(authJtagImage->authJtagSignature, signatureLength);
-            delete[] shaHash;
-            delete[] shaHashPadded;
+            // Smart pointers automatically clean up!
         }
         else
         {
@@ -1705,7 +1872,7 @@ void SpartanupAuthenticationCertificate::Link(BootImage& bi, Section* dataSectio
 {
     /* Gather up all the sections that will be used to calculate the authentication hash */
     std::list<Section*> sections;
-    Section* headers = NULL;
+    std::unique_ptr<Section> headers;
 
     /* If the section is a header table section */
     if (isTableHeader)
@@ -1714,10 +1881,10 @@ void SpartanupAuthenticationCertificate::Link(BootImage& bi, Section* dataSectio
         if (bi.options.bifOptions->GetHeaderEncyption())
         {
             size = bi.encryptedHeaders->Length;
-            headers = new Section("Headers", size);
-            memset(headers->Data, bi.options.GetOutputFillByte(), headers->Length);
-            memcpy(headers->Data, bi.encryptedHeaders->Data, bi.encryptedHeaders->Length);
-            sections.push_back(headers);
+            headers = std::make_unique<Section>("Headers", size);
+            memset(headers->Data.get(), bi.options.GetOutputFillByte(), headers->Length);
+            memcpy(headers->Data.get(), bi.encryptedHeaders->Data.get(), bi.encryptedHeaders->Length);
+            sections.push_back(headers.get());
         }
         else
         {
@@ -1749,21 +1916,21 @@ void SpartanupAuthenticationCertificate::Link(BootImage& bi, Section* dataSectio
             //sections.push_back(bi.nullPartHeaderSection);
 
             /* Create one new combined section will all the appended sections above */
-            headers = new Section("Headers", size);
+            headers = std::make_unique<Section>("Headers", size);
             //headers->Address = iHT->section->Address; // not really needed, but useful for debug.
-            memset(headers->Data, bi.options.GetOutputFillByte(), headers->Length);
+            memset(headers->Data.get(), bi.options.GetOutputFillByte(), headers->Length);
 
             Binary::Address_t start = sections.front()->Address;
-            for (SectionList::iterator i = sections.begin(); i != sections.end(); i++)
+            for (std::list<Section*>::iterator i = sections.begin(); i != sections.end(); i++)
             {
                 Section& section(**i);
                 int offset = section.Address - start;
-                memcpy(headers->Data + offset, section.Data, section.Length);
+                memcpy(headers->Data.get() + offset, section.Data.get(), section.Length);
             }
 
             // replace sections list with the combined new section
             sections.clear();
-            sections.push_back(headers);
+            sections.push_back(headers.get());
         }
     }
     // If section is a partition section
@@ -1782,10 +1949,7 @@ void SpartanupAuthenticationCertificate::Link(BootImage& bi, Section* dataSectio
 
     // Link the certificate - pass for signing
     this->AuthContext->Link(bi, sections, this);
-    if (headers != NULL)
-    {
-        delete headers;
-    }
+    // headers is now std::unique_ptr - automatic cleanup
 }
 
 /******************************************************************************/

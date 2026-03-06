@@ -125,7 +125,7 @@ public:
         , authOptimizationEnabled(false)
         
     {
-        cmdEncryptOptions = new CommndLineEncryptOptions();
+        cmdEncryptOptions = std::make_unique<CommndLineEncryptOptions>();
     };
     
     ~Options()
@@ -134,14 +134,7 @@ public:
         {
             delete debugstr;
         }
-        if (cmdEncryptOptions)
-        {
-            delete cmdEncryptOptions;
-        }
-        if (secHdrIv)
-        {
-            free(secHdrIv);
-        }
+        // cmdEncryptOptions, secHdrIv, secHdrIvPmcData cleanup handled by unique_ptr
     }
 
     void ParseArgs(int argc,const char* argv[]);
@@ -189,6 +182,7 @@ public:
     void SetOutputMode (OutputMode::Type, File::Type);
     void SetDumpOption(DumpOption::Type);
     void SetDumpDirectory(std::string);
+    void SetPufOutputFileName(std::string);
     void SetVerifyImageOption(bool);
     void SetReadImageOption(ReadImageOption::Type);
     void SetReadImageFile(std::string);
@@ -243,6 +237,7 @@ public:
     bool GetVerifyImageOption();
     DumpOption::Type GetDumpOption(void);
     std::string GetDumpDirectory(void);
+    std::string GetPufOutputFileName(void);
     Authentication::Type GetSecureDebugAuthType(void);
     std::string GetSecureDebugImageFile(void);
     std::string GetOverlayCDOFileName (void);
@@ -255,8 +250,8 @@ public:
     uint32_t bootheaderSize;
     uint32_t allHeaderSize;
     uint32_t bootloaderSize;
-    uint8_t *secHdrIv;
-    uint8_t *secHdrIvPmcData;
+    std::unique_ptr<uint8_t[]> secHdrIv;         // Smart pointer - auto cleanup
+    std::unique_ptr<uint8_t[]> secHdrIvPmcData;  // Smart pointer - auto cleanup
 
 //private:
     std::string bifFileName;
@@ -280,6 +275,7 @@ public:
     bool verifyImage;
     DumpOption::Type dumpOption;
     std::string dumpPath;
+    std::string pufOutputFileName;
     bool overwriteMode;
     bool doFill;
     bool legacy;
@@ -298,7 +294,7 @@ public:
     uint16_t qspiSize;
     uint32_t defaultAlignment;
     Binary::Address_t baseAddress;
-    CommndLineEncryptOptions *cmdEncryptOptions;
+    std::unique_ptr<CommndLineEncryptOptions> cmdEncryptOptions;
     BifOptions* bifOptions;
     std::vector<BifOptions*> bifOptionsList;
     std::list<std::string> includeBifOptionsList;

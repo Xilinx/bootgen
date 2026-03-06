@@ -45,7 +45,6 @@
 
 0[xX][0-9A-Fa-f]+       yylval->number=strtoul(yytext+2,NULL,16); return tok::HEXVALUE;
 
-
 \-image                     return tok::_IMAGE;
 \-fill                      return tok::_FILL;
 \-o                         return tok::_O_TOK;
@@ -96,6 +95,7 @@
     puf_pdi                 return tok::DUMP_PUF_PDI;
 
 \-dump_dir                  return tok::_DUMP_DIR;
+\-puf                       return tok::_PUF;
 \-legacy                    return tok::_LEGACY;
 \-padimageheader            return tok::_PADIMAGEHEADER;
 \-efuseppkbits              return tok::_EFUSEPPKBITS;

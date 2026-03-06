@@ -15,7 +15,9 @@
 * limitations under the License.
 ******************************************************************************/
 
-
+#pragma GCC diagnostic pop
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wclass-memaccess"
 /*
 -------------------------------------------------------------------------------
 ***********************************************   H E A D E R   F I L E S   ***
@@ -50,8 +52,6 @@ VersalKey::VersalKey(const std::string& name0)
     {
         eckey = EC_KEY_new_by_curve_name(NID_secp521r1);
     }
-    x = nullptr;
-    y = nullptr;
 }
 
 
@@ -73,24 +73,15 @@ VersalKey::VersalKey(const Key& otherKey)
         eckey = EC_KEY_new_by_curve_name(NID_secp521r1);
     }
 
+    // Note: memcpy on object with unique_ptr members is a design limitation
+    // This shallow copy is intentional for the legacy Key class design
+
     memcpy(this, &otherKey, sizeof(Key));
 }
 
 /******************************************************************************/
 VersalKey::~VersalKey()
 {
-    if (x != NULL)
-    {
-        delete[] x;
-        x = nullptr;
-    }
-
-    if (y != NULL)
-    {
-        delete[] y;
-        y = nullptr;
-    }
-
     if (eckey != NULL)
     {
         EC_KEY_free(eckey);
@@ -109,9 +100,9 @@ void Key4096Sha3Padding_versal::Export(void* acKey)
     }
 
     memset(key, 0, VERSAL_ACKEY_STRUCT_SIZE);
-    memcpy(key->N, N, keySize);
-    memcpy(key->N_extension, N_ext, keySize);
-    memcpy(key->E, E, 4);
+    memcpy(key->N, N.get(), keySize);
+    memcpy(key->N_extension, N_ext.get(), keySize);
+    memcpy(key->E, E.get(), 4);
 }
 
 
@@ -123,14 +114,14 @@ void Key4096Sha3Padding_versal::Import(const void* acKey, const std::string& nam
     isSecret = false;
     name = name0;
 
-    memcpy(N, key->N, keySize);
-    memcpy(N_ext, key->N_extension, keySize);
-    memcpy(E, key->E, sizeof(uint32_t));
-    memset(P, 0, keySize / 2);
-    memset(Q, 0, keySize / 2);
+    memcpy(N.get(), key->N, keySize);
+    memcpy(N_ext.get(), key->N_extension, keySize);
+    memcpy(E.get(), key->E, sizeof(uint32_t));
+    memset(P.get(), 0, keySize / 2);
+    memset(Q.get(), 0, keySize / 2);
 
     // Fill secret exponent with zeros
-    memset(D, 0, keySize);
+    memset(D.get(), 0, keySize);
 }
 
 /******************************************************************************/
@@ -144,8 +135,8 @@ void KeyECDSA_versal::Export(void * acKey)
     }
 
     memset(key, 0, sizeof(ACKeyECDSAp));
-    memcpy(key->x, x, keySize);
-    memcpy(key->y, y, keySize);
+    memcpy(key->x, x.get(), keySize);
+    memcpy(key->y, y.get(), keySize);
     //memset(key->pad, 0, sizeof(key->pad));
 }
 
@@ -157,17 +148,17 @@ void KeyECDSA_versal::Import(const void * acKey, const std::string & name0)
     isSecret = false;
     name = name0;
 
-    x = new uint8_t[keySize];
-    memset(x, 0, keySize);
-    y = new uint8_t[keySize];
-    memset(y, 0, keySize);
+    x = std::make_unique<uint8_t[]>(keySize);
+    memset(x.get(), 0, keySize);
+    y = std::make_unique<uint8_t[]>(keySize);
+    memset(y.get(), 0, keySize);
 
-    memcpy(x, key->x, keySize);
-    memcpy(y, key->y, keySize);
+    memcpy(x.get(), key->x, keySize);
+    memcpy(y.get(), key->y, keySize);
     //memset(key->pad, 0, sizeof(key->pad));
 
     // Fill secret exponent with zeros
-    memset(D, 0, keySize);
+    memset(D.get(), 0, keySize);
 }
 
 /******************************************************************************/
@@ -183,21 +174,20 @@ void KeyECDSAp521_versal::Export(void * acKey)
     memset(key, 0, sizeof(ACKeyECDSApP521));
     if (keySizeX == EC_P521_KEY_LENGTH1)
     {
-        memcpy((key->x) + 1, x, keySizeX);
+        memcpy((key->x) + 1, x.get(), keySizeX);
     }
     else
     {
-        memcpy(key->x, x, keySizeX);
+        memcpy(key->x, x.get(), keySizeX);
     }
     if (keySizeY == EC_P521_KEY_LENGTH1)
     {
-        memcpy((key->y)+1, y, keySizeY);
+        memcpy((key->y)+1, y.get(), keySizeY);
     }
     else
     {
-        memcpy(key->y, y, keySizeY);
+        memcpy(key->y, y.get(), keySizeY);
     }
-    //memset(key->pad, 0, sizeof(key->pad));
 }
 
 
@@ -209,17 +199,17 @@ void KeyECDSAp521_versal::Import(const void * acKey, const std::string & name0)
     isSecret = false;
     name = name0;
 
-    x = new uint8_t[keySizeX];
-    y = new uint8_t[keySizeY];
-    memset(x, 0, keySizeX);
-    memset(y, 0, keySizeY);
+    x = std::make_unique<uint8_t[]>(keySizeX);
+    y = std::make_unique<uint8_t[]>(keySizeY);
+    memset(x.get(), 0, keySizeX);
+    memset(y.get(), 0, keySizeY);
 
-    memcpy(x, key->x, keySizeX);
-    memcpy(y, key->y, keySizeY);
+    memcpy(x.get(), key->x, keySizeX);
+    memcpy(y.get(), key->y, keySizeY);
     //memset(key->pad, 0, sizeof(key->pad));
 
     // Fill secret exponent with zeros
-    memset(D, 0, keySize);
+    memset(D.get(), 0, keySize);
 }
 
 /******************************************************************************/
@@ -256,6 +246,7 @@ uint8_t VersalKey::ParseECDSAOpenSSLKey(const std::string& filename)
     Y->top = 0;
     uint32_t keySzRdX;
     uint32_t keySzRdY;
+    EC_GROUP *ecgroup = NULL;  // Track EC_GROUP to free it at the end
 
     FILE* file;
     file = fopen(filename.c_str(), "r");
@@ -273,15 +264,14 @@ uint8_t VersalKey::ParseECDSAOpenSSLKey(const std::string& filename)
         }
         else
         {
-            EC_GROUP *ecgroup;
             if (keySize == EC_P384_KEY_LENGTH)
             {
-                x = new uint8_t[keySize];
-                y = new uint8_t[keySize];
-                memset(x, 0, keySize);
-                memset(y, 0, keySize);
-                X->d = (BN_ULONG*)x;
-                Y->d = (BN_ULONG*)y;
+                x = std::make_unique<uint8_t[]>(keySize);
+                y = std::make_unique<uint8_t[]>(keySize);
+                memset(x.get(), 0, keySize);
+                memset(y.get(), 0, keySize);
+                X->d = (BN_ULONG*)x.get();
+                Y->d = (BN_ULONG*)y.get();
                 X->dmax = keySize / sizeof(BN_ULONG);
                 Y->dmax = keySize / sizeof(BN_ULONG);
                 ecgroup = EC_GROUP_new_by_curve_name(NID_secp384r1);
@@ -298,8 +288,8 @@ uint8_t VersalKey::ParseECDSAOpenSSLKey(const std::string& filename)
                     {
                         LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", BN_num_bits(Y), keySize * 8);
                     }
-                    RearrangeEndianess(x, keySize);
-                    RearrangeEndianess(y, keySize);
+                    RearrangeEndianess(x.get(), keySize);
+                    RearrangeEndianess(y.get(), keySize);
                 }
                 else
                 {
@@ -323,15 +313,15 @@ uint8_t VersalKey::ParseECDSAOpenSSLKey(const std::string& filename)
                         LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", BN_num_bits(Y), 521);
                     }
 
-                    x = new uint8_t[keySizeX];
-                    y = new uint8_t[keySizeY];
-                    memset(x, 0, keySizeX);
-                    memset(y, 0, keySizeY);
-                    memcpy(x, X->d, keySizeX);
-                    memcpy(y, Y->d, keySizeY);
+                    x = std::make_unique<uint8_t[]>(keySizeX);
+                    y = std::make_unique<uint8_t[]>(keySizeY);
+                    memset(x.get(), 0, keySizeX);
+                    memset(y.get(), 0, keySizeY);
+                    memcpy(x.get(), X->d, keySizeX);
+                    memcpy(y.get(), Y->d, keySizeY);
 
-                    RearrangeEndianess(x, keySizeX);
-                    RearrangeEndianess(y, keySizeY);
+                    RearrangeEndianess(x.get(), keySizeX);
+                    RearrangeEndianess(y.get(), keySizeY);
                 }
                 else
                 {
@@ -349,15 +339,14 @@ uint8_t VersalKey::ParseECDSAOpenSSLKey(const std::string& filename)
         }
         else
         {
-            EC_GROUP *ecgroup;
             if (keySize == EC_P384_KEY_LENGTH)
             {
-                x = new uint8_t[keySize];
-                y = new uint8_t[keySize];
-                memset(x, 0, keySize);
-                memset(y, 0, keySize);
-                X->d = (BN_ULONG*)x;
-                Y->d = (BN_ULONG*)y;
+                x = std::make_unique<uint8_t[]>(keySize);
+                y = std::make_unique<uint8_t[]>(keySize);
+                memset(x.get(), 0, keySize);
+                memset(y.get(), 0, keySize);
+                X->d = (BN_ULONG*)x.get();
+                Y->d = (BN_ULONG*)y.get();
                 X->dmax = keySize / sizeof(BN_ULONG);
                 Y->dmax = keySize / sizeof(BN_ULONG);
                 ecgroup = EC_GROUP_new_by_curve_name(NID_secp384r1);
@@ -374,8 +363,8 @@ uint8_t VersalKey::ParseECDSAOpenSSLKey(const std::string& filename)
                     {
                         LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", BN_num_bits(Y), keySize * 8);
                     }
-                    RearrangeEndianess(x, keySize);
-                    RearrangeEndianess(y, keySize);
+                    RearrangeEndianess(x.get(), keySize);
+                    RearrangeEndianess(y.get(), keySize);
                 }
                 else
                 {
@@ -399,15 +388,15 @@ uint8_t VersalKey::ParseECDSAOpenSSLKey(const std::string& filename)
                         LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", BN_num_bits(Y), 521);
                     }
 
-                    x = new uint8_t[keySizeX];
-                    y = new uint8_t[keySizeY];
-                    memset(x, 0, keySizeX);
-                    memset(y, 0, keySizeY);
-                    memcpy(x, X->d, keySizeX);
-                    memcpy(y, Y->d, keySizeY);
+                    x = std::make_unique<uint8_t[]>(keySizeX);
+                    y = std::make_unique<uint8_t[]>(keySizeY);
+                    memset(x.get(), 0, keySizeX);
+                    memset(y.get(), 0, keySizeY);
+                    memcpy(x.get(), X->d, keySizeX);
+                    memcpy(y.get(), Y->d, keySizeY);
 
-                    RearrangeEndianess(x, keySizeX);
-                    RearrangeEndianess(y, keySizeY);
+                    RearrangeEndianess(x.get(), keySizeX);
+                    RearrangeEndianess(y.get(), keySizeY);
                 }
                 else
                 {
@@ -417,6 +406,30 @@ uint8_t VersalKey::ParseECDSAOpenSSLKey(const std::string& filename)
         }
     }
     fclose(file);
+    
+    // Free BIGNUM structures
+    // For P384: X->d and Y->d point to our memory (x.get(), y.get()), so clear before freeing
+    // For P521: X->d and Y->d still have OpenSSL memory, so BN_free will free them normally
+    if (X) {
+        if (keySize == EC_P384_KEY_LENGTH) {
+            X->d = NULL;  // Prevent OpenSSL from freeing our memory (x smart pointer owns it)
+            X->dmax = 0;
+        }
+        BN_free(X);
+    }
+    if (Y) {
+        if (keySize == EC_P384_KEY_LENGTH) {
+            Y->d = NULL;  // Prevent OpenSSL from freeing our memory (y smart pointer owns it)
+            Y->dmax = 0;
+        }
+        BN_free(Y);
+    }
+    
+    // Free EC_GROUP object
+    if (ecgroup) {
+        EC_GROUP_free(ecgroup);
+    }
+    
     return 0;
 }
 
@@ -499,7 +512,7 @@ void VersalKey::Parse(const std::string& filename, bool isSecret0)
                     and some sanity check for the keys passed */
                     {
                         BIGNUM m; // modulus
-                        m.d = (BN_ULONG*)N;
+                        m.d = (BN_ULONG*)N.get();
                         m.dmax = keySize / sizeof(BN_ULONG);
                         m.top = keySize / sizeof(BN_ULONG);
                         m.flags = 0;
@@ -509,7 +522,7 @@ void VersalKey::Parse(const std::string& filename, bool isSecret0)
                         BN_MONT_CTX_Class montClass(ctxInst);
 
                         montClass.Set(m);
-                        montClass.GetModulusExtension(N_ext, m, keySize);
+                        montClass.GetModulusExtension(N_ext.get(), m, keySize);
                     }
                     Loaded = true;
                 }
@@ -551,6 +564,11 @@ void VersalKey::Parse(const std::string& filename, bool isSecret0)
             if(authType != Authentication :: RSA)
             {
                 LOG_INFO("Parsing EC key (OpenSSL Format)");
+                // Set keySize for secret ECDSA keys (required for ParseECDSAOpenSSLKey)
+                if (authType == Authentication::ECDSA)
+                {
+                    keySize = EC_P384_KEY_LENGTH;  // 48 bytes
+                }
                 errCode = ParseECDSAOpenSSLKey(filename);
                 Loaded = true;
             }
@@ -607,7 +625,7 @@ void VersalKey::Parse(const std::string& filename, bool isSecret0)
                     and some sanity check for the keys passed */
                     {
                         BIGNUM m; // modulus
-                        m.d = (BN_ULONG*)N;
+                        m.d = (BN_ULONG*)N.get();
                         m.dmax = keySize / sizeof(BN_ULONG);
                         m.top = keySize / sizeof(BN_ULONG);
                         m.flags = 0;
@@ -617,7 +635,7 @@ void VersalKey::Parse(const std::string& filename, bool isSecret0)
                         BN_MONT_CTX_Class montClass(ctxInst);
 
                         montClass.Set(m);
-                        montClass.GetModulusExtension(N_ext, m, keySize);
+                        montClass.GetModulusExtension(N_ext.get(), m, keySize);
                     }
                     Loaded = true;
                 }

@@ -5,6 +5,8 @@ extern int LmsSign(const char *keyname, const unsigned char *buffer, unsigned lo
 extern int LmsVerify(const char *keyname, const unsigned char *buffer, size_t buffer_len, unsigned char* sig, size_t sig_len);
 
 extern int GetLmsSignLength(const char *keyname, bool lmsOnly);
+extern int GetLmsSignLengthFromPubKey(const char *keyname, bool lmsOnly);
+extern int GetLmsSignatureLength(const char *secretKey, const char *publicKey, bool lmsOnly);
 extern bool update_private_key(unsigned char *private_key, size_t len_private_key, void *filename);
 //extern int LmsKeyGeneration(const char *keyname, const char *parm_set);
 extern int LmsKeyGeneration(const char *keyname, int* hash, int* h, int* w, int levels);

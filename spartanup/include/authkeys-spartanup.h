@@ -23,6 +23,7 @@
 ************************************************************ HEADER FILES *****
 -------------------------------------------------------------------------------
 */
+#include <memory>
 #include <stdint.h>
 #include <string>
 #include "logger.h"
@@ -113,12 +114,12 @@ public:
     uint8_t ParseECDSAOpenSSLKey(const std::string& filename);
 
     EC_KEY *eckey;
-    uint8_t *x;    // x co-ordinate (384 bits)
-    uint8_t *y;    // y co-ordinate (384 bits)
+    std::unique_ptr<uint8_t[]> x;    // x co-ordinate (384 bits)
+    std::unique_ptr<uint8_t[]> y;    // y co-ordinate (384 bits)
 
     // PM-TODO Create a separate class
-    HssPublicKey *public_key;
-    HssPrivateKey *private_key;
+    std::unique_ptr<HssPublicKey> public_key;
+    std::unique_ptr<HssPrivateKey> private_key;
     void ParseLmsKey(const std::string& filename); 
 };
 
@@ -127,7 +128,9 @@ class Key4096Sha3Padding_spartanup : public SpartanupKey
 {
 public:
     Key4096Sha3Padding_spartanup(const std::string& name0) : SpartanupKey(name0) { }
-    Key4096Sha3Padding_spartanup(const Key4096Sha3Padding_spartanup& otherKey) : SpartanupKey(otherKey) { }
+    // Copy constructor deleted because unique_ptr members cannot be copied
+    Key4096Sha3Padding_spartanup(const Key4096Sha3Padding_spartanup& otherKey) = delete;
+    Key4096Sha3Padding_spartanup& operator=(const Key4096Sha3Padding_spartanup& otherKey) = delete;
 
     void Export(void* dst);
     void Import(const void* acKey, const std::string& name0);
@@ -139,7 +142,9 @@ class KeyECDSA_spartanup : public SpartanupKey
 {
 public:
     KeyECDSA_spartanup(const std::string& name0) : SpartanupKey(name0) { }
-    KeyECDSA_spartanup(const KeyECDSA_spartanup& otherKey) : SpartanupKey(otherKey) { }
+    // Copy constructor deleted because unique_ptr members cannot be copied
+    KeyECDSA_spartanup(const KeyECDSA_spartanup& otherKey) = delete;
+    KeyECDSA_spartanup& operator=(const KeyECDSA_spartanup& otherKey) = delete;
 
     void Export(void* dst);
     void Import(const void* acKey, const std::string& name0);
@@ -150,7 +155,9 @@ class KeyECDSAp521_spartanup : public SpartanupKey
 {
 public:
     KeyECDSAp521_spartanup(const std::string& name0) : SpartanupKey(name0) { }
-    KeyECDSAp521_spartanup(const KeyECDSAp521_spartanup& otherKey) : SpartanupKey(otherKey) { }
+    // Copy constructor deleted because unique_ptr members cannot be copied
+    KeyECDSAp521_spartanup(const KeyECDSAp521_spartanup& otherKey) = delete;
+    KeyECDSAp521_spartanup& operator=(const KeyECDSAp521_spartanup& otherKey) = delete;
 
     void Export(void* dst);
     void Import(const void* acKey, const std::string& name0);
@@ -161,7 +168,9 @@ class KeyLMS_spartanup : public SpartanupKey
 {
 public:
     KeyLMS_spartanup(const std::string& name0) : SpartanupKey(name0) { }
-    KeyLMS_spartanup(const KeyLMS_spartanup& otherKey) : SpartanupKey(otherKey) { }
+    // Copy constructor deleted because unique_ptr members cannot be copied
+    KeyLMS_spartanup(const KeyLMS_spartanup& otherKey) = delete;
+    KeyLMS_spartanup& operator=(const KeyLMS_spartanup& otherKey) = delete;
 
     void Export(void* dst);
     void Import(const void* acKey, const std::string& name0);

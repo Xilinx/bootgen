@@ -24,6 +24,7 @@
 ***********************************************   H E A D E R   F I L E S   ***
 -------------------------------------------------------------------------------
 */
+#include <memory>
 #include <list>
 #include <string>
 #include <iostream>
@@ -33,7 +34,6 @@
 #include "imageheadertable-versal.h"
 #include "partitionheadertable-versal.h"
 #include "authentication-versal.h"
-
 
 
 /* Forward Class References */
@@ -58,14 +58,15 @@ public:
     VersalReadImage(std::string filename) : ReadImage(filename)
     {
         binFilename = filename;
-        bH = NULL;
-        iHT = NULL;
+        bH = nullptr;
+        iHT = nullptr;
         iHs.clear();
         pHTs.clear();
         partitionBuffers.clear();
         aCs.clear();
         authenticationVerified = true;
         versalNetSeries = false;
+        smap_header_found = false;
     }
     ~VersalReadImage();
 
@@ -104,15 +105,16 @@ public:
 
 protected:
     std::string binFilename;
-    VersalBootHeaderStructure* bH;
-    VersalImageHeaderTableStructure* iHT;
-    VersalImageHeaderStructure *iH;
-    VersalPartitionHeaderTableStructure *pHT;
+    std::unique_ptr<VersalBootHeaderStructure> bH;
+    std::unique_ptr<VersalImageHeaderTableStructure> iHT;
+    std::unique_ptr<VersalImageHeaderStructure> iH;
+    std::unique_ptr<VersalPartitionHeaderTableStructure> pHT;
     std::list<VersalImageHeaderStructure*> iHs;
     std::list<VersalPartitionHeaderTableStructure*> pHTs;
     std::list<uint8_t*> aCs;
     std::list<uint8_t*> partitionBuffers;
     bool authenticationVerified;
+    bool smap_header_found;
 };
 
 #endif

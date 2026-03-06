@@ -43,10 +43,11 @@ ZynqPartitionHeader::ZynqPartitionHeader(ImageHeader* imageheader, int index)
     {
         name = "PartitionHeader Null";
     }
-    section = new Section(name, sizeof(ZynqPartitionHeaderTableStructure));
-    memset(section->Data, 0, section->Length);
+    auto temp_section = std::make_unique<Section>(name, sizeof(ZynqPartitionHeaderTableStructure));
+    section = temp_section.release();  // Transfer ownership to raw pointer member
+    memset(section->Data.get(), 0, section->Length);
 
-    pHTable = (ZynqPartitionHeaderTableStructure*)section->Data;
+    pHTable = (ZynqPartitionHeaderTableStructure*)section->Data.get();
 }
 
 /******************************************************************************/
@@ -54,7 +55,6 @@ ZynqPartitionHeader::~ZynqPartitionHeader()
 {
     if (section != NULL)
     {
-        delete section;
     }
 }
 
@@ -95,12 +95,14 @@ void ZynqPartitionHeader::ReadData(std::ifstream& ifs)
 {
     uint32_t dataLen = GetTotalPartitionLength();
     std::string partName = imageHeader->GetName() + StringUtils::Format(".%d", index);
-    Section* dsection = new Section(partName, dataLen);
+    // BUGFIX: Use separate variable for data section - don't overwrite header section pointer!
+    auto temp_dsection = std::make_unique<Section>(partName, dataLen);
+    Section* dsection = temp_dsection.release();  // Transfer ownership to raw pointer member
     LOG_INFO("TESTINFO: SecName-%s, SecAdd-0x%x", dsection->Name.c_str(), dsection->Address);
     ifs.seekg(GetPartitionWordOffset());
-    ifs.read((char*)dsection->Data, dsection->Length);
+    ifs.read((char*)dsection->Data.get(), dsection->Length);
 
-    partition = new Partition(this, dsection);
+    partition = std::make_unique<Partition>(this, dsection);
 
     static uint8_t encryptionHeader[] =
     {
@@ -108,7 +110,7 @@ void ZynqPartitionHeader::ReadData(std::ifstream& ifs)
         0x44,0x00,0x22,0x11,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x66,0x55,0x99,0xAA
     };
 
-    preencrypted = (memcmp(dsection->Data, encryptionHeader, sizeof(encryptionHeader)) == 0);
+    preencrypted = (memcmp(partition->section->Data.get(), encryptionHeader, sizeof(encryptionHeader)) == 0);
 }
 
 /******************************************************************************/
@@ -272,7 +274,7 @@ void ZynqPartitionHeader::SetChecksum(void)
 /******************************************************************************/
 void ZynqPartitionHeader::RealignSectionDataPtr(void)
 {
-    pHTable = (ZynqPartitionHeaderTableStructure*)section->Data;
+    pHTable = (ZynqPartitionHeaderTableStructure*)section->Data.get();
 }
 
 /******************************************************************************/

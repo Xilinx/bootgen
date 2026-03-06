@@ -35,7 +35,7 @@
 
 
 uint16_t AuthenticationContext::authKeyLength = 0;
-uint8_t AuthenticationContext::hashLength = 0;
+// hashLength is now an instance variable, not static - no initialization needed here
 bool AuthenticationContext::zynpmpVerEs1 = false;
 
 
@@ -220,6 +220,47 @@ void AuthenticationContext::WritePaddedSHAFile(const uint8_t* shaBuf, const std:
 }
 
 /******************************************************************************/
+void AuthenticationContext::WriteHashFile(const uint8_t* shaBuf, const std::string& hashfilename, bool isHeader)
+{
+    std::string filename =  StringUtils::BaseName(hashfilename); 
+    
+    std::size_t size = 0;
+    FILE* fp = fopen("allHashes.bin", "rb");
+    if (!fp)
+    {
+        size = 0;
+    }
+    else
+    {
+        fseek(fp, 0, SEEK_END);
+        size = ftell(fp);
+        fclose(fp);
+    }
+
+    uint32_t hashIndex;
+    if(!isHeader)
+    {
+        hashIndex = (size/(sizeof(uint32_t) + hashLength)) + 1;
+    }
+    else
+    {
+        hashIndex = 0;
+    }
+    
+    std::ofstream f(filename.c_str(), std::ios_base::app | std::ios_base::binary);
+
+    f.write(reinterpret_cast<const char*>(&hashIndex), sizeof(uint32_t));
+    f.write((char*)shaBuf, hashLength);
+    f.close();
+
+    if (f.fail())
+    {
+        LOG_ERROR("Failed to write generated hashes to the file: %s", filename.c_str());
+    }
+    LOG_TRACE("All hash file %s generated successfully", filename.c_str());
+}
+
+/******************************************************************************/
 void AuthenticationContext::GetPresign(const std::string& presignFilename, uint8_t* signature, uint32_t index) 
 {
     std::string filename(presignFilename);
@@ -381,17 +422,17 @@ void AuthenticationContext::GenerateSPKSignature(const std::string& filename)
 {
     if (primaryKey->Loaded && primaryKey->isSecret) 
     {
-        uint8_t* shaHashPadded = new uint8_t [signatureLength];
-        uint8_t* spkSignatureTemp = new uint8_t [signatureLength];
+        auto shaHashPadded = std::make_unique<uint8_t[]>(signatureLength);
+        auto spkSignatureTemp = std::make_unique<uint8_t[]>(signatureLength);
         if (!secondaryKey->Loaded)
         {
             ParseSPKeyFile(spkFile);
         }
-        GenerateSPKHash(shaHashPadded);
+        GenerateSPKHash(shaHashPadded.get());
 
-        RearrangeEndianess(shaHashPadded, signatureLength);
-        authAlgorithm->CreateSignature(shaHashPadded, (uint8_t*)primaryKey, spkSignatureTemp);
-        RearrangeEndianess(spkSignatureTemp, signatureLength);
+        RearrangeEndianess(shaHashPadded.get(), signatureLength);
+        authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)primaryKey.get(), spkSignatureTemp.get());
+        RearrangeEndianess(spkSignatureTemp.get(), signatureLength);
         LOG_INFO("SPK Signature generated successfully");
         if (filename != "") 
         {
@@ -415,8 +456,7 @@ void AuthenticationContext::GenerateSPKSignature(const std::string& filename)
                 LOG_ERROR("-spksignature error !!!           Failure writing the SPK signature file - %s", StringUtils::BaseName(filename).c_str());
             }
         }
-        delete[] spkSignatureTemp;
-        delete[] shaHashPadded;
+        // Smart pointers automatically clean up!
     }
     else
     {
@@ -432,23 +472,23 @@ void AuthenticationContext::CreateSPKSignature(void)
     /* SPK is signed with PSK (Primary Secret Key) - Check if PSK is given */
     if(primaryKey->Loaded && primaryKey->isSecret) 
     {
-        uint8_t* shaHashPadded = new uint8_t [signatureLength];
-        uint8_t* spkSignaturetmp = new uint8_t [signatureLength];
+        auto shaHashPadded = std::make_unique<uint8_t[]>(signatureLength);
+        auto spkSignaturetmp = std::make_unique<uint8_t[]>(signatureLength);
         
         /* Calulate the SPK hash with PKCS padding */
-        GenerateSPKHash(shaHashPadded);
+        GenerateSPKHash(shaHashPadded.get());
         
-        RearrangeEndianess(shaHashPadded, signatureLength);
+        RearrangeEndianess(shaHashPadded.get(), signatureLength);
                 
         /* Sign the SPK hash */
-        authAlgorithm->CreateSignature(shaHashPadded, (uint8_t*)primaryKey, spkSignaturetmp);
+        authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)primaryKey.get(), spkSignaturetmp.get());
         
         /* If SPK signature file is directly given in BIF file, 
            Sanity Check by cross verifying the calculated SPK signature */
         if (spkSignLoaded)
         {
-            RearrangeEndianess(spkSignaturetmp, signatureLength);
-            if (memcmp(spksignature, spkSignaturetmp, signatureLength) != 0)
+            RearrangeEndianess(spkSignaturetmp.get(), signatureLength);
+            if (memcmp(spksignature.get(), spkSignaturetmp.get(), signatureLength) != 0)
             {
                 LOG_ERROR("Authentication Error !!!\n           Loaded SPK Signature does not match calculated SPK Signature");
             }        
@@ -457,12 +497,11 @@ void AuthenticationContext::CreateSPKSignature(void)
            Copy the calculated SPK signature */                
         else
         {           
-            memcpy(spksignature, spkSignaturetmp, signatureLength);
+            memcpy(spksignature.get(), spkSignaturetmp.get(), signatureLength);
             spkSignLoaded = true;
-            RearrangeEndianess(spksignature, signatureLength);
+            RearrangeEndianess(spksignature.get(), signatureLength);
         }
-        delete [] shaHashPadded;
-        delete [] spkSignaturetmp;
+        // Smart pointers automatically clean up!
     } 
     /* If SPK signature file or PSK is not given in BIF file, cannot get SPK signature for the auth certificate
        Throw error */
@@ -477,17 +516,26 @@ void AuthenticationContext::CreateSPKSignature(void)
 /******************************************************************************/
 void AuthenticationContext::GenerateSPKHashFile(const std::string& filename, Hash* hashObj)
 {
-    hash = hashObj;
+    // Note: hashObj is a non-owning pointer passed from caller
+    // Temporarily save our hash and use the provided one
+    Hash* savedHash = hash;
+    bool savedOwnsHash = ownsHash;
+    hash = hashObj;  // Non-owning - we'll restore later
+    ownsHash = false;
+    
     hashLength = hash->GetHashLength();
-    uint8_t* shaHashPadded = new uint8_t [signatureLength];
-    memset(shaHashPadded, 0, signatureLength);
+    auto shaHashPadded = std::make_unique<uint8_t[]>(signatureLength);
+    memset(shaHashPadded.get(), 0, signatureLength);
 
     /* Calculate the SPK hash */
-    GenerateSPKHash(shaHashPadded);
+    GenerateSPKHash(shaHashPadded.get());
 
     std::string hashfile = filename + hash->GetHashFileExtension();
-    WritePaddedSHAFile(shaHashPadded, hashfile);
-    delete [] shaHashPadded;
+    WritePaddedSHAFile(shaHashPadded.get(), hashfile);
+    
+    // Restore original hash
+    hash = savedHash;
+    ownsHash = savedOwnsHash;
 }
 
 
@@ -504,7 +552,7 @@ void AuthenticationContext::SetSPKSignatureFile(const std::string& filename)
 /******************************************************************************/
 void AuthenticationContext::ParseSPKSignatureFile(const std::string& filename)
 {
-    GetPresign(filename, spksignature, 0);
+    GetPresign(filename, spksignature.get(), 0);
     spkSignLoaded = true;
     spkSignRequested = "";
 }
@@ -522,7 +570,7 @@ void AuthenticationContext::SetBHSignatureFile(const std::string& filename)
 /******************************************************************************/
 void AuthenticationContext::ParseBHSignatureFile(const std::string& filename)
 {
-    GetPresign(filename, bHsignature, 0);
+    GetPresign(filename, bHsignature.get(), 0);
     bhSignLoaded = true;
 }
 
@@ -551,9 +599,16 @@ void AuthenticationCertificate::Build(BootImage& bi, Binary& cache, Section* dat
         }
     }
 
-    section = this->AuthContext->CreateCertificate(bi, cache, dataSection);
+    section = this->AuthContext->CreateCertificate(bi, cache, dataSection, fsbl0);
     fsbl = fsbl0;
     isTableHeader = isTableHeader0;
+}
+
+/******************************************************************************/
+void AuthenticationCertificate::Link(BootImage& bi, void* partition)
+{
+    // IMAGE_STORE: Pass partition pointer to AuthContext
+    this->AuthContext->Link(bi, partition, this);
 }
 
 /******************************************************************************/
@@ -561,8 +616,8 @@ void AuthenticationCertificate::Link(BootImage& bi, Section* dataSection)
 {
     /* Gather up all the sections that will be used to calculate the authentication hash */
     std::list<Section*> sections;
-    Section* headers = NULL;
-    ImageHeaderTable* iHT = bi.imageHeaderTable;
+    std::unique_ptr<Section> headers = nullptr;
+    ImageHeaderTable* iHT = bi.imageHeaderTable.get();
     
     if (isTableHeader) 
     {
@@ -582,20 +637,20 @@ void AuthenticationCertificate::Link(BootImage& bi, Section* dataSection)
         
         /* Create one new combined section with all the appended sections above */
         size_t size = this->section->Address - iHT->section->Address;
-        headers = new Section("Headers",size);
+        headers = std::make_unique<Section>("Headers",size);
         headers->Address = iHT->section->Address; // not really needed, but useful for debug.
-        memset(headers->Data, bi.options.GetOutputFillByte(), headers->Length);
+        memset(headers->Data.get(), bi.options.GetOutputFillByte(), headers->Length);
         
         Binary::Address_t start = sections.front()->Address;
-        for(SectionList::iterator i = sections.begin(); i != sections.end(); i++)
+        for(std::list<Section*>::iterator i = sections.begin(); i != sections.end(); i++)
         {
             Section& section(**i);
             int offset = section.Address - start;
-            memcpy(headers->Data + offset, section.Data, section.Length);
+            memcpy(headers->Data.get() + offset, section.Data.get(), section.Length);
         }
         /* Replace sections list with the combined new section */
         sections.clear();
-        sections.push_back(headers);
+        sections.push_back(headers.get());
     } 
     else
     {
@@ -613,10 +668,7 @@ void AuthenticationCertificate::Link(BootImage& bi, Section* dataSection)
 
     /* Link the certificate - pass for signing */
     this->AuthContext->Link(bi, sections, this);
-    if(headers != NULL)
-    {
-        delete headers;
-    }
+    // headers automatically cleaned up by unique_ptr
 }
 
 /******************************************************************************/
@@ -625,20 +677,20 @@ Section* RSA2048AuthenticationCertificate::AttachBootHeaderToFsbl(BootImage& bi)
     /* If section is a bootloader section, prepend bootheader to this section */
     if (fsbl) 
     {
-        BootHeader* bH = bi.bootHeader;
-        Section* bhfsbl;
+        BootHeader* bH = bi.bootHeader.get();
+		
         size_t bHSecLen = bH->section->Length;
         size_t fsblSecLen = bi.partitionHeaderList.front()->partition->section->Length;
-        bhfsbl = new Section("Bhfsbl", (bHSecLen + fsblSecLen));
+        auto bhfsbl = std::make_unique<Section>("Bhfsbl", (bHSecLen + fsblSecLen));
         bhfsbl->Address = bH->section->Address;
         if (bHSecLen != bH->GetBootHeaderSize() + bH->GetRegInitTableSize())
         {
             LOG_DEBUG(DEBUG_STAMP, "AC size is incorrect during Link - Section Length - %d, BootHeader Size - %d", bHSecLen, bH->GetBootHeaderSize() + bH->GetRegInitTableSize());
             LOG_ERROR("Authentication error !!!");	
         }
-        memcpy(bhfsbl->Data, bH->section->Data, bHSecLen);
-        memcpy(bhfsbl->Data + bHSecLen, bi.partitionHeaderList.front()->partition->section->Data, fsblSecLen);
-        return bhfsbl;
+        memcpy(bhfsbl->Data.get(), bH->section->Data.get(), bHSecLen);
+        memcpy(bhfsbl->Data.get() + bHSecLen, bi.partitionHeaderList.front()->partition->section->Data.get(), fsblSecLen);
+        return bhfsbl.release(); // Transfer ownership to caller
     }
     else 
     {
@@ -677,10 +729,9 @@ void AuthenticationAlgorithm::RSA_Exponentiation(const uint8_t *base, const uint
     m.neg = 0;
 
     montClass.Set(m);
-    uint8_t* sanityExtension = new uint8_t[keyLength];
-    montClass.GetModulusExtension(sanityExtension, m, keyLength);
-    int comp = memcmp(sanityExtension, modular_ext, keyLength);
-    delete[] sanityExtension;
+    auto sanityExtension = std::make_unique<uint8_t[]>(keyLength);
+    montClass.GetModulusExtension(sanityExtension.get(), m, keyLength);
+    int comp = memcmp(sanityExtension.get(), modular_ext, keyLength);
 
     if (comp)
     {
@@ -705,11 +756,11 @@ void AuthenticationAlgorithm::RSA_Exponentiation(const uint8_t *base, const uint
 /******************************************************************************/
 void RSAAuthenticationAlgorithm::CreateSignature(const uint8_t* base, uint8_t* primaryKey, uint8_t* result0)
 {
-    RSA_Exponentiation(base, ((Key*)primaryKey)->N, ((Key*)primaryKey)->N_ext, ((Key*)primaryKey)->D, result0);
+    RSA_Exponentiation(base, ((Key*)primaryKey)->N.get(), ((Key*)primaryKey)->N_ext.get(), ((Key*)primaryKey)->D.get(), result0);
 }
 
 /******************************************************************************/
 NoneAuthenticationContext::NoneAuthenticationContext()
 {
-    authAlgorithm = new NoneAuthenticationAlgorithm();
+    authAlgorithm = std::make_unique<NoneAuthenticationAlgorithm>();
 }

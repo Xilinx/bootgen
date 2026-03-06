@@ -25,6 +25,7 @@
 */
 #include <stdint.h>
 #include <string>
+#include <memory>
 #include "logger.h"
 #include <openssl/bn.h>
 #include <openssl/rsa.h>
@@ -77,13 +78,15 @@ typedef struct
     uint8_t     N_extension[RSA_4096_KEY_LENGTH];     // Montgomery Modulus extension
     uint8_t     E[4];                                 // Exponent
 } ACKey4096Sha3Padding;
-
-
-
-
-
-
 */
+ typedef struct
+{
+    uint8_t     x[EC_P384_KEY_LENGTH];          // x co-ordinate (48 bytes)
+    uint8_t     y[EC_P384_KEY_LENGTH];          // y co-ordinate (48 bytes)
+    uint8_t     pad[932];                       // Padding to make 1028 bytes
+} ACKeyECDSA_Versal;
+
+
 
 /*
 -------------------------------------------------------------------------------
@@ -97,11 +100,15 @@ public:
     VersalKey(const Key& otherKey);
     ~VersalKey();
 
+    // Disable copy constructor and assignment for unique_ptr members
+    VersalKey(const VersalKey&) = delete;
+    VersalKey& operator=(const VersalKey&) = delete;
+
     void Parse(const std::string& filename, bool isSecret0);
     uint8_t ParseECDSAOpenSSLKey(const std::string& filename);
     EC_KEY *eckey;
-    uint8_t *x;    // x co-ordinate (384 bits)
-    uint8_t *y;    // y co-ordinate (384 bits)
+    std::unique_ptr<uint8_t[]> x;    // x co-ordinate (384 bits)
+    std::unique_ptr<uint8_t[]> y;    // y co-ordinate (384 bits)
 };
 
 /******************************************************************************/
@@ -109,7 +116,6 @@ class Key4096Sha3Padding_versal : public VersalKey
 {
 public:
     Key4096Sha3Padding_versal(const std::string& name0) : VersalKey(name0) { }
-    Key4096Sha3Padding_versal(const Key4096Sha3Padding_versal& otherKey) : VersalKey(otherKey) { }
 
     void Export(void* dst);
     void Import(const void* acKey, const std::string& name0);
@@ -121,7 +127,6 @@ class KeyECDSA_versal : public VersalKey
 {
 public:
     KeyECDSA_versal(const std::string& name0) : VersalKey(name0) { }
-    KeyECDSA_versal(const KeyECDSA_versal& otherKey) : VersalKey(otherKey) { }
 
     void Export(void* dst);
     void Import(const void* acKey, const std::string& name0);
@@ -132,7 +137,6 @@ class KeyECDSAp521_versal : public VersalKey
 {
 public:
     KeyECDSAp521_versal(const std::string& name0) : VersalKey(name0) { }
-    KeyECDSAp521_versal(const KeyECDSAp521_versal& otherKey) : VersalKey(otherKey) { }
 
     void Export(void* dst);
     void Import(const void* acKey, const std::string& name0);

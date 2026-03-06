@@ -44,30 +44,30 @@ extern "C" {
     , lmsOnly(true)
 {
     keySize = AuthenticationContext::GetRsaKeyLength();
-    N = new uint8_t [keySize];
-    N_ext = new uint8_t [keySize];
-    D = new uint8_t [keySize];
-    E = new uint8_t [WORD_SIZE_IN_BYTES];
-    P = new uint8_t [keySize/2];
-    Q = new uint8_t [keySize/2];
-    memset(N, 0, keySize);
-    memset(N_ext, 0, keySize);
-    memset(E, 0, WORD_SIZE_IN_BYTES);
-    memset(P, 0, keySize/2);
-    memset(Q, 0, keySize/2);
-    memset(D, 0, keySize); 
+    N = std::make_unique<uint8_t[]>(keySize);
+    N_ext = std::make_unique<uint8_t[]>(keySize);
+    D = std::make_unique<uint8_t[]>(keySize);
+    E = std::make_unique<uint8_t[]>(WORD_SIZE_IN_BYTES);
+    P = std::make_unique<uint8_t[]>(keySize/2);
+    Q = std::make_unique<uint8_t[]>(keySize/2);
+    memset(N.get(), 0, keySize);
+    memset(N_ext.get(), 0, keySize);
+    memset(E.get(), 0, WORD_SIZE_IN_BYTES);
+    memset(P.get(), 0, keySize/2);
+    memset(Q.get(), 0, keySize/2);
+    memset(D.get(), 0, keySize); 
 }
 
 /******************************************************************************/
 Key::Key(const Key& otherKey)
 { 
     keySize = AuthenticationContext::GetRsaKeyLength();
-    N = new uint8_t [keySize];
-    N_ext = new uint8_t [keySize];
-    D = new uint8_t [keySize];
-    E = new uint8_t [WORD_SIZE_IN_BYTES];
-    P = new uint8_t [keySize/2];
-    Q = new uint8_t [keySize/2];
+    N = std::make_unique<uint8_t[]>(keySize);
+    N_ext = std::make_unique<uint8_t[]>(keySize);
+    D = std::make_unique<uint8_t[]>(keySize);
+    E = std::make_unique<uint8_t[]>(WORD_SIZE_IN_BYTES);
+    P = std::make_unique<uint8_t[]>(keySize/2);
+    Q = std::make_unique<uint8_t[]>(keySize/2);
     
     // Copy individual members instead of using memcpy on the entire object
     Loaded = otherKey.Loaded;
@@ -76,47 +76,18 @@ Key::Key(const Key& otherKey)
     lmsOnly = otherKey.lmsOnly;
     
     // Copy the array contents, not the pointers
-    memcpy(N, otherKey.N, keySize);
-    memcpy(N_ext, otherKey.N_ext, keySize);
-    memcpy(D, otherKey.D, keySize);
-    memcpy(E, otherKey.E, WORD_SIZE_IN_BYTES);
-    memcpy(P, otherKey.P, keySize/2);
-    memcpy(Q, otherKey.Q, keySize/2);
+    memcpy(N.get(), otherKey.N.get(), keySize);
+    memcpy(N_ext.get(), otherKey.N_ext.get(), keySize);
+    memcpy(D.get(), otherKey.D.get(), keySize);
+    memcpy(E.get(), otherKey.E.get(), WORD_SIZE_IN_BYTES);
+    memcpy(P.get(), otherKey.P.get(), keySize/2);
+    memcpy(Q.get(), otherKey.Q.get(), keySize/2);
 }
 
 /******************************************************************************/
 Key::~Key()
 {
-    if(N != NULL)
-    {
-        delete[] N;
-        N = nullptr;
-    }
-    if(N_ext != NULL)
-    {
-        delete[] N_ext;
-        N_ext = nullptr;
-    }
-    if(D != NULL)
-    {
-        delete[] D;
-        D = nullptr;
-    }
-    if(E != NULL)
-    {
-        delete[] E;
-        E = nullptr;
-    }
-    if(P != NULL)
-    {
-        delete[] P;
-        P = nullptr;
-    }
-    if(Q != NULL)
-    {
-        delete[] Q;
-        Q = nullptr;
-    }
+    // unique_ptr automatically manages memory - no explicit delete needed
 }
 
 /******************************************************************************/
@@ -180,7 +151,7 @@ void Key::Parse(const std::string& filename, bool isSecret0)
            and some sanity check for the keys passed */
         {
             BIGNUM m;
-            m.d = (BN_ULONG*)N;
+            m.d = (BN_ULONG*)N.get();
             m.dmax = keySize / sizeof(BN_ULONG);
             m.top = keySize / sizeof(BN_ULONG);
             m.flags = 0;
@@ -189,7 +160,7 @@ void Key::Parse(const std::string& filename, bool isSecret0)
             BN_CTX_Class ctxInst;
             BN_MONT_CTX_Class montClass(ctxInst);
             montClass.Set(m);
-            montClass.GetModulusExtension(N_ext, m, keySize);
+            montClass.GetModulusExtension(N_ext.get(), m, keySize);
         }
         Loaded = true;
     }
@@ -224,9 +195,9 @@ uint8_t Key::ParseOpenSSLKey(FILE* f)
             LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", keySzRd * 8, keySize * 8);
         }
 #if OPENSSL_VERSION_NUMBER > 0x10100000L
-        memcpy(D, RSA_get0_d(rsaInst.rsa)->d, keySize);
+        memcpy(D.get(), RSA_get0_d(rsaInst.rsa)->d, keySize);
 #else
-        memcpy(D, rsaInst.rsa->d->d, keySize);
+        memcpy(D.get(), rsaInst.rsa->d->d, keySize);
 #endif
     }
     else
@@ -245,14 +216,14 @@ uint8_t Key::ParseOpenSSLKey(FILE* f)
         {
             LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", keySzRd * 8, keySize * 8);
         }
-        memset(D,0,keySize);
+        memset(D.get(),0,keySize);
     }
 #if OPENSSL_VERSION_NUMBER > 0x10100000L
-    memcpy(N, RSA_get0_n(rsaInst.rsa)->d, keySize);
-    memcpy(E, RSA_get0_e(rsaInst.rsa)->d, sizeof(uint32_t));
+    memcpy(N.get(), RSA_get0_n(rsaInst.rsa)->d, keySize);
+    memcpy(E.get(), RSA_get0_e(rsaInst.rsa)->d, sizeof(uint32_t));
 #else
-    memcpy(N, rsaInst.rsa->n->d, keySize);
-    memcpy(E, rsaInst.rsa->e->d, sizeof(uint32_t));
+    memcpy(N.get(), rsaInst.rsa->n->d, keySize);
+    memcpy(E.get(), rsaInst.rsa->e->d, sizeof(uint32_t));
 #endif
     return 0;
 }
@@ -282,7 +253,7 @@ uint8_t Key::ParseAMDRsaKey(FILE* f)
         return 1;
     }
     LOG_TRACE("Parsing 'N' from key file");
-    Hex2Byte(f, N, keySize);
+    Hex2Byte(f, N.get(), keySize);
 
     /* Check for E in the key file followed by '=' Once got, parse the value of E */
     do
@@ -338,7 +309,7 @@ uint8_t Key::ParseAMDRsaKey(FILE* f)
             return 1;
         }
         LOG_TRACE("Parsing 'D' from key file");
-        Hex2Byte(f, D, keySize);
+        Hex2Byte(f, D.get(), keySize);
 
         /* The rest of parsing is for sanity checking purpose 
            Not used for signing or verfication */
@@ -360,7 +331,7 @@ uint8_t Key::ParseAMDRsaKey(FILE* f)
                 return 1;
             }
             LOG_TRACE("Parsing 'P' from key file");
-            Hex2Byte(f, P, keySize/2);
+            Hex2Byte(f, P.get(), keySize/2);
 
             /* Check for Q in the key file followed by '=' Once got, parse the value of Q */
             do
@@ -383,27 +354,25 @@ uint8_t Key::ParseAMDRsaKey(FILE* f)
                 return 1;
             }
             LOG_TRACE("Parsing 'Q' from key file");
-            Hex2Byte(f, Q, keySize/2);
+            Hex2Byte(f, Q.get(), keySize/2);
 
             /* Sanity check block, N = PxQ */
             {
-                uint8_t *Ncheck = new uint8_t [keySize];
-                Multiply_p_q(P, Q, Ncheck);
+                auto Ncheck = std::make_unique<uint8_t[]>(keySize);
+                Multiply_p_q(P.get(), Q.get(), Ncheck.get());
 
-                if (memcmp(N, Ncheck, keySize)) 
+                if (memcmp(N.get(), Ncheck.get(), keySize)) 
                 {
-                    delete[] Ncheck;
                     LOG_DEBUG(DEBUG_STAMP, "Inconsistency found in key file, P * Q != N");
                     return 1;
                 }
-                delete[] Ncheck;
             }
         }
     } 
     else
     {
         /* If it is a public key, D=0 */
-        memset(D, 0, keySize);
+        memset(D.get(), 0, keySize);
     }
     return 0;
 }
@@ -416,14 +385,14 @@ void Key::WriteRsaFile(std::string filename, const RSA* rsa, bool secret, uint16
 
     if (file)
     {
-        uint8_t *temp = new uint8_t[keyLength];
+        auto temp = std::make_unique<uint8_t[]>(keyLength);
 
         file << "N = ";
 
 #if OPENSSL_VERSION_NUMBER > 0x10100000L
-        memcpy(temp, RSA_get0_n(rsa)->d, keyLength);
+        memcpy(temp.get(), RSA_get0_n(rsa)->d, keyLength);
 #else
-        memcpy(temp, rsa->n->d, keyLength);
+        memcpy(temp.get(), rsa->n->d, keyLength);
 #endif
         for (uint32_t index = keyLength; index != 0; index--)
         {
@@ -441,16 +410,15 @@ void Key::WriteRsaFile(std::string filename, const RSA* rsa, bool secret, uint16
         {
             file << "\n\nD = ";
 #if OPENSSL_VERSION_NUMBER > 0x10100000L
-            memcpy(temp, RSA_get0_d(rsa)->d, keyLength);
+            memcpy(temp.get(), RSA_get0_d(rsa)->d, keyLength);
 #else
-            memcpy(temp, rsa->d->d, keyLength);
+            memcpy(temp.get(), rsa->d->d, keyLength);
 #endif        
             for (uint32_t index = keyLength; index != 0; index--)
             {
                 file << std::uppercase << std::hex << std::setfill('0') << std::setw(2) << int(temp[index - 1]);
             }
         }
-        delete[] temp;
         fileWritten = !file.bad();
         file.close();
     }
@@ -790,9 +758,9 @@ void Key2048::Export(void* acKey)
     }
 
     memset(key,0,sizeof(ACKey2048));
-    memcpy(key->N, N, 256);
-    memcpy(key->N_extension, N_ext, 256);
-    memcpy(key->E, E, 4);
+    memcpy(key->N, N.get(), 256);
+    memcpy(key->N_extension, N_ext.get(), 256);
+    memcpy(key->E, E.get(), 4);
 }
 
 /******************************************************************************/
@@ -802,14 +770,14 @@ void Key2048::Import(const void* acKey, const std::string& name0)
     Loaded = true;
     isSecret = false;
     name = name0;
-    memcpy(N,key->N,keySize);
-    memcpy(N_ext,key->N_extension,keySize);
-    memcpy(E,key->E,sizeof(uint32_t));
-    memset(P,0,keySize/2);
-    memset(Q,0,keySize/2);
+    memcpy(N.get(),key->N,keySize);
+    memcpy(N_ext.get(),key->N_extension,keySize);
+    memcpy(E.get(),key->E,sizeof(uint32_t));
+    memset(P.get(),0,keySize/2);
+    memset(Q.get(),0,keySize/2);
 
     /* Fill secret exponent with zeros */
-    memset(D,0,keySize); 
+    memset(D.get(),0,keySize); 
 }
 
 /******************************************************************************/
@@ -822,9 +790,9 @@ void Key4096::Export(void* acKey)
         LOG_ERROR("%s - $s is not loaded", name.c_str(), pubsec.c_str());
     }
     memset(key, 0, sizeof(ACKey4096));
-    memcpy(key->N, N, keySize);
-    memcpy(key->N_extension, N_ext, keySize);
-    memcpy(key->E, E, 4);
+    memcpy(key->N, N.get(), keySize);
+    memcpy(key->N_extension, N_ext.get(), keySize);
+    memcpy(key->E, E.get(), 4);
 }
 
 /******************************************************************************/
@@ -834,14 +802,14 @@ void Key4096::Import(const void* acKey, const std::string& name0)
     Loaded = true;
     isSecret = false;
     name = name0;
-    memcpy(N, key->N, keySize);
-    memcpy(N_ext, key->N_extension, keySize);
-    memcpy(E, key->E, sizeof(uint32_t));
-    memset(P, 0, keySize/2);
-    memset(Q, 0, keySize/2);
+    memcpy(N.get(), key->N, keySize);
+    memcpy(N_ext.get(), key->N_extension, keySize);
+    memcpy(E.get(), key->E, sizeof(uint32_t));
+    memset(P.get(), 0, keySize/2);
+    memset(Q.get(), 0, keySize/2);
 
     /* Fill secret exponent with zeros */
-    memset(D, 0, keySize); 
+    memset(D.get(), 0, keySize); 
 }
 
 /******************************************************************************/
@@ -878,17 +846,16 @@ void Key::Multiply_p_q(uint8_t p[], uint8_t q[], uint8_t n[])
 /******************************************************************************/
 void Key::Hex2Byte(FILE* f, uint8_t* data, int count) 
 {
-    char *buf;
-    buf = (char *) malloc(2000);
-    if (buf != NULL)
+    std::unique_ptr<char[]> buf = std::make_unique<char[]>(2000);
+    if (buf)
     {
-        char *tempbuf = buf;
+        char *tempbuf = buf.get();
         if (fscanf(f, "%s", tempbuf) != 1) 
         {
             LOG_ERROR("Error parsing key");
         }
     
-        int len = strlen(tempbuf)/2;
+        int len = strlen(tempbuf) / 2;
         if(len != count)
         {
             LOG_ERROR("Key size is %d bytes, expected size is %d bytes", len, count);
@@ -918,5 +885,5 @@ void Key::Hex2Byte(FILE* f, uint8_t* data, int count)
         LOG_DEBUG(DEBUG_STAMP, "Memory Allocation error while reading keys");
         LOG_ERROR("Failure in key parsing !!!");
     }
-    free(buf);
+    // buf cleanup handled by unique_ptr
 }

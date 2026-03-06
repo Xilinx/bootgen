@@ -22,6 +22,7 @@
 */
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include "readimage-spartanup.h"
 #include "authkeys-spartanup.h"
 #include "Keccak-compact.h"
@@ -192,28 +193,27 @@ bool SpartanupReadImage::VerifySignature(bool nist, uint8_t * data, size_t dataL
     }
 
     int maskedDBLen = 463;
-    uint8_t* Buffer = new uint8_t[48];
-    uint8_t* maskDB = new uint8_t[maskedDBLen];
-    memcpy(Buffer, opensslHashPadded + maskedDBLen, 48);
+    auto Buffer = std::make_unique<uint8_t[]>(48);
+    auto maskDB = std::make_unique<uint8_t[]>(maskedDBLen);
+    memcpy(Buffer.get(), opensslHashPadded + maskedDBLen, 48);
     uint8_t masK[463] = { 0 };
     RSA4096Sha3PaddingHBAuthenticationAlgorithm* s = NULL;
-    if (s->MaskGenerationFunction(masK, maskedDBLen, Buffer, 48, EVP_sha384()) == -1)
+    if (s->MaskGenerationFunction(masK, maskedDBLen, Buffer.get(), 48, EVP_sha384()) == -1)
     {
         LOG_ERROR("Authentication internal error");
     }
 
-    memset(maskDB,0x0,maskedDBLen);
-    memcpy(maskDB,opensslHashPadded,463);
+    memset(maskDB.get(),0x0,maskedDBLen);
+    memcpy(maskDB.get(),opensslHashPadded,463);
 
-    uint8_t *DB;
-    DB = new uint8_t[maskedDBLen];
+    auto DB = std::make_unique<uint8_t[]>(maskedDBLen);
     for (int i = 0; i < 463; i++)
     {
         DB[i] = (masK[i] ^ maskDB[i]);
     }
 
     uint8_t salt[SALT_LENGTH] = { 0 };
-    memcpy(salt,DB + 415,SALT_LENGTH);
+    memcpy(salt,DB.get() + 415,SALT_LENGTH);
     uint8_t padding1[PAD1_LENGTH];
     memset(padding1, 0, PAD1_LENGTH);
 
@@ -234,9 +234,6 @@ bool SpartanupReadImage::VerifySignature(bool nist, uint8_t * data, size_t dataL
 
     /* compare openssl Hash with calculated shaHash */
     int compare = memcmp(maskPadHash, opensslHash, SHA3_LENGTH_BYTES);
-    delete[] Buffer;
-    delete[] maskDB;
-    delete[] DB;
     return !compare;
 }
 
@@ -257,19 +254,18 @@ void SpartanupReadImage::VerifyHeaderTableSignature()
 
     /* Verifying IHT Signature */
     uint32_t iHTLength = sizeof(SpartanupImageHeaderTableStructure);
-    uint8_t* tempIHBuffer = new uint8_t[iHTLength];
-    memset(tempIHBuffer, 0, iHTLength);
+    auto tempIHBuffer = std::make_unique<uint8_t[]>(iHTLength);
+    memset(tempIHBuffer.get(), 0, iHTLength);
     bool signatureVerified = false;
-    bH = new SpartanupBootHeaderStructure;
-    result = fread(bH, 1, sizeof(SpartanupBootHeaderStructure), binFile);
+    bH = std::make_unique<SpartanupBootHeaderStructure>();
+    result = fread(bH.get(), 1, sizeof(SpartanupBootHeaderStructure), binFile);
     if ((bH->smapWords[0] == 0xDD000000) || (bH->smapWords[0] == 0x00DD0000) || (bH->smapWords[0] == 0x000000DD))
     {
         smap_header_found = true;
     }
     if (bH->widthDetectionWord != 0xAA995566)
     {
-        delete bH;
-        bH = NULL;
+        bH.reset();
     }
     
     if(bH != NULL)
@@ -290,7 +286,7 @@ void SpartanupReadImage::VerifyHeaderTableSignature()
 
     if (!(fseek(binFile, offset, SEEK_SET)))
     {
-        result = fread(tempIHBuffer, 1, iHTLength, binFile);
+        result = fread(tempIHBuffer.get(), 1, iHTLength, binFile);
         if (result != iHTLength)
         {
             LOG_ERROR("Error reading signature");
@@ -303,7 +299,7 @@ void SpartanupReadImage::VerifyHeaderTableSignature()
 
     if ((*(*auth_cert) & 0xF3) == 0x02)
     {
-        signatureVerified = VerifyECDSASignature(true,tempIHBuffer,iHTLength,  (ACKeyECDSA *)(*auth_cert +  AC_SPK_KEY_OFFSET), *auth_cert + AC_BH_SIGN_OFFSET);
+        signatureVerified = VerifyECDSASignature(true,tempIHBuffer.get(),iHTLength,  (ACKeyECDSA *)(*auth_cert +  AC_SPK_KEY_OFFSET), *auth_cert + AC_BH_SIGN_OFFSET);
     }
     else if((*(*auth_cert) & 0xF3) == 0x22)
     {
@@ -311,7 +307,7 @@ void SpartanupReadImage::VerifyHeaderTableSignature()
     }
     else if((*(*auth_cert) & 0xF3) == 0x11)
     {
-        signatureVerified = VerifySignature(true, tempIHBuffer, iHTLength, (ACKey4096Sha3Padding*)(*auth_cert+ AC_SPK_KEY_OFFSET),*auth_cert + AC_BH_SIGN_OFFSET);
+        signatureVerified = VerifySignature(true, tempIHBuffer.get(), iHTLength, (ACKey4096Sha3Padding*)(*auth_cert+ AC_SPK_KEY_OFFSET),*auth_cert + AC_BH_SIGN_OFFSET);
     }
     else
     {
@@ -327,13 +323,12 @@ void SpartanupReadImage::VerifyHeaderTableSignature()
         authenticationVerified = false;
         LOG_ERROR("Authentication verification failed on bootimage %s", binFilename.c_str());
     }
-    delete[] tempIHBuffer;
 
     /* Partition Signature should not be included for hash calculation. */
     size_t headersSize = (iHT->totalMetaHdrLength * 4) - SIGN_LENGTH_VERSAL;
     size_t headersAcDataSize = sizeof(AuthCertificate4096Sha3PaddingHBStructure) - SIGN_LENGTH_VERSAL;
-    uint8_t* tempBuffer = new uint8_t[headersSize];
-    memset(tempBuffer, 0, headersSize);
+    auto tempBuffer = std::make_unique<uint8_t[]>(headersSize);
+    memset(tempBuffer.get(), 0, headersSize);
     if(bH != NULL)
     {
         offset = bH->imageHeaderByteOffset + sizeof(SpartanupImageHeaderTableStructure);
@@ -351,7 +346,7 @@ void SpartanupReadImage::VerifyHeaderTableSignature()
     }
     if (!(fseek(binFile, offset, SEEK_SET)))
     {
-        result = fread(tempBuffer, 1, headersAcDataSize, binFile);
+        result = fread(tempBuffer.get(), 1, headersAcDataSize, binFile);
         if (result != headersAcDataSize)
         {
             LOG_ERROR("Error reading signature");
@@ -365,7 +360,7 @@ void SpartanupReadImage::VerifyHeaderTableSignature()
     offset = iHT->firstImageHeaderWordOffset * 4;
     if (!(fseek(binFile, offset, SEEK_SET)))
     {
-        result = fread(tempBuffer + headersAcDataSize, 1, headersSize - headersAcDataSize, binFile);
+        result = fread(tempBuffer.get() + headersAcDataSize, 1, headersSize - headersAcDataSize, binFile);
         if (result != headersSize - headersAcDataSize)
         {
             LOG_ERROR("Error reading signature");
@@ -378,7 +373,7 @@ void SpartanupReadImage::VerifyHeaderTableSignature()
 
     if ((*(*auth_cert) & 0xF3) == 0x02)
     {
-        signatureVerified = VerifyECDSASignature(true, tempBuffer, headersSize, (ACKeyECDSA *)(*auth_cert +  AC_SPK_KEY_OFFSET), *auth_cert +  AC_PARTITION_SIGN_OFFSET);
+        signatureVerified = VerifyECDSASignature(true, tempBuffer.get(), headersSize, (ACKeyECDSA *)(*auth_cert +  AC_SPK_KEY_OFFSET), *auth_cert +  AC_PARTITION_SIGN_OFFSET);
     }
     else if((*(*auth_cert) & 0xF3) == 0x22)
     {
@@ -386,13 +381,12 @@ void SpartanupReadImage::VerifyHeaderTableSignature()
     }
     else if((*(*auth_cert) & 0xF3) == 0x11)
     {
-        signatureVerified = VerifySignature(true, tempBuffer, headersSize, (ACKey4096Sha3Padding *)(*auth_cert + AC_SPK_KEY_OFFSET), *auth_cert + AC_PARTITION_SIGN_OFFSET);
+        signatureVerified = VerifySignature(true, tempBuffer.get(), headersSize, (ACKey4096Sha3Padding *)(*auth_cert + AC_SPK_KEY_OFFSET), *auth_cert + AC_PARTITION_SIGN_OFFSET);
     }
     else
     {
         LOG_ERROR("Invalid Authentication Algorithm");
     }
-    delete[] tempBuffer;
 
     if (signatureVerified)
     {
@@ -415,24 +409,24 @@ void SpartanupReadImage::VerifySPKSignature(uint8_t* aC)
     bool signatureVerified = false;
 
     size = sizeof(uint32_t) + sizeof(uint32_t) + VERSAL_ACKEY_STRUCT_SIZE + AC_SPK_SHA3PAD_SIZE;
-    uint8_t* tempBuffer = new uint8_t[size];
-    memcpy(tempBuffer, aC, sizeof(uint32_t) + sizeof(uint32_t));
-    memcpy(tempBuffer + sizeof(uint32_t) + sizeof(uint32_t), aC + AC_SPK_KEY_OFFSET, VERSAL_ACKEY_STRUCT_SIZE+ AC_SPK_SHA3PAD_SIZE);
+    auto tempBuffer = std::make_unique<uint8_t[]>(size);
+    memcpy(tempBuffer.get(), aC, sizeof(uint32_t) + sizeof(uint32_t));
+    memcpy(tempBuffer.get() + sizeof(uint32_t) + sizeof(uint32_t), aC + AC_SPK_KEY_OFFSET, VERSAL_ACKEY_STRUCT_SIZE+ AC_SPK_SHA3PAD_SIZE);
 
     uint8_t temp = 0;
     memcpy(&temp, aC, 1);
 
     if ((temp & 0xF3) == 0x02)
     {
-        signatureVerified = VerifyECDSASignature(false,tempBuffer,size,  (ACKeyECDSA *)(aC +  AC_PPK_KEY_OFFSET),  aC +  AC_SPK_SIGN_OFFSET);
+        signatureVerified = VerifyECDSASignature(false,tempBuffer.get(),size,  (ACKeyECDSA *)(aC +  AC_PPK_KEY_OFFSET),  aC +  AC_SPK_SIGN_OFFSET);
     }
     else if ((temp & 0xF3) == 0x22)
     {
-        signatureVerified = VerifyECDSAP521Signature(false,tempBuffer,size,  (ACKeyECDSAP521 *)(aC +  AC_PPK_KEY_OFFSET),  aC +  AC_SPK_SIGN_OFFSET);
+        signatureVerified = VerifyECDSAP521Signature(false,tempBuffer.get(),size,  (ACKeyECDSAP521 *)(aC +  AC_PPK_KEY_OFFSET),  aC +  AC_SPK_SIGN_OFFSET);
     }
     else if ((temp & 0xF3) == 0x11)
     {
-        signatureVerified = VerifySignature(false, tempBuffer, size, (ACKey4096Sha3Padding *)(aC +  AC_PPK_KEY_OFFSET), aC +  AC_SPK_SIGN_OFFSET);
+        signatureVerified = VerifySignature(false, tempBuffer.get(), size, (ACKey4096Sha3Padding *)(aC +  AC_PPK_KEY_OFFSET), aC +  AC_SPK_SIGN_OFFSET);
     }
     else
     {
@@ -448,8 +442,6 @@ void SpartanupReadImage::VerifySPKSignature(uint8_t* aC)
         authenticationVerified = false;
         LOG_ERROR("Authentication verification failed on bootimage %s", binFilename.c_str());
     }
-
-    delete[] tempBuffer;
 }
 
 /*******************************************************************************/
@@ -465,8 +457,8 @@ void SpartanupReadImage::VerifyPartitionSignature(void)
     FILE *binFile;
     binFile = fopen(binFilename.c_str(), "rb");
 
-    bH = new SpartanupBootHeaderStructure;
-    result = fread(bH, 1, sizeof(SpartanupBootHeaderStructure), binFile);
+    bH = std::make_unique<SpartanupBootHeaderStructure>();
+    result = fread(bH.get(), 1, sizeof(SpartanupBootHeaderStructure), binFile);
 
     /* Partition Extraction */
     std::list<SpartanupPartitionHeaderTableStructure*>::iterator partitionHdr = pHTs.begin();
@@ -482,11 +474,11 @@ void SpartanupReadImage::VerifyPartitionSignature(void)
                 if (isItBootloader)
                 {
                     uint32_t bHLength = sizeof(SpartanupBootHeaderStructure) - sizeof(SpartanupSmapWidthTable);
-                    uint8_t* tempBHBuffer = new uint8_t[bHLength];
+                    auto tempBHBuffer = std::make_unique<uint8_t[]>(bHLength);
                     offset = sizeof(SpartanupSmapWidthTable);
                     if (!(fseek(binFile, offset, SEEK_SET)))
                     {
-                        size_t result = fread(tempBHBuffer, 1, bHLength, binFile);
+                        size_t result = fread(tempBHBuffer.get(), 1, bHLength, binFile);
                         if (result != bHLength)
                         {
                             LOG_ERROR("Error reading boot header while verifying ");
@@ -499,7 +491,7 @@ void SpartanupReadImage::VerifyPartitionSignature(void)
 
                     if ((*(*auth_cert) & 0xF3) == 0x02)
                     {
-                        signatureVerified = VerifyECDSASignature(false,tempBHBuffer,bHLength,  (ACKeyECDSA *)(*auth_cert +  AC_SPK_KEY_OFFSET),  *auth_cert + AC_BH_SIGN_OFFSET);
+                        signatureVerified = VerifyECDSASignature(false,tempBHBuffer.get(),bHLength,  (ACKeyECDSA *)(*auth_cert +  AC_SPK_KEY_OFFSET),  *auth_cert + AC_BH_SIGN_OFFSET);
                     }
                     else if ((*(*auth_cert) & 0xF3) == 0x22)
                     {
@@ -507,7 +499,7 @@ void SpartanupReadImage::VerifyPartitionSignature(void)
                     }
                     else if ((*(*auth_cert) & 0xF3) == 0x11)
                     {
-                        signatureVerified = VerifySignature(false, tempBHBuffer, bHLength, (ACKey4096Sha3Padding *)(*auth_cert + AC_SPK_KEY_OFFSET),*auth_cert +AC_BH_SIGN_OFFSET);
+                        signatureVerified = VerifySignature(false, tempBHBuffer.get(), bHLength, (ACKey4096Sha3Padding *)(*auth_cert + AC_SPK_KEY_OFFSET),*auth_cert +AC_BH_SIGN_OFFSET);
                     }
                     else
                     {
@@ -523,7 +515,6 @@ void SpartanupReadImage::VerifyPartitionSignature(void)
                         authenticationVerified = false;
                         LOG_ERROR("Authentication verification failed on bootimage %s", binFilename.c_str());
                     }
-                    delete[] tempBHBuffer;
                 }
 
                 /* Verifying Partition SPK Signature */
@@ -535,13 +526,13 @@ void SpartanupReadImage::VerifyPartitionSignature(void)
                 uint32_t encryptedSize = ((*partitionHdr)->encryptedPartitionLength * 4);
                 uint32_t dataBufferLength = ((*partitionHdr)->totalPartitionLength * 4) - SIGN_LENGTH_VERSAL;
                 uint32_t acBufferLength = sizeof(AuthCertificate4096Sha3PaddingHBStructure) - SIGN_LENGTH_VERSAL;
-                uint8_t* tempBuffer = new uint8_t[dataBufferLength];
-                memset(tempBuffer, 0, dataBufferLength);
+                auto tempBuffer = std::make_unique<uint8_t[]>(dataBufferLength);
+                memset(tempBuffer.get(), 0, dataBufferLength);
 
                 offset = (*partitionHdr)->authCertificateOffset * 4;
                 if (!(fseek(binFile, offset, SEEK_SET)))
                 {
-                    result = fread(tempBuffer, 1, acBufferLength, binFile);
+                    result = fread(tempBuffer.get(), 1, acBufferLength, binFile);
                     if (result != acBufferLength)
                     {
                         LOG_ERROR("Error reading partition for hash calculation");
@@ -555,7 +546,7 @@ void SpartanupReadImage::VerifyPartitionSignature(void)
                 offset = (*partitionHdr)->partitionWordOffset * 4;
                 if (!(fseek(binFile, offset, SEEK_SET)))
                 {
-                    result = fread(tempBuffer + acBufferLength, 1, dataBufferLength - acBufferLength, binFile);
+                    result = fread(tempBuffer.get() + acBufferLength, 1, dataBufferLength - acBufferLength, binFile);
                     if (result != dataBufferLength - acBufferLength)
                     {
                         LOG_ERROR("Error reading partition for hash calculation");
@@ -573,15 +564,15 @@ void SpartanupReadImage::VerifyPartitionSignature(void)
                     }
                     if ((*(*auth_cert) & 0xF3) == 0x02)
                     {
-                        signatureVerified = VerifyECDSASignature(nist, tempBuffer, dataBufferLength, (ACKeyECDSA *)(*auth_cert + AC_SPK_KEY_OFFSET), *auth_cert + AC_PARTITION_SIGN_OFFSET);
+                        signatureVerified = VerifyECDSASignature(nist, tempBuffer.get(), dataBufferLength, (ACKeyECDSA *)(*auth_cert + AC_SPK_KEY_OFFSET), *auth_cert + AC_PARTITION_SIGN_OFFSET);
                     }
                     else if ((*(*auth_cert) & 0xF3) == 0x22)
                     {
-                        signatureVerified = VerifyECDSAP521Signature(nist, tempBuffer, dataBufferLength, (ACKeyECDSAP521 *)(*auth_cert + AC_SPK_KEY_OFFSET), *auth_cert + AC_PARTITION_SIGN_OFFSET);
+                        signatureVerified = VerifyECDSAP521Signature(nist, tempBuffer.get(), dataBufferLength, (ACKeyECDSAP521 *)(*auth_cert + AC_SPK_KEY_OFFSET), *auth_cert + AC_PARTITION_SIGN_OFFSET);
                     }
                     else if ((*(*auth_cert) & 0xF3) == 0x11)
                     {
-                        signatureVerified = VerifySignature(nist, tempBuffer, dataBufferLength, (ACKey4096Sha3Padding *)(*auth_cert + AC_SPK_KEY_OFFSET), *auth_cert + AC_PARTITION_SIGN_OFFSET);
+                        signatureVerified = VerifySignature(nist, tempBuffer.get(), dataBufferLength, (ACKey4096Sha3Padding *)(*auth_cert + AC_SPK_KEY_OFFSET), *auth_cert + AC_PARTITION_SIGN_OFFSET);
                     }
                     else
                     {
@@ -598,15 +589,15 @@ void SpartanupReadImage::VerifyPartitionSignature(void)
                     /* Verify Signature */
                     if ((*(*auth_cert) & 0xF3) == 0x02)
                     {
-                        signatureVerified = VerifyECDSASignature(true, tempBuffer, chunk0Size, (ACKeyECDSA *)(*auth_cert + AC_SPK_KEY_OFFSET),*auth_cert + AC_PARTITION_SIGN_OFFSET);
+                        signatureVerified = VerifyECDSASignature(true, tempBuffer.get(), chunk0Size, (ACKeyECDSA *)(*auth_cert + AC_SPK_KEY_OFFSET),*auth_cert + AC_PARTITION_SIGN_OFFSET);
                     }
                     else if ((*(*auth_cert) & 0xF3) == 0x22)
                     {
-                        signatureVerified = VerifyECDSAP521Signature(true, tempBuffer, chunk0Size, (ACKeyECDSAP521 *)(*auth_cert + AC_SPK_KEY_OFFSET),*auth_cert + AC_PARTITION_SIGN_OFFSET);
+                        signatureVerified = VerifyECDSAP521Signature(true, tempBuffer.get(), chunk0Size, (ACKeyECDSAP521 *)(*auth_cert + AC_SPK_KEY_OFFSET),*auth_cert + AC_PARTITION_SIGN_OFFSET);
                     }
                     else if ((*(*auth_cert) & 0xF3) == 0x11)
                     {
-                        signatureVerified = VerifySignature(true, tempBuffer, chunk0Size, (ACKey4096Sha3Padding *)(*auth_cert + AC_SPK_KEY_OFFSET),*auth_cert + AC_PARTITION_SIGN_OFFSET);
+                        signatureVerified = VerifySignature(true, tempBuffer.get(), chunk0Size, (ACKey4096Sha3Padding *)(*auth_cert + AC_SPK_KEY_OFFSET),*auth_cert + AC_PARTITION_SIGN_OFFSET);
                     }
                     else
                     {
@@ -616,7 +607,7 @@ void SpartanupReadImage::VerifyPartitionSignature(void)
                     if (signatureVerified)
                     {
                         uint32_t dataSize = actualSecureChunkSize + SHA3_LENGTH_BYTES;
-                        uint8_t* hashBuffer = new uint8_t[SHA3_LENGTH_BYTES];
+                        auto hashBuffer = std::make_unique<uint8_t[]>(SHA3_LENGTH_BYTES);
                         if ((*partitionHdr)->partitionKeySource != KeySource::None)
                         {
                             encryptedSize -= (SECURE_HDR_SZ + AES_GCM_TAG_SZ);
@@ -634,21 +625,18 @@ void SpartanupReadImage::VerifyPartitionSignature(void)
                             {
                                 dataSize = lastChunkSize;
                             }
-                            uint8_t* dataBuffer = new uint8_t[dataSize];
-                            memcpy(hashBuffer, tempBuffer + chunk0Size - SHA3_LENGTH_BYTES + (SECURE_32K_CHUNK) * (i-1), SHA3_LENGTH_BYTES);
-                            memcpy(dataBuffer, tempBuffer + chunk0Size + (SECURE_32K_CHUNK) * (i-1), dataSize);
-                            uint8_t* shaHash = new uint8_t[SHA3_LENGTH_BYTES];
-                            Spartanupcrypto_hash(shaHash, dataBuffer, dataSize, true);
-                            int compare = memcmp(shaHash, hashBuffer, SHA3_LENGTH_BYTES);
-                            delete[] shaHash;
+                            auto dataBuffer = std::make_unique<uint8_t[]>(dataSize);
+                            memcpy(hashBuffer.get(), tempBuffer.get() + chunk0Size - SHA3_LENGTH_BYTES + (SECURE_32K_CHUNK) * (i-1), SHA3_LENGTH_BYTES);
+                            memcpy(dataBuffer.get(), tempBuffer.get() + chunk0Size + (SECURE_32K_CHUNK) * (i-1), dataSize);
+                            auto shaHash = std::make_unique<uint8_t[]>(SHA3_LENGTH_BYTES);
+                            Spartanupcrypto_hash(shaHash.get(), dataBuffer.get(), dataSize, true);
+                            int compare = memcmp(shaHash.get(), hashBuffer.get(), SHA3_LENGTH_BYTES);
 
                             if (compare != 0)
                             {
                                 LOG_ERROR("    Partition Verification Failed at Chunk %d", i);
                             }
-                            delete[] dataBuffer;
                         }
-                        delete[] hashBuffer;
                     }
                 }
 
@@ -662,7 +650,6 @@ void SpartanupReadImage::VerifyPartitionSignature(void)
                     authenticationVerified = false;
                     LOG_ERROR("Authentication verification failed on bootimage %s", binFilename.c_str());
                 }
-                delete[] tempBuffer;
       }
       else
       {

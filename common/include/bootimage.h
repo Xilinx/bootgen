@@ -74,6 +74,7 @@ class BIF_File
 {
 public:
     BIF_File(std::string& filename0) : biffilename(filename0) {} 
+    ~BIF_File(); // Destructor to clean up bootImages
     void Process(Options& options);
     void ParseBifFile(Options& options);
     void AppendAndReplaceFilesinBIF();
@@ -82,7 +83,7 @@ private:
     void Output(Options& options, uint8_t index);
     std::vector<BifOptions*> bifOptionList;
     std::vector<BifOptions*> includeBifOptionList;
-    std::vector<BootImage*> bootImages;
+    std::vector<std::unique_ptr<BootImage>> bootImages;
 };
 
 /******************************************************************************/
@@ -90,7 +91,7 @@ class BootImage
 {
 public:
     BootImage(Options& options, uint8_t index);
-    ~BootImage();
+    virtual ~BootImage();  // Made virtual for proper polymorphic deletion
 
     virtual void Add(BifOptions* bifoptions) { };
     virtual void DetermineEncryptionDefaults() {};
@@ -125,7 +126,7 @@ public:
     static std::vector<std::string> encryptionKeyFileVec ;
     std::vector<std::string>& GetEncryptionKeyFileVec();
     void InsertEncryptionKeyFile(std::string filename);
-    std::vector<std::pair<KeySource::Type, uint32_t*>> aesKeyandKeySrc;
+    std::vector<std::pair<KeySource::Type, std::unique_ptr<uint32_t[]>>> aesKeyandKeySrc;  // Smart pointers for AES keys
 
     Core::Type GetCore(void);
     uint32_t GetPmuFwSize (void);
@@ -136,31 +137,34 @@ public:
     AuthHash::Type GetAuthHashAlgo(void);
 
     std::string Name;
-    BootHeader* bootHeader;
+    std::unique_ptr<BootHeader> bootHeader;
     std::list<Section*> headers;
     Section* encryptedHeaders;
-    ImageHeaderTable* imageHeaderTable;
+    std::unique_ptr<ImageHeaderTable> imageHeaderTable;
     std::list<ImageHeader*> imageList;
     std::list<SubSysImageHeader*> subSysImageList;
-    PartitionHeaderTable* partitionHeaderTable;
+    std::unique_ptr<PartitionHeaderTable> partitionHeaderTable;
     std::list<PartitionHeader*> partitionHeaderList;
     Section* nullPartHeaderSection;
-    ChecksumTable* checksumTable;
-    AuthenticationCertificate* headerAC;
-    AuthenticationContext* currentAuthCtx;
-    AuthenticationContext* metaHdrAuthCtx;
-    EncryptionContext* currentEncryptCtx;
+    std::unique_ptr<ChecksumTable> checksumTable;
+    std::unique_ptr<AuthenticationCertificate> headerAC;
+    std::unique_ptr<AuthenticationContext> currentAuthCtx;
+    std::unique_ptr<AuthenticationContext> metaHdrAuthCtx;
+    std::unique_ptr<EncryptionContext> currentEncryptCtx;
+    // Container to store all authentication contexts created during build phase
+    // This ensures contexts stay alive through Link phase (avoid use-after-free)
+    std::vector<std::unique_ptr<AuthenticationContext>> authContexts;
     MD5ChecksumContext* currentChecksumCtx;
-    Hash* hash;
+    std::unique_ptr<Hash> hash;
     Options& options;
     BifOptions* bifOptions;
-    KeyGenerationStruct* keygen;
-    PartitionOutput* partitionOutput;
+    std::unique_ptr<KeyGenerationStruct> keygen;
+    std::unique_ptr<PartitionOutput> partitionOutput;
     bool headerSignature_Loaded;
     bool XipMode;
     uint32_t totalHeadersSize;
     uint32_t partCount;
-    Binary* cache;
+    std::unique_ptr<Binary> cache;
     bool createSubSystemPdis;
     bool convertAieElfToCdo;
     std::string fsblFilename;
@@ -173,9 +177,9 @@ public:
 //private:
     //check-R Earlier in options - Now imported to bi, since they are not actually from cmd line
     bool assumeEncryption;
-    uint32_t* deviceKey;
-    uint32_t* firstIv;
-    uint32_t* firstOptKey;
+    std::unique_ptr<uint32_t[]> deviceKey;
+    std::unique_ptr<uint32_t[]> firstIv;
+    std::unique_ptr<uint32_t[]> firstOptKey;
     Core::Type core;
     AuthHash::Type authHash;
     uint32_t pmuFwSize;
@@ -189,18 +193,19 @@ public:
     KeySource::Type bootloaderKeySource;
     bool bootloaderAuthenticate;
     uint32_t xplm_modules_data_length;
-    uint32_t* xplm_modules_data;
+    std::unique_ptr<uint32_t[]> xplm_modules_data;  // Smart pointer - auto cleanup
     char globalSlrId;
     bool authOnPartitionFound;
 
-    uint32_t* iht_optional_data;
+    std::unique_ptr<uint32_t[]> iht_optional_data;  // Changed from raw pointer to smart pointer for automatic memory management
     uint32_t iht_optional_data_length;
     uint32_t copied_iht_optional_data_length;
-    std::vector<std::pair<uint32_t, uint8_t*>> hashTable;
+    std::vector<std::pair<uint32_t, std::unique_ptr<uint8_t[]>>> hashTable;
     uint32_t numHashTableEntries;
+    std::vector<std::pair<uint32_t, uint32_t>> hashNumMap;
     std::string pmcDataAesFile;
 
-    uint32_t* hashBlock;
+    std::unique_ptr<uint32_t[]> hashBlock;  // Smart pointer - auto cleanup
     uint32_t hashBlockLength;
 
     Arch::Type arch;

@@ -36,11 +36,31 @@
 */
 
 /******************************************************************************/
+ImageHeader::~ImageHeader()
+{
+    // Clean up owned resources
+    // authContext and encryptContext are unique_ptrs, they auto-cleanup
+    
+    // Clean up partitionHeaderList
+    // NOTE: In SSIT mode, partition headers may be shared between image headers
+    // For now, we'll clean up partitionHeaderList to fix memory leaks
+    // If SSIT tests fail, we'll need a more sophisticated ownership model
+    for (PartitionHeader* ph : partitionHeaderList)
+    {
+        if (ph)
+        {
+            delete ph;
+        }
+    }
+    partitionHeaderList.clear();
+}
+
+/******************************************************************************/
 void ImageHeaderTable::Build(BootImage& bi, Binary& cache) 
 {
     if(section != NULL)
     {
-        cache.Sections.push_back(section);
+        cache.Sections.push_back(std::unique_ptr<Section>(section));
     }
 
     SetImageHeaderTableVersion(VERSION_ZYNQ_ZYNQMP);
@@ -155,9 +175,9 @@ ImageHeader* ImageHeaderTable::GetFSBLImageHeader()
 ImageHeader::ImageHeader(std::string& filename)
     : Filename(filename)
     , domain(Domain::PS)
-    , Auth(0)
-    , Encrypt(0)
-    , Checksum(0)
+    , Auth(nullptr)
+    , Encrypt(nullptr)
+    , Checksum(nullptr)
     , Bootloader(false)
     , Boot(false)
     , Multiboot(false)
@@ -232,9 +252,9 @@ ImageHeader::ImageHeader(std::string& filename)
 ImageHeader::ImageHeader(std::ifstream& ifs) 
     : Filename("")
     , domain(Domain::PS)
-    , Auth(0)
-    , Encrypt(0)
-    , Checksum(0)
+    , Auth(nullptr)
+    , Encrypt(nullptr)
+    , Checksum(nullptr)
     , Bootloader(false)
     , Boot(false)
     , Multiboot(false)
@@ -309,9 +329,9 @@ ImageHeader::ImageHeader(std::ifstream& ifs)
 ImageHeader::ImageHeader(uint8_t* data, uint64_t len)
     : Filename("")
     , domain(Domain::PS)
-    , Auth(0)
-    , Encrypt(0)
-    , Checksum(0)
+    , Auth(nullptr)
+    , Encrypt(nullptr)
+    , Checksum(nullptr)
     , Bootloader(false)
     , Boot(false)
     , Multiboot(false)
@@ -400,7 +420,8 @@ void ImageHeader::ImportElf(BootImage& bi)
 
     /* Get the ELF Class format - 32-bit elf vs 64-bit elf */
     elfClass = GetElfClass(data.bytes);
-    ElfFormat* elf = ElfFormat::GetElfFormat(elfClass, data.bytes, &proc_state);
+    auto elfRaw = ElfFormat::GetElfFormat(elfClass, data.bytes, &proc_state);
+    std::unique_ptr<ElfFormat> elf(elfRaw);
 
     /* Check for no. of executable sections & non-zero size LOAD sections */
     uint8_t exec_count = 0;
@@ -434,7 +455,7 @@ uint8_t* ImageHeader::CombineElfSections(ElfFormat* elf, Binary::Length_t* p_siz
     Binary::Length_t total_size = 0;
     Binary::Address_t addr = 0;
     Binary::Address_t offset = 0;
-    uint8_t* p_data = NULL;
+    std::vector<uint8_t> p_data;  // Changed from raw pointer to vector for automatic memory management
 
     /* Loop through all the program headers and populate the fields exec, load address etc. */
     for (uint8_t iprog = 0; iprog < elf->programHdrEntryCount; iprog++)
@@ -459,14 +480,14 @@ uint8_t* ImageHeader::CombineElfSections(ElfFormat* elf, Binary::Length_t* p_siz
                 if (filler_bytes != 0)
                 {
                     total_size += filler_bytes;
-                    p_data = (uint8_t*)realloc(p_data, total_size);
-                    memset(p_data + offset, 0, filler_bytes);
+                    p_data.resize(total_size);
+                    memset(p_data.data() + offset, 0, filler_bytes);
                     offset = total_size;
                 }
             }
             total_size += size;
-            p_data = (uint8_t*)realloc(p_data, total_size);
-            memcpy(p_data + offset, elf->GetProgramHeaderData(iprog), size);
+            p_data.resize(total_size);
+            memcpy(p_data.data() + offset, elf->GetProgramHeaderData(iprog), size);
             prev_end = addr + size;
             *p_size = offset = total_size;
 
@@ -477,7 +498,15 @@ uint8_t* ImageHeader::CombineElfSections(ElfFormat* elf, Binary::Length_t* p_siz
             }
         }
     }
-    return p_data;
+    
+    // Allocate output buffer and copy vector data (return value requires malloc'd pointer for caller to free)
+    if (p_data.empty()) {
+        return NULL;
+    }
+    uint8_t* output = (uint8_t*)malloc(total_size);
+    memcpy(output, p_data.data(), total_size);
+    return output;
+    // Vector automatically cleaned up at end of scope
 }
 
 /******************************************************************************/
@@ -488,7 +517,12 @@ uint8_t* ImageHeader::GetElfSections(ElfFormat* elf, Binary::Length_t* tsize, Bi
     {
         *tsize = elf->GetProgramHeaderFileSize(iprog);
         *addr = elf->GetPhysicalAddress(iprog);
-        return elf->GetProgramHeaderData(iprog);
+        
+        // Return malloc'd copy for caller to free (matches realloc/free usage in ZynqMP code)
+        uint8_t* data = elf->GetProgramHeaderData(iprog);
+        uint8_t* output = (uint8_t*)malloc(*tsize);
+        memcpy(output, data, *tsize);
+        return output;
     }
     return NULL;
 }

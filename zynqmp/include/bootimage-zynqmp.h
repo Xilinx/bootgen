@@ -43,10 +43,7 @@ public:
     ZynqMpBootImage(Options& options, uint8_t index);
     ~ZynqMpBootImage()
     {
-        if (importedBh != NULL)
-        {
-            delete importedBh;
-        }
+        // importedBh cleanup handled by unique_ptr
     }
 
     void ConfigureEncryptionContext(ImageHeader * image, Encryption::Type encryptType);
@@ -61,6 +58,6 @@ public:
     void Add(BifOptions* bifoptions);
 
 protected:
-    ZynqMpBootHeader* importedBh;
+    std::unique_ptr<ZynqMpBootHeader> importedBh;
 };
 #endif

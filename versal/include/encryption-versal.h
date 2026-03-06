@@ -24,6 +24,7 @@
 ***********************************************   H E A D E R   F I L E S   ***
 -------------------------------------------------------------------------------
 */
+#include <memory>
 #include <string>
 #include "bootgenenum.h"
 #include "options.h"
@@ -100,6 +101,6 @@ private:
         unsigned char* gcm_ct, int ct_len, unsigned char* gcm_tag);
 
 protected:
-    AesGcmEncryptionContext* encryptionAlgorithm;
+    std::unique_ptr<AesGcmEncryptionContext> encryptionAlgorithm;
 };
 #endif

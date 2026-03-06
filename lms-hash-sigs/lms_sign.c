@@ -31,6 +31,7 @@
 #include "lms_hash.h"
 #include "hss_zeroize.h"
 #include "lms-utils.h"
+#include <math.h>
 
 /*
 ------------------------------------------------------------------------------
@@ -293,5 +294,122 @@ int GetLmsSignLength(const char *keyname, bool lmsOnly)
     else
     {
         return hss_size;
+    }
+}
+
+int GetLmsSignLengthFromPubKey(const char *keyname, bool lmsOnly)
+{
+	FILE *f = fopen(keyname, "r");
+	if (!f) {
+		printf("Error opening keyfile\n");
+		return 0;
+	}
+
+	uint32_t buffer[3];
+	if (1 != fread(buffer, sizeof(buffer), 1, f)) {
+		/* Read failed */
+		printf("Error in reading keyfile\n");
+		fclose(f);
+		return 0;
+	}
+
+	uint32_t lm = (((buffer[1] >> 24) & 0x000000FF) | 
+           		   ((buffer[1] >> 8)  & 0x0000FF00) |
+           		   ((buffer[1] << 8)  & 0x00FF0000) |
+                   ((buffer[1] << 24) & 0xFF000000));
+
+	uint32_t ots = (((buffer[2] >> 24) & 0x000000FF) | 
+           		    ((buffer[2] >> 8)  & 0x0000FF00) |
+           		    ((buffer[2] << 8)  & 0x00FF0000) |
+                    ((buffer[2] << 24) & 0xFF000000));
+
+	int height=0, width=0;
+
+	switch (lm) {
+        case LMS_SHA256_N32_H5:
+        case LMS_SHA256_N24_H5:
+        case LMS_SHAKE256_N32_H5:
+        case LMS_SHAKE256_N24_H5: height = 5; break;
+        case LMS_SHA256_N32_H10:
+        case LMS_SHA256_N24_H10:
+        case LMS_SHAKE256_N32_H10:
+        case LMS_SHAKE256_N24_H10: height = 10; break;
+        case LMS_SHA256_N32_H15:
+        case LMS_SHA256_N24_H15:
+        case LMS_SHAKE256_N32_H15:
+        case LMS_SHAKE256_N24_H15: height = 15; break;
+        case LMS_SHA256_N32_H20:
+        case LMS_SHA256_N24_H20:
+        case LMS_SHAKE256_N32_H20:
+        case LMS_SHAKE256_N24_H20: height = 20; break;
+        case LMS_SHA256_N32_H25:
+        case LMS_SHA256_N24_H25:
+        case LMS_SHAKE256_N32_H25:
+        case LMS_SHAKE256_N24_H25: height = 25; break;
+        default: break;
+        }
+
+	switch (ots) {
+		case LMOTS_SHA256_N32_W1:
+		case LMOTS_SHA256_N24_W1:
+		case LMOTS_SHAKE256_N32_W1:
+		case LMOTS_SHAKE256_N24_W1: width = 1; break;
+		case LMOTS_SHA256_N32_W2:
+		case LMOTS_SHA256_N24_W2:
+		case LMOTS_SHAKE256_N32_W2:
+		case LMOTS_SHAKE256_N24_W2: width = 2; break;
+		case LMOTS_SHA256_N32_W4:
+		case LMOTS_SHA256_N24_W4:
+		case LMOTS_SHAKE256_N32_W4:
+		case LMOTS_SHAKE256_N24_W4: width = 4; break;
+		case LMOTS_SHA256_N32_W8:
+		case LMOTS_SHA256_N24_W8:
+		case LMOTS_SHAKE256_N32_W8:
+		case LMOTS_SHAKE256_N24_W8: width = 8; break;
+		default: break;
+	}
+
+	fclose(f);
+	
+	//Unaligned signature lengths for LMS
+	int sign_values_lms[][5] = {{8688, 8848, 9008, 9168, 9328},
+				    {4464, 4624, 4784, 4944, 5104},
+				    {2352, 2512, 2672, 2832, 2992},
+				    {1296, 1456, 1616, 1776, 1936}};
+
+	//Unaligned signature lengths for HSS
+	int sign_values_hss[][5] = {{17428, 17748, 18068, 18388, 18708},
+				    {8980, 9300, 9620, 9940, 10260},
+				    {4756, 5076, 5396, 5716, 6036},
+				    {2644, 2964, 3284, 3604, 3924}};
+
+	int row = log2(width);
+	int col = (height/5) - 1;
+
+	if (lmsOnly)
+	{
+		return sign_values_lms[row][col]-4;
+	}
+	else
+	{
+		return sign_values_hss[row][col];
+	}
+
+}
+
+int GetLmsSignatureLength(const char *secretKey, const char *publicKey, bool lmsOnly)
+{
+    if(secretKey[0] != '\0')
+    {
+        return GetLmsSignLength(secretKey, lmsOnly);
+    }
+    else if(publicKey[0] != '\0')
+    {
+        return GetLmsSignLengthFromPubKey(publicKey, lmsOnly);
+    }
+    else
+    {
+        printf("Error : In case of LMS/HSS, either public key or sceret key should be specified to get signature length");
+		return 0;
     }
 }

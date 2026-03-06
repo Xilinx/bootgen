@@ -26,6 +26,11 @@
 #include "logger.h"
 #include <sys/stat.h>
 
+#ifndef ENABLE_WDI
+#include <isl/iostreams/filtering_stream.hpp>
+#include <isl/iostreams/util.hpp>
+#endif
+
 extern "C" {
 #include "cdo-command.h"
 #include "cdo-load.h"
@@ -319,6 +324,15 @@ inline bool IsCdoFile(uint32_t value)
 /******************************************************************************/
 inline bool IsCdoFile(std::string file)
 {
+#ifndef ENABLE_WDI
+    isl::iostreams::istream stream(file.c_str(), std::ios_base::binary);
+    if (!stream)
+    {
+        LOG_ERROR("Cannot read file - %s ", (file.c_str()));
+    }
+    std::string line;
+    getline(stream, line);
+#else
     std::ifstream stream(file.c_str(), std::ios_base::binary);
     if (!stream)
     {
@@ -326,6 +340,7 @@ inline bool IsCdoFile(std::string file)
     }
     std::string line;
     getline(stream, line);
+#endif
     if ((line.find("Xilinx ASCII NPI Deviceimage") != std::string::npos) || (line.find("Xilinx ASCII PSAXIMM Deviceimage") != std::string::npos) || (line.find("version") != std::string::npos))
     {
         return true;

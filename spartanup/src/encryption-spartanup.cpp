@@ -20,6 +20,7 @@
 ***********************************************   H E A D E R   F I L E S   ***
 -------------------------------------------------------------------------------
 */
+#include <memory>
 #include "encryption-spartanup.h"
 #include "bootheader-spartanup.h"
 #include "bootimage.h"
@@ -28,6 +29,10 @@
 #include "imageheadertable-spartanup.h"
 #include "partitionheadertable-spartanup.h"
 #include <openssl/rand.h>
+#include "fileutils.h"
+#ifndef ENABLE_OBFUSCATED_KEY
+#include "obfskutil.h"
+#endif
 
 /*
 -------------------------------------------------------------------------------
@@ -42,7 +47,7 @@ SpartanupEncryptionContext::SpartanupEncryptionContext()
     , isPmcData(false)
     , isAuthenticated(false)
 {
-    encryptionAlgorithm = new AesGcmEncryptionContext();
+    encryptionAlgorithm = std::make_unique<AesGcmEncryptionContext>();
 };
 
 /******************************************************************************/
@@ -53,22 +58,16 @@ SpartanupEncryptionContext::SpartanupEncryptionContext(const EncryptionContext* 
     , isAuthenticated(false)
 {
     aesFilename = other->aesFilename;
-    encryptionAlgorithm = new AesGcmEncryptionContext();
+    encryptionAlgorithm = std::make_unique<AesGcmEncryptionContext>();
 }
 
 /******************************************************************************/
-SpartanupEncryptionContext::~SpartanupEncryptionContext()
-{
-    if (encryptionAlgorithm != NULL)
-    {
-        delete[] encryptionAlgorithm;
-    }
-}
+SpartanupEncryptionContext::~SpartanupEncryptionContext() = default;
 
 /******************************************************************************/
 void SpartanupEncryptionContext::SetAesKey(const uint8_t* key)
 {
-    aesKey = new uint32_t[WORDS_PER_AES_KEY];
+    aesKey = std::make_unique<uint32_t[]>(WORDS_PER_AES_KEY);
 
     for (uint32_t index = 0; index < WORDS_PER_AES_KEY; index++)
     {
@@ -436,7 +435,7 @@ void SpartanupEncryptionContext::GetNextIv(uint8_t * keyNext, int ptr)
 /******************************************************************************/
 void SpartanupEncryptionContext::SetAesSeed(const uint8_t* key)
 {
-    aesSeed = new uint32_t[WORDS_PER_AES_KEY];
+    aesSeed = std::make_unique<uint32_t[]>(WORDS_PER_AES_KEY);
 
     for (uint32_t index = 0; index < WORDS_PER_AES_KEY; index++)
     {
@@ -448,19 +447,19 @@ void SpartanupEncryptionContext::SetAesSeed(const uint8_t* key)
 /******************************************************************************/
 const uint32_t* SpartanupEncryptionContext::GetAesSeed(void)
 {
-    return (uint32_t *)aesSeed;
+    return aesSeed.get();
 }
 
 /******************************************************************************/
 const uint32_t* SpartanupEncryptionContext::GetAesKey(void)
 {
-    return (uint32_t *)aesKey;
+    return aesKey.get();
 }
 
 /******************************************************************************/
 void SpartanupEncryptionContext::SetIv(const uint8_t* iv)
 {
-    aesIv = new uint32_t[WORDS_PER_IV];
+    aesIv = std::make_unique<uint32_t[]>(WORDS_PER_IV);
 
     for (uint32_t index = 0; index < WORDS_PER_IV; index++)
     {
@@ -495,7 +494,7 @@ void SpartanupEncryptionContext::GenerateIv(void)
 /******************************************************************************/
 const uint32_t* SpartanupEncryptionContext::GetIv(void)
 {
-    return (uint32_t *)aesIv;
+    return aesIv.get();
 }
 
 /******************************************************************************/
@@ -530,23 +529,23 @@ void SpartanupEncryptionContext::GenerateRemainingKeys(Options& options)
 
     if (GetAesSeed() == NULL)
     {
-        aesSeed = new uint32_t[WORDS_PER_AES_KEY];
-        memset(aesSeed, 0, WORDS_PER_AES_KEY);
+        aesSeed = std::make_unique<uint32_t[]>(WORDS_PER_AES_KEY);
+        memset(aesSeed.get(), 0, WORDS_PER_AES_KEY);
         GenerateAesSeed();
     }
 
     if (GetFixedInputData() == NULL)
     {
-        fixedInputData = new uint32_t[WORDS_PER_FID];
-        memset(fixedInputData, 0, WORDS_PER_FID);
+        fixedInputData = std::make_unique<uint32_t[]>(WORDS_PER_FID);
+        memset(fixedInputData.get(), 0, WORDS_PER_FID);
         GenerateAesFixedInputData();
     }
 
     uint32_t outBufBytes = blocks * (AES_GCM_KEY_SZ + AES_GCM_IV_SZ);
-    outBufKDF = new uint32_t[outBufBytes];
+    outBufKDF = std::make_unique<uint32_t[]>(outBufBytes);
     SetKdfLogFile(options.GetEncryptionDumpFlag());
 
-    uint32_t ret = kdf->CounterModeKDF(aesSeed, fixedInputData, fixedInputDataByteLength, outBufKDF, outBufBytes);
+    uint32_t ret = kdf->CounterModeKDF(aesSeed.get(), fixedInputData.get(), fixedInputDataByteLength, outBufKDF.get(), outBufBytes);
     if (ret != 0)
     {
         LOG_ERROR("Error generating encryption keys from Counter Mode KDF.");
@@ -579,27 +578,78 @@ void SpartanupEncryptionContext::GenerateRemainingKeys(Options& options)
 }
 
 /******************************************************************************/
+void SpartanupEncryptionContext::GenerateGreyKey()
+{
+#ifndef ENABLE_OBFUSCATED_KEY
+    ReadEncryptionKeyFile(aesFilename);
+    auto bhIv = std::make_unique<uint8_t[]>(AES_GCM_IV_SZ);
+    auto redKey = std::make_unique<uint8_t[]>(AES_GCM_KEY_SZ);
+
+    if (aesKey != NULL)
+    {
+        memcpy_be(redKey.get(), aesKey.get(), AES_GCM_KEY_SZ);
+    }
+    else
+    {
+        LOG_ERROR("Encryption Error !!!\n           Key 0 does not exist in the AES key file ");
+    }
+
+    ReadBhIv(bhIv.get());
+    std::string filename = "obfuscatedkey.txt";
+    obfs key(redKey.get(), bhIv.get(), metalFile.c_str(), filename.c_str());
+    obfsk((void*)&key);
+    LOG_TRACE("Obfuscated key file : '%s' generated successfully", filename.c_str());
+    LOG_INFO("Obfuscated Key generated successfully");
+
+    // Smart pointers auto-cleanup, no manual delete needed
+#endif
+}
+
+/******************************************************************************/
+void SpartanupEncryptionContext::ReadBhIv(uint8_t* bhIv)
+{
+    FileImport fileReader;
+    auto ivData = std::make_unique<uint8_t[]>(AES_GCM_IV_SZ);
+    memset(ivData.get(), 0, AES_GCM_IV_SZ);
+
+    if (bhKekIVFile != "")
+    {
+        LOG_TRACE("Reading BH IV from file: %s", bhKekIVFile.c_str());
+        if (!fileReader.LoadHexData(bhKekIVFile, ivData.get(), AES_GCM_IV_SZ))
+        {
+            LOG_ERROR("Invalid data bytes for BH IV.\n           Expected length for BH IV is 12 bytes");
+        }
+        memcpy(bhIv, ivData.get(), AES_GCM_IV_SZ);
+    }
+    else {
+        LOG_ERROR("Key Generation Error !!!\n          BH IV must be specified in BIF file for obfuscated key generation. Use '[bh_key_iv]'");
+        memset(bhIv, 0, AES_GCM_IV_SZ);
+    }
+
+    // Smart pointer auto-cleanup, no manual delete needed
+}
+
+/******************************************************************************/
 void SpartanupEncryptionContext::AesGcm256HashBlockEncrypt(Options& options, uint8_t *aad, uint32_t aad_len, uint8_t* outBuf, uint8_t ivIncrement)
 {
-    uint8_t *aesIv = new uint8_t[AES_GCM_IV_SZ];
-    uint8_t *aesKey = new uint8_t[AES_GCM_KEY_SZ];
+    auto aesIv = std::make_unique<uint8_t[]>(AES_GCM_IV_SZ);
+    auto aesKey = std::make_unique<uint8_t[]>(AES_GCM_KEY_SZ);
 
-    GetEncryptionKeys(options, aesKey, NULL, aesIv);
+    GetEncryptionKeys(options, aesKey.get(), NULL, aesIv.get());
     
-    uint8_t *x = new uint8_t[AES_GCM_IV_SZ];
-    memset(x, 0, AES_GCM_IV_SZ);
-    *(x + AES_GCM_IV_SZ - 1) = ivIncrement;
+    auto x = std::make_unique<uint8_t[]>(AES_GCM_IV_SZ);
+    memset(x.get(), 0, AES_GCM_IV_SZ);
+    *(x.get() + AES_GCM_IV_SZ - 1) = ivIncrement;
     
-    *(aesIv + AES_GCM_IV_SZ - 1) = *(aesIv + AES_GCM_IV_SZ - 1) + *(x + AES_GCM_IV_SZ - 1);
-    delete[] x;
+    *(aesIv.get() + AES_GCM_IV_SZ - 1) = *(aesIv.get() + AES_GCM_IV_SZ - 1) + *(x.get() + AES_GCM_IV_SZ - 1);
     
     LOG_TRACE("Hash Block AAD IV");
-    LOG_DUMP_BYTES(aesIv, AES_GCM_IV_SZ);
+    LOG_DUMP_BYTES(aesIv.get(), AES_GCM_IV_SZ);
 
     uint8_t gcm_tag[AES_GCM_TAG_SZ];
     int ct_len;
 
-    AesGcm256Encrypt(NULL, 0, aesKey, aesIv, aad, aad_len, NULL, ct_len, gcm_tag);
+    AesGcm256Encrypt(NULL, 0, aesKey.get(), aesIv.get(), aad, aad_len, NULL, ct_len, gcm_tag);
     memcpy(outBuf, gcm_tag, AES_GCM_TAG_SZ);
 };
 
@@ -608,15 +658,15 @@ void SpartanupEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint
     uint8_t *aad, uint32_t aad_len, uint8_t* outBuf, uint32_t& outLen)
 {
     std::vector<uint32_t> blockList = options.bifOptions->GetEncryptionBlocksList();
-    uint8_t *aesIv = new uint8_t[AES_GCM_IV_SZ];
-    uint8_t *aesKey = new uint8_t[AES_GCM_KEY_SZ];
-    uint8_t *aesIVNext = new uint8_t[AES_GCM_IV_SZ];
-    uint8_t *aesKeyNext = new uint8_t[AES_GCM_KEY_SZ];
+    auto aesIv = std::make_unique<uint8_t[]>(AES_GCM_IV_SZ);
+    auto aesKey = std::make_unique<uint8_t[]>(AES_GCM_KEY_SZ);
+    auto aesIVNext = std::make_unique<uint8_t[]>(AES_GCM_IV_SZ);
+    auto aesKeyNext = std::make_unique<uint8_t[]>(AES_GCM_KEY_SZ);
 
-    GetEncryptionKeys(options, aesKey, NULL, aesIv);
+    GetEncryptionKeys(options, aesKey.get(), NULL, aesIv.get());
     /*if (isBootloader)
     {
-        uint8_t *x = new uint8_t[AES_GCM_IV_SZ];
+        auto x = std::make_unique<uint8_t[]>(AES_GCM_IV_SZ);
         memset(x, 0, AES_GCM_IV_SZ);
 
         int increment = 1;
@@ -635,19 +685,18 @@ void SpartanupEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint
         *(x + AES_GCM_IV_SZ - 1) = increment;
 
         *(aesIv + AES_GCM_IV_SZ - 1) = *(aesIv + AES_GCM_IV_SZ - 1) + *(x + AES_GCM_IV_SZ - 1);
-        delete[] x;
+        // unique_ptr handles deletion
     }
     */
     if (isPmcData)
     {
-        uint8_t *x = new uint8_t[AES_GCM_IV_SZ];
-        memset(x, 0, AES_GCM_IV_SZ);
-        *(x + AES_GCM_IV_SZ - 1) = 1;
-        *(aesIv + AES_GCM_IV_SZ - 1) = *(aesIv + AES_GCM_IV_SZ - 1) + *(x + AES_GCM_IV_SZ - 1);
-        delete[] x;
+        auto x = std::make_unique<uint8_t[]>(AES_GCM_IV_SZ);
+        memset(x.get(), 0, AES_GCM_IV_SZ);
+        *(x.get() + AES_GCM_IV_SZ - 1) = 1;
+        *(aesIv.get() + AES_GCM_IV_SZ - 1) = *(aesIv.get() + AES_GCM_IV_SZ - 1) + *(x.get() + AES_GCM_IV_SZ - 1);
     }
-    GetNextKey(aesKeyNext, 1);
-    GetNextIv(aesIVNext, 1);
+    GetNextKey(aesKeyNext.get(), 1);
+    GetNextIv(aesIVNext.get(), 1);
 
     uint8_t secureHdr_in[AES_GCM_KEY_SZ + AES_GCM_IV_SZ + NUM_BYTES_PER_WORD];
 
@@ -656,8 +705,8 @@ void SpartanupEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint
     nextBlkSize = (nextBlkSize > inLen) ? inLen : nextBlkSize + 0;
 
     /* Copy Key,IV used for encrypting next block to Secure Header*/
-    memcpy(secureHdr_in, aesKeyNext, AES_GCM_KEY_SZ);
-    memcpy(secureHdr_in + AES_GCM_KEY_SZ, aesIVNext, AES_GCM_IV_SZ);
+    memcpy(secureHdr_in, aesKeyNext.get(), AES_GCM_KEY_SZ);
+    memcpy(secureHdr_in + AES_GCM_KEY_SZ, aesIVNext.get(), AES_GCM_IV_SZ);
 
     /* Copy the word Size of Block 0 to Secure Header*/
     WriteLittleEndian32(secureHdr_in + AES_GCM_KEY_SZ + AES_GCM_IV_SZ, nextBlkSize / NUM_BYTES_PER_WORD);
@@ -668,7 +717,7 @@ void SpartanupEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint
     /* Encrypt the Secure Header with device key and starting IV */
     LOG_TRACE("Encrypting the Secure Header");
     uint8_t* ptr = outBuf;
-    AesGcm256Encrypt(secureHdr_in, SECURE_HDR_SZ, aesKey, aesIv, aad, aad_len, ptr, ct_len, gcm_tag);
+    AesGcm256Encrypt(secureHdr_in, SECURE_HDR_SZ, aesKey.get(), aesIv.get(), aad, aad_len, ptr, ct_len, gcm_tag);
 
     /* Attach the AES-GCM generated Hash Tag to end of the block */
     memcpy(outBuf + ct_len, gcm_tag, AES_GCM_TAG_SZ);
@@ -712,7 +761,7 @@ void SpartanupEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint
         VERBOSE_OUT << std::endl;
         */
         //AES-GCM Decryption for verification purpose 
-        AesGcm256Decrypt(secureHdr_out, pt_len, aesKey, aesIv, NULL, 0, outBuf, SECURE_HDR_SZ, gcm_tag);
+        AesGcm256Decrypt(secureHdr_out, pt_len, aesKey.get(), aesIv.get(), NULL, 0, outBuf, SECURE_HDR_SZ, gcm_tag);
         int ret = memcmp(secureHdr_in, secureHdr_out, SECURE_HDR_SZ);
         if (ret == 0)
         {
@@ -729,8 +778,8 @@ void SpartanupEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint
     uint32_t blkPtr = 1;
 
     /* Take the next generated Key and IV for encrypting next block */
-    memcpy(aesIv, aesIVNext, AES_GCM_IV_SZ);
-    memcpy(aesKey, aesKeyNext, AES_GCM_KEY_SZ);
+    memcpy(aesIv.get(), aesIVNext.get(), AES_GCM_IV_SZ);
+    memcpy(aesKey.get(), aesKeyNext.get(), AES_GCM_KEY_SZ);
 
     while (bytesWritten < inLen)
     {
@@ -743,29 +792,29 @@ void SpartanupEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint
         /* Get next key and IV - store in current block - use for next block */
         if (nextBlkSize == 0)
         {
-            memset(aesKeyNext, 0, AES_GCM_KEY_SZ);
-            memset(aesIVNext, 0, AES_GCM_IV_SZ);
+            memset(aesKeyNext.get(), 0, AES_GCM_KEY_SZ);
+            memset(aesIVNext.get(), 0, AES_GCM_IV_SZ);
         }
         else
         {
-            GetNextKey(aesKeyNext, blkPtr + 1);
-            GetNextIv(aesIVNext, blkPtr + 1);
+            GetNextKey(aesKeyNext.get(), blkPtr + 1);
+            GetNextIv(aesIVNext.get(), blkPtr + 1);
         }
 
-        uint8_t *gcm_pt = new uint8_t[currBlkSize + AES_GCM_KEY_SZ + AES_GCM_IV_SZ + NUM_BYTES_PER_WORD];
+        auto gcm_pt = std::make_unique<uint8_t[]>(currBlkSize + AES_GCM_KEY_SZ + AES_GCM_IV_SZ + NUM_BYTES_PER_WORD);
         /* Prepare the buffer for encryption - Actual block data + Next Block Key + Next Block IV + Next Block Word Size */
-        memcpy(gcm_pt, inBuf + inPtr, currBlkSize);
+        memcpy(gcm_pt.get(), inBuf + inPtr, currBlkSize);
         inPtr += currBlkSize;
-        memcpy(gcm_pt + currBlkSize, aesKeyNext, AES_GCM_KEY_SZ);
-        memcpy(gcm_pt + currBlkSize + AES_GCM_KEY_SZ, aesIVNext, AES_GCM_IV_SZ);
-        WriteLittleEndian32(gcm_pt + currBlkSize + AES_GCM_KEY_SZ + AES_GCM_IV_SZ, nextBlkSize / NUM_BYTES_PER_WORD);
+        memcpy(gcm_pt.get() + currBlkSize, aesKeyNext.get(), AES_GCM_KEY_SZ);
+        memcpy(gcm_pt.get() + currBlkSize + AES_GCM_KEY_SZ, aesIVNext.get(), AES_GCM_IV_SZ);
+        WriteLittleEndian32(gcm_pt.get() + currBlkSize + AES_GCM_KEY_SZ + AES_GCM_IV_SZ, nextBlkSize / NUM_BYTES_PER_WORD);
 
         //Encrypt the consolidated block
         LOG_TRACE("Encrypting the block %d of size 0x%x", blkPtr, currBlkSize);
-        AesGcm256Encrypt(gcm_pt, currBlkSize + SECURE_HDR_SZ, aesKey, aesIv, NULL, 0, outBuf + outPtr, ct_len, gcm_tag);
+        AesGcm256Encrypt(gcm_pt.get(), currBlkSize + SECURE_HDR_SZ, aesKey.get(), aesIv.get(), NULL, 0, outBuf + outPtr, ct_len, gcm_tag);
         memcpy(outBuf + outPtr + ct_len, gcm_tag, AES_GCM_TAG_SZ);
 
-        uint8_t* inBuf_out = new uint8_t[ct_len + AES_GCM_TAG_SZ];
+        auto inBuf_out = std::make_unique<uint8_t[]>(ct_len + AES_GCM_TAG_SZ);
         if (options.GetEncryptionDumpFlag())
         {
             uint32_t i = 0;
@@ -797,7 +846,7 @@ void SpartanupEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint
                 VERBOSE_OUT << std::setfill('0') << std::setw(2) << std::hex << uint32_t(gcm_pt[i + currBlkSize + AES_GCM_KEY_SZ]);
 
             VERBOSE_OUT << std::endl << "            Length   : ";
-            length = ReadLittleEndian32(gcm_pt + currBlkSize + AES_GCM_KEY_SZ + AES_GCM_IV_SZ);
+            length = ReadLittleEndian32(gcm_pt.get() + currBlkSize + AES_GCM_KEY_SZ + AES_GCM_IV_SZ);
             VERBOSE_OUT << std::hex << length * 4;
             /*
             VERBOSE_OUT << std::endl << "        GCM Tag : ";
@@ -805,8 +854,8 @@ void SpartanupEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint
             VERBOSE_OUT << std::setfill('0') << std::setw(2) << std::hex << uint32_t(gcm_tag[i]);
             VERBOSE_OUT << std::endl;
             */
-            AesGcm256Decrypt(inBuf_out, pt_len, aesKey, aesIv, NULL, 0, outBuf + outPtr, ct_len, gcm_tag);
-            int ret = memcmp(gcm_pt, inBuf_out, pt_len);
+            AesGcm256Decrypt(inBuf_out.get(), pt_len, aesKey.get(), aesIv.get(), NULL, 0, outBuf + outPtr, ct_len, gcm_tag);
+            int ret = memcmp(gcm_pt.get(), inBuf_out.get(), pt_len);
             if (ret == 0)
             {
                 //VERBOSE_OUT << std::dec << "        Encrypted block " << currBlk++ << " was successfully decrypted and tag matched\n";
@@ -819,19 +868,13 @@ void SpartanupEncryptionContext::ChunkifyAndEncrypt(Options& options, const uint
 
         //Update the current key & IV 
         outPtr += ct_len + AES_GCM_TAG_SZ;
-        memcpy(aesIv, aesIVNext, AES_GCM_IV_SZ);
-        memcpy(aesKey, aesKeyNext, AES_GCM_KEY_SZ);
+        memcpy(aesIv.get(), aesIVNext.get(), AES_GCM_IV_SZ);
+        memcpy(aesKey.get(), aesKeyNext.get(), AES_GCM_KEY_SZ);
 
-        delete[] gcm_pt;
-        delete[] inBuf_out;
         blkPtr++;
     }
 
     outLen = outPtr;
-    delete[] aesIv;
-    delete[] aesKey;
-    delete[] aesIVNext;
-    delete[] aesKeyNext;
 }
 
 /******************************************************************************/
@@ -977,8 +1020,8 @@ void SpartanupEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr
                 {
                     if (partHdr->imageHeader->GetEncryptionKeySrc() == bi.aesKeyandKeySrc[i].first)
                     {
-                        aesKey = new uint32_t[AES_GCM_KEY_SZ / 4];
-                        memcpy(aesKey, bi.aesKeyandKeySrc[i].second, AES_GCM_KEY_SZ);
+                        aesKey = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / 4);
+                        memcpy(aesKey.get(), bi.aesKeyandKeySrc[i].second.get(), AES_GCM_KEY_SZ);
                         break;
                     }
                 }
@@ -996,8 +1039,12 @@ void SpartanupEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr
 
     ReadEncryptionKeyFile(aesFilename);
 
-    std::pair<KeySource::Type, uint32_t*> asesKeyandKeySrcPair (partHdr->imageHeader->GetEncryptionKeySrc(), aesKey);
-    bi.aesKeyandKeySrc.push_back(asesKeyandKeySrcPair);
+    // Create a persistent copy of the key for storing in bi.aesKeyandKeySrc
+    // This copy is managed by std::unique_ptr for automatic cleanup
+    auto persistentKeyPtr = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / sizeof(uint32_t));
+    memcpy(persistentKeyPtr.get(), aesKey.get(), AES_GCM_KEY_SZ);
+    
+    bi.aesKeyandKeySrc.push_back(std::make_pair(partHdr->imageHeader->GetEncryptionKeySrc(), std::move(persistentKeyPtr)));
     bi.bifOptions->CheckForBadKeyandKeySrcPair(bi.aesKeyandKeySrc, aesFilename);
 
     options.SetDevicePartName(deviceName);
@@ -1025,12 +1072,12 @@ void SpartanupEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr
                 {
                     if (aesKey == NULL)
                     {
-                        aesKey = new uint32_t[AES_GCM_KEY_SZ / 4];
-                        memcpy(aesKey, bi.aesKeyandKeySrc[i].second, AES_GCM_KEY_SZ);
+                        aesKey = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / 4);
+                        memcpy(aesKey.get(), bi.aesKeyandKeySrc[i].second.get(), AES_GCM_KEY_SZ);
                     }
                     if (aesKeyVec.size() == 0)
                     {
-                        aesKeyVec.push_back(ConvertKeyIvToString((uint8_t *)aesKey, AES_GCM_KEY_SZ).c_str());
+                        aesKeyVec.push_back(ConvertKeyIvToString((uint8_t *)aesKey.get(), AES_GCM_KEY_SZ).c_str());
                     }
                     break;
                 }
@@ -1048,7 +1095,7 @@ void SpartanupEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr
             {
                 if (aesKey != NULL)
                 {
-                    memcpy(aesKey, bi.aesKeyandKeySrc[i].second, AES_GCM_KEY_SZ);
+                    memcpy(aesKey.get(), bi.aesKeyandKeySrc[i].second.get(), AES_GCM_KEY_SZ);
                 }
                 break;
             }
@@ -1061,17 +1108,17 @@ void SpartanupEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr
     {
         if (partHdr->IsBootloader())
         {
-            if (options.secHdrIv == NULL)
+            if (!options.secHdrIv)
             {
-                options.secHdrIv = (uint8_t*)malloc(BYTES_PER_IV);
+                options.secHdrIv = std::make_unique<uint8_t[]>(BYTES_PER_IV);
             }
-            memcpy_be(options.secHdrIv, tmpIv, BYTES_PER_IV);
+            memcpy_be(options.secHdrIv.get(), tmpIv, BYTES_PER_IV);
         }
-        if (partHdr->partitionSecHdrIv == NULL)
+        if (!partHdr->partitionSecHdrIv)
         {
-            partHdr->partitionSecHdrIv = (uint8_t*)malloc(BYTES_PER_IV);
+            partHdr->partitionSecHdrIv = std::make_unique<uint8_t[]>(BYTES_PER_IV);
         }
-        memcpy_be(partHdr->partitionSecHdrIv, tmpIv, BYTES_PER_IV);
+        memcpy_be(partHdr->partitionSecHdrIv.get(), tmpIv, BYTES_PER_IV);
     }
 
     uint32_t totalBlocksOverhead = (totalencrBlocks + 1) * 64; //64 = AES_GCM_IV_SZ+AES_GCM_KEY_SZ+NUM_BYTES_PER_WORD+AES_GCM_TAG_SZ
@@ -1097,13 +1144,13 @@ void SpartanupEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr
         // BootLoader Encryption
         uint32_t encrFsblByteLength;
         uint32_t estimatedEncrFsblLength = partHdr->imageHeader->GetFsblFwSizeIh() + totalBlocksOverhead;
-        uint8_t* encrFsblDataBuffer = new uint8_t[estimatedEncrFsblLength];
+        auto encrFsblDataBuffer = std::make_unique<uint8_t[]>(estimatedEncrFsblLength);
         LOG_INFO("Encrypting Bootloader");
         ChunkifyAndEncrypt(options,
-            partHdr->partition->section->Data,
+            partHdr->partition->section->Data.get(),
             partHdr->imageHeader->GetFsblFwSizeIh(),
             NULL, 0,
-            encrFsblDataBuffer /* out*/,
+            encrFsblDataBuffer.get() /* out*/,
             encrFsblByteLength /* out */);
 
         if (estimatedEncrFsblLength < encrFsblByteLength)
@@ -1114,8 +1161,10 @@ void SpartanupEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr
         // PMC Data Encryption
         if (bi.pmcDataAesFile != "")
         {
-            aesKey = aesIv = aesSeed = NULL;
-            fixedInputData = NULL;
+            aesKey.reset();
+            aesIv.reset();
+            aesSeed.reset();
+            fixedInputData.reset();
             aesSeedexits = false;
             fixedInputDataExits = false;
             SetAesFileName(bi.pmcDataAesFile);
@@ -1130,8 +1179,8 @@ void SpartanupEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr
                     {
                         if (partHdr->imageHeader->GetEncryptionKeySrc() == bi.aesKeyandKeySrc[i].first)
                         {
-                            aesKey = new uint32_t[AES_GCM_KEY_SZ / 4];
-                            memcpy(aesKey, bi.aesKeyandKeySrc[i].second, AES_GCM_KEY_SZ);
+                            aesKey = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / 4);
+                            memcpy(aesKey.get(), bi.aesKeyandKeySrc[i].second.get(), AES_GCM_KEY_SZ);
                             break;
                         }
                     }
@@ -1144,8 +1193,12 @@ void SpartanupEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr
 
             ReadEncryptionKeyFile(aesFilename);
 
-            std::pair<KeySource::Type, uint32_t*> asesKeyandKeySrcPair(partHdr->imageHeader->GetEncryptionKeySrc(), aesKey);
-            bi.aesKeyandKeySrc.push_back(asesKeyandKeySrcPair);
+            // Create a persistent copy of the key for storing in bi.aesKeyandKeySrc
+            // This copy is managed by std::unique_ptr for automatic cleanup
+            auto persistentKeyPtr = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / sizeof(uint32_t));
+            memcpy(persistentKeyPtr.get(), aesKey.get(), AES_GCM_KEY_SZ);
+            
+            bi.aesKeyandKeySrc.push_back(std::make_pair(partHdr->imageHeader->GetEncryptionKeySrc(), std::move(persistentKeyPtr)));
             bi.bifOptions->CheckForBadKeyandKeySrcPair(bi.aesKeyandKeySrc, aesFilename);
 
             options.SetDevicePartName(deviceName);
@@ -1172,12 +1225,12 @@ void SpartanupEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr
                         {
                             if (aesKey == NULL)
                             {
-                                aesKey = new uint32_t[AES_GCM_KEY_SZ / 4];
-                                memcpy(aesKey, bi.aesKeyandKeySrc[i].second, AES_GCM_KEY_SZ);
+                                aesKey = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / 4);
+                                memcpy(aesKey.get(), bi.aesKeyandKeySrc[i].second.get(), AES_GCM_KEY_SZ);
                             }
                             if (aesKeyVec.size() == 0)
                             {
-                                aesKeyVec.push_back(ConvertKeyIvToString((uint8_t *)aesKey, AES_GCM_KEY_SZ).c_str());
+                                aesKeyVec.push_back(ConvertKeyIvToString((uint8_t *)aesKey.get(), AES_GCM_KEY_SZ).c_str());
                             }
                             break;
                         }
@@ -1189,11 +1242,11 @@ void SpartanupEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr
             tmpIv = GetIv();
             if (tmpIv != NULL)
             {
-                if (options.secHdrIvPmcData == NULL)
+                if (!options.secHdrIvPmcData)
                 {
-                    options.secHdrIvPmcData = (uint8_t*)malloc(BYTES_PER_IV);
+                    options.secHdrIvPmcData = std::make_unique<uint8_t[]>(BYTES_PER_IV);
                 }
-                memcpy_be(options.secHdrIvPmcData, tmpIv, BYTES_PER_IV);
+                memcpy_be(options.secHdrIvPmcData.get(), tmpIv, BYTES_PER_IV);
             }
         }
         else
@@ -1205,14 +1258,14 @@ void SpartanupEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr
         isPmcData = true;
         uint32_t encrPmcByteLength;
         uint32_t estimatedEncrPmcLength = partHdr->imageHeader->GetTotalPmcFwSizeIh() + totalBlocksOverhead;
-        uint8_t* encrPmcDataBuffer = new uint8_t[estimatedEncrPmcLength];
+        auto encrPmcDataBuffer = std::make_unique<uint8_t[]>(estimatedEncrPmcLength);
         LOG_INFO("Encrypting the PMC Data");
 
         ChunkifyAndEncrypt(options,
-            partHdr->partition->section->Data + partHdr->imageHeader->GetFsblFwSizeIh(),
+            partHdr->partition->section->Data.get() + partHdr->imageHeader->GetFsblFwSizeIh(),
             partHdr->imageHeader->GetTotalPmcFwSizeIh(),
             NULL, 0,
-            encrPmcDataBuffer /* out*/,
+            encrPmcDataBuffer.get() /* out*/,
             encrPmcByteLength /* out */);
 
         if (estimatedEncrPmcLength < encrPmcByteLength)
@@ -1221,9 +1274,9 @@ void SpartanupEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr
         }
 
         partHdr->partition->section->IncreaseLengthAndPadTo(encrFsblByteLength + encrPmcByteLength, 0x0);
-        memset(partHdr->partition->section->Data, 0, encrFsblByteLength + encrPmcByteLength);
-        memcpy(partHdr->partition->section->Data, encrFsblDataBuffer, encrFsblByteLength);
-        memcpy(partHdr->partition->section->Data + encrFsblByteLength, encrPmcDataBuffer, encrPmcByteLength);
+        memset(partHdr->partition->section->Data.get(), 0, encrFsblByteLength + encrPmcByteLength);
+        memcpy(partHdr->partition->section->Data.get(), encrFsblDataBuffer.get(), encrFsblByteLength);
+        memcpy(partHdr->partition->section->Data.get() + encrFsblByteLength, encrPmcDataBuffer.get(), encrPmcByteLength);
 
         partHdr->imageHeader->SetTotalPmcFwSizeIh(encrPmcByteLength);
         partHdr->imageHeader->SetTotalFsblFwSizeIh(encrFsblByteLength);
@@ -1231,31 +1284,28 @@ void SpartanupEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr
 
         LOG_INFO("Encrypted the partition - %s", partHdr->partition->section->Name.c_str());
         bi.options.CloseEncryptionDumpFile();
-        delete[] encrFsblDataBuffer;
-        delete[] encrPmcDataBuffer;
         return;
     }
     else
     {
         uint32_t encryptedLength;
         uint32_t estimatedEncrLength = partHdr->partition->section->Length + totalBlocksOverhead;
-        uint8_t* encryptedDataBuffer = new uint8_t[estimatedEncrLength];
+        auto encryptedDataBuffer = std::make_unique<uint8_t[]>(estimatedEncrLength);
 
         ChunkifyAndEncrypt(options,
-            partHdr->partition->section->Data,
+            partHdr->partition->section->Data.get(),
             (uint32_t)partHdr->partition->section->Length,
             NULL, 0,
-            encryptedDataBuffer /* out*/,
-            encryptedLength /* out */);
+                encryptedDataBuffer.get() /* out*/,
+                encryptedLength /* out */);
 
-        partHdr->partition->section->IncreaseLengthAndPadTo(encryptedLength, 0x0);
-        memcpy(partHdr->partition->section->Data, encryptedDataBuffer, encryptedLength);
+            partHdr->partition->section->IncreaseLengthAndPadTo(encryptedLength, 0x0);
+            memcpy(partHdr->partition->section->Data.get(), encryptedDataBuffer.get(), encryptedLength);
         partHdr->partition->section->Length = encryptedLength;
         partHdr->imageHeader->SetTotalFsblFwSizeIh(encryptedLength);
 
         LOG_INFO("Encrypted the partition - %s", partHdr->partition->section->Name.c_str());
         bi.options.CloseEncryptionDumpFile();
-        delete[] encryptedDataBuffer;
         return;
     }
 }
@@ -1264,13 +1314,13 @@ void SpartanupEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr
 void SpartanupEncryptionContext::Process(BootImage& bi)
 {
     size_t size = bi.imageHeaderTable->metaHeaderLength;
-    uint8_t* dataBuffer = new uint8_t[size];
+    auto dataBuffer = std::make_unique<uint8_t[]>(size);
 
     uint32_t offset = 0;
-    for (SectionList::iterator i = bi.headers.begin(); i != bi.headers.end(); i++)
+    for (std::list<Section*>::iterator i = bi.headers.begin(); i != bi.headers.end(); i++)
     {
         Section& section(**i);
-        memcpy(dataBuffer + offset, section.Data, section.Length);
+        memcpy(dataBuffer.get() + offset, section.Data.get(), section.Length);
         offset += section.Length;
     }
 
@@ -1300,8 +1350,8 @@ void SpartanupEncryptionContext::Process(BootImage& bi)
                 {
                     if (bi.options.bifOptions->metaHdrAttributes.encrKeySource == bi.aesKeyandKeySrc[i].first)
                     {
-                        aesKey = new uint32_t[AES_GCM_KEY_SZ / 4];
-                        memcpy(aesKey, bi.aesKeyandKeySrc[i].second, AES_GCM_KEY_SZ);
+                        aesKey = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / 4);
+                        memcpy(aesKey.get(), bi.aesKeyandKeySrc[i].second.get(), AES_GCM_KEY_SZ);
                         break;
                     }
                 }
@@ -1314,8 +1364,12 @@ void SpartanupEncryptionContext::Process(BootImage& bi)
 
         ReadEncryptionKeyFile(aesFilename);
 
-        std::pair<KeySource::Type, uint32_t*> asesKeyandKeySrcPair(bi.options.bifOptions->metaHdrAttributes.encrKeySource, aesKey);
-        bi.aesKeyandKeySrc.push_back(asesKeyandKeySrcPair);
+        // Create a persistent copy of the key for storing in bi.aesKeyandKeySrc
+        // This copy must outlive the encryption context, so we use malloc (managed by BootImage)
+        auto persistentKeyPtr = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / sizeof(uint32_t));
+        memcpy(persistentKeyPtr.get(), aesKey.get(), AES_GCM_KEY_SZ);
+        
+        bi.aesKeyandKeySrc.push_back(std::make_pair(bi.options.bifOptions->metaHdrAttributes.encrKeySource, std::move(persistentKeyPtr)));
         bi.bifOptions->CheckForBadKeyandKeySrcPair(bi.aesKeyandKeySrc, aesFilename);
 
         bi.options.SetDevicePartName(deviceName);
@@ -1343,12 +1397,12 @@ void SpartanupEncryptionContext::Process(BootImage& bi)
                     {
                         if (aesKey == NULL)
                         {
-                            aesKey = new uint32_t[AES_GCM_KEY_SZ / 4];
-                            memcpy(aesKey, bi.aesKeyandKeySrc[i].second, AES_GCM_KEY_SZ);
+                            aesKey = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / 4);
+                            memcpy(aesKey.get(), bi.aesKeyandKeySrc[i].second.get(), AES_GCM_KEY_SZ);
                         }
                         if (aesKeyVec.size() == 0)
                         {
-                            aesKeyVec.push_back(ConvertKeyIvToString((uint8_t *)aesKey, AES_GCM_KEY_SZ).c_str());
+                            aesKeyVec.push_back(ConvertKeyIvToString((uint8_t *)aesKey.get(), AES_GCM_KEY_SZ).c_str());
                         }
                         break;
                     }
@@ -1366,12 +1420,12 @@ void SpartanupEncryptionContext::Process(BootImage& bi)
                 {
                     if (aesKey == NULL)
                     {
-                        aesKey = new uint32_t[AES_GCM_KEY_SZ / 4];
-                        memcpy(aesKey, bi.aesKeyandKeySrc[i].second, AES_GCM_KEY_SZ);
+                        aesKey = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / 4);
+                        memcpy(aesKey.get(), bi.aesKeyandKeySrc[i].second.get(), AES_GCM_KEY_SZ);
                     }
                     if (aesKeyVec.size() == 0)
                     {
-                        aesKeyVec.push_back(ConvertKeyIvToString((uint8_t *)aesKey, AES_GCM_KEY_SZ).c_str());
+                        aesKeyVec.push_back(ConvertKeyIvToString((uint8_t *)aesKey.get(), AES_GCM_KEY_SZ).c_str());
                     }
                     break;
                 }
@@ -1382,13 +1436,13 @@ void SpartanupEncryptionContext::Process(BootImage& bi)
         const uint32_t* tmpIv = GetIv();
         if (tmpIv != NULL)
         {
-            if (bi.imageHeaderTable->metaHdrSecHdrIv == NULL)
+            if (!bi.imageHeaderTable->metaHdrSecHdrIv)
             {
-                bi.imageHeaderTable->metaHdrSecHdrIv = (uint8_t*)malloc(BYTES_PER_IV);
+                bi.imageHeaderTable->metaHdrSecHdrIv = std::make_unique<uint8_t[]>(BYTES_PER_IV);
             }
-            memcpy_be(bi.imageHeaderTable->metaHdrSecHdrIv, tmpIv, BYTES_PER_IV);
+            memcpy_be(bi.imageHeaderTable->metaHdrSecHdrIv.get(), tmpIv, BYTES_PER_IV);
         }
-        bi.imageHeaderTable->SetMetaHdrSecureHdrIv(bi.imageHeaderTable->metaHdrSecHdrIv);
+        bi.imageHeaderTable->SetMetaHdrSecureHdrIv(bi.imageHeaderTable->metaHdrSecHdrIv.get());
         bi.imageHeaderTable->SetChecksum();
     }
     else
@@ -1421,14 +1475,14 @@ void SpartanupEncryptionContext::Process(BootImage& bi)
         LOG_ERROR("Internal Error : Encrypted metaheader length calculation error.");
     }
 
-    uint8_t* encryptedDataBuffer = new uint8_t[estimatedEncrLength];
+    auto encryptedDataBuffer = std::make_unique<uint8_t[]>(estimatedEncrLength);
 
     ChunkifyAndEncrypt(bi.options,
-        dataBuffer,
+        dataBuffer.get(),
         (uint32_t)size,
-        bi.imageHeaderTable->section->Data,
+        bi.imageHeaderTable->section->Data.get(),
         sizeof(SpartanupImageHeaderTableStructure) + bi.imageHeaderTable->iht_optional_data_length,
-        encryptedDataBuffer /* out*/,
+        encryptedDataBuffer.get() /* out*/,
         encryptedLength /* out */);
 
     if (bi.encryptedHeaders->Length != encryptedLength)
@@ -1436,13 +1490,11 @@ void SpartanupEncryptionContext::Process(BootImage& bi)
         LOG_ERROR("Internal Error : Encryption buffer allocation error.");
     }
 
-    memset(bi.encryptedHeaders->Data, bi.options.GetOutputFillByte(), bi.encryptedHeaders->Length);
-    memcpy(bi.encryptedHeaders->Data, encryptedDataBuffer, encryptedLength);
+    memset(bi.encryptedHeaders->Data.get(), bi.options.GetOutputFillByte(), bi.encryptedHeaders->Length);
+    memcpy(bi.encryptedHeaders->Data.get(), encryptedDataBuffer.get(), encryptedLength);
     LOG_INFO("Encrypted the partition - %s", bi.encryptedHeaders->Name.c_str());
 
     bi.options.CloseEncryptionDumpFile();
-    delete[] encryptedDataBuffer;
-    delete[] dataBuffer;
     return;
 }
 
@@ -1854,8 +1906,8 @@ void SpartanupEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHead
                 {
                     if (partHdr->imageHeader->GetEncryptionKeySrc() == bi.aesKeyandKeySrc[i].first)
                     {
-                        aesKey = new uint32_t[AES_GCM_KEY_SZ / 4];
-                        memcpy(aesKey, bi.aesKeyandKeySrc[i].second, AES_GCM_KEY_SZ);
+                        aesKey = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / 4);
+                        memcpy(aesKey.get(), bi.aesKeyandKeySrc[i].second.get(), AES_GCM_KEY_SZ);
                         break;
                     }
                 }
@@ -1873,8 +1925,12 @@ void SpartanupEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHead
 
     ReadEncryptionKeyFile(aesFilename);
 
-    std::pair<KeySource::Type, uint32_t*> asesKeyandKeySrcPair(partHdr->imageHeader->GetEncryptionKeySrc(), aesKey);
-    bi.aesKeyandKeySrc.push_back(asesKeyandKeySrcPair);
+    // Create a persistent copy of the key for storing in bi.aesKeyandKeySrc
+    // This copy is managed by std::unique_ptr for automatic cleanup
+    auto persistentKeyPtr = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / sizeof(uint32_t));
+    memcpy(persistentKeyPtr.get(), aesKey.get(), AES_GCM_KEY_SZ);
+    
+    bi.aesKeyandKeySrc.push_back(std::make_pair(partHdr->imageHeader->GetEncryptionKeySrc(), std::move(persistentKeyPtr)));
     bi.bifOptions->CheckForBadKeyandKeySrcPair(bi.aesKeyandKeySrc, aesFilename);
 
     options.SetDevicePartName(deviceName);
@@ -1902,12 +1958,12 @@ void SpartanupEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHead
                 {
                     if (aesKey == NULL)
                     {
-                        aesKey = new uint32_t[AES_GCM_KEY_SZ / 4];
-                        memcpy(aesKey, bi.aesKeyandKeySrc[i].second, AES_GCM_KEY_SZ);
+                        aesKey = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / 4);
+                        memcpy(aesKey.get(), bi.aesKeyandKeySrc[i].second.get(), AES_GCM_KEY_SZ);
                     }
                     if (aesKeyVec.size() == 0)
                     {
-                        aesKeyVec.push_back(ConvertKeyIvToString((uint8_t *)aesKey, AES_GCM_KEY_SZ).c_str());
+                        aesKeyVec.push_back(ConvertKeyIvToString((uint8_t *)aesKey.get(), AES_GCM_KEY_SZ).c_str());
                     }
                     break;
                 }
@@ -1925,7 +1981,7 @@ void SpartanupEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHead
             {
                 if (aesKey != NULL)
                 {
-                    memcpy(aesKey, bi.aesKeyandKeySrc[i].second, AES_GCM_KEY_SZ);
+                    memcpy(aesKey.get(), bi.aesKeyandKeySrc[i].second.get(), AES_GCM_KEY_SZ);
                 }
                 break;
             }
@@ -1938,17 +1994,17 @@ void SpartanupEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHead
     {
         if (partHdr->IsBootloader())
         {
-            if (options.secHdrIv == NULL)
+            if (!options.secHdrIv)
             {
-                options.secHdrIv = (uint8_t*)malloc(BYTES_PER_IV);
+                options.secHdrIv = std::make_unique<uint8_t[]>(BYTES_PER_IV);
             }
-            memcpy_be(options.secHdrIv, tmpIv, BYTES_PER_IV);
+            memcpy_be(options.secHdrIv.get(), tmpIv, BYTES_PER_IV);
         }
-        if (partHdr->partitionSecHdrIv == NULL)
+        if (!partHdr->partitionSecHdrIv)
         {
-            partHdr->partitionSecHdrIv = (uint8_t*)malloc(BYTES_PER_IV);
+            partHdr->partitionSecHdrIv = std::make_unique<uint8_t[]>(BYTES_PER_IV);
         }
-        memcpy_be(partHdr->partitionSecHdrIv, tmpIv, BYTES_PER_IV);
+        memcpy_be(partHdr->partitionSecHdrIv.get(), tmpIv, BYTES_PER_IV);
     }
 
     uint32_t totalBlocksOverhead = (totalencrBlocks + 1) * 64; //64 = AES_GCM_IV_SZ+AES_GCM_KEY_SZ+NUM_BYTES_PER_WORD+AES_GCM_TAG_SZ
@@ -1975,7 +2031,7 @@ void SpartanupEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHead
         uint32_t encrFsblByteLength;
         uint32_t estimatedEncrFsblLength = partHdr->imageHeader->GetFsblFwSizeIh() + totalBlocksOverhead;
         uint32_t estimatedTotalFsblLength = estimatedEncrFsblLength;
-        uint8_t* encrFsblDataBuffer = new uint8_t[estimatedEncrFsblLength];
+        auto encrFsblDataBuffer = std::make_unique<uint8_t[]>(estimatedEncrFsblLength);
 
         uint32_t totalpmcdataencrBlocks = ConfigureEncryptionBlocksforPmcData(bi, partHdr);
         uint32_t estimatedtotalPmcCdoLength = partHdr->imageHeader->GetTotalPmcFwSizeIh() + (totalpmcdataencrBlocks + 1) * 64;
@@ -2010,8 +2066,8 @@ void SpartanupEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHead
             }
         }
 
-        uint32_t* tmpIvPMCDATA = new uint32_t[WORDS_PER_IV];
-        memset(tmpIvPMCDATA, 0, WORDS_PER_IV);
+        auto tmpIvPMCDATA = std::make_unique<uint32_t[]>(WORDS_PER_IV);
+        memset(tmpIvPMCDATA.get(), 0, WORDS_PER_IV);
 
         // PMC Data Encryption
         if (bi.pmcDataAesFile != "")
@@ -2031,8 +2087,8 @@ void SpartanupEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHead
                     {
                         if (partHdr->imageHeader->GetEncryptionKeySrc() == bi.aesKeyandKeySrc[i].first)
                         {
-                            aesKey = new uint32_t[AES_GCM_KEY_SZ / 4];
-                            memcpy(aesKey, bi.aesKeyandKeySrc[i].second, AES_GCM_KEY_SZ);
+                            aesKey = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / 4);
+                            memcpy(aesKey.get(), bi.aesKeyandKeySrc[i].second.get(), AES_GCM_KEY_SZ);
                             break;
                         }
                     }
@@ -2077,7 +2133,7 @@ void SpartanupEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHead
             LOG_ERROR("Key Generation Error !!!\n           Key File doesnot exist to encrypt PMC CDO ");
         }
 
-        SpartanupBootHeaderStructure* bh = (SpartanupBootHeaderStructure*)bi.bootHeader->section->Data;
+        SpartanupBootHeaderStructure* bh = (SpartanupBootHeaderStructure*)bi.bootHeader->section->Data.get();
         bh->plmLength = partHdr->imageHeader->GetFsblFwSizeIh();
         bh->pmcCdoLength = partHdr->imageHeader->GetTotalPmcFwSizeIh();
         bh->totalPlmLength = estimatedTotalFsblLength;
@@ -2121,11 +2177,11 @@ void SpartanupEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHead
         if (bh->plmLength != 0)
         {
             ChunkifyAndEncrypt(options,
-                partHdr->partition->section->Data,
+                partHdr->partition->section->Data.get(),
                 partHdr->imageHeader->GetFsblFwSizeIh(), NULL, 0,
                 //(uint8_t*)bh + sizeof(VersalSmapWidthTable),
                 //sizeof(VersalBootHeaderStructure) - sizeof(VersalSmapWidthTable),
-                encrFsblDataBuffer /* out*/,
+                encrFsblDataBuffer.get() /* out*/,
                 encrFsblByteLength /* out */);
 
             if (estimatedEncrFsblLength < encrFsblByteLength)
@@ -2149,8 +2205,10 @@ void SpartanupEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHead
 
         if (bi.pmcDataAesFile != "")
         {
-            aesKey = aesIv = aesSeed = NULL;
-            fixedInputData = NULL;
+            aesKey.reset();
+            aesIv.reset();
+            aesSeed.reset();
+            fixedInputData.reset();
             SetAesFileName(bi.pmcDataAesFile);
             LOG_INFO("Key file - %s", aesFilename.c_str());
             std::ifstream keyFile(aesFilename);
@@ -2163,8 +2221,8 @@ void SpartanupEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHead
                     {
                         if (partHdr->imageHeader->GetEncryptionKeySrc() == bi.aesKeyandKeySrc[i].first)
                         {
-                            aesKey = new uint32_t[AES_GCM_KEY_SZ / 4];
-                            memcpy(aesKey, bi.aesKeyandKeySrc[i].second, AES_GCM_KEY_SZ);
+                            aesKey = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / 4);
+                            memcpy(aesKey.get(), bi.aesKeyandKeySrc[i].second.get(), AES_GCM_KEY_SZ);
                             break;
                         }
                     }
@@ -2178,8 +2236,12 @@ void SpartanupEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHead
             }
             ReadEncryptionKeyFile(aesFilename);
 
-            std::pair<KeySource::Type, uint32_t*> asesKeyandKeySrcPair(partHdr->imageHeader->GetEncryptionKeySrc(), aesKey);
-            bi.aesKeyandKeySrc.push_back(asesKeyandKeySrcPair);
+            // Create a persistent copy of the key for storing in bi.aesKeyandKeySrc
+            // This copy is managed by std::unique_ptr for automatic cleanup
+            auto persistentKeyPtr = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / sizeof(uint32_t));
+            memcpy(persistentKeyPtr.get(), aesKey.get(), AES_GCM_KEY_SZ);
+            
+            bi.aesKeyandKeySrc.push_back(std::make_pair(partHdr->imageHeader->GetEncryptionKeySrc(), std::move(persistentKeyPtr)));
             bi.bifOptions->CheckForBadKeyandKeySrcPair(bi.aesKeyandKeySrc, aesFilename);
 
             options.SetDevicePartName(deviceName);
@@ -2206,12 +2268,12 @@ void SpartanupEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHead
                         {
                             if (aesKey == NULL)
                             {
-                                aesKey = new uint32_t[AES_GCM_KEY_SZ / 4];
-                                memcpy(aesKey, bi.aesKeyandKeySrc[i].second, AES_GCM_KEY_SZ);
+                                aesKey = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / 4);
+                                memcpy(aesKey.get(), bi.aesKeyandKeySrc[i].second.get(), AES_GCM_KEY_SZ);
                             }
                             if (aesKeyVec.size() == 0)
                             {
-                                aesKeyVec.push_back(ConvertKeyIvToString((uint8_t *)aesKey, AES_GCM_KEY_SZ).c_str());
+                                aesKeyVec.push_back(ConvertKeyIvToString((uint8_t *)aesKey.get(), AES_GCM_KEY_SZ).c_str());
                             }
                             break;
                         }
@@ -2223,13 +2285,11 @@ void SpartanupEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHead
             tmpIv = GetIv();
             if (tmpIv != NULL)
             {
-                if (options.secHdrIvPmcData == NULL)
+                if (!options.secHdrIvPmcData)
                 {
-                    options.secHdrIvPmcData = (uint8_t*)malloc(BYTES_PER_IV);
+                    options.secHdrIvPmcData = std::make_unique<uint8_t[]>(BYTES_PER_IV);
                 }
-                //memcpy_be(options.secHdrIvPmcData, tmpIv, BYTES_PER_IV);
-                //memcpy_be(tmpIv, bh->plmSecureHdrIv, BYTES_PER_IV);
-                memcpy(options.secHdrIvPmcData, bh->plmSecureHdrIv, BYTES_PER_IV);
+                memcpy_be(options.secHdrIvPmcData.get(), tmpIv, BYTES_PER_IV);
             }
         }
         else
@@ -2243,16 +2303,16 @@ void SpartanupEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHead
         isPmcData = true;
         uint32_t encrPmcByteLength;
         uint32_t estimatedEncrPmcLength = partHdr->imageHeader->GetTotalPmcFwSizeIh() + totalBlocksOverhead;
-        uint8_t* encrPmcDataBuffer = new uint8_t[estimatedEncrPmcLength];
+        auto encrPmcDataBuffer = std::make_unique<uint8_t[]>(estimatedEncrPmcLength);
         LOG_INFO("Encrypting the PMC Data");
 
-        SetIv(options.secHdrIv);
+        SetIv(options.secHdrIv.get());
 
         ChunkifyAndEncrypt(options,
-            partHdr->partition->section->Data + partHdr->imageHeader->GetFsblFwSizeIh(),
+            partHdr->partition->section->Data.get() + partHdr->imageHeader->GetFsblFwSizeIh(),
             partHdr->imageHeader->GetTotalPmcFwSizeIh(),
             NULL, 0,
-            encrPmcDataBuffer /* out*/,
+            encrPmcDataBuffer.get() /* out*/,
             encrPmcByteLength /* out */);
 
         if (estimatedEncrPmcLength < encrPmcByteLength)
@@ -2261,11 +2321,12 @@ void SpartanupEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHead
         }
 
         partHdr->partition->section->IncreaseLengthAndPadTo(encrFsblByteLength + encrPmcByteLength, 0x0);
-        memset(partHdr->partition->section->Data, 0, encrFsblByteLength + encrPmcByteLength);
+        memset(partHdr->partition->section->Data.get(), 0, encrFsblByteLength + encrPmcByteLength);
         if (encrFsblByteLength != 0)
-            memcpy(partHdr->partition->section->Data, encrFsblDataBuffer, encrFsblByteLength);
-
-        memcpy(partHdr->partition->section->Data + encrFsblByteLength, encrPmcDataBuffer, encrPmcByteLength);
+        {
+            memcpy(partHdr->partition->section->Data.get(), encrFsblDataBuffer.get(), encrFsblByteLength);
+        }
+        memcpy(partHdr->partition->section->Data.get() + encrFsblByteLength, encrPmcDataBuffer.get(), encrPmcByteLength);
 
         partHdr->imageHeader->SetTotalPmcFwSizeIh(encrPmcByteLength);
         partHdr->imageHeader->SetTotalFsblFwSizeIh(encrFsblByteLength);
@@ -2273,15 +2334,13 @@ void SpartanupEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHead
 
         LOG_INFO("Encrypted the partition - %s", partHdr->partition->section->Name.c_str());
         bi.options.CloseEncryptionDumpFile();
-        delete[] encrFsblDataBuffer;
-        delete[] encrPmcDataBuffer;
         return;
     }
     else if (isBootloader && partHdr->imageHeader->GetPmcFwSizeIh() == 0)
     {
         uint32_t encryptedLength;
         uint32_t estimatedEncrLength = partHdr->partition->section->Length + totalBlocksOverhead;
-        uint8_t* encryptedDataBuffer = new uint8_t[estimatedEncrLength];
+        auto encryptedDataBuffer = std::make_unique<uint8_t[]>(estimatedEncrLength);
 
 
         uint32_t estimatedTotalFsblLength = estimatedEncrLength;
@@ -2301,7 +2360,7 @@ void SpartanupEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHead
             }
         }
 
-        SpartanupBootHeaderStructure* bh = (SpartanupBootHeaderStructure*)bi.bootHeader->section->Data;
+        SpartanupBootHeaderStructure* bh = (SpartanupBootHeaderStructure*)bi.bootHeader->section->Data.get();
         bh->plmLength = partHdr->imageHeader->GetFsblFwSizeIh();
         bh->pmcCdoLength = 0;
         bh->totalPlmLength = estimatedTotalFsblLength;
@@ -2343,47 +2402,45 @@ void SpartanupEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHead
         }
 
         bh->headerChecksum = bi.bootHeader->ComputeWordChecksum(&bh->widthDetectionWord, bi.bootHeader->GetBHChecksumDataSize());
-        //LOG_DUMP_BYTES(bi.bootHeader->section->Data, bi.bootHeader->GetBootHeaderSize());
+        //LOG_DUMP_BYTES(bi.bootHeader->section->Data.get(), bi.bootHeader->GetBootHeaderSize());
 
         ChunkifyAndEncrypt(options,
-            partHdr->partition->section->Data,
+            partHdr->partition->section->Data.get(),
             partHdr->imageHeader->GetFsblFwSizeIh(), NULL, 0,
-            //bi.bootHeader->section->Data + sizeof(VersalSmapWidthTable),
+            //bi.bootHeader->section->Data.get() + sizeof(VersalSmapWidthTable),
             //sizeof(VersalBootHeaderStructure) - sizeof(VersalSmapWidthTable),
-            encryptedDataBuffer /* out*/,
-            encryptedLength /* out */);
+                encryptedDataBuffer.get() /* out*/,
+                encryptedLength /* out */);
 
-        partHdr->partition->section->IncreaseLengthAndPadTo(encryptedLength, 0x0);
-        memcpy(partHdr->partition->section->Data, encryptedDataBuffer, encryptedLength);
+            partHdr->partition->section->IncreaseLengthAndPadTo(encryptedLength, 0x0);
+            memcpy(partHdr->partition->section->Data.get(), encryptedDataBuffer.get(), encryptedLength);
         partHdr->partition->section->Length = encryptedLength;
         partHdr->imageHeader->SetTotalFsblFwSizeIh(encryptedLength);
 
         LOG_INFO("Encrypted the partition - %s", partHdr->partition->section->Name.c_str());
         bi.options.CloseEncryptionDumpFile();
-        delete[] encryptedDataBuffer;
         return;
     }
     else
     {
         uint32_t encryptedLength;
         uint32_t estimatedEncrLength = partHdr->partition->section->Length + totalBlocksOverhead;
-        uint8_t* encryptedDataBuffer = new uint8_t[estimatedEncrLength];
+        auto encryptedDataBuffer = std::make_unique<uint8_t[]>(estimatedEncrLength);
 
         ChunkifyAndEncrypt(options,
-            partHdr->partition->section->Data,
+            partHdr->partition->section->Data.get(),
             (uint32_t)partHdr->partition->section->Length,
             NULL, 0,
-            encryptedDataBuffer /* out*/,
-            encryptedLength /* out */);
+                encryptedDataBuffer.get() /* out*/,
+                encryptedLength /* out */);
 
-        partHdr->partition->section->IncreaseLengthAndPadTo(encryptedLength, 0x0);
-        memcpy(partHdr->partition->section->Data, encryptedDataBuffer, encryptedLength);
+            partHdr->partition->section->IncreaseLengthAndPadTo(encryptedLength, 0x0);
+            memcpy(partHdr->partition->section->Data.get(), encryptedDataBuffer.get(), encryptedLength);
         partHdr->partition->section->Length = encryptedLength;
         partHdr->imageHeader->SetTotalFsblFwSizeIh(encryptedLength);
 
         LOG_INFO("Encrypted the partition - %s", partHdr->partition->section->Name.c_str());
         bi.options.CloseEncryptionDumpFile();
-        delete[] encryptedDataBuffer;
         return;
     }
 }

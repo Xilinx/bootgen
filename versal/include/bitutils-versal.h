@@ -24,6 +24,7 @@
 ***********************************************   H E A D E R   F I L E S   ***
 -------------------------------------------------------------------------------
 */
+#include <memory>
 #include "bitutils.h"
 
 /* Forward Class Reference */
@@ -44,7 +45,7 @@ public:
     VersalBitFile(std::istream& stream);
     ~VersalBitFile();
 
-    OutputStream* GetOutputStreamType(void);
+    std::unique_ptr<OutputStream> GetOutputStreamType(void);
     bool GetBitStripFlag(void);
     bool GetBitPadFlag(bool);
     bool GetPreserveHeaderFlag(void);
@@ -55,7 +56,7 @@ public:
 
     protected:
         Encryption::Type encryptType;
-        OutputStream_BE* temp;
+        std::unique_ptr<OutputStream_BE> temp;
 };
 
 #endif

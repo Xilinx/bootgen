@@ -77,23 +77,23 @@ File::Type OutputFile::GetType(const std::string& filename)
 OutputFile* OutputFile::Factory(const std::string& filename) 
  {
     File::Type type = GetType(filename);
-    OutputFile* file = NULL;
+    std::unique_ptr<OutputFile> file = nullptr;
 
     switch(type)
     {
         case File::MCS:
-            file = new McsFile();
+            file = std::make_unique<McsFile>();
             break;
 
         case File::BIN:
-            file = new BinFile();
+            file = std::make_unique<BinFile>();
             break;
         
         default:
             LOG_ERROR("File extension (type %d) not supported for %s",type,filename.c_str());
     }
     file->filename = filename;
-    return file;
+    return file.release(); // Transfer ownership to caller
 }
 
 /******************************************************************************/
@@ -120,7 +120,11 @@ static std::string AddSplitModeExtention(std::string fName, File::Type type, boo
 /******************************************************************************/
 void OutputFile::Output(Options& options, Binary& cache) 
 {
-    if (options.GetArchType() == Arch::VERSAL  || options.GetArchType() == Arch::SPARTANUP)
+    if (options.GetArchType() == Arch::SPARTANUP)
+    {
+        OutputSpartanup(options, cache);
+    }
+    else if (options.GetArchType() == Arch::VERSAL)
     {
         OutputVersal(options, cache);
     }
@@ -206,7 +210,7 @@ void OutputFile::Output(Options& options, Binary& cache)
             }
 
             /* Write to output file */
-            Write(section.Address, section.Length, section.Data);
+            Write(section.Address, section.Length, section.Data.get());
             runningAddress = section.Address + section.Length;
         }
 
@@ -386,7 +390,7 @@ void OutputFile::WritePostscriptAndClose(void)
 void FpgaPartitionOutput::GeneratePartitionFiles(BootImage& bi, Binary& cache)
 {
     SectionList tempSecList;
-    Binary::Address_t *addr = new Binary::Address_t [bi.imageList.size()];
+    auto addr = std::make_unique<Binary::Address_t[]>(bi.imageList.size());
 
     int i = 0;
     for(std::list<ImageHeader*>::iterator image = bi.imageList.begin(); image != bi.imageList.end();  image++, i++) 
@@ -400,12 +404,11 @@ void FpgaPartitionOutput::GeneratePartitionFiles(BootImage& bi, Binary& cache)
 
         if(section.isPartitionData)
         {
-            tempSecList.push_back(&section);
             section.Address = addr[j++];
+            tempSecList.push_back(std::move(*i));
         }
     }
-    cache.Sections = tempSecList;
-    delete[] addr;
+    cache.Sections = std::move(tempSecList);
 }
 
 /******************************************************************************/

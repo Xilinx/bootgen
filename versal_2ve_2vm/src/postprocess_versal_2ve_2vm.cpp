@@ -15,9 +15,8 @@
 * limitations under the License.
 ******************************************************************************/
 
-#include "imageheadertable-versal.h"
+#include "imageheadertable-versal_2ve_2vm.h"
 #include "partitionheadertable-versal.h"
-#include "bootimage-versal.h"
 #include "bootimage.h"
 extern "C" {
 #include "cdo-npi.h"
@@ -32,12 +31,12 @@ bool Versal_2ve_2vmImageHeader::PostProcessCdo(const uint8_t* cdo_data, Binary::
     }
     if (new_data == NULL) return false;
     SetPartitionType(PartitionType::CONFIG_DATA_OBJ);
-    PartitionHeader* hdr = new VersalPartitionHeader(this, 0);
+    auto hdr = std::make_unique<VersalPartitionHeader>(this, 0);
     hdr->firstValidIndex = true;
     hdr->execAddress = 0;
     hdr->loadAddress = 0xFFFFFFFFFFFFFFFF;
     hdr->partitionSize = hdr->transferSize = new_size;
-    hdr->partition = new VersalPartition(hdr, (uint8_t*)new_data, new_size);
-    partitionHeaderList.push_back(hdr);
+    hdr->partition = std::make_unique<VersalPartition>(hdr.get(), (uint8_t*)new_data, new_size);
+    partitionHeaderList.push_back(hdr.release());
     return true;
 }

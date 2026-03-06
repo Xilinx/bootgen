@@ -46,7 +46,7 @@ void ZynqAuthenticationContext::CopyPartitionSignature(BootImage& bi,
 {
     LOG_TRACE("Copying the partition signature into Authentication Certificate");
 
-    uint8_t* shaHash = new uint8_t[hashLength];
+    auto shaHash = std::make_unique<uint8_t[]>(hashLength);
 
     /* Calculate the length of the partiton that is to be hashed,Since bs is authenticated in chunks.
        This can be changed with authblock[default is 8].*/
@@ -62,50 +62,50 @@ void ZynqAuthenticationContext::CopyPartitionSignature(BootImage& bi,
         hashSecLen = ((*section)->Length) - (authblocksize * acIndex);
     }
 
-    uint8_t *partitionAc = new uint8_t[hashSecLen + (acSection->Length - signatureLength)];
+    auto partitionAc = std::make_unique<uint8_t[]>(hashSecLen + (acSection->Length - signatureLength));
 
     /* Update with Partition */
-    memcpy(partitionAc, (*section)->Data + (authblocksize * acIndex), hashSecLen);
+    memcpy(partitionAc.get(), (*section)->Data.get() + (authblocksize * acIndex), hashSecLen);
 
     /* Update with authentication certificate except the last 256 bytes, which is the partition signature, 
        that we are calculating now. Once calculated, the partition signature will sit there */
-    memcpy(partitionAc + hashSecLen, acSection->Data, acSection->Length - signatureLength);
+    memcpy(partitionAc.get() + hashSecLen, acSection->Data.get(), acSection->Length - signatureLength);
 
     uint32_t start = (*section)->Address;
     uint32_t end = (acSection->Address + acSection->Length) - signatureLength;
     LOG_TRACE("Hashing %s from 0x%x to 0x%x", acSection->Name.c_str(), start, end);
-    LOG_DUMP_BYTES((*section)->Data + (authblocksize * acIndex), 32);
+    LOG_DUMP_BYTES((*section)->Data.get() + (authblocksize * acIndex), 32);
     LOG_OUT(" ... ");
-    LOG_DUMP_BYTES((*section)->Data + (authblocksize * acIndex) + hashSecLen - hashLength, hashLength);
+    LOG_DUMP_BYTES((*section)->Data.get() + (authblocksize * acIndex) + hashSecLen - hashLength, hashLength);
     LOG_OUT(" ... \n");
 
     /* Calculate the hash */
     /*  Partition signatures are used by only FSBL / XilSecure / XilFPGA except BL Sign - so partition
         hashes - always NIST except for bootloader
         Bootloader Sign is used by ROM - so Bootloader hash - always Keccak */
-    hash->CalculateHash(!(*section)->isBootloader, partitionAc, hashSecLen + (acSection->Length - signatureLength), shaHash);
+    hash->CalculateHash(!(*section)->isBootloader, partitionAc.get(), hashSecLen + (acSection->Length - signatureLength), shaHash.get());
 
     LOG_TRACE("Hash of %s (LE):", acSection->Name.c_str());
-    LOG_DUMP_BYTES(shaHash, hashLength);
+    LOG_DUMP_BYTES(shaHash.get(), hashLength);
 
     /* Create the PKCS padding for the hash */
-    uint8_t* shaHashPadded = new uint8_t[signatureLength];
-    CreatePadding(shaHashPadded, shaHash);
+    auto shaHashPadded = std::make_unique<uint8_t[]>(signatureLength);
+    CreatePadding(shaHashPadded.get(), shaHash.get());
 
     if (bi.options.DoGenerateHashes())
     {
         std::string hashfilename = acSection->Name;
-        WritePaddedSHAFile(shaHashPadded, hashfilename);
+        WritePaddedSHAFile(shaHashPadded.get(), hashfilename);
     }
 
     /* Sign the hash */
-    authAlgorithm->CreateSignature(shaHashPadded, (uint8_t*)secondaryKey, signatureBlock);
+    authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)secondaryKey.get(), signatureBlock);
     RearrangeEndianess(signatureBlock, signatureLength);
     LOG_TRACE("The partition signature is copied into Authentication Certificate");
 
     /* Delete the temporarily created arrays */
-    delete[] shaHash;
-    delete[] shaHashPadded;
+    // unique_ptr handles deletion
+    // unique_ptr handles deletion
     acIndex++;
 }
 
@@ -115,15 +115,18 @@ ZynqAuthenticationContext::ZynqAuthenticationContext()
     signatureLength = RSA_SIGN_LENGTH_ZYNQ;
     SetAuthenticationKeyLength(RSA_2048_KEY_LENGTH);
     hashType = AuthHash::Sha2;
-    spksignature = new uint8_t[signatureLength];
+    spksignature = std::make_unique<uint8_t[]>(signatureLength);
     spkSignLoaded = false;
-    primaryKey = new Key2048("Primary Key");
-    secondaryKey = new Key2048("Secondary Key");
-    memset(spksignature, 0, signatureLength);
+    primaryKey = std::make_unique<Key2048>("Primary Key");
+    secondaryKey = std::make_unique<Key2048>("Secondary Key");
+    ownsPrimaryKey = true;     // We own these keys
+    ownsSecondaryKey = true;   // We own these keys
+    memset(spksignature.get(), 0, signatureLength);
     memset(udf_data, 0, UDF_DATA_SIZE);
 
-    authAlgorithm = new RSAAuthenticationAlgorithm();
-    authCertificate = new RSA2048AuthenticationCertificate(this);
+    authAlgorithm = std::make_unique<RSAAuthenticationAlgorithm>();
+    ownsAuthAlgorithm = true;  // We own this
+    authCertificate = std::make_unique<RSA2048AuthenticationCertificate>(this);
     certSize = sizeof(AuthCertificate2048Structure);
 }
 
@@ -133,16 +136,36 @@ ZynqAuthenticationContext::ZynqAuthenticationContext(const AuthenticationContext
     signatureLength = RSA_SIGN_LENGTH_ZYNQ;
     SetAuthenticationKeyLength(RSA_2048_KEY_LENGTH);
     hashType = AuthHash::Sha2;
-    primaryKey = new Key2048("Primary Key");
-    secondaryKey = new Key2048("Secondary Key");
-    spksignature = new uint8_t[signatureLength];
+    spksignature = std::make_unique<uint8_t[]>(signatureLength);
     spkSignLoaded = refAuthContext->spkSignLoaded;
-    primaryKey = refAuthContext->primaryKey;
-    secondaryKey = refAuthContext->secondaryKey;
-    memcpy(spksignature, refAuthContext->spksignature, signatureLength);
+    
+    // Deep copy keys to avoid use-after-free (don't share pointers between contexts)
+    primaryKey = std::make_unique<Key2048>("Primary Key");
+    if (refAuthContext->primaryKey && refAuthContext->primaryKey->Loaded) {
+        // Copy key data (Key2048 = 2048 bits = 256 bytes)
+        memcpy(primaryKey->N.get(), refAuthContext->primaryKey->N.get(), RSA_2048_KEY_LENGTH / 8);
+        memcpy(primaryKey->N_ext.get(), refAuthContext->primaryKey->N_ext.get(), RSA_2048_KEY_LENGTH / 8);
+        memcpy(primaryKey->E.get(), refAuthContext->primaryKey->E.get(), RSA_2048_KEY_LENGTH / 8);
+        primaryKey->Loaded = true;
+        primaryKey->isSecret = refAuthContext->primaryKey->isSecret;
+    }
+    ownsPrimaryKey = true;    // We own this copy
+    
+    if (refAuthContext->secondaryKey) {
+        secondaryKey = std::make_unique<Key2048>(*dynamic_cast<Key2048*>(refAuthContext->secondaryKey.get()));
+    } else {
+        secondaryKey = std::make_unique<Key2048>("Secondary Key");
+    }
+    ownsSecondaryKey = true;  // We own this copy
+    
+    memcpy(spksignature.get(), refAuthContext->spksignature.get(), signatureLength);
     memcpy(udf_data, refAuthContext->udf_data, sizeof(udf_data));
-    authAlgorithm = refAuthContext->authAlgorithm;
-    authCertificate = refAuthContext->authCertificate;
+    
+    // Create our OWN authAlgorithm (deep copy instead of sharing to avoid use-after-free)
+    authAlgorithm = std::make_unique<RSAAuthenticationAlgorithm>();
+    ownsAuthAlgorithm = true;  // We own this
+    
+    // authCertificate is not copied (non-owning reference)
     spkSignRequested = refAuthContext->spkSignRequested;
     presignFile = refAuthContext->presignFile;
     udfFile = refAuthContext->udfFile;
@@ -155,35 +178,26 @@ ZynqAuthenticationContext::ZynqAuthenticationContext(const AuthCertificate2048St
     signatureLength = RSA_SIGN_LENGTH_ZYNQ;
     SetAuthenticationKeyLength(RSA_2048_KEY_LENGTH);
     hashType = AuthHash::Sha2;
-    spksignature = new uint8_t[signatureLength];
+    spksignature = std::make_unique<uint8_t[]>(signatureLength);
     spkSignLoaded = true;
-    primaryKey = new Key2048("Primary Key");
-    secondaryKey = new Key2048("Secondary Key");
+    primaryKey = std::make_unique<Key2048>("Primary Key");
+    secondaryKey = std::make_unique<Key2048>("Secondary Key");
+    ownsPrimaryKey = true;     // We own these keys
+    ownsSecondaryKey = true;   // We own these keys
     primaryKey->Import(&existingCert->acPpk, "Primary Key");
     secondaryKey->Import(&existingCert->acSpk, "Secondary Key");
-    memcpy(spksignature, existingCert->acSpkSignature.Signature, signatureLength);
+    memcpy(spksignature.get(), existingCert->acSpkSignature.Signature, signatureLength);
     memcpy(udf_data, existingCert->acUdf, UDF_DATA_SIZE);
     certSize = sizeof(AuthCertificate2048Structure);
-    authAlgorithm = new RSAAuthenticationAlgorithm();
+    authAlgorithm = std::make_unique<RSAAuthenticationAlgorithm>();
+    ownsAuthAlgorithm = true;  // We own this
 }
 
 /******************************************************************************/
 ZynqAuthenticationContext::~ZynqAuthenticationContext()
 {
-    if (spksignature != NULL)
-    {
-        delete spksignature;
-    }
-
-    if (primaryKey != NULL)
-    {
-        delete primaryKey;
-    }
-
-    if (secondaryKey != NULL)
-    {
-        delete secondaryKey;
-    }
+    // spksignature, primaryKey, secondaryKey, hash, authAlgorithm
+    // are all automatically destroyed when the object goes out of scope
 }
 
 /******************************************************************************/
@@ -227,10 +241,11 @@ void ZynqAuthenticationContext::CreatePadding(uint8_t * signature, const uint8_t
 }
 
 /******************************************************************************/
-Section* ZynqAuthenticationContext::CreateCertificate(BootImage& bi, Binary& cache, Section* dataSection)
+Section* ZynqAuthenticationContext::CreateCertificate(BootImage& bi, Binary& cache, Section* dataSection, bool isBootloader)
 {
     LOG_INFO("Creating Authentication Certificate for section - %s", dataSection->Name.c_str());
-    hash = bi.hash;
+    hash = bi.hash.get();
+    ownsHash = false;  // Non-owning pointer to bi.hash
     hashLength = hash->GetHashLength();
 
     /* Partition size must be 64-byte aligned */
@@ -275,11 +290,11 @@ Section* ZynqAuthenticationContext::CreateCertificate(BootImage& bi, Binary& cac
         LOG_ERROR("Authentication Error !!!\n           Either PSK or SPK signature file must be specified in BIF file.");
     }
 
-    Section* acSection = new Section(dataSection->Name + ".sha256", certSize);
+    auto acSection = std::make_unique<Section>(dataSection->Name + ".sha256", certSize);
     acSection->isCertificate = true;
     acSection->index = dataSection->index;
-    cache.Sections.push_back(acSection);
-    AuthCertificate2048Structure* authCert = (AuthCertificate2048Structure*)acSection->Data;
+    AuthCertificate2048Structure* authCert = (AuthCertificate2048Structure*)acSection->Data.get();
+    cache.Sections.push_back(std::move(acSection));
     LOG_TRACE("Creating new section for certificate - %s", acSection->Name.c_str());
     uint32_t x = sizeof(AuthCertificate2048Structure);
     if (x != certSize)
@@ -300,13 +315,13 @@ Section* ZynqAuthenticationContext::CreateCertificate(BootImage& bi, Binary& cac
     primaryKey->Export(&authCert->acPpk);
     secondaryKey->Export(&authCert->acSpk);
     CopySPKSignature(&authCert->acSpkSignature);
-    return acSection;
+    return acSection.release();
 }
 
 /******************************************************************************/
 void ZynqAuthenticationContext::Link(BootImage& bi, std::list<Section*> sections, AuthenticationCertificate* cert)
 {
-    ::AuthCertificate2048Structure* authCert = (AuthCertificate2048Structure*)cert->section->Data;
+    ::AuthCertificate2048Structure* authCert = (AuthCertificate2048Structure*)cert->section->Data.get();
     uint8_t* signatureBlock = (uint8_t*)&authCert->acPartitionSignature;
 
     if (presignFile == "")
@@ -327,10 +342,10 @@ void ZynqAuthenticationContext::GenerateSPKHash(uint8_t* shaHashPadded)
     LOG_TRACE("Calculating the SPK hash");
     ACKey2048 spkFull;
     secondaryKey->Export(&spkFull);
-    uint8_t* shaHash = new uint8_t[hashLength];
-    hash->CalculateHash(false, (uint8_t*)&spkFull, sizeof(spkFull), shaHash);
-    CreatePadding(shaHashPadded, shaHash);
-    delete[] shaHash;
+    auto shaHash = std::make_unique<uint8_t[]>(hashLength);
+    hash->CalculateHash(false, (uint8_t*)&spkFull, sizeof(spkFull), shaHash.get());
+    CreatePadding(shaHashPadded, shaHash.get());
+    // unique_ptr handles deletion
 }
 
 /******************************************************************************/
@@ -338,7 +353,7 @@ void ZynqAuthenticationContext::CopySPKSignature(ACSignature2048* ptr)
 {
     CreateSPKSignature();
     LOG_TRACE("Copying the SPK signature into the Authentication Certificate");
-    memcpy(ptr, spksignature, signatureLength);
+    memcpy(ptr, spksignature.get(), signatureLength);
 }
 
 /******************************************************************************/
@@ -348,8 +363,8 @@ void ZynqAuthenticationContext::GeneratePPKHash(const std::string& filename)
     primaryKey->Export(&ppkTemp);
 
     hashLength = hash->GetHashLength();
-    uint8_t* rsa_signature = new uint8_t[hashLength];
-    hash->CalculateHash(false, (uint8_t*)&ppkTemp, sizeof(ACKey2048), rsa_signature);
+    auto rsa_signature = std::make_unique<uint8_t[]>(hashLength);
+    hash->CalculateHash(false, (uint8_t*)&ppkTemp, sizeof(ACKey2048), rsa_signature.get());
 
     FILE* filePtr;
     if ((filePtr = fopen(filename.c_str(), "w")) == NULL)

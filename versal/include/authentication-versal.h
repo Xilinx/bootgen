@@ -29,6 +29,7 @@
 #include <string>
 #include <list>
 #include <string.h>
+#include <memory>
 #include "binary.h"
 //#include "baseclass.h"
 #include "bootgenenum.h"
@@ -108,7 +109,7 @@ typedef struct
     ACSignature4096       acPartitionSignature;    // 0xC60
 } AuthCertificate4096Sha3PaddingStructure;
 
-/* ECDSA Authentication Certificate */
+/* ECDSA Authentication Certificate - uses Versal-specific structures with padding */
 typedef struct
 {
     uint32_t            acHeader;                  // 0x000
@@ -261,7 +262,7 @@ public:
 
     uint32_t getCertificateSize(void) { return certSize; }
     void AddAuthCertSizeToTotalFSBLSize(PartitionHeader* header);
-    Section* CreateCertificate(BootImage& bi, Binary& cache, Section* dataSection);
+    Section* CreateCertificate(BootImage& bi, Binary& cache, Section* dataSection, bool isBootloader = false);
     void GenerateIHTHash(BootImage& bi, uint8_t* sha_hash_padded);
     void GenerateBHHash(BootImage& bi, uint8_t* sha_hash_padded);
     void GenerateSPKHash(uint8_t * sha_hash_padded);
@@ -274,9 +275,9 @@ public:
     void ResizeIfNecessary(Section* section);
     void LoadUdfData(const std::string& filename, uint8_t* signature);
     void CreateSPKSignature(void);
-    void CreateAuthJtagImage(uint8_t * buffer, AuthJtagInfo authJtagAttributes);
+    void CreateAuthJtagImage(Options& options, uint8_t * buffer, AuthJtagInfo authJtagAttributes);
     void SetKeyLength(Authentication::Type type);
-    AuthenticationAlgorithm* GetAuthenticationAlgorithm(Authentication::Type type);
+    std::unique_ptr<AuthenticationAlgorithm> GetAuthenticationAlgorithm(Authentication::Type type);
     uint32_t GetCertificateSize();
     void SetHashinOptionalData(BootImage& bi);
 

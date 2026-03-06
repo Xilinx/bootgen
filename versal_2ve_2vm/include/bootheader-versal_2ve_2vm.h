@@ -151,6 +151,7 @@ public:
 
     void Build(BootImage & bi, Binary & cache);
     void Link(BootImage& bi);
+    void RefreshStructPointers();  // Update bHTable/smapTable after section Data reallocation
     void SetBHForPartialBootImage();
     void SetBHForXIP(BootImage & bi);
     void BuildRegInitTable(Options& options);
@@ -215,12 +216,12 @@ public:
 
     Arch::Type arch;
 private:
-    Versal_2ve_2vmBootHeaderStructure *bHTable;
-    Versal_2ve_2vmSmapWidthTable *smapTable;
+    Versal_2ve_2vmBootHeaderStructure *bHTable;  // Pointer into section->Data, not owned
+    Versal_2ve_2vmSmapWidthTable *smapTable;     // Pointer into section->Data, not owned
     bool kekIvMust;
     std::string kekIvFile;
-    uint8_t* pufData;
-    uint8_t* bhKeyData;
-    uint8_t* ivData;
+    std::unique_ptr<uint8_t[]> pufData;
+    std::unique_ptr<uint8_t[]> bhKeyData;
+    std::unique_ptr<uint8_t[]> ivData;
 };
 #endif

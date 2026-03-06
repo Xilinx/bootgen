@@ -44,7 +44,7 @@ public:
     Versal_2ve_2vmBitFile(std::istream& stream);
     ~Versal_2ve_2vmBitFile();
 
-    OutputStream* GetOutputStreamType(void);
+    std::unique_ptr<OutputStream> GetOutputStreamType(void);
     bool GetBitStripFlag(void);
     bool GetBitPadFlag(bool);
     bool GetPreserveHeaderFlag(void);
@@ -55,7 +55,7 @@ public:
 
     protected:
         Encryption::Type encryptType;
-        OutputStream_BE* temp;
+        std::unique_ptr<OutputStream_BE> temp;
 };
 
 #endif

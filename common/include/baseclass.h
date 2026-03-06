@@ -43,7 +43,12 @@ public:
         checksum ^= 0xFFFFFFFF; 
         return checksum;
     }
+    
+    // Helper to get section pointer  
+    Section* GetSectionPtr() const { return section; }
 
+    // CRITICAL: Parent objects use RAW pointer! Cache owns the section (unique_ptr)
+    // This matches original design where cache.Sections owns and deletes all sections
     Section* section;
 };
 

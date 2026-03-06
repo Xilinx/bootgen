@@ -25,6 +25,7 @@
 ***********************************************   H E A D E R   F I L E S   ***
 -------------------------------------------------------------------------------
 */
+#include <memory>
 #include "authentication.h"
 
 /*
@@ -67,7 +68,7 @@ public:
     ~ZynqMpAuthenticationContext();
 
     uint32_t GetCertificateSize(void) { return certSize; }
-    Section* CreateCertificate(BootImage& bi, Binary& cache, Section* dataSection);
+    Section* CreateCertificate(BootImage& bi, Binary& cache, Section* dataSection, bool isBootloader = false);
     void Link(BootImage& bi, std::list<Section*> sections, AuthenticationCertificate* cert);
     void GeneratePPKHash(const std::string& filename);
     void GenerateSPKHash(uint8_t* sha256_hash_padded);

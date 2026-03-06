@@ -57,17 +57,17 @@ void PartitionHeaderTable::Build(BootImage &bi, Binary& cache)
         }
     }
 
-    PartitionHeader* nullHeader = NULL;
+    auto nullHeader = std::unique_ptr<PartitionHeader>(nullptr);
     if (bi.options.archType == Arch::ZYNQMP)
     {
-        nullHeader = new ZynqMpPartitionHeader(NULL, 0);
+        nullHeader = std::make_unique<ZynqMpPartitionHeader>(nullptr, 0);
     }
     else
     {
-        nullHeader = new ZynqPartitionHeader(NULL, 0);
+        nullHeader = std::make_unique<ZynqPartitionHeader>(nullptr, 0);
     }
 
-    if (nullHeader != NULL)
+    if (nullHeader != nullptr)
     {
         nullHeader->SetChecksum();
         nullHeader->Build(bi, cache);
@@ -97,7 +97,7 @@ void PartitionHeaderTable::Build(BootImage &bi, Binary& cache)
     {
         LOG_INFO("Creating Header Authentication Certificate");
         
-        AuthenticationContext* biAuth = NULL;
+        std::unique_ptr<AuthenticationContext> biAuth = nullptr;
         for (std::list<ImageHeader*>::iterator image = bi.imageList.begin(); image != bi.imageList.end(); image++)
         {
             AuthenticationContext* imageAuth = (AuthenticationContext*)(*image)->GetAuthContext();
@@ -111,12 +111,12 @@ void PartitionHeaderTable::Build(BootImage &bi, Binary& cache)
                 if (bi.options.archType == Arch::ZYNQMP)
                 {
                     AuthenticationContext::SetAuthenticationKeyLength(RSA_4096_KEY_LENGTH);
-                    biAuth = (AuthenticationContext*) new ZynqMpAuthenticationContext(imageAuth);
+                    biAuth = std::make_unique<ZynqMpAuthenticationContext>(imageAuth);
                 }
                 else
                 {
                     AuthenticationContext::SetAuthenticationKeyLength(RSA_2048_KEY_LENGTH);
-                    biAuth = (AuthenticationContext*) new ZynqAuthenticationContext(imageAuth);
+                    biAuth = std::make_unique<ZynqAuthenticationContext>(imageAuth);
                 }
                 biAuth->hashType = bi.GetAuthHashAlgo();
             }
@@ -125,12 +125,12 @@ void PartitionHeaderTable::Build(BootImage &bi, Binary& cache)
                 if (bi.options.archType == Arch::ZYNQMP)
                 {
                     AuthenticationContext::SetAuthenticationKeyLength(RSA_4096_KEY_LENGTH);
-                    biAuth = (AuthenticationContext*) new ZynqMpAuthenticationContext(imageAuth);
+                    biAuth = std::make_unique<ZynqMpAuthenticationContext>(imageAuth);
                 }
                 else
                 {
                     AuthenticationContext::SetAuthenticationKeyLength(RSA_2048_KEY_LENGTH);
-                    biAuth = (AuthenticationContext*) new ZynqAuthenticationContext(imageAuth);
+                    biAuth = std::make_unique<ZynqAuthenticationContext>(imageAuth);
                 }
                 biAuth->hashType = bi.GetAuthHashAlgo();
             }
@@ -140,12 +140,12 @@ void PartitionHeaderTable::Build(BootImage &bi, Binary& cache)
             if (bi.options.archType == Arch::ZYNQMP)
             {
                 AuthenticationContext::SetAuthenticationKeyLength(RSA_4096_KEY_LENGTH);
-                biAuth = (AuthenticationContext*) new ZynqMpAuthenticationContext(bi.currentAuthCtx);
+                biAuth = std::make_unique<ZynqMpAuthenticationContext>(bi.currentAuthCtx.get());
             }
             else
             {
                 AuthenticationContext::SetAuthenticationKeyLength(RSA_2048_KEY_LENGTH);
-                biAuth = (AuthenticationContext*) new ZynqAuthenticationContext(bi.currentAuthCtx);
+                biAuth = std::make_unique<ZynqAuthenticationContext>(bi.currentAuthCtx.get());
             }
             biAuth->hashType = bi.GetAuthHashAlgo();
         }
@@ -183,7 +183,7 @@ void PartitionHeaderTable::Build(BootImage &bi, Binary& cache)
         biAuth->SetPresignFile(bi.bifOptions->GetHeaderSignatureFile());
         
         /* Resize sections to guarantee size is mod 64. */
-        ImageHeaderTable* iht = bi.imageHeaderTable;
+        ImageHeaderTable* iht = bi.imageHeaderTable.get();
         biAuth->ResizeIfNecessary(iht->section);
         for( std::list<ImageHeader*>::iterator ih = bi.imageList.begin(); ih !=bi.imageList.end(); ih++) 
         {
@@ -197,18 +197,20 @@ void PartitionHeaderTable::Build(BootImage &bi, Binary& cache)
         /* Header AC authentication */
         if (bi.options.archType == Arch::ZYNQMP)
         {
-            bi.headerAC = new RSA4096AuthenticationCertificate(biAuth);
+            bi.headerAC = std::make_unique<RSA4096AuthenticationCertificate>(biAuth.get());
         }
         else
         {
-            bi.headerAC = new RSA2048AuthenticationCertificate(biAuth);
+            bi.headerAC = std::make_unique<RSA2048AuthenticationCertificate>(biAuth.get());
         }
-
         bi.headerAC->Build(bi, cache, iht->section, false, true);
+        
+        // Store biAuth in container to keep it alive (headerAC holds a raw pointer to it)
+        bi.authContexts.push_back(std::move(biAuth));
     } 
     else if (bi.options.DoPadHeaderTable()) 
     {
-        if (nullHeader != NULL)
+        if (nullHeader != nullptr)
         {
             nullHeader->section->Reserve += bi.currentAuthCtx->GetCertificateSize();
         }
@@ -303,7 +305,6 @@ void PartitionHeaderTable::LinkPartitions(BootImage &bi)
 PartitionHeader::PartitionHeader(ImageHeader* imageheader, int index)
     : imageHeader(imageheader)
     , index(index)
-    , partition(NULL)
     , checksumSection(NULL)
     , headAlignment(0)
     , tailAlignment(0)
@@ -336,7 +337,6 @@ PartitionHeader::PartitionHeader(ImageHeader* imageheader, int index)
     , authBlock(0)
     , elfEndianess(Endianness::LittleEndian)
     , generateAesKeyFile(false)
-    , partitionSecHdrIv(NULL)
     , firstChunkSize(0)
     , isPmcdata(false)
     , partitionType(PartitionType::RESERVED)
@@ -354,6 +354,14 @@ PartitionHeader::PartitionHeader(ImageHeader* imageheader, int index)
 /******************************************************************************/
 PartitionHeader::~PartitionHeader()
 {
+    // partitionSecHdrIv cleanup handled by unique_ptr
+    
+    // Clean up authentication certificates to prevent memory leak (wrap in smart pointer for safe deletion)
+    for (std::list<AuthenticationCertificate*>::iterator it = ac.begin(); it != ac.end(); ++it)
+    {
+        std::unique_ptr<AuthenticationCertificate> acPtr(*it);  // Wrap for auto-delete
+    }
+    ac.clear();
 }
 
 /******************************************************************************/
@@ -361,7 +369,7 @@ void PartitionHeader::Build(BootImage& bi, Binary& cache)
 {
     if(section != NULL)
     {
-        cache.Sections.push_back(section);
+        cache.Sections.push_back(std::unique_ptr<Section>(section));
     }
 }
 

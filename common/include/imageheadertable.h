@@ -30,6 +30,8 @@
 */
 #include <vector>
 #include "authentication.h"
+#include "encryption.h"
+#include "checksum.h"
 #include "elftools.h"
 #include "cdoutils.h"
 
@@ -92,7 +94,7 @@ public:
     ImageHeader(std::ifstream& f);
     ImageHeader(uint8_t* data, uint64_t len);
     
-    virtual ~ImageHeader() {}
+    virtual ~ImageHeader();
 
     virtual void Build(BootImage& bi, Binary& cache) { return; }
     virtual void Link(BootImage &bi, PartitionHeader* partitionHeader, ImageHeader* nextImageheader) { return; }
@@ -132,8 +134,8 @@ public:
     void SetSlrPartition(bool flag) { isSlrPartition = flag; }
     void SetAuthenticationType(Authentication::Type type) { authType = type; }
     void SetAuthContext(AuthenticationContext* ctx) { Auth = ctx; }
-    void SetEncryptContext(EncryptionContext* ctx) { Encrypt = ctx; }
-    void SetChecksumContext(ChecksumContext* ctx) { Checksum = ctx; }
+    void SetEncryptContext(std::unique_ptr<EncryptionContext> ctx) { Encrypt = std::move(ctx); }
+    void SetChecksumContext(std::unique_ptr<ChecksumContext> ctx) { Checksum = std::move(ctx); }
     void SetPartOwner(PartitionOwner::Type type) { PartOwner = type; }
     void SetPartitionType(PartitionType::Type type) { partitionType = type; }
     void SetDestCpu(DestinationCPU::Type type);
@@ -194,8 +196,8 @@ public:
 
     Authentication::Type GetAuthenticationType(void) { return authType; }
     AuthenticationContext* GetAuthContext(void) { return Auth; }
-    EncryptionContext* GetEncryptContext(void) { return Encrypt; }
-    ChecksumContext* GetChecksumContext(void) { return Checksum; }
+    EncryptionContext* GetEncryptContext(void) { return Encrypt.get(); }
+    ChecksumContext* GetChecksumContext(void) { return Checksum.get(); }
     PartitionOwner::Type GetPartOwner(void) { return PartOwner; }
     PartitionType::Type GetPartitionType(void) { return partitionType; }
     DestinationCPU::Type GetDestCpu(void) { return destCpu; }
@@ -343,9 +345,9 @@ protected:
 
     bool delayAuth;
     Authentication::Type authType;
-    AuthenticationContext* Auth;
-    EncryptionContext* Encrypt;
-    ChecksumContext* Checksum;
+    AuthenticationContext* Auth;  // Non-owning pointer - context owned elsewhere
+    std::unique_ptr<EncryptionContext> Encrypt;
+    std::unique_ptr<ChecksumContext> Checksum;
     PartitionType::Type partitionType;
     PartitionOwner::Type PartOwner;
     DestinationCPU::Type destCpu;
@@ -386,7 +388,7 @@ protected:
     virtual void ImportFpgaDataFile(BootImage& bi) { };
     uint8_t* CombineElfSections(ElfFormat* elf, Binary::Length_t* size, Binary::Address_t* load_addr);
     uint8_t* GetElfSections(ElfFormat* elf, Binary::Length_t* size, Binary::Address_t* load_addr, uint32_t iprog);
-    virtual void CreateElfPartitions(BootImage& bi, ElfFormat* elf, uint8_t proc_state) {};
+    virtual void CreateElfPartitions(BootImage& bi, std::unique_ptr<ElfFormat>& elf, uint8_t proc_state) {};
 
     bool slaveBootSplitMode;
     uint32_t fullBhSize;
@@ -412,16 +414,20 @@ public:
         , metaHeaderLength(0)
         , metaHdrSecHdrIv(NULL)
         , metaHdrKeySrc(KeySource::None)
-        , encrypt(NULL)
-        , iht_optional_data(NULL)
+        , encrypt(nullptr)
+        , iht_optional_data(nullptr)
         , iht_optional_data_length(0)
         , idCodeCheck(0)
         , nonApuSubSysCnt(0)
-        , hashBlockSection(NULL)
+        , hashBlockSection(nullptr)
         , hashBlockSectionLength(0)
     { }
 
-    virtual ~ImageHeaderTable() {}
+    virtual ~ImageHeaderTable() 
+    {
+        // metaHdrSecHdrIv cleanup handled by unique_ptr
+        // Smart pointer automatically cleans up encrypt context
+    }
 
     virtual void Build(BootImage& bi, Binary& cache);
     virtual void Link(BootImage& bi);
@@ -445,7 +451,7 @@ public:
     virtual void SetBootDeviceAddress(uint32_t address) {};
     virtual void ValidateSecurityCombinations(Authentication::Type, Encryption::Type, Checksum::Type) = 0;
     virtual void SetOptionalData(uint32_t*, uint32_t) {};
-    virtual void SetUserOptionalData(std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t hashTableSize = 0) {};
+    virtual void SetUserOptionalData(std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t hashTableSize = 0,uint32_t isCorePsm= 0) {};
     virtual void SetXplmModulesData(BootImage& bi, uint32_t*, uint32_t) {};
     virtual void SetOptionalDataSize(void) {};
 
@@ -458,26 +464,26 @@ public:
     virtual uint8_t GetMaxNumOfPartitions(void) { return 0; }
     virtual uint32_t GetTotalMetaHdrLength(void) { return 0; }
 
-    void SetEncryptContext(EncryptionContext* ctx) { encrypt = ctx; }
-    EncryptionContext* GetEncryptContext(void) { return encrypt; }
+    void SetEncryptContext(std::unique_ptr<EncryptionContext> ctx) { encrypt = std::move(ctx); }
+    EncryptionContext* GetEncryptContext(void) { return encrypt.get(); }
 
     uint32_t metaHeaderLength;
     KeySource::Type metaHdrKeySrc;
-    uint8_t* metaHdrSecHdrIv;
-    void* iht_optional_data;
+    std::unique_ptr<uint8_t[]> metaHdrSecHdrIv;  // Smart pointer - auto cleanup
+    std::unique_ptr<uint32_t[]> iht_optional_data;  // Changed from void* to smart pointer for automatic memory management
     uint32_t iht_optional_data_length;
     uint32_t copied_iht_optional_data_length;
     uint8_t idCodeCheck;
     int nonApuSubSysCnt;
 
-    Section* hashBlockSection;
+    Section* hashBlockSection; // Managed manually for multi-BIF support
     uint32_t hashBlockSectionLength;
 
 protected:
     bool slaveBootSplitMode;
     uint32_t fullBhSize;
     uint32_t allHdrSize;
-    EncryptionContext* encrypt;
+    std::unique_ptr<EncryptionContext> encrypt;
 };
 
 /******************************************************************************/
@@ -488,12 +494,17 @@ public:
     //SubSysImageHeader(ImageBifOptions *imgOptions) {};
     //SubSysImageHeader(std::ifstream& ifs);
 
-    ~SubSysImageHeader()
+    virtual ~SubSysImageHeader()
     {
-        if (section != NULL)
-        {
-            delete section;
-        }
+        // CRITICAL FIX: imgList contains NON-OWNING pointers to ImageHeader objects
+        // The actual ImageHeader objects are owned by BootImage::imageList
+        // Do NOT delete them here - that causes double-free!
+        // This matches the old working code (lstclone_two) ownership model.
+        LOG_TRACE("SubSysImageHeader destructor: Clearing %d NON-OWNING ImageHeader pointers", imgList.size());
+        imgList.clear();
+
+        // NOTE: section is owned by cache.Sections - do NOT delete it here!
+        // It's wrapped in unique_ptr when pushed to cache in Build()
     }
 
     virtual void Build(BootImage& bi, Binary& cache) = 0;

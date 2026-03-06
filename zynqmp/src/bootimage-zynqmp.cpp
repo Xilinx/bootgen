@@ -35,18 +35,18 @@
 ZynqMpBootImage::ZynqMpBootImage(Options& options, uint8_t index) : BootImage(options, index)
 {
     partitionHeaderList.clear();
-    bootHeader = new ZynqMpBootHeader();
-    imageHeaderTable = new ZynqMpImageHeaderTable();
-    partitionHeaderTable = new PartitionHeaderTable();
-    currentEncryptCtx = new ZynqMpEncryptionContext(); 
-    currentAuthCtx = new ZynqMpAuthenticationContext();
+    bootHeader = std::make_unique<ZynqMpBootHeader>();
+    imageHeaderTable = std::make_unique<ZynqMpImageHeaderTable>();
+    partitionHeaderTable = std::make_unique<PartitionHeaderTable>();
+    currentEncryptCtx = std::make_unique<ZynqMpEncryptionContext>(); 
+    currentAuthCtx = std::make_unique<ZynqMpAuthenticationContext>();
     SetLegacyEncryptionFlag(true);
-    partitionOutput = new ZynqMpPartitionOutput();
-    hash = new HashSha3();
-    currentAuthCtx->hash = hash;
+    partitionOutput = std::make_unique<ZynqMpPartitionOutput>();
+    hash = std::make_unique<HashSha3>();
+    currentAuthCtx->hash = hash.get();  // Non-owning reference to BootImage's hash
     AuthenticationContext::SetZynpMpVerEs1Flag(options.GetZynqmpes1Flag());
     partitionHeaderTable->firstSection = NULL;
-    importedBh = NULL;
+    importedBh = nullptr;
 }
 
 /******************************************************************************/
@@ -63,12 +63,12 @@ void ZynqMpBootImage::ConfigureEncryptionContext(ImageHeader * image, Encryption
                 image->SetAesKeyFileGeneration(true);
             }
         }
-        image->SetEncryptContext(new ZynqMpEncryptionContext(this->currentEncryptCtx));
+        image->SetEncryptContext(std::make_unique<ZynqMpEncryptionContext>(this->currentEncryptCtx.get()));
         break;
 
     case Encryption::None:
         image->ValidateEncryptionAttributes(*this);
-        image->SetEncryptContext(new NoneEncryptionContext());
+        image->SetEncryptContext(std::make_unique<NoneEncryptionContext>());
         break;
 
     default:
@@ -108,8 +108,11 @@ void ZynqMpBootImage::ConfigureAuthenticationContext(ImageHeader * image, Authen
         currentAuthCtx->ppkSelect = image->GetPpkSelect();
         currentAuthCtx->spkSelect = image->GetSpkSelect();
         
-        image->SetAuthContext(new ZynqMpAuthenticationContext(this->currentAuthCtx));
-        AuthenticationContext* authCtx = image->GetAuthContext();
+        // Store context in container to keep it alive, pass raw pointer to image
+        auto authCtxPtr = std::make_unique<ZynqMpAuthenticationContext>(this->currentAuthCtx.get());
+        AuthenticationContext* authCtx = authCtxPtr.get();
+        image->SetAuthContext(authCtx);
+        authContexts.push_back(std::move(authCtxPtr));
         authCtx->SetPresignFile(partitionbifoptions->presignFile);
         authCtx->SetUdfFile(partitionbifoptions->udfDataFile);
 
@@ -132,7 +135,10 @@ void ZynqMpBootImage::ConfigureAuthenticationContext(ImageHeader * image, Authen
     default:
     {
         image->SetAuthenticationType(Authentication::None);
-        image->SetAuthContext(new NoneAuthenticationContext());
+        // Store context in container to keep it alive, pass raw pointer to image
+        auto authCtxPtr = std::make_unique<NoneAuthenticationContext>();
+        image->SetAuthContext(authCtxPtr.get());
+        authContexts.push_back(std::move(authCtxPtr));
         if (spkSignFile != "")
         {
             currentAuthCtx->GenerateSPKSignature(spkSignFile);
@@ -149,20 +155,20 @@ void ZynqMpBootImage::ConfigureChecksumContext(ImageHeader * image, Checksum::Ty
     switch (checksumType)
     {
     case Checksum::MD5:
-        image->SetChecksumContext(new MD5ChecksumContext());
+        image->SetChecksumContext(std::make_unique<MD5ChecksumContext>());
         break;
 
     case Checksum::SHA2:
-        image->SetChecksumContext(new SHA2ChecksumContext());
+        image->SetChecksumContext(std::make_unique<SHA2ChecksumContext>());
         break;
 
     case Checksum::SHA3:
-        image->SetChecksumContext(new SHA3ChecksumContext());
+        image->SetChecksumContext(std::make_unique<SHA3ChecksumContext>());
         break;
 
     case Checksum::None:
     default:
-        image->SetChecksumContext(new NoneChecksumContext());
+        image->SetChecksumContext(std::make_unique<NoneChecksumContext>());
         break;
     }
 }
@@ -194,7 +200,7 @@ void ZynqMpBootImage::ParseBootImage(PartitionBifOptions* it)
         LOG_ERROR("Failure in reading bootimage file for import - %s ", baseFile.c_str());
     }
 
-    importedBh = new ZynqMpBootHeader(src);
+    importedBh = std::make_unique<ZynqMpBootHeader>(src);
     if (importedBh->GetIdentificationWord() != HEADER_ID_WORD)
     {
         LOG_ERROR("File %s is not a bootimage. It is missing the header signature", baseFile.c_str());
@@ -228,19 +234,19 @@ void ZynqMpBootImage::ParseBootImage(PartitionBifOptions* it)
 
         options.SetEncryptedKeySource(importedBh->GetEncryptionKeySource());
 
-        bootHeader->Copy(importedBh);
+        bootHeader->Copy(importedBh.get());
         bHImported = true;
     }
 
     src.seekg(importedBh->GetImageHeaderByteOffset());
 
-    ImageHeaderTable* imageHeaderTable = new ZynqMpImageHeaderTable(src);
+    imageHeaderTable = std::make_unique<ZynqMpImageHeaderTable>(src);
 
     uint32_t offset = imageHeaderTable->GetFirstImageHeaderOffset() * sizeof(uint32_t);
     do
     {
         src.seekg(offset);
-        ImageHeader* image = new ZynqMpImageHeader(src);
+        auto image = std::make_unique<ZynqMpImageHeader>(src);
 
         if (image->GetPartitionHeaderList().size() > 0)
         {
@@ -311,8 +317,8 @@ void ZynqMpBootImage::ParseBootImage(PartitionBifOptions* it)
             image->SetAesKeyFile(name);
         }
 
-        ConfigureProcessingStages(image, it);
-        imageList.push_back(image);
+        ConfigureProcessingStages(image.get(), it);
+        imageList.push_back(image.release());
 
         /* image is just temporary, we need to get a pointer back to the copied object and relink */
         imageList.back()->Relink();
@@ -341,15 +347,16 @@ void ZynqMpBootImage::ParseBootImage(PartitionBifOptions* it)
                 /* load in previous certificate data */
                 for (int i = 0; i < acSize; i++)
                 {
-                    void *cert = (ph->partition->section->Data + ph->GetCertificateRelativeByteOffset());
+                    void *cert = (ph->partition->section->Data.get() + ph->GetCertificateRelativeByteOffset());
                     AuthenticationContext::SetAuthenticationKeyLength(RSA_4096_KEY_LENGTH);
-                    AuthenticationContext* auth = new ZynqMpAuthenticationContext((AuthCertificate4096Structure*)cert);
-                    AuthenticationCertificate* tempac;
-                    tempac = new RSA4096AuthenticationCertificate(auth);
+                    auto auth = std::make_unique<ZynqMpAuthenticationContext>((AuthCertificate4096Structure*)cert);
+                    auto tempac = std::make_unique<RSA4096AuthenticationCertificate>(auth.get());
                     auth->preSigned = true;
                     tempac->fsbl = true;
-                    ph->ac.push_back(tempac);
-                    newImage->SetAuthContext(auth);
+                    ph->ac.push_back(tempac.release());
+                    // Store context in container to keep it alive, pass raw pointer to image
+                    newImage->SetAuthContext(auth.get());
+                    authContexts.push_back(std::move(auth));
                 }
             }
         }
@@ -439,7 +446,8 @@ void ZynqMpBootImage::ValidateSecureAttributes(ImageHeader * image,BifOptions * 
 /******************************************************************************/
 void ZynqMpBootImage::ParsePartitionDataToImage(BifOptions* bifoptions, PartitionBifOptions* partitionBifOptions)
 {
-    ImageHeader *image = new ZynqMpImageHeader(partitionBifOptions->filename);
+    auto image_ptr = std::make_unique<ZynqMpImageHeader>(partitionBifOptions->filename);
+    ImageHeader *image = image_ptr.get();
     image->SetBootloader(partitionBifOptions->bootloader);
     image->SetAlignment(partitionBifOptions->alignment);
     image->SetOffset(partitionBifOptions->offset);
@@ -541,7 +549,7 @@ void ZynqMpBootImage::ParsePartitionDataToImage(BifOptions* bifoptions, Partitio
     ConfigureProcessingStages(image, partitionBifOptions);
 
     ValidateSecureAttributes(image,bifoptions, partitionBifOptions);
-    imageList.push_back(image);
+    imageList.push_back(image_ptr.release());
 }
 
 /******************************************************************************/
@@ -588,7 +596,7 @@ void ZynqMpBootImage::Add(BifOptions* bifoptions)
             if (options.DoGenerateHashes())
             {
                 LOG_INFO("Generating SPK Hash File");
-                currentAuthCtx->GenerateSPKHashFile(bifoptions->GetSPKFileName(), hash);
+                currentAuthCtx->GenerateSPKHashFile(bifoptions->GetSPKFileName(), hash.get());
             }
         }
         if (bifoptions->GetSSKFileName() != "")

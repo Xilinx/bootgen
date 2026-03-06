@@ -20,6 +20,7 @@
 ***********************************************   H E A D E R   F I L E S   ***
 -------------------------------------------------------------------------------
 */
+#include <memory>
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
@@ -51,22 +52,7 @@ void VersalReadImage::Separator(void)
 /******************************************************************************/
 VersalReadImage::~VersalReadImage()
 {
-    if (bH != NULL)
-    {
-        delete[] bH;
-    }
-    if (iH != NULL)
-    {
-        delete[] iH;
-    }
-    if (iHT != NULL)
-    {
-        delete[] iHT;
-    }
-    if (pHT != NULL)
-    {
-        delete[] pHT;
-    }
+    // Member unique_ptrs are automatically destroyed
 }
 
 /**********************************************************************************************/
@@ -85,15 +71,13 @@ void VersalReadImage::DisplayOptionalData()
     uint32_t opData_id = 0;
     uint32_t opData_hdr_length = sizeof(uint32_t);
     uint32_t opData_checksum_length = sizeof(uint32_t);
-    bool smap_header_found = false;
-    uint32_t offset;
+    uint32_t offset = 0;
     int cnt_opData = 0;
 
     //Opening PDI to read optional data
     FILE *binFile = fopen(binFilename.c_str(), "rb");
     if (!binFile)
     {
-        fclose(binFile);
         LOG_ERROR("Cannot read file %s", binFilename.c_str());
     }
 
@@ -108,15 +92,9 @@ void VersalReadImage::DisplayOptionalData()
     filePtr = fopen(fName.c_str(), "wb");
     if (!filePtr)
     {
-        fclose(filePtr);
         LOG_ERROR("Cannot create file %s", fName.c_str());
     }
 
-    if (bH && ((bH->smapWords[0] == 0xDD000000) || (bH->smapWords[0] == 0x00DD0000) || (bH->smapWords[0] == 0x000000DD)))
-    {
-        smap_header_found = true;
-    }
-    
     if(bH)
     {
         offset = bH->imageHeaderByteOffset;
@@ -124,14 +102,9 @@ void VersalReadImage::DisplayOptionalData()
     else
     {
         if(smap_header_found)
-        {
-            offset = sizeof(VersalSmapWidthTable);
-        }
-        else
-        {
-            offset = 0;
-        }
+            offset += sizeof(VersalSmapWidthTable);
     }
+
     offset += sizeof(VersalImageHeaderTableStructure);
 
     while(!feof(binFile))
@@ -142,15 +115,15 @@ void VersalReadImage::DisplayOptionalData()
         //Extracting optional data header
         if (!(fseek(binFile, offset, SEEK_SET)))
         {
-            uint32_t* buffer = new uint32_t[opData_hdr_length];
-            size_t result = fread(buffer, 1, opData_hdr_length, binFile);
+            auto buffer = std::make_unique<uint32_t[]>(opData_hdr_length);
+            size_t result = fread(buffer.get(), 1, opData_hdr_length, binFile);
             if (result != opData_hdr_length)
             {
                 LOG_ERROR("Error parsing Optional Data Header from PDI file");
             }
 
-            opData_total_length = (((*buffer) & 0xFFFF0000) >> 16) * 4;
-            opData_id = (*buffer) & 0x0000FFFF;
+            opData_total_length = ((buffer[0] & 0xFFFF0000) >> 16) * 4;
+            opData_id = buffer[0] & 0x0000FFFF;
             opData_length = opData_total_length - opData_hdr_length - opData_checksum_length;
         }
         else
@@ -173,7 +146,8 @@ void VersalReadImage::DisplayOptionalData()
         fprintf(filePtr, "ID %d\n", opData_id);
     
         fprintf(filePtr, "Data\n");
-        char* opData_buffer = new char[opData_length];
+        auto opData_buffer_owner = std::make_unique<char[]>(opData_length);
+        char* opData_buffer = opData_buffer_owner.get();
         result = fread(opData_buffer, 1, opData_length, binFile);
         if (result != opData_length)
         {
@@ -220,7 +194,7 @@ void VersalReadImage::ReadPartitions()
         for (cnt_index = 0; cnt_index < (*iH)->dataSectionCount; cnt_index++)
         {
             uint32_t length = (*pHT)->encryptedPartitionLength * 4;
-            uint8_t* buffer = new uint8_t[length];
+            auto buffer = std::make_unique<uint8_t[]>(length);
 
             offset = (*pHT)->partitionWordOffset * 4;
             if ((*pHT)->dataSectionCount > 0)
@@ -234,7 +208,7 @@ void VersalReadImage::ReadPartitions()
             }
             if (!(fseek(binFile, offset, SEEK_SET)))
             {
-                result = fread(buffer, 1, length, binFile);
+                result = fread(buffer.get(), 1, length, binFile);
                 if (result != length)
                 {
                     LOG_ERROR("Error parsing partitions from PDI file");
@@ -249,7 +223,7 @@ void VersalReadImage::ReadPartitions()
                     {
                         part_sec_index++;
                     }
-                    DumpPartitions(buffer, length, (*iH)->imageName, part_index, part_sec_index);
+                    DumpPartitions(buffer.get(), length, (*iH)->imageName, part_index, part_sec_index);
                 }
                 else
                 {
@@ -260,14 +234,12 @@ void VersalReadImage::ReadPartitions()
                     }
                     if ((dumpType == DumpOption::PLM) || (dumpType == DumpOption::BOOT_FILES))
                     {
-                        DumpPartitions(buffer, length, "plm", part_index, part_sec_index);
+                        DumpPartitions(buffer.get(), length, "plm", part_index, part_sec_index);
                         if (dumpType == DumpOption::PLM)
                         {
-                            delete[] buffer;
                             fclose(binFile);
                             return;
                         }
-                   
                     }
                 }
                 /* For extracting PMC DATA, Bootloader - compare address offset from BH and PHT */
@@ -277,11 +249,10 @@ void VersalReadImage::ReadPartitions()
                     {
                         if ((dumpType == DumpOption::PARTITIONS) || (dumpType == DumpOption::PMC_CDO) || (dumpType == DumpOption::BOOT_FILES))
                         {
-                            DumpPartitions(buffer + bH->plmLength, bH->totalPmcCdoLength, "pmc_cdo");
+                            DumpPartitions(buffer.get() + bH->plmLength, bH->totalPmcCdoLength, "pmc_cdo");
                             if ((dumpType == DumpOption::PMC_CDO) || (dumpType == DumpOption::BOOT_FILES))
                             {
                                 // if dump boot files, the return from here
-                                delete[] buffer;
                                 fclose(binFile);
                                 return;
                             }
@@ -298,9 +269,7 @@ void VersalReadImage::ReadPartitions()
                 LOG_ERROR("Error parsing Partition Headers from bin file");
             }
             pHT++;
-            delete[] buffer;
         }
-
     }
     fclose(binFile);
 }
@@ -309,9 +278,8 @@ void VersalReadImage::ReadPartitions()
 void VersalReadImage::ReadHeaderTableDetails()
 {
     size_t result;
-    uint64_t offset = 0;
+    long int offset = 0;
     uint32_t index = 0;
-    bool smap_header_found = false;
 
     FILE *binFile;
     binFile = fopen(binFilename.c_str(), "rb");
@@ -323,18 +291,16 @@ void VersalReadImage::ReadHeaderTableDetails()
     }
 
     // Boot Header Table Extraction
-    bH = new VersalBootHeaderStructure;
-    result = fread(bH, 1, sizeof(VersalBootHeaderStructure), binFile);
+    bH = std::make_unique<VersalBootHeaderStructure>();
+    result = fread(bH.get(), 1, sizeof(VersalBootHeaderStructure), binFile);
     if ((bH->smapWords[0] == 0xDD000000) || (bH->smapWords[0] == 0x00DD0000) || (bH->smapWords[0] == 0x000000DD))
     {
         smap_header_found = true;
     }
     if (bH->widthDetectionWord != 0xAA995566)
     {
-        delete bH;
-        bH = NULL;
+        bH.reset();
     }
-
 
     if ((dumpType == DumpOption::BH) || (dumpType == DumpOption::BOOT_FILES))
     {
@@ -366,23 +332,24 @@ void VersalReadImage::ReadHeaderTableDetails()
 
     if (bH)
     {
-        offset = bH->imageHeaderByteOffset;
+        offset = static_cast<long int>(bH->imageHeaderByteOffset);
     }
-    else
-    {
-        if(smap_header_found)
+	if(bH == NULL)
         {
-            offset = sizeof(VersalSmapWidthTable);
+            if(smap_header_found)
+	    {
+                offset = sizeof(VersalSmapWidthTable);
+	    }
+            else
+	    {
+                offset = 0;
+            }
         }
-        else
-        {
-            offset = 0;
-        }
-    }
+    
     if (!(fseek(binFile, offset, SEEK_SET)))
     {
-        iHT = new VersalImageHeaderTableStructure;
-        result = fread(iHT, 1, sizeof(VersalImageHeaderTableStructure), binFile);
+        iHT = std::make_unique<VersalImageHeaderTableStructure>();
+        result = fread(iHT.get(), 1, sizeof(VersalImageHeaderTableStructure), binFile);
         if ((iHT->version != VERSION_v1_00_VERSAL) && (iHT->version != VERSION_v2_00_VERSAL) && (iHT->version != VERSION_v3_00_VERSAL) && (iHT->version != VERSION_v4_00_VERSAL))
         {
             LOG_ERROR("Improper version (0x%.8x) read from Image Header Table of the PDI file.",iHT->version);
@@ -390,7 +357,7 @@ void VersalReadImage::ReadHeaderTableDetails()
         if (result != sizeof(VersalImageHeaderTableStructure))
         {
             LOG_ERROR("Error parsing Image Header Table from PDI file");
-        }
+        }	    
         if (!((iHT->partitionTotalCount > 0) && (iHT->partitionTotalCount < 0xFF)))
         {
             LOG_ERROR("Number of partitions read from PDI is more than number of supported partititon count.");
@@ -401,34 +368,35 @@ void VersalReadImage::ReadHeaderTableDetails()
         LOG_ERROR("Error parsing Image Header Table from PDI file");
     }
 
-    uint8_t*  header_ac = NULL;
+    uint8_t*  header_ac = nullptr;
     if (iHT && iHT->headerAuthCertificateWordOffset != 0)
     {
-        header_ac = new uint8_t[sizeof(AuthCertificateECDSAStructure)];
+        auto header_ac_owner = std::make_unique<uint8_t[]>(sizeof(AuthCertificateECDSAStructure));
         if (!(fseek(binFile, iHT->headerAuthCertificateWordOffset * 4, SEEK_SET)))
         {
-            result = fread(header_ac, 1, sizeof(AuthCertificateECDSAStructure), binFile);
+            result = fread(header_ac_owner.get(), 1, sizeof(AuthCertificateECDSAStructure), binFile);
             if (result != sizeof(AuthCertificateECDSAStructure))
             {
                 LOG_ERROR("Error parsing Header Authentication Certificate from PDI file");
             }
         }
+        header_ac = header_ac_owner.release();
     }
     aCs.push_back(header_ac);
-    if (iHT->metaHdrKeySource == KeySource::None)
+    if (iHT != NULL && iHT->metaHdrKeySource == KeySource::None)
     {
-        offset = iHT->firstImageHeaderWordOffset * 4;
+        offset = static_cast<long int>(iHT->firstImageHeaderWordOffset) * 4;
         for (index = 0; index < iHT->imageTotalCount; index++)
         {
-            iH = new VersalImageHeaderStructure;
+            auto iH_temp = std::make_unique<VersalImageHeaderStructure>();
             if (!(fseek(binFile, offset, SEEK_SET)))
             {
-                result = fread(iH, 1, sizeof(VersalImageHeaderStructure), binFile);
+                result = fread(iH_temp.get(), 1, sizeof(VersalImageHeaderStructure), binFile);
                 if (result != sizeof(VersalImageHeaderStructure))
                 {
                     LOG_ERROR("Error parsing Image Headers from PDI file");
                 }
-                iHs.push_back(iH);
+                iHs.push_back(iH_temp.release());
                 offset += sizeof(VersalImageHeaderStructure);
             }
             else
@@ -440,16 +408,16 @@ void VersalReadImage::ReadHeaderTableDetails()
         offset = (iHT->firstImageHeaderWordOffset * 4) + (sizeof(VersalImageHeaderStructure) * iHT->imageTotalCount);
         for (index = 0; index < iHT->partitionTotalCount; index++)
         {
-            pHT = new VersalPartitionHeaderTableStructure;
+            auto pHT_temp = std::make_unique<VersalPartitionHeaderTableStructure>();
 
             if (!(fseek(binFile, offset, SEEK_SET)))
             {
-                result = fread(pHT, 1, sizeof(VersalPartitionHeaderTableStructure), binFile);
+                result = fread(pHT_temp.get(), 1, sizeof(VersalPartitionHeaderTableStructure), binFile);
                 if (result != sizeof(VersalPartitionHeaderTableStructure))
                 {
                     LOG_ERROR("Error parsing Partition Headers from PDI file");
                 }
-                pHTs.push_back(pHT);
+                pHTs.push_back(pHT_temp.release());
                 offset += sizeof(VersalPartitionHeaderTableStructure);
             }
             else
@@ -460,20 +428,21 @@ void VersalReadImage::ReadHeaderTableDetails()
 
         for (std::list<VersalPartitionHeaderTableStructure*>::iterator partitionHdr = pHTs.begin(); partitionHdr != pHTs.end(); partitionHdr++)
         {
-            uint8_t* aC = NULL;
+            uint8_t* aC = nullptr;
 
             offset = (*partitionHdr)->authCertificateOffset * 4;
             if (offset != 0)
             {
-                aC = new uint8_t[sizeof(AuthCertificateECDSAStructure)];
+                auto aC_owner = std::make_unique<uint8_t[]>(sizeof(AuthCertificateECDSAStructure));
                 if (!(fseek(binFile, offset, SEEK_SET)))
                 {
-                    result = fread(aC, 1, sizeof(AuthCertificateECDSAStructure), binFile);
+                    result = fread(aC_owner.get(), 1, sizeof(AuthCertificateECDSAStructure), binFile);
                     if (result != sizeof(AuthCertificateECDSAStructure))
                     {
                         LOG_ERROR("Error parsing Authentication Certificates from PDI file");
                     }
                 }
+                aC = aC_owner.release();
             }
             aCs.push_back(aC);
         }
@@ -1203,12 +1172,16 @@ void VersalReadImage::DisplayPhtAttributes(uint32_t value)
     {
         case 0: val = "[none]";           break;
         case 1: 
-            if (versalNetSeries) val = "[a78-0]"; 
-            else val = "[a72-0]";         
+            if (versalNetSeries) 
+                val = "[a78-0]"; 
+            else 
+                val = "[a72-0]";         
             break;
         case 2: 
-            if (versalNetSeries) val = "[a78-1]";
-            else val = "[a72-1]";         
+            if (versalNetSeries) 
+                val = "[a78-1]";
+            else 
+                val = "[a72-1]";         
             break;
         if (versalNetSeries)
         {
@@ -1336,12 +1309,16 @@ std::string VersalReadImage::GetPartitionCore(uint32_t value)
     {
         case 0: val = "none";           break;
         case 1:
-            if (versalNetSeries) val = "a78-0";
-            else val = "a72-0";         
+            if (versalNetSeries) 
+                val = "a78-0";
+            else 
+                val = "a72-0";         
             break;
         case 2:
-            if (versalNetSeries) val = "a78-1";
-            else val = "a72-1";         
+            if (versalNetSeries) 
+                val = "a78-1";
+            else 
+                val = "a72-1";         
             break;
         if (versalNetSeries)
         {

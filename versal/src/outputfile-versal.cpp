@@ -74,10 +74,10 @@ void OutputFile::OutputVersal(Options& options, Binary& cache)
                     adjust_len = 16;
                 }
             }
-            Write(section.Address, section.Length - adjust_len, section.Data + adjust_len);
+            Write(section.Address, section.Length - adjust_len, section.Data.get() + adjust_len);
             if (options.GetDumpOption() == DumpOption::BH)
             {
-                WriteBootHeaderToFile(options.GetOutputFileNames().front(), section.Data + adjust_len, section.Length - adjust_len);
+                WriteBootHeaderToFile(options.GetOutputFileNames().front(), section.Data.get() + adjust_len, section.Length - adjust_len);
             }
             unalignedRunningAddress = section.Address + section.Length - adjust_len;
             runningAddress = (unalignedRunningAddress + (options.GetDefaultAlignment() - 1)) & ~(options.GetDefaultAlignment() - 1);
@@ -93,7 +93,7 @@ void OutputFile::OutputVersal(Options& options, Binary& cache)
         Section& section(**i);
         if (!section.Name.compare(acBootloader)) {
             section.Address = runningAddress;
-            Write(section.Address, section.Length, section.Data);
+            Write(section.Address, section.Length, section.Data.get());
             unalignedRunningAddress = section.Address + section.Length;
             runningAddress = (unalignedRunningAddress + (options.GetDefaultAlignment() - 1)) & ~(options.GetDefaultAlignment() - 1);
         }
@@ -110,7 +110,7 @@ void OutputFile::OutputVersal(Options& options, Binary& cache)
                 ProcessSplitMode(section, options);
             }
 
-            Write(section.Address, section.Length, section.Data);
+            Write(section.Address, section.Length, section.Data.get());
             unalignedRunningAddress = section.Address + section.Length;
             runningAddress = (unalignedRunningAddress + (options.GetDefaultAlignment() - 1)) & ~(options.GetDefaultAlignment() - 1);
             /* Fill the gap(if any) between sections will fill byte */
@@ -148,7 +148,7 @@ void OutputFile::OutputVersal(Options& options, Binary& cache)
             {
                 ProcessSplitMode(section, options);
             }
-            Write(section.Address, section.Length, section.Data);
+            Write(section.Address, section.Length, section.Data.get());
             unalignedRunningAddress = section.Address + section.Length;
             runningAddress = (unalignedRunningAddress + (options.GetDefaultAlignment() - 1)) & ~(options.GetDefaultAlignment() - 1);
             /* Fill the gap(if any) between sections will fill byte */

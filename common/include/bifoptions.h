@@ -73,6 +73,7 @@ typedef struct
     uint8_t deviceDNA[16];
     uint32_t jtagTimeout;
     bool userDeviceDNA;
+    std::string jtagSignatureFile;
 } AuthJtagInfo;
 
 /*
@@ -378,8 +379,8 @@ public:
 
     void Add(PartitionBifOptions* currentPartitionBifOptions, ImageBifOptions* currentImageBifOptions = NULL);
     void AddFiles(int type, std::string filename);
-    void CheckForSameKeyandKeySrcPair(std::vector<std::pair<KeySource::Type, uint32_t*>> aesKeyandKeySrc);
-    void CheckForBadKeyandKeySrcPair(std::vector<std::pair<KeySource::Type, uint32_t*>> aesKeyandKeySrc, std::string aesFilename);
+    void CheckForSameKeyandKeySrcPair(std::vector<std::pair<KeySource::Type, std::unique_ptr<uint32_t[]>>>& aesKeyandKeySrc);
+    void CheckForBadKeyandKeySrcPair(std::vector<std::pair<KeySource::Type, std::unique_ptr<uint32_t[]>>>& aesKeyandKeySrc, std::string aesFilename);
 
     void SetRegInitFileName(std::string filename);
     void SetUdfBHFileName(std::string filename);
@@ -446,6 +447,7 @@ public:
     void SetAuthJtagSPKRevokeID(uint32_t value);
     void SetAuthJtagDeviceDna(std::string string);
     void SetAuthJtagTimeOut(uint32_t value);
+    void SetAuthJtagSignatureFile(std::string value);
     void SetPmcDataAesFile(std::string filename);
     void SetRevokeId(uint32_t id);
     void SetLmsParameters(LmsKeyTypeParam param);

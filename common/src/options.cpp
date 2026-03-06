@@ -93,10 +93,10 @@ void Options::ProcessVerifyKDF()
         }
         else
         {
-            Kdf* kdfCtx = new Kdf;
+            auto kdfCtx = std::make_unique<Kdf>();
             LOG_INFO("KDF Version : %s", kdfCtx->GetVersion().c_str());
             uint32_t ret_value = kdfCtx->CAVPonCounterModeKDF(GetKDFTestVectorFile());
-            delete kdfCtx;
+            
             if (ret_value != 0)
             {
                 exit(1);
@@ -115,28 +115,30 @@ void Options::ProcessReadImage()
     std::string readFile = GetReadImageFile();
     if (readFile != "")
     {
-        ReadImage* readImage = NULL;
+        std::unique_ptr<ReadImage> readImage = nullptr;
         if (archType == Arch::ZYNQ)
         {
-            readImage = new ZynqReadImage(readFile);
+            readImage = std::make_unique<ZynqReadImage>(readFile);
         }
         else if (archType == Arch::ZYNQMP)
         {
-            readImage = new ZynqMpReadImage(readFile);
+            readImage = std::make_unique<ZynqMpReadImage>(readFile);
         }
         else if (archType == Arch::VERSAL)
         {
-            readImage = new VersalReadImage(readFile);
+            readImage = std::make_unique<VersalReadImage>(readFile);
             readImage->versalNetSeries = versalNetSeries;
         }
         else if (archType == Arch::VERSALGEN2)
         {
-            readImage = new Versal_2ve_2vmReadImage(readFile);
+            readImage = std::make_unique<Versal_2ve_2vmReadImage>(readFile);
+            readImage->versalNetSeries = versalNetSeries;
         }
         else if (archType == Arch::SPARTANUP)
         {
-            readImage = new SpartanupReadImage(readFile);
+            readImage = std::make_unique<SpartanupReadImage>(readFile);
             readImage->dl9Series = dl9Series;
+            readImage->versalNetSeries = versalNetSeries;
         }
         else
         {
@@ -149,13 +151,12 @@ void Options::ProcessReadImage()
             {
                 LOG_ERROR("'-verify' option is not supported with the mentioned '-arch'.");
             }
-            readImage->VerifyAuthentication(GetVerifyImageOption());
+            readImage.get()->VerifyAuthentication(GetVerifyImageOption());
         }
         else
         {
-            readImage->DisplayImageDetails(GetReadImageOption(), GetDumpOption(), GetDumpDirectory());
+            readImage.get()->DisplayImageDetails(GetReadImageOption(), GetDumpOption(), GetDumpDirectory());
         }
-        delete readImage;
         exit(0);
     }
 }
@@ -457,7 +458,6 @@ void Options::SetOverlayCDOFileName(std::string filename)
 
 /******************************************************************************/
 
-
 /******************************************************************************/
 void Options::SetOutType(File::Type type)
 {
@@ -466,11 +466,16 @@ void Options::SetOutType(File::Type type)
 
 /******************************************************************************/
 
-
 /******************************************************************************/
 void Options::SetDumpDirectory(std::string path)
 {
     dumpPath = path;
+}
+
+/******************************************************************************/
+void Options::SetPufOutputFileName(std::string filename)
+{
+    pufOutputFileName = filename;
 }
 
 /******************************************************************************/
@@ -806,12 +811,17 @@ std::string Options::GetDumpDirectory(void)
 }
 
 /******************************************************************************/
+std::string Options::GetPufOutputFileName(void)
+{
+    return pufOutputFileName;
+}
+
+/******************************************************************************/
 
 std::string Options::GetOverlayCDOFileName(void)
 {
     return overlayCDOFile;
 }
-
 
 /******************************************************************************/
 bool Options::IsSsitBif()

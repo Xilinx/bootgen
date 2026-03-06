@@ -58,11 +58,12 @@ public:
     Versal_2ve_2vmReadImage(std::string filename) : ReadImage(filename)
     {
         binFilename = filename;
-        bH = NULL;
-        iHT = NULL;
+        bH = nullptr;
+        iHT = nullptr;
         iHs.clear();
         pHTs.clear();
         aCs.clear();
+        partitionBuffers.clear();
         authenticationVerified = true;
         versalNetSeries = false;
     }
@@ -107,15 +108,16 @@ public:
 
 protected:
     std::string binFilename;
-    Versal_2ve_2vmBootHeaderStructure* bH;
-    Versal_2ve_2vmImageHeaderTableStructure* iHT;
-    Versal_2ve_2vmImageHeaderStructure *iH;
-    Versal_2ve_2vmPartitionHeaderTableStructure *pHT;
+    std::unique_ptr<Versal_2ve_2vmBootHeaderStructure> bH;
+    std::unique_ptr<Versal_2ve_2vmImageHeaderTableStructure> iHT;
+    std::unique_ptr<Versal_2ve_2vmImageHeaderStructure> iH;
+    std::unique_ptr<Versal_2ve_2vmPartitionHeaderTableStructure> pHT;
     std::list<Versal_2ve_2vmImageHeaderStructure*> iHs;
     std::list<Versal_2ve_2vmPartitionHeaderTableStructure*> pHTs;
     std::list<uint8_t*> aCs;
     std::list<std::pair<uint8_t*, uint32_t>> Hashblock_record;  
     std::list<uint32_t> authtype;  
+    std::list<uint8_t*> partitionBuffers;
     bool authenticationVerified;
 };
 

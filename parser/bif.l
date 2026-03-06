@@ -418,6 +418,7 @@ split               yylval->number = tok::SPLIT;                    return tok::
 authjtag_config     yylval->number = tok::AUTHJTAG_CONFIG;          return tok::AUTHJTAG_CONFIG;
     device_dna      yylval->number = tok::DEVICE_DNA;               return tok::DEVICE_DNA;
     jtag_timeout    yylval->number = tok::JTAG_TIMEOUT;             return tok::JTAG_TIMEOUT;
+    authjtag_sign   yylval->number = tok::AUTHJTAG_SIGN;            return tok::AUTHJTAG_SIGN;
 
 lms_key_params      yylval->number = tok::LMS_KEY_PARAMS;           return tok::LMS_KEY_PARAMS;
     primary         yylval->number = AuthKeyLevel::PRIMARY;         return tok::AUTH_KEY_LEVEL;

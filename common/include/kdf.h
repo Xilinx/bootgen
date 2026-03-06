@@ -39,6 +39,7 @@
 #include <string.h>
 #include <cmath>
 #include <iostream>
+#include <memory>
 
 #define VERSION                         "v1.0"
 
@@ -62,32 +63,16 @@ class Kdf
 public:
     Kdf()
         : key_out_length(0)
-        , key_seed(NULL)
+        , key_seed(nullptr)
         , fixed_input_data_byte_length(0)
-        , fixed_input_data(NULL)
-        , verify_ko(NULL)
-        , key_out(NULL)
+        , fixed_input_data(nullptr)
+        , verify_ko(nullptr)
+        , key_out(nullptr)
         , kdf_log_file("")
       { };
 
     ~Kdf()
     {
-        if (key_seed != NULL)
-        {
-            delete[] key_seed;
-        }
-        if (fixed_input_data != NULL)
-        {
-            delete[] fixed_input_data;
-        }
-        if (verify_ko != NULL)
-        {
-            delete[] verify_ko;
-        }
-        if(key_out != NULL)
-        {
-            delete[] key_out;
-        }
     };
 
     uint32_t CounterModeKDF(uint32_t* k_in, uint32_t* fid, uint32_t fid_byte_length, uint32_t* ko_buf, uint32_t ko_bytes, bool reset_cntr = true);
@@ -99,11 +84,11 @@ public:
     std::string GetVersion(void);
 
 private:
-    uint8_t* key_out;
-    uint8_t* key_seed;
+    std::unique_ptr<uint8_t[]> key_out;
+    std::unique_ptr<uint8_t[]> key_seed;
     uint32_t key_out_length;
-    uint8_t* verify_ko;
-    uint8_t* fixed_input_data;
+    std::unique_ptr<uint8_t[]> verify_ko;
+    std::unique_ptr<uint8_t[]> fixed_input_data;
     uint32_t fixed_input_data_byte_length;
     uint32_t version;
     uint8_t  kdf_counter[KDF_COUNTER_BYTES];

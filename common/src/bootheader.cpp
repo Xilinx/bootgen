@@ -78,14 +78,14 @@ void BootHeader::Copy(BootHeader* otherHeader)
     if (section->Length < otherHeader->section->Length)
     {
         uint32_t newBhSize = otherHeader->section->Length;
-        uint8_t* newDataPtr = new uint8_t[newBhSize];
+        auto newDataPtr = std::make_unique<uint8_t[]>(newBhSize);
                 
-        //delete[] section->Data; // causing a delete mismatch 
-        section->Data = newDataPtr;
+        //// unique_ptr handles deletion // causing a delete mismatch 
+        section->Data = std::unique_ptr<uint8_t[]>(newDataPtr.release());
         section->Length = newBhSize;
     }
 
-    memcpy(section->Data, otherHeader->section->Data,section->Length);
+    memcpy(section->Data.get(), otherHeader->section->Data.get(),section->Length);
     prebuilt = true;
 }
 
