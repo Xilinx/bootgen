@@ -16,7 +16,7 @@
 ******************************************************************************/
 
 #ifndef RDI_VERSION
-#define RDI_VERSION "2025.1-Merged"
+#define RDI_VERSION "2026.1"
 #endif
 
 #define PROGRAMNAME     "Bootgen"

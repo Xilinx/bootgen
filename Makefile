@@ -27,9 +27,11 @@
 #           "INCLUDE_USER=-I<opensslarm/include>"'
 #
 ##############################################################################
+# Create build directories (at Makefile parse time)
+$(shell mkdir -p build/bin build/obj)
 
 OBJ = o
-CXXFLAGS ?= -std=c++14 -O -Wall -Wno-reorder -Wno-deprecated-declarations -DENABLE_WDI -DENABLE_OBFUSCATED_KEY
+CXXFLAGS ?= -std=c++14 -O -Wall -Wno-reorder -Wno-deprecated-declarations
 CFLAGS ?= -O -Wall
 
 GCCVERSIONGTEQ9 := $(shell expr `${CXX} -dumpversion | cut -f1 -d.` \>= 9)

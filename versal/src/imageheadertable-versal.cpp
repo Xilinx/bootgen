@@ -20,7 +20,7 @@
 ************************************************* H E A D E R   F I L E S   ***
 -------------------------------------------------------------------------------
 */
-#ifndef ENABLE_WDI
+#ifdef ENABLE_WDI
 #include <isl/iostreams/filtering_stream.hpp>
 #include <isl/iostreams/util.hpp>
 #endif
@@ -1554,7 +1554,7 @@ void VersalImageHeader::ImportNpi(BootImage& bi)
 
     /* Parse the bitstream, and set the bit file name for usage by other features
     such as '-process_bitstream' */
-#ifndef ENABLE_WDI
+#ifdef ENABLE_WDI
     isl::iostreams::istream stream(Filename.c_str(), std::ios_base::binary);
 #else
     std::ifstream stream(Filename.c_str(), std::ios_base::binary);
@@ -1634,7 +1634,7 @@ void VersalImageHeader::ImportBit(BootImage& bi)
 
     /* Parse the bitstream, and set the bit file name for usage by other features
     such as '-process_bitstream' */
-#ifndef ENABLE_WDI
+#ifdef ENABLE_WDI
     isl::iostreams::istream stream(Filename.c_str(), std::ios_base::binary);
 #else
     std::ifstream stream(Filename.c_str(), std::ios_base::binary);
@@ -1727,7 +1727,7 @@ void VersalImageHeader::ParseFileToImport(BootImage& bi)
                 LOG_ERROR("File for merging is not in CDO format - %s", Filename.c_str());
             }
             LOG_INFO("Parsing file - %s", filelist.at(0).c_str());
-#ifndef ENABLE_WDI
+#ifdef ENABLE_WDI
             isl::iostreams::istream stream(Filename.c_str(), std::ios_base::binary);
 #else
             std::ifstream stream(Filename.c_str(), std::ios_base::binary);
@@ -1775,7 +1775,7 @@ void VersalImageHeader::ParseFileToImport(BootImage& bi)
                 }
                 ImportBin(bi);
             }
-#ifndef ENABLE_WDI
+#ifdef ENABLE_WDI
             stream.auto_close();
 #else
             stream.close();
@@ -2234,7 +2234,7 @@ void VersalImageHeader::ParseSlaveSlrConfigCdos(BootImage& bi, std::vector<std::
             if (add_ssit_sync_master)
             {
                 /* Add SSIT Sync Master command */
-                #ifndef ENABLE_WDI
+                #ifdef ENABLE_WDI
                 if(isl::iostreams::xp::is_xp_format(cdo_filename))
                 {
                     cdo_seq1 = Decompressing_File(cdo_filename);
@@ -2258,7 +2258,7 @@ void VersalImageHeader::ParseSlaveSlrConfigCdos(BootImage& bi, std::vector<std::
             }
             else
             {
-                #ifndef ENABLE_WDI
+                #ifdef ENABLE_WDI
                 if(isl::iostreams::xp::is_xp_format(cdo_filename))
                 {
                     cdo_seq = Decompressing_File(cdo_filename);
@@ -2422,7 +2422,7 @@ void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> fileli
             if (add_ssit_sync_master)
             {
                 /* Add SSIT Sync Master command */
-                #ifndef ENABLE_WDI
+                #ifdef ENABLE_WDI
                 if(isl::iostreams::xp::is_xp_format(cdo_filename))
                 {
                     cdo_seq1 = Decompressing_File(cdo_filename);
@@ -2446,7 +2446,7 @@ void VersalImageHeader::ParseCdos(BootImage& bi, std::vector<std::string> fileli
             }
             else
             {
-                #ifndef ENABLE_WDI
+                #ifdef ENABLE_WDI
                 if(isl::iostreams::xp::is_xp_format(cdo_filename))
                 {
                     cdo_seq = Decompressing_File(cdo_filename);
@@ -3241,7 +3241,7 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
         size_t size = 0;
         const char* cdo_filename = slrBootPdiInfo.front()->file.c_str();
         CdoSequence * cdo_seq;
-        #ifndef ENABLE_WDI
+        #ifdef ENABLE_WDI
         if(isl::iostreams::xp::is_xp_format(cdo_filename))
         {
             cdo_seq = Decompressing_File(cdo_filename);
@@ -3540,7 +3540,7 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                 /* Add Master Boot NPI and NoC freq CDO commands by parsing the CDO file */
                 const char* cdo_filename = (*slr_id)->file.c_str();
                 CdoSequence* cdo_seq;
-                #ifndef ENABLE_WDI
+                #ifdef ENABLE_WDI
                 if(isl::iostreams::xp::is_xp_format(cdo_filename))
                 {
                     cdo_seq = Decompressing_File(cdo_filename);
@@ -3567,7 +3567,7 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                     master_cdo_verified = 1;
                     CompareCDOSequences(cdo_seq, golden_cdo_filename, (*slr_id)->file.c_str());
                     cdocmd_delete_sequence(cdo_seq);  // Free CDO sequence memory
-                    #ifndef ENABLE_WDI
+                    #ifdef ENABLE_WDI
                     if(isl::iostreams::xp::is_xp_format(cdo_filename))
                     {
                         cdo_seq = Decompressing_File(cdo_filename);
@@ -3949,7 +3949,7 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
 
                         const char* cdo_filename = (*slr_info)->file.c_str();
                         CdoSequence * master_cdo_seq;
-                        #ifndef ENABLE_WDI
+                        #ifdef ENABLE_WDI
                         if(isl::iostreams::xp::is_xp_format(cdo_filename))
                         {
                             master_cdo_seq = Decompressing_File(cdo_filename);
@@ -4350,7 +4350,7 @@ void VersalImageHeader::ParseSlrConfigFiles(size_t* slr_total_file_size, BootIma
             /* For CDO files - master CDO */
             const char* cdo_filename = (*slr_info)->file.c_str();
             CdoSequence * cdo_seq;
-            #ifndef ENABLE_WDI
+            #ifdef ENABLE_WDI
             if(isl::iostreams::xp::is_xp_format(cdo_filename))
             {
                 cdo_seq = Decompressing_File(cdo_filename);
@@ -4986,7 +4986,7 @@ CdoSequence * VersalImageHeader::Decompressing_File(const char * filename)
 
     #if defined(__linux__)
 
-    #ifndef ENABLE_WDI
+    #ifdef ENABLE_WDI
     isl::iostreams::istream xilZipObj(filename);
     xilZipObj.seekg(0, std::ios::end);
 

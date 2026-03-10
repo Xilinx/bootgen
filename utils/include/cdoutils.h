@@ -26,7 +26,7 @@
 #include "logger.h"
 #include <sys/stat.h>
 
-#ifndef ENABLE_WDI
+#ifdef ENABLE_WDI
 #include <isl/iostreams/filtering_stream.hpp>
 #include <isl/iostreams/util.hpp>
 #endif
@@ -324,7 +324,7 @@ inline bool IsCdoFile(uint32_t value)
 /******************************************************************************/
 inline bool IsCdoFile(std::string file)
 {
-#ifndef ENABLE_WDI
+#ifdef ENABLE_WDI
     isl::iostreams::istream stream(file.c_str(), std::ios_base::binary);
     if (!stream)
     {

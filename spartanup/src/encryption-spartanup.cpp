@@ -30,7 +30,7 @@
 #include "partitionheadertable-spartanup.h"
 #include <openssl/rand.h>
 #include "fileutils.h"
-#ifndef ENABLE_OBFUSCATED_KEY
+#ifdef ENABLE_OBFUSCATED_KEY
 #include "obfskutil.h"
 #endif
 
@@ -580,7 +580,7 @@ void SpartanupEncryptionContext::GenerateRemainingKeys(Options& options)
 /******************************************************************************/
 void SpartanupEncryptionContext::GenerateGreyKey()
 {
-#ifndef ENABLE_OBFUSCATED_KEY
+#ifdef ENABLE_OBFUSCATED_KEY
     ReadEncryptionKeyFile(aesFilename);
     auto bhIv = std::make_unique<uint8_t[]>(AES_GCM_IV_SZ);
     auto redKey = std::make_unique<uint8_t[]>(AES_GCM_KEY_SZ);
