@@ -26,6 +26,10 @@
 #include "logger.h"
 #include <sys/stat.h>
 
+#include <map>
+#include <sstream>
+#include <string>
+
 #ifdef ENABLE_WDI
 #include <isl/iostreams/filtering_stream.hpp>
 #include <isl/iostreams/util.hpp>
@@ -419,45 +423,164 @@ inline std::vector<std::string> SplitString(std::string strToSplit, char delimet
 }
 
 /******************************************************************************/
-inline void CompareCDOSequences(CdoSequence * user_cdo_seq, std::string golden_cdo_filename, std::string user_cdo_filename)
+uint32_t inline get_reg_val(uint32_t golden_nps_addr, uint32_t golden_default_val, std::map<uint32_t, std::vector<uint32_t*>> user_cdo_map, std::string user_cdo_filename)
+{
+    if(user_cdo_map.find(golden_nps_addr) != user_cdo_map.end())
+    {
+        if(user_cdo_map[golden_nps_addr].size() > 1)
+        {
+            LOG_WARNING("More than 1 matching value found for address %x in user Cdo %s", golden_nps_addr, user_cdo_filename.c_str());
+        }
+        return (*(user_cdo_map[golden_nps_addr].back()));
+
+    }
+    else
+    {
+            LOG_WARNING("Address = 0x%x is missing in user cdo  %s", golden_nps_addr, user_cdo_filename.c_str());
+    }
+    return golden_default_val;
+}
+
+/******************************************************************************/
+bool inline ValidateCdoOport(uint32_t golden_nps_base_addr, uint32_t golden_nps_iport, uint32_t golden_nps_oport, uint32_t golden_nps_vc,
+    uint32_t golden_nps_dest_id, std::map<uint32_t, std::vector<uint32_t*>> user_cdo_map, std::string user_cdo_filename,
+    std::vector<std::vector<uint32_t>>& invalid_pos_cdo_write)
+{
+    const uint32_t REG_HIGH_ID_OFFSET = 0x100;
+    const uint32_t REG_MID_ID_OFFSET = 0x300;
+    const uint32_t REG_LOW_ID_OFFSET = 0x320;
+    const uint32_t REG_ID_OFFSET = 0x3A0;
+
+    // The REG_ID [9:4] represents HIGH_ID.
+    const uint32_t REG_ID_HIGH_MASK = 0x3F0;
+    const uint32_t REG_ID_HIGH_SHIFT = 0x4;
+
+    // REG_ID[1:0] represents MID_ID.
+    const uint32_t REG_ID_MID_MASK = 0x003;
+    const uint32_t REG_ID_MID_SHIFT = 0x0;
+
+    // The DST-ID[11:6] represents HIGH-ID.
+    const uint32_t DST_ID_HIGH_MASK = 0xFC0;
+    const uint32_t DST_ID_HIGH_SHIFT = 0x6;
+
+    // DST-ID[5:4] represents the MID-ID.
+    const uint32_t DST_ID_MID_MASK = 0x030;
+    const uint32_t DST_ID_MID_SHIFT = 0x4;
+
+    // The DST-ID[3:0] represents LOW-ID.
+    const uint32_t DST_ID_LOW_MASK = 0x00F;
+    const uint32_t DST_ID_LOW_SHIFT = 0x0;
+
+    const std::vector<uint32_t> DEFAULT_REG_VALUE = {0xFFFFAAAA, 0xFFFFAAAA, 0x55550000, 0x55550000};
+    const uint32_t DEFAULT_REG_MASK = 0x3;
+
+    // read NPS regid content (Note the bit offsets are different that for Dest-ID format)
+    uint32_t nps_regid = get_reg_val(golden_nps_base_addr + REG_ID_OFFSET, 0, user_cdo_map, user_cdo_filename);
+    if (nps_regid == 0) {
+        //std::cout << " reg-id write not found (assume default val 0) " << std::endl;
+    }
+
+    // calc offset to routing table register
+    // WARNING: changed to NEQ as per DID document HIGH offsets are used when HIGH_ID != NPS(HIGH-ID)
+    uint32_t Reg_offset;
+    if ((((golden_nps_dest_id & DST_ID_HIGH_MASK) >> DST_ID_HIGH_SHIFT) ^ ((nps_regid & REG_ID_HIGH_MASK) >> REG_ID_HIGH_SHIFT)) != 0)
+    {
+        Reg_offset = REG_HIGH_ID_OFFSET + ((golden_nps_dest_id & DST_ID_HIGH_MASK) >> DST_ID_HIGH_SHIFT) * 8;
+    }
+    else if ((((golden_nps_dest_id & DST_ID_MID_MASK) >> DST_ID_MID_SHIFT) ^ ((nps_regid & REG_ID_MID_MASK) >> REG_ID_MID_SHIFT)) != 0)
+    {
+        Reg_offset = REG_MID_ID_OFFSET + ((golden_nps_dest_id & DST_ID_MID_MASK) >> DST_ID_MID_SHIFT) * 8;
+    }
+    else
+    {
+        Reg_offset = REG_LOW_ID_OFFSET + ((golden_nps_dest_id & DST_ID_LOW_MASK) >> DST_ID_LOW_SHIFT) * 8;
+    }
+
+    uint32_t shift = golden_nps_vc * 2;
+    if (golden_nps_iport & 1)
+    {
+        shift += 16;
+    }
+    if (golden_nps_iport >= 2)
+    {
+        Reg_offset += 4;
+    }
+
+    uint32_t Reg_value = get_reg_val(golden_nps_base_addr + Reg_offset, DEFAULT_REG_VALUE[golden_nps_iport], user_cdo_map, user_cdo_filename);
+
+    if (((Reg_value >> shift) & DEFAULT_REG_MASK) != golden_nps_oport)
+    {
+        invalid_pos_cdo_write.push_back({Reg_offset,Reg_value,shift}); //print expected "golden_nps_oport"
+        return false;
+    }
+    return true;
+}
+
+/******************************************************************************/
+void inline CompareCDOSequences(CdoSequence * user_cdo_seq, std::string device_name, std::string user_cdo_filename, uint32_t slr_id)
 {
     cdoseq_extract_writes(user_cdo_seq);
-    uint32_t * golden_value = NULL;
-    uint32_t * user_value = NULL;
     int pos_plus_neg_itr = 2;
     struct stat f_stat;
     bool found = false;
-    bool golden_element_found = false;
     std::string golden_cdo;
-    std::vector <uint32_t> golden_cdo_write;
+    std::vector<std::vector<uint32_t>> invalid_pos_cdo_write;
+    std::vector<std::vector<uint32_t>> invalid_neg_cdo_write;
 
-    for (int i = 0; i < pos_plus_neg_itr; i++)
-    {
-        golden_cdo.clear();
-        golden_cdo_write.clear();
-        golden_value = NULL;
-        user_value = NULL;
-        if (stat(golden_cdo_filename.c_str(), &f_stat) == 0)
+    // Read user CDO and store the addr-value mapping in a map
+    std::map<uint32_t, std::vector<uint32_t*>> user_cdo_map;
+    LINK * U = user_cdo_seq->cmds.next;
+    while (U != &user_cdo_seq->cmds) {
+        CdoCommand * user_cmd = all2cmds(U);
+        U = U->next;
+        if(user_cdo_map.find(user_cmd->dstaddr) != user_cdo_map.end())
         {
-            found = true;
+            std::vector<uint32_t*> myVector = {(uint32_t *)user_cmd->buf};
+            user_cdo_map[user_cmd->dstaddr] = myVector;
         }
         else
         {
-#ifdef _WIN32
+            user_cdo_map[user_cmd->dstaddr].push_back((uint32_t *)user_cmd->buf);
+        }
+    }
+
+    bool secure = (user_cdo_map.find(0xf6ea011c) != user_cdo_map.end() ||
+                                user_cdo_map.find(0xf6ea0120) != user_cdo_map.end()||
+                                user_cdo_map.find(0xf60a011c) != user_cdo_map.end()||
+                                user_cdo_map.find(0xf60a0120) != user_cdo_map.end()||
+                                user_cdo_map.find(0xf6f1011c) != user_cdo_map.end()  );
+
+    for (int i = 0; i < pos_plus_neg_itr; i++)
+    {
+        invalid_pos_cdo_write.clear();
+        invalid_neg_cdo_write.clear();
+        golden_cdo.clear();
+        if(i == 0)
+            golden_cdo = device_name + "_positive_list_v0.9.csv"; 
+        else
+            golden_cdo = device_name + "_negative_list_v0.9.csv";
+
+        if (stat(golden_cdo.c_str(), &f_stat) == 0)
+        {
+           found = true;
+        }
+        else
+        {
+    #ifdef _WIN32
             std::string DS = "\\";
-#else
+    #else
             std::string DS = "/";
-#endif
+    #endif
             char *s = getenv("HDI_APPROOT");
             if (s != NULL && *s != '\0')
             {
-                if (i == 0)
+                if (secure)
                 {
-                    golden_cdo = s + DS + "data" + DS + "bootgen" + DS + golden_cdo_filename + "_positive.cdo";
+                    golden_cdo = s + DS + "secure" + DS + "data" + DS + "bootgen" + DS + golden_cdo;
                 }
-                else
+                else 
                 {
-                    golden_cdo = s + DS + "data" + DS + "bootgen" + DS + golden_cdo_filename + "_negative.cdo";
+                    golden_cdo = s + DS + "non_secure" + DS + "data" + DS + "bootgen" + DS + golden_cdo;
                 }
                 if (stat(golden_cdo.c_str(), &f_stat) == 0)
                 {
@@ -470,56 +593,164 @@ inline void CompareCDOSequences(CdoSequence * user_cdo_seq, std::string golden_c
             LOG_ERROR("Cannot find golden CDO : %s", golden_cdo.c_str());
         }
 
-        CdoSequence * golden_cdo_seq = NULL;
-        golden_cdo_seq = cdoseq_load_cdo(golden_cdo.c_str());
-        if (golden_cdo_seq == NULL)
+        if(found)
         {
-            LOG_ERROR("Error parsing CDO file : %s", golden_cdo.c_str());
-        }
-        if (found)
-        {
-            LINK * l = golden_cdo_seq->cmds.next;
-            while (l != &golden_cdo_seq->cmds) {
-                CdoCommand * golden_cmd = all2cmds(l);
-                l = l->next;
-                golden_value = (uint32_t *)golden_cmd->buf;
-                LINK * U = user_cdo_seq->cmds.next;
-                while (U != &user_cdo_seq->cmds) {
-                    CdoCommand * user_cmd = all2cmds(U);
-                    U = U->next;
-                    user_value = (uint32_t *)user_cmd->buf;
-                    if ((golden_cmd->dstaddr == user_cmd->dstaddr) && (*golden_value == *user_value))
+            std::fstream fin;
+            fin.open(golden_cdo.c_str(), std::ios::in);
+            std::vector<std::string> row;
+            std::string line, word;
+
+            while (!fin.eof())
+            {
+                row.clear();
+                std::getline(fin, line);
+                std::stringstream lineStream(line);
+
+                while (std::getline(lineStream, word, ','))
+                {
+                    row.push_back(word);
+                }
+
+                //Process positive golden Cdo
+                if(i == 0)
+                {
+                    if(row.size()>1 && row[0] != "#SLR")
                     {
-                        golden_element_found = true;
-                        break;
+                        uint32_t slr_no = std::stoi(row[0]);
+
+                        if(slr_no == slr_id)
+                        {
+                            std::string node_type = row[1].substr(4,3);
+
+                            if(node_type == "NMU" || node_type == "NSU" || node_type == "NID")
+                            //NID refers to NIDB
+                            {
+                                uint32_t golden_addr;
+                                std::string golden_addr_str = row[3].substr(2);
+                                std::stringstream ss_addr;
+                                ss_addr << std::hex << golden_addr_str;
+                                ss_addr >> golden_addr;
+
+                                uint32_t golden_val;
+                                //The 0 val is stored as 0 and not as 0x0
+                                if(row[4].size() < 2)
+                                {
+                                    golden_val = 0;
+                                }
+                                else
+                                {
+                                    std::string golden_val_str = row[4].substr(2);
+                                    std::stringstream ss_val;
+                                    ss_val << std::hex << golden_val_str;
+                                    ss_val >> golden_val;
+                                }
+
+                                if(user_cdo_map.find(golden_addr) != user_cdo_map.end())
+                                {
+                                    if(user_cdo_map[golden_addr].size() > 1)
+                                    {
+                                        LOG_WARNING("More than 1 matching value found for address %x in user Cdo %s", golden_addr, user_cdo_filename.c_str());
+                                    }
+
+                                    uint32_t userval = *(user_cdo_map[golden_addr].back());
+
+                                    if(secure && row[2].find("SMID") != std::string::npos)
+                                    {
+                                        uint32_t golden_mask;
+                                        std::string golden_mask_str = row[5].substr(2);
+                                        std::stringstream ss_mask;
+                                        ss_mask << std::hex << golden_mask_str;
+                                        ss_mask >> golden_mask;
+
+                                        if((userval & golden_mask) != golden_val)
+                                        {
+                                            LOG_ERROR("Secure check failed: addr=0x%x, (userval 0x%x & mask 0x%x) = 0x%x, expected 0x%x in %s",
+                                                golden_addr, userval, golden_mask, (userval & golden_mask), golden_val, user_cdo_filename.c_str());
+                                        }
+                                    }
+                                    if(userval != golden_val)
+                                    {
+                                        invalid_pos_cdo_write.push_back({golden_addr, golden_val});
+                                    }
+                                }
+                                else
+                                {
+					                LOG_ERROR("Address = 0x%x is missing in user cdo  %s", golden_addr, user_cdo_filename.c_str());
+				                }
+
+                            }
+                            else if(node_type == "NPS")
+                            {
+                                uint32_t golden_nps_base_addr;
+                                std::string golden_addr_str = row[2].substr(2);
+                                std::stringstream ss_addr;
+                                ss_addr << std::hex << golden_addr_str;
+                                ss_addr >> golden_nps_base_addr;
+
+                                uint32_t golden_nps_iport = std::stoi(row[3]);
+                                uint32_t golden_nps_oport = std::stoi(row[4]);
+                                uint32_t golden_nps_vc = std::stoi(row[5]);
+                                uint32_t golden_nps_dest_id = std::stoi(row[6]);
+
+                                ValidateCdoOport(golden_nps_base_addr, golden_nps_iport, golden_nps_oport, golden_nps_vc,
+                                    golden_nps_dest_id, user_cdo_map, user_cdo_filename, invalid_pos_cdo_write);
+                            }
+                        }
                     }
                 }
-                if ((i == 0) && (golden_element_found == false))
-                {
-                    golden_cdo_write.push_back(golden_cmd->dstaddr);
-                    golden_cdo_write.push_back(*golden_value);
-                }
-                else if ((i != 0) && golden_element_found == true)
-                {
-                    golden_cdo_write.push_back(golden_cmd->dstaddr);
-                    golden_cdo_write.push_back(*golden_value);
-                }
-                golden_element_found = false;
-            }
-            if (golden_cdo_write.size() != 0)
-            {
-                LOG_MSG("\n");
-                if (i == 0)
-                {
-                    LOG_WARNING("User Cdo %s has missing write commands with below address and value.\n", user_cdo_filename.c_str());
-                }
+                //Process negative golden Cdo
                 else
                 {
-                    LOG_WARNING("User Cdo %s has invalid write commands with below address and value.\n", user_cdo_filename.c_str());
+                    if(row.size()>1 && row[0] != "#SLR")
+                    {
+                        uint32_t slr_no = std::stoi(row[0]);
+
+                        if(slr_no == slr_id)
+                        {
+                            std::string node_type = row[1].substr(4,4);
+
+                            if(node_type == "NIDB")
+                            {
+                                uint32_t golden_addr;
+                                std::string golden_addr_str = row[2].substr(2);
+                                std::stringstream ss_addr;
+                                ss_addr << std::hex << golden_addr_str;
+                                ss_addr >> golden_addr;
+                                uint32_t addr_mask = 0xFFFFF000;
+
+                                for (const auto& pair : user_cdo_map)
+                                    if((pair.first & addr_mask) == golden_addr)
+                                        invalid_neg_cdo_write.push_back({pair.first,*pair.second.back()});
+
+                            }
+                        }
+                    }
                 }
-                for (size_t itr = 0; itr < golden_cdo_write.size(); itr += 2)
+            }
+            fin.close();
+   
+            if (i == 0)
+            {
+                if(invalid_pos_cdo_write.size() != 0)
                 {
-                    LOG_MSG(" Address = 0x%x ; Value = 0x%x", golden_cdo_write[itr], golden_cdo_write[itr + 1]);
+                    LOG_WARNING("User Cdo %s has missing write commands with below address and value.", user_cdo_filename.c_str());
+                    for (size_t j = 0; j < invalid_pos_cdo_write.size(); j++)
+                        if(invalid_pos_cdo_write[j].size() == 2)
+                            LOG_MSG(" Address = 0x%x; Value = 0x%x ", invalid_pos_cdo_write[j][0], invalid_pos_cdo_write[j][1]);
+                        else
+                            LOG_MSG(" Address = 0x%x; Value = 0x%x; Shift = %x", invalid_pos_cdo_write[j][0], invalid_pos_cdo_write[j][1], invalid_pos_cdo_write[j][2]);
+                }
+            }
+            else
+            {
+                if(invalid_neg_cdo_write.size() != 0)
+                {
+                    LOG_WARNING("User Cdo %s has invalid write commands with below address and value.", user_cdo_filename.c_str());
+                    for (size_t j = 0; j < invalid_neg_cdo_write.size(); j++)
+                        if(invalid_neg_cdo_write[j].size() == 2)
+                            LOG_MSG(" Address = 0x%x; Value = 0x%x ", invalid_neg_cdo_write[j][0], invalid_neg_cdo_write[j][1]);
+                        else
+                            LOG_MSG(" Address = 0x%x; Value = 0x%x; Shift = %x", invalid_neg_cdo_write[j][0], invalid_neg_cdo_write[j][1], invalid_neg_cdo_write[j][2]);
                 }
             }
         }

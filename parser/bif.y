@@ -345,12 +345,32 @@ image_attributes        :   ID EQUAL expression                                 
                         |   UNIQUE_ID EQUAL expression                          { currentImageBifOptions->SetUniqueId($3); }
                         |   PARENT_UNIQUE_ID EQUAL expression                   { currentImageBifOptions->SetParentUniqueId($3); }
                         |   FUNCTION_ID EQUAL expression                        { currentImageBifOptions->SetFunctionId($3); }
-                        |   PCR_NUMBER EQUAL expression                         { if (options.GetArchType() == Arch::ZYNQ || options.GetArchType() == Arch::ZYNQMP || (options.GetArchType() == Arch::VERSAL && !options.IsVersalNetSeries()))
+                        |   PCR_NUMBER EQUAL expression                         { if (options.GetArchType() == Arch::ZYNQ || options.GetArchType() == Arch::ZYNQMP)
+                                                                                  {
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t  'pcr' is not supported for the specified architecture");
-                                                                                  currentImageBifOptions->SetPcrNumber($3); }
-                        |   PCR_MEASUREMENT_INDEX EQUAL expression              { if (options.GetArchType() == Arch::ZYNQ || options.GetArchType() == Arch::ZYNQMP || (options.GetArchType() == Arch::VERSAL && !options.IsVersalNetSeries()))
-                                                                                    LOG_ERROR("BIF attribute error !!!\n\t  'pcr_mid' is not supported for the specified architecture");
-                                                                                  currentImageBifOptions->SetPcrMeasurementIndex($3); }
+                                                                                  }
+                                                                                  else if(options.GetArchType() == Arch::VERSAL && !options.IsVersalNetSeries())
+                                                                                  {
+                                                                                    currentImageBifOptions->SetPcrNumber($3, false);
+                                                                                  }
+                                                                                  else if(options.GetArchType() == Arch::VERSAL && options.IsVersalNetSeries())
+                                                                                  {
+                                                                                    currentImageBifOptions->SetPcrNumber($3, true);
+                                                                                  }
+                                                                                  else if(options.GetArchType() == Arch::VERSALGEN2)
+                                                                                  {
+                                                                                    currentImageBifOptions->SetPcrNumber($3, options.IsVersalNetSeries());
+                                                                                  }
+                                                                                }
+                        |   PCR_MEASUREMENT_INDEX EQUAL expression              { if (options.GetArchType() == Arch::ZYNQ || options.GetArchType() == Arch::ZYNQMP)
+                                                                                  {
+                                                                                    LOG_ERROR("BIF attribute error !!!\n\t  'pcr measurement index' is not supported for the specified architecture");
+                                                                                  }
+                                                                                  else if(options.GetArchType() == Arch::VERSAL || options.GetArchType() == Arch::VERSALGEN2)
+                                                                                  {
+                                                                                    currentImageBifOptions->SetPcrMeasurementIndex($3);
+                                                                                  }
+                                                                                }
                         ;
 
 partition_spec          :   PARTITION partition_content

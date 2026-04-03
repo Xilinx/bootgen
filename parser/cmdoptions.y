@@ -72,13 +72,13 @@ void ShowCommonHelp(int,bool);
 %token _IMAGE _FILL _O_TOK I _H _DEBUG_TOK _LEGACY _NONBOOTING _PACKAGENAME _BIF_HELP
 %token _LOG ERROR WARNING INFO DEBUG TRACE
 %token _SPLIT _PROCESS_BITSTREAM MCS BIN _OUT_TYPE
-%token _DUMP DUMP_PLM DUMP_PMC_CDO DUMP_BOOT_FILES _DUMP_DIR _PUF DUMP_SLAVE_PDIS DUMP_PUF_PDI
+%token _DUMP DUMP_PLM DUMP_PMC_CDO DUMP_BOOT_FILES _DUMP_DIR _PUF DUMP_SLAVE_PDIS DUMP_PUF_PDI _SYNCFLAG
 %token _ARCH ZYNQ ZYNQMP VERSAL _R FPGA VERSALNET TELLURIDE VERSAL_2VE_2VM LASSEN LASSEN_DL9 SPARTANUP
 %token _DUAL_QSPI_MODE _DUAL_OSPI_MODE PARALLEL STACKED
 %token _W ON OFF
 %token _NOAUTHBLOCKS _ZYNQMPES1 _OVERLAYCDO
 %token _EFUSEPPKBITS _GENERATE_HASHES _PADIMAGEHEADER _SPKSIGNATURE _GENERATE_KEYS PEM RSA ECDSAP521 AUTH GREY METAL LMS _EFUSEPUFBITS
-%token _SECUREDEBUG ECDSA _AUTHJTAG
+%token _SECUREDEBUG ECDSA _AUTHJTAG LMS_SHA256 LMS_SHAKE256 HSS_SHA256 HSS_SHAKE256
 %token _ENCRYPT BBRAM EFUSE _P_TOK
 %token _READ READ_BH READ_IHT READ_IH READ_PHT READ_AC
 %token _VERIFY _VERIFYKDF _AUTH_OPTIMIZATION
@@ -94,7 +94,7 @@ void ShowCommonHelp(int,bool);
 %token HVERIFY HSECUREDEBUG HREAD HVERIFYKDF HDUMP HDUMPDIR HOVLCDO HOUTTYPE
 
 %token H_BIF_INIT H_BIF_UDFBH H_BIF_AES H_BIF_PPK H_BIF_PSK H_BIF_SPK H_BIF_SSK H_BIF_SPKSIGN H_BIF_HIVEC
-%token H_BIF_HDRSIGN H_BIF_BOOTIMAGE H_BIF_BL H_BIF_PID H_BIF_ENCR H_BIF_AUTH H_BIF_CHKSM H_BIF_ELYHNDOFF H_BIF_BHSIGN H_BIF_TCMBOOT H_BIF_OPTIONALDATA 
+%token H_BIF_HDRSIGN H_BIF_BOOTIMAGE H_BIF_BL H_BIF_PLDATA H_BIF_PID H_BIF_ENCR H_BIF_AUTH H_BIF_CHKSM H_BIF_ELYHNDOFF H_BIF_BHSIGN H_BIF_TCMBOOT H_BIF_OPTIONALDATA 
 %token H_BIF_POWNER H_BIF_PRESIGN H_BIF_UDF H_BIF_XIP H_BIF_ALIGN H_BIF_OFFSET H_BIF_RES H_BIF_LOAD H_BIF_TZ
 %token H_BIF_STARTUP H_BIF_KEYSRC H_BIF_FSBLCFG H_BIF_BOOTDEV H_BIF_DESTCPU H_BIF_DESTDEV H_BIF_EL H_SPLIT
 %token H_BIF_AUTHPARAM H_BIF_BHKEY H_BIF_PFW H_BIF_BLOCKS H_BIF_METAL H_BIF_BHIV H_BIF_BOOTVEC
@@ -119,6 +119,7 @@ option          : _IMAGE filename                   { options.SetBifFilename($2)
                 | _LOG       loglevel
                 | _H         helpoption
                 | _BIF_HELP  bifhelpoption
+                | _SYNCFLAG  setsyncflag
                 | _ENCRYPT keysource startcbc key0 hmac keyfile
                 | _EFUSEPPKBITS filename            { options.SetEfuseHashFileName($2); }
                 | _EFUSEPUFBITS filename            { options.SetEfusePufHashFileName($2); }
@@ -276,6 +277,8 @@ bifhelpoption	: /* empty */                       { ShowBifHelp(0); exit(0); }
                 | HV_BIF_IMAGESTORE                 { ShowBifHelp(CO::BisonParser::token::HV_BIF_IMAGESTORE); exit(0); }
                 ;
 
+setsyncflag     :                                   { options.SetSyncFlag(true); }
+
 wopt            : /* empty*/                        { options.SetOverwrite(true); }
                 | ON                                { options.SetOverwrite(true); }
                 | OFF                               { options.SetOverwrite(false); }
@@ -360,6 +363,14 @@ authJtagType    : ECDSA                             { options.SetSecureDebugAuth
                                                       options.SetSecureDebugImageFile("authenticatedJtagImage-ecdsa.bin"); }
                 | RSA                               { options.SetSecureDebugAuthType(Authentication::RSA);
                                                       options.SetSecureDebugImageFile("authenticatedJtagImage-rsa.bin"); }
+                | LMS_SHA256                        { options.SetSecureDebugAuthType(Authentication::LMS_SHA2_256);
+                                                      options.SetSecureDebugImageFile("authenticatedJtagImage-lms-sha256.bin"); }
+                | LMS_SHAKE256                      { options.SetSecureDebugAuthType(Authentication::LMS_SHAKE256);
+                                                      options.SetSecureDebugImageFile("authenticatedJtagImage-lms-shake256.bin"); }
+                | HSS_SHA256                        { options.SetSecureDebugAuthType(Authentication::HSS_SHA2_256);
+                                                      options.SetSecureDebugImageFile("authenticatedJtagImage-hss-sha256.bin"); }
+                | HSS_SHAKE256                      { options.SetSecureDebugAuthType(Authentication::HSS_SHAKE256);
+                                                      options.SetSecureDebugImageFile("authenticatedJtagImage-hss-shake256.bin"); }
 
 
 verifyImageOptions: filename                        { options.SetReadImageFile($1);

@@ -1303,7 +1303,12 @@ void PartitionBifOptions::SetEncryptionBlocks(uint32_t size, uint32_t num)
         LOG_ERROR("BIF attribute 'blocks' must specify sizes which are multiples of 4, for word alignment.");
     }
 
-    if (arch == Arch::VERSAL)
+    if((arch == Arch::VERSALGEN2 || (arch == Arch::SPARTANUP && !IsDl9Series())) && size < 80)
+    {
+        LOG_ERROR("BIF attribute error !!!\n\t\tThe minimum block size allowed is 5 AES encryption blocks (i.e., 80 bytes)");
+    }
+
+    if (arch == Arch::VERSAL || arch == Arch::VERSALNET || arch == Arch::VERSALGEN2)
     {
         if (size < 64)
         {

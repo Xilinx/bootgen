@@ -407,6 +407,11 @@ void Options::SetLegacyFlag(bool flag)
 }
 
 /******************************************************************************/
+void Options::SetSyncFlag(bool flag)
+{
+    syncFlag = flag;
+}
+/******************************************************************************/
 void Options::SetPadHeaderTable(bool flag)
 {
     padImageHeaderTable = flag;
@@ -494,6 +499,12 @@ bool Options::IsAuthOptimizationEnabled(void)
 OutputMode::Type  Options::GetOutputMode(void)
 {
     return outputMode;
+}
+
+/******************************************************************************/
+bool Options::GetSyncFlag(void)
+{
+    return syncFlag;
 }
 
 /******************************************************************************/

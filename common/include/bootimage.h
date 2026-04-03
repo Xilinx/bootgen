@@ -23,6 +23,7 @@
 ***********************************************   H E A D E R   F I L E S   ***
 -------------------------------------------------------------------------------
 */
+#include <map>
 #include <list>
 #include <string>
 #include "bootgenenum.h"
@@ -127,6 +128,7 @@ public:
     std::vector<std::string>& GetEncryptionKeyFileVec();
     void InsertEncryptionKeyFile(std::string filename);
     std::vector<std::pair<KeySource::Type, std::unique_ptr<uint32_t[]>>> aesKeyandKeySrc;  // Smart pointers for AES keys
+    std::map<std::pair<std::string, std::string>, uint8_t*> spkFileAndSpkSignature;
 
     Core::Type GetCore(void);
     uint32_t GetPmuFwSize (void);

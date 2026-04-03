@@ -397,11 +397,37 @@ int GetLmsSignLengthFromPubKey(const char *keyname, bool lmsOnly)
 
 }
 
-int GetLmsSignatureLength(const char *secretKey, const char *publicKey, bool lmsOnly)
+int GetLmsSignLengthFromPubKeyParam(int *keyParam, int keyParamSize)
 {
-    if(secretKey[0] != '\0')
+    int col1 = (keyParam[0]/5) - 1;
+    int row1 = log2(keyParam[1]);
+    int col2 = (keyParam[2]/5) - 1;
+    int row2 = log2(keyParam[3]);
+
+    int sign_values_lms[][5] = {{8688, 8848, 9008, 9168, 9328},
+                                {4464, 4624, 4784, 4944, 5104},
+                                {2352, 2512, 2672, 2832, 2992},
+                                {1296, 1456, 1616, 1776, 1936}};
+
+    //printf("DEBUG : Signature length %d\n", sign_values_lms[row1][col1] + sign_values_lms[row2][col2] + 52);
+    return sign_values_lms[row1][col1] + sign_values_lms[row2][col2] + 52;
+}
+
+int GetLmsSignatureLength(int *keyParam, int keyParamSize, const char *secretKey, const char *publicKey, bool lmsOnly)
+{
+    if (secretKey[0] != '\0')
     {
         return GetLmsSignLength(secretKey, lmsOnly);
+    }
+	else if (keyParamSize > 0)
+    {
+        //2 pairs of height-width is expected to evaluate signature length
+        if (keyParamSize < 4)
+        {
+            printf("Error : In the case of HSS, all public‑key parameters must be specified in the BIF to determine the signature length.");
+            return 0;
+        }
+        return GetLmsSignLengthFromPubKeyParam(keyParam, keyParamSize);
     }
     else if(publicKey[0] != '\0')
     {

@@ -111,8 +111,8 @@ Versal_2ve_2vmAuthenticationContext::Versal_2ve_2vmAuthenticationContext(Authent
             
         ownsHash = true;  // We own this hash
         }
-        signatureLength = GetLmsSignLength(pskFile.c_str(),lmsOnly);
-        certSize = GetCertificateSize();
+        //signatureLength = GetLmsSignLength(pskFile.c_str(),lmsOnly);
+        //certSize = GetCertificateSize();
     }
     spksignature = std::make_unique<uint8_t[]>(signatureLength);
 }
@@ -133,6 +133,10 @@ Versal_2ve_2vmAuthenticationContext::Versal_2ve_2vmAuthenticationContext(const A
     spkSelect = refAuthContext->spkSelect;
     spkIdentification = refAuthContext->spkIdentification;
     lmsOnly = refAuthContext->lmsOnly;
+    primaryLmsParams = refAuthContext->primaryLmsParams;
+    primaryLmsParamsSize = refAuthContext->primaryLmsParamsSize;
+    secondaryLmsParams = refAuthContext->secondaryLmsParams;
+    secondaryLmsParamsSize = refAuthContext->secondaryLmsParamsSize;
 
     if (authtype == Authentication::RSA)
     {
@@ -200,7 +204,7 @@ Versal_2ve_2vmAuthenticationContext::Versal_2ve_2vmAuthenticationContext(const A
             hash = new HashShake256();
             ownsHash = true;  // We own this hash
         }
-        signatureLength = GetLmsSignLength(pskFile.c_str(), lmsOnly);
+        signatureLength = GetLmsSignatureLength(primaryLmsParams, primaryLmsParamsSize, pskFile.c_str(), ppkFile.c_str(), lmsOnly);
         certSize = GetCertificateSize();
     }
 
@@ -362,7 +366,7 @@ Versal_2ve_2vmAuthenticationContext::Versal_2ve_2vmAuthenticationContext(const A
             
         ownsHash = true;  // We own this hash
         }
-        signatureLength = GetLmsSignLength(pskFile.c_str(),lmsOnly);
+        signatureLength = GetLmsSignatureLength(primaryLmsParams, primaryLmsParamsSize, pskFile.c_str(), ppkFile.c_str(), lmsOnly);
         certSize = GetCertificateSize();
     }
     else {
@@ -459,7 +463,7 @@ uint32_t Versal_2ve_2vmAuthenticationContext::GetCertificateSize(void)
         size_t spkLength = GetLmsPublicKeyLength(spkFile.c_str(), lmsOnly);
         spkLength += PADDING_16B(spkLength);
         
-        size_t spkSignLength = GetLmsSignLength(pskFile.c_str(), lmsOnly);
+        size_t spkSignLength = GetLmsSignatureLength(primaryLmsParams, primaryLmsParamsSize, pskFile.c_str(), ppkFile.c_str(), lmsOnly);
         spkSignLength += PADDING_16B(spkSignLength);
         
         return (ppkLength + spkHdrLength + spkLength + spkSignLength);
@@ -471,13 +475,42 @@ uint32_t Versal_2ve_2vmAuthenticationContext::GetCertificateSize(void)
 }
 
 /******************************************************************************/
+uint32_t Versal_2ve_2vmAuthenticationContext::GetAuthJtagImageSize(void) const
+{
+    if (authAlgorithm->Type() == Authentication::RSA)
+    {
+        return sizeof(AuthenticatedJtagRSAImageStructure);
+    }
+    else if (authAlgorithm->Type() == Authentication::ECDSA)
+    {
+        return sizeof(AuthenticatedJtagECP384ImageStructure);
+    }
+    else if (authAlgorithm->Type() == Authentication::LMS_SHA2_256 || authAlgorithm->Type() == Authentication::LMS_SHAKE256)
+    {
+        size_t actualppkSize = GetLmsPublicKeyLength(ppkFile.c_str(), lmsOnly);
+        size_t actualspkSize = GetLmsPublicKeyLength(spkFile.c_str(), lmsOnly);
+        size_t spkSignLength = GetLmsSignatureLength(primaryLmsParams, primaryLmsParamsSize, pskFile.c_str(), ppkFile.c_str(), lmsOnly);
+        size_t authJtagSignLength = GetLmsSignatureLength(secondaryLmsParams, secondaryLmsParamsSize, sskFile.c_str(), spkFile.c_str(), lmsOnly);
+
+        size_t totalSize = AUTH_JTAG_LMS_FIXED_HEADER_SIZE
+            + actualppkSize + PADDING_16B(actualppkSize)
+            + AUTH_JTAG_LMS_SPK_HEADER_LENGTH
+            + actualspkSize + PADDING_16B(actualspkSize)
+            + spkSignLength
+            + authJtagSignLength;
+
+        return (uint32_t)totalSize;
+    }
+    return sizeof(AuthenticatedJtagRSAImageStructure);
+}
+
+/******************************************************************************/
 uint32_t Versal_2ve_2vmAuthenticationContext::GetTotalHashBlockSignSize(void)
 {
     if ((authAlgorithm->Type() == Authentication::LMS_SHA2_256) || (authAlgorithm->Type() == Authentication::LMS_SHAKE256))
     {
-        size_t totalHashBlockSignatureLength = GetLmsSignLength(sskFile.c_str(), lmsOnly);
+        size_t totalHashBlockSignatureLength = GetLmsSignatureLength(secondaryLmsParams, secondaryLmsParamsSize, sskFile.c_str(), spkFile.c_str(), lmsOnly);
         totalHashBlockSignatureLength += PADDING_16B(totalHashBlockSignatureLength);
-        
         return totalHashBlockSignatureLength;
     }
     else
@@ -791,11 +824,11 @@ Section* Versal_2ve_2vmAuthenticationContext::CreateCertificate(BootImage& bi, B
     {
         if(isBootloader || name == "MetaHeader")
         {
-        // Implementation of Authentication certificate for ECDSA P-521
-        WriteLittleEndian32(headerData + totalppkkSize1Offset, EC_P521_KEY_LENGTH2 * 2 + PADDING_16B(EC_P521_KEY_LENGTH2 * 2));
-        WriteLittleEndian32(headerData + actualppkSize1Offset, EC_P521_KEY_LENGTH2 * 2);
-        WriteLittleEndian32(headerData + totalHashBlockSignatureSize1Offset, EC_P521_KEY_LENGTH2 * 2 + PADDING_16B(EC_P521_KEY_LENGTH2 * 2));
-        WriteLittleEndian32(headerData + actualSignatureSize1Offset, EC_P521_KEY_LENGTH2 * 2);
+            // Implementation of Authentication certificate for ECDSA P-521
+            WriteLittleEndian32(headerData + totalppkkSize1Offset, EC_P521_KEY_LENGTH2 * 2 + PADDING_16B(EC_P521_KEY_LENGTH2 * 2));
+            WriteLittleEndian32(headerData + actualppkSize1Offset, EC_P521_KEY_LENGTH2 * 2);
+            WriteLittleEndian32(headerData + totalHashBlockSignatureSize1Offset, EC_P521_KEY_LENGTH2 * 2 + PADDING_16B(EC_P521_KEY_LENGTH2 * 2));
+            WriteLittleEndian32(headerData + actualSignatureSize1Offset, EC_P521_KEY_LENGTH2 * 2);
         }
 
         primaryKey->Export(authCert + TELLURIDE_EC_P521_AC_PPK_OFFSET);
@@ -816,8 +849,8 @@ Section* Versal_2ve_2vmAuthenticationContext::CreateCertificate(BootImage& bi, B
         // LMS_SHA256 || LMS_SHAKE256
         acHdr = authAlgorithm->GetAuthHeader(lmsOnly);
 
-		size_t actualSpkSignatureLength = GetLmsSignLength(pskFile.c_str(), lmsOnly);
-		size_t actualHashBlockSignatureLength = GetLmsSignLength(sskFile.c_str(), lmsOnly);
+        size_t actualSpkSignatureLength = GetLmsSignatureLength(primaryLmsParams, primaryLmsParamsSize, pskFile.c_str(), ppkFile.c_str(), lmsOnly);
+        size_t actualHashBlockSignatureLength = GetLmsSignatureLength(secondaryLmsParams, secondaryLmsParamsSize, sskFile.c_str(), spkFile.c_str(), lmsOnly);
         size_t actualLmsPpkSize1 = GetLmsPublicKeyLength(ppkFile.c_str(), lmsOnly);
         size_t actualLmsSpkSize1 = GetLmsPublicKeyLength(spkFile.c_str(), lmsOnly);
 
@@ -901,18 +934,23 @@ void Versal_2ve_2vmAuthenticationContext::Link(BootImage& bi, void* partition, A
         {
             index = cert->section->index;
         }
+
+        if(authAlgorithm->Type() == Authentication::LMS_SHA2_256 || authAlgorithm->Type() == Authentication::LMS_SHAKE256)
+        {
+            signatureLength = GetLmsSignatureLength(secondaryLmsParams, secondaryLmsParamsSize, sskFile.c_str(), spkFile.c_str(), lmsOnly);
+        }
         
         if (cert->fsbl)
         {
-            GetPresign(presignFile, ((Versal_2ve_2vmPartition*)partition)->header->partition->section->Data.get() + ((Versal_2ve_2vmPartition*)partition)->hashBlockLength, index);
+            GetPresign(presignFile, signatureLength, ((Versal_2ve_2vmPartition*)partition)->header->partition->section->Data.get() + ((Versal_2ve_2vmPartition*)partition)->hashBlockLength, index);
         }
         else if(cert->isTableHeader)
         {
-            GetPresign(presignFile, bi.imageHeaderTable->hashBlockSection->Data.get() + bi.imageHeaderTable->hashBlockSectionLength, index);
+            GetPresign(presignFile, signatureLength, bi.imageHeaderTable->hashBlockSection->Data.get() + bi.imageHeaderTable->hashBlockSectionLength, index);
         }
         else{
             //For all other partitions
-            GetPresign(presignFile, ((Versal_2ve_2vmPartition*)partition)->hashBlockSection->Data.get() + ((Versal_2ve_2vmPartition*)partition)->hashBlockSectionLength, index);
+            GetPresign(presignFile, signatureLength,((Versal_2ve_2vmPartition*)partition)->hashBlockSection->Data.get() + ((Versal_2ve_2vmPartition*)partition)->hashBlockSectionLength, index);
         }
 
         acIndex++;
@@ -1290,7 +1328,7 @@ void Versal_2ve_2vmAuthenticationContext::GenerateSPKHash(uint8_t* sha_hash_padd
     {
         actualKeySize = GetLmsPublicKeyLength(spkFile.c_str(), lmsOnly);
         totalKeySize = actualKeySize + PADDING_16B(actualKeySize);
-		signatureLength = GetLmsSignLength(pskFile.c_str(), lmsOnly);
+        signatureLength = GetLmsSignatureLength(primaryLmsParams, primaryLmsParamsSize, pskFile.c_str(), ppkFile.c_str(), lmsOnly);
         totalSignatureLength = signatureLength + PADDING_16B(signatureLength);
     }
 
@@ -1392,7 +1430,32 @@ void Versal_2ve_2vmAuthenticationContext::GenerateSPKHash(uint8_t* sha_hash_padd
 /******************************************************************************/
 void Versal_2ve_2vmAuthenticationContext::CopySPKSignature(BootImage& bi, uint8_t* ptr)
 {
-    CreateSPKSignature(bi);
+    if (spkSignLoaded)
+    {
+        uint32_t index = 0;
+        if(authAlgorithm->Type() == Authentication::LMS_SHA2_256 || authAlgorithm->Type() == Authentication::LMS_SHAKE256)
+        {
+            signatureLength = GetLmsSignatureLength(primaryLmsParams, primaryLmsParamsSize, pskFile.c_str(), ppkFile.c_str(), lmsOnly);
+        }
+        GetPresign(spkSignFile, signatureLength, spksignature.get(), index);
+    }
+    else
+    {
+        if ((authAlgorithm->Type() == Authentication::LMS_SHA2_256 || authAlgorithm->Type() == Authentication::LMS_SHAKE256)
+            && bi.spkFileAndSpkSignature.find({spkFile.c_str(), ppkFile.c_str()}) != bi.spkFileAndSpkSignature.end())
+        {
+                 memcpy(spksignature.get(), bi.spkFileAndSpkSignature.find({spkFile.c_str(), ppkFile.c_str()})->second, signatureLength);
+        }
+        else if ((authAlgorithm->Type() == Authentication::RSA || authAlgorithm->Type() == Authentication::ECDSA)
+            && bi.spkFileAndSpkSignature.find({sskFile.c_str(), pskFile.c_str()}) != bi.spkFileAndSpkSignature.end())
+        {
+            memcpy(spksignature.get(), bi.spkFileAndSpkSignature.find({sskFile.c_str(), pskFile.c_str()})->second, signatureLength);
+        }
+        else
+        {
+            CreateSPKSignature(bi);
+        }
+    }
     LOG_TRACE("Copying the SPK signature into the Authentication Certificate");
     memcpy(ptr, spksignature.get(), signatureLength);
 }
@@ -1657,7 +1720,7 @@ void Versal_2ve_2vmAuthenticationContext::CopyPartitionSignature(BootImage& bi, 
 
     if (authAlgorithm->Type() == Authentication::LMS_SHA2_256 || authAlgorithm->Type() == Authentication::LMS_SHAKE256)
     {
-        signatureLength = GetLmsSignLength(sskFile.c_str(), lmsOnly);
+        signatureLength = GetLmsSignatureLength(secondaryLmsParams, secondaryLmsParamsSize, sskFile.c_str(), spkFile.c_str(), lmsOnly);
     }
     else
     {
@@ -1671,11 +1734,13 @@ void Versal_2ve_2vmAuthenticationContext::CopyPartitionSignature(BootImage& bi, 
     authAlgorithm->CreatePadding(shaHashPadded.get(), shaHash.get(), hashLength);
 
     /* Generate hashes, if requested from command line option "-generate_hashes" */
+    /*
     if (bi.options.DoGenerateHashes())
     {
         std::string hashfilename = acSection->Name;
         WritePaddedSHAFile(shaHashPadded.get(), hashfilename);
     }
+    */
     authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
 #ifdef DEBUG
     LOG_TRACE("Hash Block Data ", acSection->Name.c_str());
@@ -1684,13 +1749,29 @@ void Versal_2ve_2vmAuthenticationContext::CopyPartitionSignature(BootImage& bi, 
     /* Now sign the hash */
     if (authAlgorithm->Type() == Authentication::LMS_SHA2_256 || authAlgorithm->Type() == Authentication::LMS_SHAKE256)
     {
-        authAlgorithm->CreateSignature(hashBlock.get(), hashBlockLength, sskFile.c_str(),
+        if (bi.options.DoGenerateHashes())
+        {
+            std::string hashfilename = acSection->Name;
+            WritePaddedSHAFile(hashBlock.get(), hashBlockLength, hashfilename);
+        }
+        else
+        {
+            authAlgorithm->CreateSignature(hashBlock.get(), hashBlockLength, sskFile.c_str(),
                 signatureBlock, signatureLength, lmsOnly, spkFile.c_str());
-        authAlgorithm->VerifySignature(hashBlock.get(), hashBlockLength, spkFile.c_str(), signatureBlock, signatureLength, lmsOnly);
+            authAlgorithm->VerifySignature(hashBlock.get(), hashBlockLength, spkFile.c_str(), signatureBlock, signatureLength, lmsOnly);
+        }
     }
     else
     {
-        authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)secondaryKey.get(), signatureBlock);
+        if (bi.options.DoGenerateHashes())
+        {
+            std::string hashfilename = acSection->Name;
+            WritePaddedSHAFile(shaHashPadded.get(), hashfilename);
+        }
+        else
+        {
+            authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)secondaryKey.get(), signatureBlock);
+        }
     }
 
     authAlgorithm->RearrangeEndianess(signatureBlock, signatureLength);
@@ -2021,6 +2102,69 @@ void Versal_2ve_2vmAuthenticationContext::AddAuthCertSizeToTotalFSBLSize(Partiti
 }
 
 /******************************************************************************/
+void Versal_2ve_2vmAuthenticationContext::GetPresign(const std::string& presignFilename, uint16_t signatureLength, uint8_t* signature, uint32_t index)
+{
+    std::string filename(presignFilename);
+    std::string baseFile = StringUtils::BaseName(filename);
+
+    if (index > 9)
+    {
+        LOG_DEBUG(DEBUG_STAMP, "Partition index count %d too high", index);
+        LOG_ERROR("Presign file should have proper index (0-9)");
+    }
+
+    if (index != 0)
+    {
+        size_t x = filename.find(".0.");
+        if (x == std::string::npos)
+        {
+            LOG_ERROR("Presign file %s does not have partition index (*.0.*)", baseFile.c_str());
+        }
+        filename[x + 1] = (char)(filename[x + 1] + index); // nudge the '0' to '1' ... '9'.
+    }
+    LOG_TRACE("Reading presign file - %s", filename.c_str());
+    FILE* filePtr;
+    filePtr = fopen(filename.c_str(), "rb");
+
+    if (filePtr)
+    {
+        fseek(filePtr, 0, SEEK_END);   // non-portable
+        long size = ftell(filePtr);
+        fclose(filePtr);
+        if (size == signatureLength)
+        {
+            // read binary
+            filePtr = fopen(filename.c_str(), "rb");
+            long read_size = fread(signature, 1, signatureLength, filePtr);
+            if (read_size != signatureLength)
+            {
+                LOG_ERROR("Authentication Error !!!\n           Presign file %s should be of %d bytes", baseFile.c_str(), SIGN_LENGTH_VERSAL);
+            }
+            fclose(filePtr);
+        }
+        else
+        {
+            // read ascii
+            filePtr = fopen(filename.c_str(), "r");
+            for (int i = 0; i<signatureLength; i++)
+            {
+                int x;
+                if (fscanf(filePtr, "%2X", &x) != 1)
+                {
+                    LOG_ERROR("Failure reading presign file - %s", baseFile.c_str());
+                }
+                signature[i] = x;
+            }
+            fclose(filePtr);
+        }
+    }
+    else
+    {
+        LOG_ERROR("Failure opening presign file - %s", baseFile.c_str());
+    }
+}
+
+/******************************************************************************/
 void Versal_2ve_2vmAuthenticationContext::GetPresign(const std::string& presignFilename, uint8_t* signature, uint32_t index)
 {
     std::string filename(presignFilename);
@@ -2098,7 +2242,7 @@ void Versal_2ve_2vmAuthenticationContext::SetSPKSignatureFile(const std::string&
     if (filePtr)
     {
         fclose(filePtr);
-        GetPresign(filename, spksignature.get(), 0);
+        GetPresign(filename, signatureLength, spksignature.get(), 0);
         spkSignLoaded = true;
         spkSignRequested = "";
     }
@@ -2228,78 +2372,107 @@ void Versal_2ve_2vmAuthenticationContext::CreateSPKSignature(BootImage& bi)
 
     /* SPK is signed with PSK (Primary Secret Key)
     Check if PSK is given */
-    if (primaryKey->Loaded && primaryKey->isSecret)
+
+    if (authAlgorithm->Type() == Authentication::LMS_SHA2_256 || authAlgorithm->Type() == Authentication::LMS_SHAKE256)
     {
-        // Sign the SPK hash
-        if (authAlgorithm->Type() == Authentication::LMS_SHA2_256 || authAlgorithm->Type() == Authentication::LMS_SHAKE256)
+        uint16_t totalSignatureLength = 0;
+        size_t totalKeySize = 0;
+        size_t actualKeySize = 0;
+        actualKeySize = GetLmsPublicKeyLength(spkFile.c_str(), lmsOnly);
+        totalKeySize = actualKeySize + PADDING_16B(actualKeySize);
+        signatureLength = GetLmsSignLength(pskFile.c_str(), lmsOnly);
+        totalSignatureLength = signatureLength + PADDING_16B(signatureLength);
+
+        auto spkFull = std::make_unique<uint8_t[]>(actualKeySize);
+
+        if (!secondaryKey->Loaded)
         {
-            {
-                uint16_t totalSignatureLength = 0;
-                size_t totalKeySize = 0;
-                size_t actualKeySize = 0;
-                actualKeySize = GetLmsPublicKeyLength(spkFile.c_str(), lmsOnly);
-                totalKeySize = actualKeySize + PADDING_16B(actualKeySize);
-                signatureLength = GetLmsSignLength(pskFile.c_str(), lmsOnly);
-                totalSignatureLength = signatureLength + PADDING_16B(signatureLength);
+            ParseSPKeyFile(spkFile);
+        }
+        secondaryKey->Export(spkFull.get());
 
-                auto spkFull = std::make_unique<uint8_t[]>(actualKeySize);
+        // acTotalSpkSize; acActualSpkSize; acSpkTotalSignatureSize; acSpkActualSignatureSize; acSpkId; acSpkHdrAlignment[3]; , acSpk
+        //acSpkSize, acSpkSignatureSize, acSpkId, acSpkHdrAlignment, acSpk
+        auto tempBuffer = std::make_unique<uint8_t[]>(totalKeySize + TELLURIDE_AC_SPK_HDR_LENGTH);
+        memset(tempBuffer.get(), 0, totalKeySize + TELLURIDE_AC_SPK_HDR_LENGTH);
 
-                if (!secondaryKey->Loaded)
-                {
-                    ParseSPKeyFile(spkFile);
-                }
-                secondaryKey->Export(spkFull.get());
-
-                // acTotalSpkSize; acActualSpkSize; acSpkTotalSignatureSize; acSpkActualSignatureSize; acSpkId; acSpkHdrAlignment[3]; , acSpk
-                //acSpkSize, acSpkSignatureSize, acSpkId, acSpkHdrAlignment, acSpk
-                auto tempBuffer = std::make_unique<uint8_t[]>(totalKeySize + TELLURIDE_AC_SPK_HDR_LENGTH);
-                memset(tempBuffer.get(), 0, totalKeySize + TELLURIDE_AC_SPK_HDR_LENGTH);
-
-                WriteLittleEndian32(tempBuffer.get(), totalKeySize);
-                WriteLittleEndian32(tempBuffer.get() + sizeof(uint32_t), actualKeySize);
-                WriteLittleEndian32(tempBuffer.get() + (2 * sizeof(uint32_t)), totalSignatureLength);
-                WriteLittleEndian32(tempBuffer.get() + (3 * sizeof(uint32_t)), signatureLength);
-                WriteLittleEndian32(tempBuffer.get() + (4 * sizeof(uint32_t)), spkIdentification);
-                memcpy(tempBuffer.get() + TELLURIDE_AC_SPK_HDR_LENGTH, spkFull.get(), actualKeySize);
+        WriteLittleEndian32(tempBuffer.get(), totalKeySize);
+        WriteLittleEndian32(tempBuffer.get() + sizeof(uint32_t), actualKeySize);
+        WriteLittleEndian32(tempBuffer.get() + (2 * sizeof(uint32_t)), totalSignatureLength);
+        WriteLittleEndian32(tempBuffer.get() + (3 * sizeof(uint32_t)), signatureLength);
+        WriteLittleEndian32(tempBuffer.get() + (4 * sizeof(uint32_t)), spkIdentification);
+        memcpy(tempBuffer.get() + TELLURIDE_AC_SPK_HDR_LENGTH, spkFull.get(), actualKeySize);
     #ifdef DEBUG
-                LOG_TRACE("DATA being Hashed for SPK Sign");
-                LOG_DUMP_BYTES(tempBuffer.get(), actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH);
+        LOG_TRACE("DATA being Hashed for SPK Sign");
+        LOG_DUMP_BYTES(tempBuffer.get(), actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH);
     #endif
-                authAlgorithm->CreateSignature(tempBuffer.get(), actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH, pskFile.c_str(),
-                    spksignature.get(), signatureLength, lmsOnly, ppkFile.c_str());
+        if (primaryKey->Loaded && primaryKey->isSecret)
+        {
+            authAlgorithm->CreateSignature(tempBuffer.get(), actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH, pskFile.c_str(),
+                spksignature.get(), signatureLength, lmsOnly, ppkFile.c_str());
     #ifdef DEBUG
-                LOG_TRACE("spksignature");
-                LOG_DUMP_BYTES(spksignature.get(), signatureLength);
+            LOG_TRACE("spksignature");
+            LOG_DUMP_BYTES(spksignature.get(), signatureLength);
     #endif
-                authAlgorithm->VerifySignature(tempBuffer.get(), actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH, ppkFile.c_str(),
-                    spksignature.get(), signatureLength, lmsOnly);
-                //authAlgorithm->CreateSignature(shaHashPadded.get(), hashLength, pskFile.c_str(), spksignature, signatureLength, lmsOnly);
-                // Clean up to prevent memory leak
-                // unique_ptr handles deletion
-                // unique_ptr handles deletion
-            }
+            authAlgorithm->VerifySignature(tempBuffer.get(), actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH, ppkFile.c_str(),
+                spksignature.get(), signatureLength, lmsOnly);
         }
         else
         {
-            auto shaHashPadded = std::make_unique<uint8_t[]>(signatureLength);
-            memset(shaHashPadded.get(), 0, signatureLength);
-            memset(spksignature.get(), 0, signatureLength);
-            // Calulate the SPK hash with PKCS padding
-            GenerateSPKHash(shaHashPadded.get());
-            authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
-            authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)primaryKey.get(), spksignature.get());
+            if(bi.options.DoGenerateHashes())
+            {
+                //std::string hashfilename = acSection->Name;
+                std::string hashfilename = bi.bifOptions->GetSPKFileName() + hash->GetHashFileExtension();
+                WritePaddedSHAFile(tempBuffer.get(), actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH, hashfilename);
+            }
+            else
+            {
+                LOG_ERROR("Authentication Error !!!\n          PSK or SPK signature missing, must specify atleast one");
+            }
         }
 
-        authAlgorithm->RearrangeEndianess(spksignature.get(), signatureLength);
-
-        // unique_ptr handles deletion
     }
-    /* If SPK signature file or PSK is not given in BIF file, cannot get SPK signature for the auth certificate
-    Throw error */
-    else if (!spkSignLoaded)
+    else
     {
-        LOG_ERROR("Authentication Error !!!\n          PSK or SPK signature missing, must specify atleast one");
+        auto shaHashPadded = std::make_unique<uint8_t[]>(signatureLength);
+        memset(shaHashPadded.get(), 0, signatureLength);
+        memset(spksignature.get(), 0, signatureLength);
+        // Calulate the SPK hash with PKCS padding
+        GenerateSPKHash(shaHashPadded.get());
+        authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
+
+        if (primaryKey->Loaded && primaryKey->isSecret)
+        {
+            authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)primaryKey.get(), spksignature.get());
+        }
+        else
+        {
+            if(bi.options.DoGenerateHashes())
+            {
+                //std::string hashfilename = acSection->Name;
+                std::string hashfilename = bi.bifOptions->GetSPKFileName() + hash->GetHashFileExtension();
+                WritePaddedSHAFile(shaHashPadded.get(), hashfilename);
+            }
+            else
+            {
+                LOG_ERROR("Authentication Error !!!\n          PSK or SPK signature missing, must specify atleast one");
+            }
+        }
     }
+
+    authAlgorithm->RearrangeEndianess(spksignature.get(), signatureLength);
+
+    if(authAlgorithm->Type() == Authentication::LMS_SHA2_256 || authAlgorithm->Type() == Authentication::LMS_SHAKE256)
+    {
+        if(bi.spkFileAndSpkSignature.find(std::make_pair(spkFile.c_str(), ppkFile.c_str())) == bi.spkFileAndSpkSignature.end())
+            bi.spkFileAndSpkSignature.insert({std::make_pair(spkFile.c_str(), ppkFile.c_str()), spksignature.get()});
+    }
+    else
+    {
+        if(bi.spkFileAndSpkSignature.find(std::make_pair(sskFile.c_str(), pskFile.c_str())) == bi.spkFileAndSpkSignature.end())
+            bi.spkFileAndSpkSignature.insert({std::make_pair(sskFile.c_str(), pskFile.c_str()), spksignature.get()});
+    }
+
     LOG_INFO("SPK signature created successfully");
 }
 
@@ -2342,13 +2515,13 @@ void static SetDeviceDNA(const uint8_t* dnaValue, uint32_t* deviceDNA)
 }
 
 /******************************************************************************/
-void Versal_2ve_2vmAuthenticationContext::CreateAuthJtagImage(uint8_t* buffer, AuthJtagInfo authJtagAttributes)
+void Versal_2ve_2vmAuthenticationContext::CreateAuthJtagImage(Options& options, uint8_t* buffer, AuthJtagInfo authJtagAttributes)
 {
     LOG_TRACE("Creating the Authentication Header signature");
     if (authAlgorithm->Type() == Authentication::RSA)
     {
         AuthenticatedJtagRSAImageStructure* authJtagImage = (AuthenticatedJtagRSAImageStructure*)buffer;
-        if (primaryKey->Loaded && primaryKey->isSecret)
+        if (primaryKey->Loaded)
         {
             authJtagImage->idWord = AUTH_JTAG_IMAGE_IDENTIFICATION_WORD;
             WriteLittleEndian32(&authJtagImage->authJtagImageLength, sizeof(AuthenticatedJtagRSAImageStructure));
@@ -2401,19 +2574,55 @@ void Versal_2ve_2vmAuthenticationContext::CreateAuthJtagImage(uint8_t* buffer, A
             //SPK Header Offset - 0x450, size to be signed - 20 +  
             hash->CalculateVersalHash(true, (uint8_t*)authJtagImage + 0x450, 0x20 + VERSAL_ACKEY_STRUCT_SIZE + TELLURIDE_RSA_AC_PPK_SPK_ALIGNMENT, shaHash.get());
             authAlgorithm->CreatePadding(shaHashPadded.get(), shaHash.get(), hashLength);
-            authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
 
-            authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)primaryKey.get(), authJtagImage->spkSignature);
-            authAlgorithm->RearrangeEndianess(authJtagImage->authJtagSignature, signatureLength);
-
+            if (primaryKey->isSecret)
+            {
+                authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
+                authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)primaryKey.get(), authJtagImage->spkSignature);
+                authAlgorithm->RearrangeEndianess(authJtagImage->spkSignature, signatureLength);
+            }
+            else
+            {
+                if (spkSignLoaded)
+                {
+                    uint32_t index = 0;
+                    GetPresign(spkSignFile, signatureLength, authJtagImage->spkSignature, index);
+                }
+                else
+                {
+                    if(options.DoGenerateHashes())
+                    {
+                        std::string hashfilename = "spk" + hash->GetHashFileExtension();
+                        WritePaddedSHAFile(shaHashPadded.get(), hashfilename);
+                    }
+                }
+            }
             //Auth Jtag Msg Sign
             hash->CalculateVersalHash(true, (uint8_t*)authJtagImage, sizeof(AuthenticatedJtagRSAImageStructure) - signatureLength, shaHash.get());
             authAlgorithm->CreatePadding(shaHashPadded.get(), shaHash.get(), hashLength);
-            authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
-
-            authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)secondaryKey.get(), authJtagImage->authJtagSignature);
-            authAlgorithm->RearrangeEndianess(authJtagImage->authJtagSignature, signatureLength);
-
+            
+            if (secondaryKey->isSecret)
+            {
+                authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
+                authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)secondaryKey.get(), authJtagImage->authJtagSignature);
+                authAlgorithm->RearrangeEndianess(authJtagImage->authJtagSignature, signatureLength);
+            }
+            else
+            {
+                if (authJtagAttributes.jtagSignatureFile != "")
+                {
+                    uint32_t index = 0;
+                    GetPresign(authJtagAttributes.jtagSignatureFile, signatureLength, authJtagImage->authJtagSignature, index);
+                }
+                else
+                {
+                    if(options.DoGenerateHashes())
+                    {
+                        std::string hashfilename = "authJtag" + hash->GetHashFileExtension();
+                        WritePaddedSHAFile(shaHashPadded.get(), hashfilename);
+                    }
+                }
+            }
             // unique_ptr handles deletion
             // unique_ptr handles deletion
         }
@@ -2425,10 +2634,10 @@ void Versal_2ve_2vmAuthenticationContext::CreateAuthJtagImage(uint8_t* buffer, A
     else if (authAlgorithm->Type() == Authentication::ECDSA)
     {
         AuthenticatedJtagECP384ImageStructure* authJtagImage = (AuthenticatedJtagECP384ImageStructure*)buffer;
-        if (primaryKey->Loaded && primaryKey->isSecret)
+        if (primaryKey->Loaded)
         {
             authJtagImage->idWord = AUTH_JTAG_IMAGE_IDENTIFICATION_WORD;
-            WriteLittleEndian32(&authJtagImage->authJtagImageLength, sizeof(AuthenticatedJtagRSAImageStructure));
+            WriteLittleEndian32(&authJtagImage->authJtagImageLength, sizeof(AuthenticatedJtagECP384ImageStructure));
 
             hashLength = hash->GetHashLength();
             auto shaHash = std::make_unique<uint8_t[]>(hashLength);
@@ -2479,20 +2688,176 @@ void Versal_2ve_2vmAuthenticationContext::CreateAuthJtagImage(uint8_t* buffer, A
             //SPK Header Offset - 0xA0, size to be signed - 20 +  
             hash->CalculateVersalHash(true, (uint8_t*)authJtagImage + 0xA0, 0x20 + 2 * EC_P384_KEY_LENGTH, shaHash.get());
             authAlgorithm->CreatePadding(shaHashPadded.get(), shaHash.get(), hashLength);
-            authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
 
-            authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)primaryKey.get(), authJtagImage->spkSignature);
-            authAlgorithm->RearrangeEndianess(authJtagImage->authJtagSignature, signatureLength);
+            if (primaryKey->isSecret)
+            {
+                authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
+                authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)primaryKey.get(), authJtagImage->spkSignature);
+                authAlgorithm->RearrangeEndianess(authJtagImage->spkSignature, signatureLength);
+            }
+            else
+            {
+                if (spkSignLoaded)
+                {
+                    uint32_t index = 0;
+                    GetPresign(spkSignFile, signatureLength, authJtagImage->spkSignature, index);
+                }
+                else
+                {
+                    if(options.DoGenerateHashes())
+                    {
+                        std::string hashfilename = "spk" + hash->GetHashFileExtension();
+                        WritePaddedSHAFile(shaHashPadded.get(), hashfilename);
+                    }
+                }
+            }
 
             //Auth Jtag Msg Sign
-            hash->CalculateVersalHash(false, (uint8_t*)authJtagImage, sizeof(AuthenticatedJtagRSAImageStructure) - signatureLength, shaHash.get());
+            hash->CalculateVersalHash(false, (uint8_t*)authJtagImage, sizeof(AuthenticatedJtagECP384ImageStructure) - signatureLength, shaHash.get());
             authAlgorithm->CreatePadding(shaHashPadded.get(), shaHash.get(), hashLength);
-            authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
 
-            authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)secondaryKey.get(), authJtagImage->authJtagSignature);
-            authAlgorithm->RearrangeEndianess(authJtagImage->authJtagSignature, signatureLength);
-            // unique_ptr handles deletion
-            // unique_ptr handles deletion
+            if (secondaryKey->isSecret)
+            {
+                authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
+                authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)secondaryKey.get(), authJtagImage->authJtagSignature);
+                authAlgorithm->RearrangeEndianess(authJtagImage->authJtagSignature, signatureLength);
+            }
+            else
+            {
+                if (authJtagAttributes.jtagSignatureFile != "")
+                {
+                    uint32_t index = 0;
+                    GetPresign(authJtagAttributes.jtagSignatureFile, signatureLength, authJtagImage->authJtagSignature, index);
+                }
+                else
+                {
+                    if(options.DoGenerateHashes())
+                    {
+                        std::string hashfilename = "authJtag" + hash->GetHashFileExtension();
+                        WritePaddedSHAFile(shaHashPadded.get(), hashfilename);
+                    }
+                }
+            }
+
+        }
+    }
+    else if (authAlgorithm->Type() == Authentication::LMS_SHA2_256 || authAlgorithm->Type() == Authentication::LMS_SHAKE256)
+    {
+        uint8_t* authJtagImage = buffer;
+        if (primaryKey->Loaded)
+        {
+            size_t actualppkSize = GetLmsPublicKeyLength(ppkFile.c_str(), lmsOnly);
+            size_t actualspkSize = GetLmsPublicKeyLength(spkFile.c_str(), lmsOnly);
+            size_t spkSignLength = GetLmsSignatureLength(primaryLmsParams, primaryLmsParamsSize, pskFile.c_str(), ppkFile.c_str(), lmsOnly);
+            size_t authJtagSignLength = GetLmsSignatureLength(secondaryLmsParams, secondaryLmsParamsSize, sskFile.c_str(), spkFile.c_str(), lmsOnly);
+
+            if (actualppkSize > AUTH_JTAG_LMS_PUBLIC_KEY_SIZE || actualspkSize > AUTH_JTAG_LMS_PUBLIC_KEY_SIZE)
+            {
+                LOG_ERROR("Authentication Error !!!\n          PPK/SPK size exceeds AUTH_JTAG_LMS_PUBLIC_KEY_SIZE (60) for Authenticated Jtag Image");
+            }
+            else
+            {
+                /* Compute offsets on the fly from key and signature sizes (like authentication certificate) */
+                size_t ppkOffset = AUTH_JTAG_LMS_PPK_OFFSET;
+                size_t spkHeaderOffset = AUTH_JTAG_LMS_FIXED_HEADER_SIZE + actualppkSize + PADDING_16B(actualppkSize);
+                size_t spkOffset = spkHeaderOffset + AUTH_JTAG_LMS_SPK_HEADER_LENGTH;
+                size_t spkSignOffset = spkOffset + actualspkSize + PADDING_16B(actualspkSize);
+                size_t authSignOffset = spkSignOffset + spkSignLength;
+                
+                WriteLittleEndian32(authJtagImage + AUTH_JTAG_LMS_ID_WORD_OFFSET, AUTH_JTAG_IMAGE_IDENTIFICATION_WORD);
+
+                uint32_t authJtagImageLength = (uint32_t)(authSignOffset + authJtagSignLength);
+                WriteLittleEndian32(authJtagImage + AUTH_JTAG_LMS_IMAGE_LENGTH_OFFSET, authJtagImageLength);
+
+                uint32_t acHdr = authAlgorithm->GetAuthHeader(lmsOnly, false, false);
+                WriteLittleEndian32(authJtagImage + AUTH_JTAG_LMS_AC_HEADER_OFFSET, acHdr);
+                WriteLittleEndian32(authJtagImage + AUTH_JTAG_LMS_TOTAL_PPK_SIZE_OFFSET, actualppkSize + PADDING_16B(actualppkSize));
+                WriteLittleEndian32(authJtagImage + AUTH_JTAG_LMS_ACTUAL_PPK_SIZE_OFFSET, (uint32_t)actualppkSize);
+                WriteLittleEndian32(authJtagImage + AUTH_JTAG_LMS_TOTAL_AUTH_SIGN_SIZE_OFFSET, authJtagSignLength + PADDING_16B(authJtagSignLength));
+                WriteLittleEndian32(authJtagImage + AUTH_JTAG_LMS_ACTUAL_AUTH_SIGN_SIZE_OFFSET, (uint32_t)authJtagSignLength);
+
+                if (!authJtagAttributes.userRevokeId)
+                {
+                    LOG_WARNING("revoke_id is not specified in BIF, default revoke id is assigned as '0'.");
+                }
+                WriteLittleEndian32(authJtagImage + AUTH_JTAG_LMS_MSG_REVOKE_ID_OFFSET, authJtagAttributes.partitionRevokeId);
+
+                if (authJtagAttributes.userDeviceDNA)
+                {
+                    WriteLittleEndian32(authJtagImage + AUTH_JTAG_LMS_ATTRIBUTES_OFFSET, authJtagMessagenMask << authJtagMessageShift);
+                }
+                SetDeviceDNA(authJtagAttributes.deviceDNA, (uint32_t*)(authJtagImage + AUTH_JTAG_LMS_DEVICE_DNA_OFFSET));
+                WriteLittleEndian32(authJtagImage + AUTH_JTAG_LMS_JTAG_TIMEOUT_OFFSET, authJtagAttributes.jtagTimeout);
+
+                primaryKey->Export(authJtagImage + ppkOffset);
+                if (!secondaryKey->Loaded)
+                {
+                    ParseSPKeyFile(spkFile);
+                }
+                secondaryKey->Export(authJtagImage + spkOffset);
+
+                WriteLittleEndian32(authJtagImage + spkHeaderOffset, actualspkSize + PADDING_16B(actualspkSize));
+                WriteLittleEndian32(authJtagImage + spkHeaderOffset + sizeof(uint32_t), (uint32_t)actualspkSize);
+                WriteLittleEndian32(authJtagImage + spkHeaderOffset + (2 * sizeof(uint32_t)), spkSignLength + PADDING_16B(spkSignLength));
+                WriteLittleEndian32(authJtagImage + spkHeaderOffset + (3 * sizeof(uint32_t)), (uint32_t)spkSignLength);
+                WriteLittleEndian32(authJtagImage + spkHeaderOffset + (4 * sizeof(uint32_t)), authJtagAttributes.spkRevokeId);
+
+                uint8_t* tempBuffer = new uint8_t[TELLURIDE_AC_SPK_HDR_LENGTH + actualspkSize];
+                memset(tempBuffer, 0, TELLURIDE_AC_SPK_HDR_LENGTH + actualspkSize);
+                WriteLittleEndian32(tempBuffer, actualspkSize + PADDING_16B(actualspkSize));
+                WriteLittleEndian32(tempBuffer + sizeof(uint32_t), actualspkSize);
+                WriteLittleEndian32(tempBuffer + (2 * sizeof(uint32_t)), spkSignLength + PADDING_16B(spkSignLength));
+                WriteLittleEndian32(tempBuffer + (3 * sizeof(uint32_t)), spkSignLength);
+                WriteLittleEndian32(tempBuffer + (4 * sizeof(uint32_t)), spkIdentification);
+                memcpy(tempBuffer + TELLURIDE_AC_SPK_HDR_LENGTH, authJtagImage + spkOffset, actualspkSize);
+
+                if (primaryKey->isSecret)
+                {
+                    authAlgorithm->CreateSignature(tempBuffer, TELLURIDE_AC_SPK_HDR_LENGTH + actualspkSize, pskFile.c_str(),
+                        authJtagImage + spkSignOffset, spkSignLength, lmsOnly, ppkFile.c_str());
+                }
+                else
+                {
+                    if (spkSignLoaded)
+                    {
+                        uint32_t index = 0;
+                        GetPresign(spkSignFile, spkSignLength, authJtagImage + spkSignOffset, index);
+                    }
+                    else
+                    {
+                        if(options.DoGenerateHashes())
+                        {
+                            std::string hashfilename = "spk" + hash->GetHashFileExtension();
+                            WritePaddedSHAFile(tempBuffer, TELLURIDE_AC_SPK_HDR_LENGTH + actualspkSize, hashfilename);
+                        }
+                    }
+                }
+
+                delete[] tempBuffer;
+
+                if (secondaryKey->isSecret)
+                {
+                    authAlgorithm->CreateSignature(authJtagImage, (size_t)authSignOffset, sskFile.c_str(),
+                        authJtagImage + authSignOffset, authJtagSignLength, lmsOnly, spkFile.c_str());
+                }
+                else
+                {
+                    if (authJtagAttributes.jtagSignatureFile != "")
+                    {
+                        uint32_t index = 0;
+                        GetPresign(authJtagAttributes.jtagSignatureFile, authJtagSignLength, authJtagImage + authSignOffset, index);
+                    }
+                    else
+                    {
+                        if(options.DoGenerateHashes())
+                        {
+                            std::string hashfilename = "authJtag" + hash->GetHashFileExtension();
+                            WritePaddedSHAFile(authJtagImage, (size_t)authSignOffset, hashfilename);
+                        }
+                    }
+                }
+  
+            }
         }
         else
         {

@@ -31,7 +31,10 @@ extern "C" {
 #include "cdo-binary.h"
 #include "cdo-load.h"
 };
-
+extern "C" {
+#include "../../lms-hash-sigs/lms-utils.h"
+#include "../../lms-hash-sigs/hss_verify.h"
+};
 /*
 -------------------------------------------------------------------------------
 *****************************************************   F U N C T I O N S   ***
@@ -215,8 +218,58 @@ void SpartanBootImage::ConfigureAuthenticationContext(ImageHeader * image, Authe
         currentAuthCtx->sskFile = image->GetSskFile();
         currentAuthCtx->spkSignFile = image->GetSpkSignFile();
         currentAuthCtx->spkIdentification = image->GetSpkRevocationId();
-        currentAuthCtx->SetSPKSignatureFile(image->GetSpkSignFile());
         currentAuthCtx->lmsOnly = partitionbifoptions->lmsOnly;
+
+        //Copying primary and secondary LmsKeyParam from bifOptions to authCxt
+        std::vector<LmsKeyParam> primaryLmsParams = bifOptions->GetPrimaryLmsParams();
+        currentAuthCtx->primaryLmsParamsSize = primaryLmsParams.size() * 2;
+        currentAuthCtx->primaryLmsParams = new int[currentAuthCtx->primaryLmsParamsSize];
+        for (int i = 0, j = 0; i < currentAuthCtx->primaryLmsParamsSize && j < (int)primaryLmsParams.size(); i=i+2, j++)
+        {
+            currentAuthCtx->primaryLmsParams[i] = primaryLmsParams[j].h;
+            currentAuthCtx->primaryLmsParams[i+1] = primaryLmsParams[j].w;
+        }
+
+        std::vector<LmsKeyParam> secondaryLmsParams = bifOptions->GetSecondaryLmsParams();
+        currentAuthCtx->secondaryLmsParamsSize = secondaryLmsParams.size() * 2;
+        currentAuthCtx->secondaryLmsParams = new int[currentAuthCtx->secondaryLmsParamsSize];
+        for (int i = 0, j = 0; i < currentAuthCtx->secondaryLmsParamsSize && j < (int)secondaryLmsParams.size(); i=i+2, j++)
+        {
+            currentAuthCtx->secondaryLmsParams[i] = secondaryLmsParams[j].h;
+            currentAuthCtx->secondaryLmsParams[i+1] = secondaryLmsParams[j].w;
+        }
+
+        /*
+        for (int i = 0; i < currentAuthCtx->primaryLmsParamsSize; i=i+2)
+        {
+            LOG_TRACE("Primary Key Parameters :");
+            LOG_TRACE("height %d", currentAuthCtx->primaryLmsParams[i]);
+            LOG_TRACE("widht %d", currentAuthCtx->primaryLmsParams[i+1]);
+        }
+
+        for (int i = 0; i < currentAuthCtx->secondaryLmsParamsSize; i=i+2)
+        {
+            LOG_TRACE("Secondary Key Parameters :");
+            LOG_TRACE("height %d", currentAuthCtx->secondaryLmsParams[i]);
+            LOG_TRACE("widht %d", currentAuthCtx->secondaryLmsParams[i+1]);
+        }
+	    */
+
+        if (authType == Authentication::RSA)
+            currentAuthCtx->signatureLength = SIGN_LENGTH_VERSAL;
+        else if (authType == Authentication::ECDSA)
+            currentAuthCtx->signatureLength = EC_P384_KEY_LENGTH * 2;
+        else if (authType == Authentication::ECDSAp521)
+            currentAuthCtx->signatureLength = EC_P521_KEY_LENGTH2 * 2;
+        else if(authType == Authentication::LMS_SHA2_256 || authType == Authentication::LMS_SHAKE256)
+        {
+            currentAuthCtx->signatureLength = GetLmsSignatureLength(currentAuthCtx->primaryLmsParams, currentAuthCtx->primaryLmsParamsSize,
+                                                currentAuthCtx->pskFile.c_str(), currentAuthCtx->ppkFile.c_str(), currentAuthCtx->lmsOnly);
+            currentAuthCtx->spksignature = std::make_unique<uint8_t[]>(currentAuthCtx->signatureLength);
+            currentAuthCtx->bHsignature = std::make_unique<uint8_t[]>(currentAuthCtx->signatureLength);
+        }
+
+        currentAuthCtx->SetSPKSignatureFile(image->GetSpkSignFile());
 
         if (image->GetBhSignFile() != "")
         {

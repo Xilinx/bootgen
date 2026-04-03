@@ -257,6 +257,7 @@ public:
     void GeneratePPKHash(const std::string& filename);
     void CopyPartitionSignature(BootImage& bi, std::list<Section*> sections, size_t hashBlockLength, uint8_t* signatureBlock, Section* acSection);
     void CopyPartitionSignature(BootImage& bi, std::list<Section*> sections, uint8_t* signatureBlock, Section* acSection);
+    static void GetPresign(const std::string& presignFilename, uint16_t signatureLength, uint8_t* signature, uint32_t index);
     static void GetPresign(const std::string& presignFilename, uint8_t* signature, uint32_t index);
     void SetSPKSignatureFile(const std::string& filename);
     void SetBHSignatureFile(const std::string& filename);
@@ -264,7 +265,8 @@ public:
     void ResizeIfNecessary(Section* section);
     void LoadUdfData(const std::string& filename, uint8_t* signature);
     void CreateSPKSignature(BootImage& bi);
-    void CreateAuthJtagImage(uint8_t * buffer, AuthJtagInfo authJtagAttributes);
+    void CreateAuthJtagImage(Options& options, uint8_t * buffer, AuthJtagInfo authJtagAttributes);
+    uint32_t GetAuthJtagImageSize(void) const;
     void SetKeyLength(Authentication::Type type);
     std::unique_ptr<AuthenticationAlgorithm> GetAuthenticationAlgorithm(Authentication::Type type);
     uint32_t GetCertificateSize();

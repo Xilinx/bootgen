@@ -1288,9 +1288,6 @@ void Versal_2ve_2vmPartition::Link(BootImage &bi)
                         hashBlockSectionLength += sizeof(uint32_t);
                         memcpy(hashBlockSection->Data.get() + hashBlockSectionLength, bi.hashTable[j].second.get(), chunkificationHashLength);
                         hashBlockSectionLength += chunkificationHashLength;
-                        
-
-                        break;
                     }
                 }
             }

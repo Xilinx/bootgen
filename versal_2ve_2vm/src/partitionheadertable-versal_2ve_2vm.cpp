@@ -24,8 +24,8 @@
 #include "authentication-versal_2ve_2vm.h"
 
 extern "C" {
-#include "lms-utils.h"
-#include "hss_verify.h"
+#include "../../lms-hash-sigs/lms-utils.h"
+#include "../../lms-hash-sigs/hss_verify.h"
 };
 /*
 -------------------------------------------------------------------------------
@@ -1303,7 +1303,7 @@ void Versal_2ve_2vmPartitionHeaderTable::Build(BootImage & bi, Binary & cache)
         bi.headerAC->Build(bi, cache, bi.imageHeaderTable->section, false, true);
     }
 
-        //store partitionNumber-hashblock mapping in hashNumMap 
+    //store partitionNumber-hashblock mapping in hashNumMap 
     for(std::list<PartitionHeader*>::iterator partHdr = bi.partitionHeaderList.begin(); partHdr != bi.partitionHeaderList.end(); partHdr++)
     {
         // Dont need mapping for bootloader as bootloader's hash is stored in BH hashblock
@@ -1384,19 +1384,19 @@ void Versal_2ve_2vmPartitionHeaderTable::Build(BootImage & bi, Binary & cache)
 	
     bi.imageHeaderTable->hashBlockSectionLength = count * (bi.hash->GetHashLength() + HASH_BLOCK_INDEX_BYTES);
     bi.imageHeaderTable->hashBlockSectionLength += PADDING_16B(bi.imageHeaderTable->hashBlockSectionLength);
-        auto hashBlockSectionPtr = std::make_unique<Section>("HashBlock", bi.imageHeaderTable->hashBlockSectionLength);
-        bi.imageHeaderTable->hashBlockSection = hashBlockSectionPtr.release();
+    auto hashBlockSectionPtr = std::make_unique<Section>("HashBlock", bi.imageHeaderTable->hashBlockSectionLength);
+    bi.imageHeaderTable->hashBlockSection = hashBlockSectionPtr.release();
 
 	if (bi.options.bifOptions->metaHdrAttributes.authenticate != Authentication::None)
     {
-                bi.imageHeaderTable->hashBlockSection->IncreaseLengthAndPadTo(bi.imageHeaderTable->hashBlockSectionLength + bi.metaHdrAuthCtx->GetTotalHashBlockSignSize(), 0);
+        bi.imageHeaderTable->hashBlockSection->IncreaseLengthAndPadTo(bi.imageHeaderTable->hashBlockSectionLength + bi.metaHdrAuthCtx->GetTotalHashBlockSignSize(), 0);
     }
     if (bi.options.bifOptions->metaHdrAttributes.encrypt != Encryption::None && bi.options.bifOptions->metaHdrAttributes.authenticate == Authentication::None)
     {
-                bi.imageHeaderTable->hashBlockSection->IncreaseLengthAndPadTo(bi.imageHeaderTable->hashBlockSectionLength + AES_GCM_TAG_SZ, 0);
+        bi.imageHeaderTable->hashBlockSection->IncreaseLengthAndPadTo(bi.imageHeaderTable->hashBlockSectionLength + AES_GCM_TAG_SZ, 0);
     }
 
-            cache.Sections.push_back(std::unique_ptr<Section>(bi.imageHeaderTable->hashBlockSection));
+    cache.Sections.push_back(std::unique_ptr<Section>(bi.imageHeaderTable->hashBlockSection));
 }
 
 /******************************************************************************/
@@ -1451,12 +1451,40 @@ void Versal_2ve_2vmPartitionHeaderTable::ConfigureMetaHdrAuthenticationContext(B
         biAuth->SetSSKeyFile(bi.bifOptions->GetSSKFileName());
     }
 
+    biAuth->lmsOnly = bi.bifOptions->metaHdrAttributes.lmsOnly;
+
+    //Copying primary and secondary LmsKeyParam from bifOptions to authCxt
+    std::vector<LmsKeyParam> primaryLmsParams = bi.bifOptions->GetPrimaryLmsParams();
+    biAuth->primaryLmsParamsSize = primaryLmsParams.size() * 2;
+    biAuth->primaryLmsParams = new int[biAuth->primaryLmsParamsSize];
+    for (int i = 0, j = 0; i < biAuth->primaryLmsParamsSize && j < (int)primaryLmsParams.size(); i=i+2, j++)
+    {
+        biAuth->primaryLmsParams[i] = primaryLmsParams[j].h;
+        biAuth->primaryLmsParams[i+1] = primaryLmsParams[j].w;
+    }
+
+    std::vector<LmsKeyParam> secondaryLmsParams = bi.bifOptions->GetSecondaryLmsParams();
+    biAuth->secondaryLmsParamsSize = secondaryLmsParams.size() * 2;
+    biAuth->secondaryLmsParams = new int[biAuth->secondaryLmsParamsSize];
+    for (int i = 0, j = 0; i < biAuth->secondaryLmsParamsSize && j < (int)secondaryLmsParams.size(); i=i+2, j++)
+    {
+        biAuth->secondaryLmsParams[i] = secondaryLmsParams[j].h;
+        biAuth->secondaryLmsParams[i+1] = secondaryLmsParams[j].w;
+    }
+
+    if((bi.options.bifOptions->metaHdrAttributes.authenticate == Authentication::LMS_SHA2_256) ||
+       (bi.options.bifOptions->metaHdrAttributes.authenticate == Authentication::LMS_SHAKE256))
+    {
+        biAuth->signatureLength = GetLmsSignatureLength(biAuth->primaryLmsParams, biAuth->primaryLmsParamsSize,
+                                biAuth->pskFile.c_str(), biAuth->ppkFile.c_str(), biAuth->lmsOnly);
+        //biAuth->certSize = biAuth->GetCertificateSize();
+    }
+
     if (bi.bifOptions->metaHdrAttributes.spkSignature != "")
     {
         biAuth->SetSPKSignatureFile(bi.bifOptions->metaHdrAttributes.spkSignature);
     }
     biAuth->spkIdentification = bi.bifOptions->metaHdrAttributes.spkRevokeId;
-    biAuth->lmsOnly = bi.bifOptions->metaHdrAttributes.lmsOnly;
 
     //biAuth->SetPresignFile(bi.bifOptions->GetHeaderSignatureFile());
     if (bi.bifOptions->metaHdrAttributes.presign != "")

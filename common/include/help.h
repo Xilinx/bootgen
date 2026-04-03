@@ -36,7 +36,7 @@
 -------------+----------------------------------------------------------------+\n\
  OPTION      | enable_auth_opt                                                |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | versal                                                         |\n\
+ SUPPORTED   | versal, versal_2ve_2vm, spartanup                              |\n\
 -------------+----------------------------------------------------------------+\n\
  SYNOPSIS    | -enable_auth_opt                                               |\n\
 -------------+----------------------------------------------------------------+\n\
@@ -178,7 +178,7 @@ dual_qspi_mode
 -------------+----------------------------------------------------------------+\n\
  OPTION      | dump                                                           |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | versal                                                         |\n\
+ SUPPORTED   | versal, versal_2ve_2vm, spartanup                              |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | This option is used to dump partitions, bootheader and SSIT    |\n\
              | slave PDIs as binary files.                                    |\n\
@@ -218,7 +218,7 @@ dump_dir
 -------------+----------------------------------------------------------------+\n\
  OPTION      | dump_dir                                                       |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | versal                                                         |\n\
+ SUPPORTED   | versal, versal_2ve_2vm, spartanup                              |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | This option is used with dump option to dump partitions in the |\n\
              | directory specified here.                                      |\n\
@@ -238,7 +238,7 @@ efuseppkbits
 -------------+----------------------------------------------------------------+\n\
  OPTION      | efuseppkbits                                                   |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynq, zynqmp, versal                                           |\n\
+ SUPPORTED   | zynq, zynqmp, versal, versal_2ve_2vm, spartanup                |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | This option specifies the name of the efuse file to be written |\n\
              | to contain the PPK hash. This option generates a direct hash   |\n\
@@ -289,7 +289,7 @@ encryption_dump
 -------------+----------------------------------------------------------------+\n\
  OPTION      | encryption_dump                                                |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynqmp, versal                                                 |\n\
+ SUPPORTED   | zynqmp, versal, versal_2ve_2vm, spartanup                      |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | Generates encryption log file, aes_log.txt                     |\n\
 -------------+----------------------------------------------------------------+\n\
@@ -359,7 +359,7 @@ generate_keys
 -------------+----------------------------------------------------------------+\n\
  OPTION      | generate_keys                                                  |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynq, zynqmp, versal                                           |\n\
+ SUPPORTED   | zynq, zynqmp, versal, versal_2ve_2vm, spartanup                |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | This option generates keys.                                    |\n\
              | . Generates authentication keys in rsa/pem format.             |\n\
@@ -376,12 +376,19 @@ generate_keys
              |   pem : PEM format keys                                        |\n\
              |   ecdsa-p384 : ecdsap384 keys                                  |\n\
              |   ecdsa-p521 : ecdsap521 keys                                  |\n\
-             |   lms : LMS/HSS format keys                                    |\n\
+             |   lms-sha256 : lmssha256 keys                                  |\n\
+             |   hss-sha256 : hsssha256 keys                                  |\n\
+             |   lms-shake256 : lmsshake256 keys                              |\n\
+             |   hss-shake256 : hssshake256 keys                              |\n\
 -------------+----------------------------------------------------------------+\n\
  USAGE       | For authentication :                                           |\n\
              |         bootgen -image test.bif -generate_keys rsa             |\n\
              |         bootgen -image test.bif -generate_keys ecdsa-p384      |\n\
              |         bootgen -image test.bif -generate_keys ecdsa-p521      |\n\
+             |         bootgen -image test.bif -generate_keys lms-sha256      |\n\
+             |         bootgen -image test.bif -generate_keys hss-sha256      |\n\
+             |         bootgen -image test.bif -generate_keys lms-shake256    |\n\
+             |         bootgen -image test.bif -generate_keys hss-shake256    |\n\
              | For encryption :                                               |\n\
              |          bootgen -image test.bif -generate_keys obfuscatedkey  |\n\
 -------------+----------------------------------------------------------------+\n\
@@ -396,34 +403,6 @@ generate_keys
              | }                                                              |\n\
              | The key files are generated in the paths mentioned above       |\n\
              |----------------------------------------------------------------|\n\
-             | 1) LMS                                                         |\n\
-             | image:                                                         |\n\
-             | {                                                              |\n\
-             |     lms_key_params                                             |\n\
-             |     {                                                          |\n\
-             |         primary {lms_shake256_h5_w2}                           |\n\
-             |         secondary {lms_shake256_h5_w2}                         |\n\
-             |     }                                                          |\n\
-             |     [ppkfile] <path/ppkgenfile.txt>                            |\n\
-             |     [pskfile] <path/pskgenfile.txt>                            |\n\
-             |     [spkfile] <path/spkgenfile.txt>                            |\n\
-             |     [sskfile] <path/sskgenfile.txt>                            |\n\
-             | }                                                              |\n\
-             | 2) HSS                                                         |\n\
-             | image:                                                         |\n\
-             | {                                                              |\n\
-             |     lms_key_params                                             |\n\
-             |     {                                                          |\n\
-             |         primary {lms_shake256_h15_w2, lms_shake256_h15_w2}     |\n\
-             |         secondary {lms_shake256_h15_w2, lms_shake256_h15_w2}   |\n\
-             |     }                                                          |\n\
-             |     [ppkfile] <path/ppkgenfile.txt>                            |\n\
-             |     [pskfile] <path/pskgenfile.txt>                            |\n\
-             |     [spkfile] <path/spkgenfile.txt>                            |\n\
-             |     [sskfile] <path/sskgenfile.txt>                            |\n\
-             | }                                                              |\n\
-             | 3) Other Algorithms                                            |\n\
-             |----------------------------------------------------------------|\n\
              | For encryption :                                               |\n\
              | image:                                                         |\n\
              | {                                                              |\n\
@@ -432,12 +411,7 @@ generate_keys
              |     [familykey] familykey.txt                                  |\n\
              | }                                                              |\n\
 -------------+----------------------------------------------------------------+\n\
- NOTES       | LMS/HSS:                                                       |\n\
-             | Here h and w are <height>, <width> parameters that are         |\n\
-             | need to be specified in the BIF. Even for hss, while           |\n\
-             | generating keys the -generate_keys lms flag need to be used.   |\n\
-             |----------------------------------------------------------------|\n\
-             | PEM Key Format:                                                |\n\
+ NOTES       | PEM Key Format:                                                |\n\
              |   -----BEGIN RSA PRIVATE KEY-----                              |\n\
              |   MIIEpAIBAAKCAQEAmlJyPcZVXltASHrtm/YnOMxskf0k2RZrIajqymqZptnG |\n\
              |   kyBMalXaqmGb1kqGCgGZVvQt3FSRO3yXa....                        |\n\
@@ -924,7 +898,7 @@ verify_kdf
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | aarch32_mode                                                   |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynqmp, versal                                                 |\n\
+ SUPPORTED   | zynqmp, versal, versal_2ve_2vm, spartanup                      |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | To specify the partition is to be executed in 32-bit mode.     |\n\
              | Only valid for binary partitions.                              |\n\
@@ -971,7 +945,7 @@ alignment
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | alignment                                                      |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynq, zynqmp, versal                                           |\n\
+ SUPPORTED   | zynq, zynqmp, versal, versal_2ve_2vm, spartanup                |\n\
 -------------+----------------------------------------------------------------+\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | Sets the byte alignment. The partition will be padded to be    |\n\
@@ -1018,7 +992,7 @@ big_endian
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | big_endian                                                     |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynqmp, versal                                                 |\n\
+ SUPPORTED   | zynqmp, versal, versal_2ve_2vm, spartanup                      |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | To specify the partition in big endian                         |\n\
              | Only valid for binary partitions.                              |\n\
@@ -1065,7 +1039,7 @@ blocks
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | blocks                                                         |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynqmp, versal                                                 |\n\
+ SUPPORTED   | zynqmp, versal, versal_2ve_2vm, spartanup                      |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | Specify block sizes for key-rolling feature in encrytion.      |\n\
              | Each module is encrypted using its own unique key. The initial |\n\
@@ -1119,7 +1093,7 @@ bootimage
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | bootimage                                                      |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynq, zynqmp, versal                                           |\n\
+ SUPPORTED   | zynq, zynqmp, versal, versal_2ve_2vm                           |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | This specifies that the following file specification is a      |\n\
              | bootimage that was created by Bootgen, being reused as input.  |\n\
@@ -1160,7 +1134,7 @@ bootloader
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | bootloader                                                     |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynq, zynqmp, versal                                           |\n\
+ SUPPORTED   | zynq, zynqmp, versal, versal_2ve_2vm, spartanup                |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | This specifies the partition is a bootloader (FSBL). This      |\n\
              | attribute is specified with along with other partition bif     |\n\
@@ -1231,7 +1205,7 @@ boot_device
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | boot_device                                                    |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynqmp, versal                                                 |\n\
+ SUPPORTED   | zynqmp, versal, versal_2ve_2vm, spartanup                      |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | Specifies the secondary boot device. Indicates the device on   |\n\
              | which the partition is present.                                |\n\
@@ -1282,7 +1256,7 @@ boot_device
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | boot_config                                                    |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | versal                                                         |\n\
+ SUPPORTED   | versal, versal_2ve_2vm, spartanup                              |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | These parameters are used to configure the bootimage           |\n\
 -------------+----------------------------------------------------------------+\n\
@@ -1465,7 +1439,7 @@ core
 -------------+----------------------------------------------------------------+\n\
 ATTRIBUTE    | core                                                           |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | versal                                                         |\n\
+ SUPPORTED   | versal, versal_2ve_2vm                                         |\n\
 -------------+----------------------------------------------------------------+\n\
 DESCRIPTION  | Specifies which core will execute the partition                |\n\
 -------------+----------------------------------------------------------------+\n\
@@ -1500,7 +1474,7 @@ delay_handoff
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | delay_handoff                                                  |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | versal                                                         |\n\
+ SUPPORTED   | versal, versal_2ve_2vm                                         |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | This attribute specifies that the handoff to the subsystem is  |\n\
              | delayed.                                                       |\n\
@@ -1537,7 +1511,7 @@ delay_load
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | delay_load                                                     |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | versal                                                         |\n\
+ SUPPORTED   | versal, versal_2ve_2vm                                         |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | This attribute specifies that the loading the subsystem is     |\n\
              | delayed.                                                       |\n\
@@ -1670,7 +1644,7 @@ exception_level
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | exception_level                                                |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynqmp, versal                                                 |\n\
+ SUPPORTED   | zynqmp, versal, versal_2ve_2vm, spartanup                      |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | Exception level for which the core should be configured        |\n\
 -------------+----------------------------------------------------------------+\n\
@@ -1720,7 +1694,7 @@ file
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | file                                                           |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | versal                                                         |\n\
+ SUPPORTED   | versal, versal_2ve_2vm, spartanup                              |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | Specifies the file for creating the partition                  |\n\
 -------------+----------------------------------------------------------------+\n\
@@ -1851,7 +1825,7 @@ init
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | id                                                             |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | versal                                                         |\n\
+ SUPPORTED   | versal, versal_2ve_2vm, spartanup                              |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | Specifies the following IDs based on the place its defined:    |\n\
              |   * pdi id       - within outermost/pdi paranthesis            |\n\
@@ -1914,7 +1888,7 @@ image
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | image                                                          |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | versal                                                         |\n\
+ SUPPORTED   | versal, versal_2ve_2vm, spartanup                              |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | This attribute is used to define a subsytem/image              |\n\
 -------------+----------------------------------------------------------------+\n\
@@ -1946,7 +1920,7 @@ image
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | init                                                           |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynq, zynqmp, versal                                           |\n\
+ SUPPORTED   | zynq, zynqmp, versal, versal_2ve_2vm                           |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | Register initialization block at the end of the bootloader,    |\n\
              | built by parsing the .int file specification. Maximum of 256   |\n\
@@ -1994,7 +1968,7 @@ load
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | load                                                           |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynq, zynqmp, versal                                           |\n\
+ SUPPORTED   | zynq, zynqmp, versal, versal_2ve_2vm, spartanup                |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | Sets the load address for the partition in memory.             |\n\
 -------------+----------------------------------------------------------------+\n\
@@ -2040,7 +2014,7 @@ metahdr
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | metaheader                                                     |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | versal                                                         |\n\
+ SUPPORTED   | versal, versal_2ve_2vm                                         |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | This attribute is used to define encryption, authentication    |\n\
              | attributes for meta headers like keys, key sources etc.        |\n\
@@ -2085,7 +2059,7 @@ name
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | name                                                           |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | versal                                                         |\n\
+ SUPPORTED   | versal, versal_2ve_2vm, spartanup                              |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | Specifies the name of the image/subsystem                      |\n\
 -------------+----------------------------------------------------------------+\n\
@@ -2120,7 +2094,7 @@ name
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTES  | partition_owner, owner                                         |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynq, zynqmp, versal                                           |\n\
+ SUPPORTED   | zynq, zynqmp, versal, versal_2ve_2vm, spartanup                |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | Owner of the partition which is responsible to load the        |\n\
              | partition.                                                     |\n\
@@ -2183,7 +2157,7 @@ offset
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | offset                                                         |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynq, zynqmp, versal                                           |\n\
+ SUPPORTED   | zynq, zynqmp, versal, versal_2ve_2vm, spartanup                |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | Sets the absolute offset of the partition in the boot image.   |\n\
 -------------+----------------------------------------------------------------+\n\
@@ -2226,7 +2200,7 @@ parent_id
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | parent_id                                                      |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | versal                                                         |\n\
+ SUPPORTED   | versal, versal_2ve_2vm, spartanup                              |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | Specifies the ID for the parent PDI. This is used to identify  |\n\
              | the relationship between a partial PDI and its corresponding   |\n\
@@ -2259,7 +2233,7 @@ partition
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | partition                                                      |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | versal                                                         |\n\
+ SUPPORTED   | versal, versal_2ve_2vm, spartanup                              |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | This attribute is used to define a partition                   |\n\
              | It is an optional attribute to make the BIF more readable      |\n\
@@ -2386,7 +2360,7 @@ reserve
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | reserve                                                        |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynq, zynqmp, versal                                           |\n\
+ SUPPORTED   | zynq, zynqmp, versal, versal_2ve_2vm, spartanup                |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | Reserves the memory and padded after the partition.            |\n\
 -------------+----------------------------------------------------------------+\n\
@@ -2521,7 +2495,7 @@ startup
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | startup                                                        |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynq, zynqmp, versal                                           |\n\
+ SUPPORTED   | zynq, zynqmp, versal, versal_2ve_2vm, spartanup                |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | Sets the entry address for the partition, after it is loaded.  |\n\
              | This is ignored for partitions that do not execute.            |\n\
@@ -2565,7 +2539,7 @@ trustzone
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | trustzone                                                      |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynqmp, versal                                                 |\n\
+ SUPPORTED   | zynqmp, versal, versal_2ve_2vm, spartanup                      |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | Configures the core to be Trustzone secure or nonsecure        |\n\
 -------------+----------------------------------------------------------------+\n\
@@ -2613,7 +2587,7 @@ type
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | type                                                           |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | versal                                                         |\n\
+ SUPPORTED   | versal, versal_2ve_2vm, spartanup                              |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | Specifies the type of partition                                |\n\
 -------------+----------------------------------------------------------------+\n\
@@ -2712,7 +2686,7 @@ xip_mode
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | aeskeyfile                                                     |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynq, zynqmp, versal                                           |\n\
+ SUPPORTED   | zynq, zynqmp, versal, versal_2ve_2vm, spartanup                |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | The path to the AES keyfile. The keyfile contains AES key used |\n\
              | to encrypt the partitions. The contents of the key file needs  |\n\
@@ -2726,7 +2700,7 @@ xip_mode
              | ZYNQMP:                                                        |\n\
              | [aeskeyfile = <keyfile name>] <partition>                      |\n\
              +----------------------------------------------------------------+\n\
-             | VERSAL:                                                        |\n\
+             | VERSAL/VERSAL_2VE_2VM/SPARTANUP:                               |\n\
              | { aeskeyfile = <keyfile name>, file = <filename> }             |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | Sample BIF - test.bif                                          |\n\
@@ -2756,7 +2730,7 @@ xip_mode
              | * Key0, IV0 and Key Opt should be the same accross all nky     |\n\
              | files that will be used.                                       |\n\
              +----------------------------------------------------------------+\n\
-             | VERSAL:                                                        |\n\
+             | VERSAL/VERSAL_2VE_2VM/SPARTANUP:                               |\n\
              +----------------------------------------------------------------|\n\
              | all:                                                           |\n\
              | {                                                              |\n\
@@ -2788,14 +2762,14 @@ bh_keyfile
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | bh_keyfile                                                     |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynqmp, versal                                                 |\n\
+ SUPPORTED   | zynqmp, versal, versal_2ve_2vm, spartanup                      |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | 256-bit obfuscated key to be stored in boot header             |\n\
 -------------+----------------------------------------------------------------+\n\
  USAGE       | ZYNQMP:                                                        |\n\
              | [bh_keyfile] <key file path>                                   |\n\
              +----------------------------------------------------------------+\n\
-             | VERSAL:                                                        |\n\
+             | VERSAL/VERSAL_2VE_2VM/SPARTANUP:                               |\n\
              | bh_keyfile = <key file path>                                   |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | Sample BIF - test.bif                                          |\n\
@@ -2811,7 +2785,7 @@ bh_keyfile
              |                          destination_cpu=a53-0]fsbl.elf        |\n\
              | }                                                              |\n\
              +----------------------------------------------------------------+\n\
-             | VERSAL:                                                        |\n\
+             | VERSAL/VERSAL_2VE_2VM/SPARTANUP:                               |\n\
              +----------------------------------------------------------------|\n\
              | all:                                                           |\n\
              | {                                                              |\n\
@@ -2925,12 +2899,12 @@ encryption
  DESCRIPTION | This specifies the partition needs to be encrypted.            |\n\
              | Encryption Algorithms                                          |\n\
              |  Zynq            : AES-CBC                                     |\n\
-             |  ZynqMP & Versal : AES-GCM                                     |\n\
+             |  ZynqMP, Versal, Versal_2ve_2vm, Spartanup : AES-GCM           |\n\
 -------------+----------------------------------------------------------------+\n\
  USAGE       | ZYNQ/ZYNQMP/FPGA:                                              |\n\
              | [encryption = <options>] <partition>                           |\n\
              +----------------------------------------------------------------+\n\
-             | VERSAL:                                                        |\n\
+             | VERSAL/VERSAL_2VE_2VM/SPARTANUP:                               |\n\
              | { encryption = <options>, file = <filename> }                  |\n\
 -------------+----------------------------------------------------------------+\n\
  OPTIONS     | *none : Partition not encrypted                                |\n\
@@ -2947,7 +2921,7 @@ encryption
              |      [encryption=aes] hello.elf                                |\n\
              | }                                                              |\n\
              +----------------------------------------------------------------+\n\
-             | VERSAL:                                                        |\n\
+             | VERSAL/VERSAL_2VE_2VM/SPARTANUP:                               |\n\
              +----------------------------------------------------------------|\n\
              | all:                                                           |\n\
              | {                                                              |\n\
@@ -3034,7 +3008,7 @@ keysrc
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | keysrc                                                         |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | versal                                                         |\n\
+ SUPPORTED   | versal, versal_2ve_2vm, spartanup                              |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | Key source for encryption                                      |\n\
 -------------+----------------------------------------------------------------+\n\
@@ -3131,14 +3105,14 @@ puf_file
 -------------+----------------------------------------------------------------+\n\
  ATTRIBUTE   | puf_file                                                       |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynqmp, versal                                                 |\n\
+ SUPPORTED   | zynqmp, versal, versal_2ve_2vm, spartanup                      |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | PUF helper data file.                                          |\n\
 -------------+----------------------------------------------------------------+\n\
  USAGE       | ZYNQMP:                                                        |\n\
              | [puf_file] <puf data file>                                     |\n\
              +----------------------------------------------------------------+\n\
-             | VERSAL:                                                        |\n\
+             | VERSAL/VERSAL_2VE_2VM/SPARTANUP:                               |\n\
              |  puf_file = <puf data file>                                    |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | Sample BIF - test.bif                                          |\n\
@@ -3154,7 +3128,7 @@ puf_file
              |    [bootloader,destination_cpu=a53-0,encryption=aes]fsbl.elf   |\n\
              | }                                                              |\n\
              +----------------------------------------------------------------|\n\
-             | VERSAL:                                                        |\n\
+             | VERSAL/VERSAL_2VE_2VM/SPARTANUP:                               |\n\
              +----------------------------------------------------------------|\n\
              | all:                                                           |\n\
              | {                                                              |\n\
@@ -3247,21 +3221,28 @@ authentication
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | This specifies the partition needs to be authenticated.        |\n\
              | Authentication Algorithms:                                     |\n\
-             |     Zynq & FPGA  : RSA-2048                                    |\n\
-             |     ZynqMP       : RSA-4096                                    |\n\
-             |     Versal       : RSA-4096 & ECDSA                            |\n\
+             |     Zynq & FPGA    : RSA-2048                                  |\n\
+             |     ZynqMP         : RSA-4096                                  |\n\
+             |     Versal         : RSA-4096 & ECDSA                          |\n\
+             |     Versal_2ve_2vm : RSA-4096, ECDSA-P384, LMS-SHA256,         |\n\
+             |                      LMS-SHAKE256, HSS-SHA256, HSS-SHAKE256    |\n\
+             |     Spartanup      : ECDSA-P521, LMS-SHAKE256, HSS-SHAKE256    |\n\
              | Note : p384 and p521 curves are supported for ECDSA            |\n\
 -------------+----------------------------------------------------------------+\n\
  USAGE       | ZYNQ/ZYNQMP/FPGA:                                              |\n\
              | [authenication = <options>] <partition>                        |\n\
              +----------------------------------------------------------------+\n\
-             | VERSAL:                                                        |\n\
+             | VERSAL/VERSAL_2VE_2VM/SPATANUP:                                |\n\
              | {authenication=<options>, file=<partition>}                    |\n\
 -------------+----------------------------------------------------------------+\n\
- OPTIONS     | *none       : Partition not authenticated                      |\n\
-             |  rsa        : Partition authenticated using RSA                |\n\
-             |  ecdsa-p384 : Partition authenticated using ECDSA(P384 Curve)  |\n\
-             |  ecdsa-p521 : Partition authenticated using ECDSA(P521 Curve)  |\n\
+ OPTIONS     | *none         : Partition not authenticated                    |\n\
+             |  rsa          : Partition authenticated using RSA              |\n\
+             |  ecdsa-p384   : Partition authenticated using ECDSA(P384 Curve)|\n\
+             |  ecdsa-p521   : Partition authenticated using ECDSA(P521 Curve)|\n\
+             |  lms-sha256   : Partition authenticated using LMS-SHA256       |\n\
+             |  lms-shake256 : Partition authenticated using LMS-SHAKE256     |\n\
+             |  hss-sha256   : Partition authenticated using HSS-SHA256       |\n\
+             |  hss-shake256 : Partition authenticated using HSS-SHAKE256     |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | Sample BIF - test.bif                                          |\n\
              +----------------------------------------------------------------+\n\
@@ -3275,7 +3256,7 @@ authentication
              |     [authentication=rsa] hello.elf                             |\n\
              | }                                                              |\n\
              +----------------------------------------------------------------+\n\
-             | VERSAL:                                                        |\n\
+             | VERSAL/VERSAL_2VE_2VM/SPARTANUP:                               |\n\
              +----------------------------------------------------------------|\n\
              | all:                                                           |\n\
              | {                                                              |\n\
@@ -3448,11 +3429,12 @@ headersignature
              | [spkfile] <key filename>                                       |\n\
              | [sskfile] <key filename>                                       |\n\
              +----------------------------------------------------------------+\n\
-             | VERSAL:                                                        |\n\
+             | VERSAL/VERSAL_2VE_2VM/SPARTANUP:                               |\n\
              | ppkfile = <filename>                                           |\n\
              | pskfile = <filename>                                           |\n\
              | spkfile = <filename>                                           |\n\
              | sskfile = <filename>                                           |\n\
+             | For lms and hss authentication all the 4 keys are mandatory    |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | Sample BIF 1 - test.bif                                        |\n\
              +----------------------------------------------------------------+\n\
@@ -3493,7 +3475,7 @@ headersignature
              |    headers and any other partition that does not have a        |\n\
              |    specific SPK/SSK.                                           |\n\
              +----------------------------------------------------------------+\n\
-             | VERSAL:                                                        |\n\
+             | VERSAL/VERSAL_2VE_2VM/SPARTANUP:                               |\n\
              +----------------------------------------------------------------|\n\
              | all:                                                           |\n\
              | {                                                              |\n\
@@ -3692,4 +3674,61 @@ presign
              |    }                                                           |\n\
              |  }                                                             |\n\
  ------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+pmcdata
+******************************************************************************/
+#define H_BIF_PMCDATA_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | pmcdata                                                        |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | versal, versal_2ve_2vm, spartanup                              |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | Specifies the PMC CDO file which is stiched along with PLM to  |\n\
+             | form a single partition loaded by BootRoM                      |\n\
+             | This data is encrypted separately but authenticated as a single|\n\
+             | partition along with PLM                                       |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | { type = <pmc cdo> }                                           |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             |  test:                                                         |\n\
+             |  {                                                             |\n\
+             |      id = 0x2                                                  |\n\
+             |      image                                                     |\n\
+             |      {                                                         |\n\
+             |          name = pmc_ss, id = 0x1c000001                        |\n\
+             |          { type = bootloader, file = plm.elf}                  |\n\
+             |          { type = pmcdata, file = pmc_cdo.bin}                 |\n\
+             |          { core = psm, file = psm_fw.elf}                      |\n\
+             |      }                                                         |\n\
+             |  }                                                             |\n\
+-------------+----------------------------------------------------------------+\n"
+
+/******************************************************************************
+pldata
+******************************************************************************/
+#define H_BIF_PLDATA_H "\
+-------------+----------------------------------------------------------------+\n\
+ ATTRIBUTE   | pldata                                                         |\n\
+-------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | spartanup                                                      |\n\
+-------------+----------------------------------------------------------------+\n\
+ DESCRIPTION | This specifies the partition is a bitstream. This attribute    |\n\
+             | is specified with along with other partition bif attributes.   |\n\
+-------------+----------------------------------------------------------------+\n\
+ USAGE       | { type = <pldata> }                                            |\n\
+-------------+----------------------------------------------------------------+\n\
+ EXPLANATION | Sample BIF - test.bif                                          |\n\
+             |  test:                                                         |\n\
+             |  {                                                             |\n\
+             |      id = 0x2                                                  |\n\
+             |      image                                                     |\n\
+             |      {                                                         |\n\
+             |          name = pmc_ss, id = 0x1c000001                        |\n\
+             |          { type = bootloader, file = plm.elf}                  |\n\
+             |          { type = pldata, file = pl_data.bin}                  |\n\
+             |      }                                                         |\n\
+             |  }                                                             |\n\
+-------------+----------------------------------------------------------------+\n"
 #endif

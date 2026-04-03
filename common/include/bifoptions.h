@@ -286,11 +286,20 @@ public:
     {
         imageType = type;
     }
-    void SetPcrNumber(uint16_t num)
+    void SetPcrNumber(uint16_t num, bool isVersalNet)
     {
-        if ((2 > num) || (num > 7))
+        if(isVersalNet)
         {
-            LOG_ERROR("'pcr' is specified as '%d' for the Image:'%s'\n\t   The permitted values range from 2 to 7.", num, GetImageName().c_str());
+            if ((num < 2) || (num > 7))
+            {
+                LOG_ERROR("'pcr' is specified as '%d' for the Image:'%s'\n\t   In versalnet the permitted values range from 2 to 7.", num, GetImageName().c_str());
+            }
+        }else
+        {
+            if ((num < 2) || (num > 23))
+            {
+                LOG_ERROR("'pcr' is specified as '%d' for the Image:'%s'\n\t   In versal the permitted values range from 2 to 23.", num, GetImageName().c_str());
+            }
         }
         pcrNumber = num;
     }

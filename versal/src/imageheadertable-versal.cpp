@@ -339,7 +339,14 @@ void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
             isCorePsmFwPresent = true;
     }
 
-    bi.imageHeaderTable->SetUserOptionalData(bi.bifOptions->metaHdrAttributes.ihtOptionalDataInfo, bi.numHashTableEntries);
+    bool isCorePsm = false;
+    for (std::list<PartitionHeader*>::iterator partHdr = bi.partitionHeaderList.begin(); partHdr != bi.partitionHeaderList.end(); partHdr++)
+    {
+        if((*partHdr)->imageHeader->GetDestCpu() == DestinationCPU::PMU)
+            isCorePsm = true;
+    }
+
+    bi.imageHeaderTable->SetUserOptionalData(bi.bifOptions->metaHdrAttributes.ihtOptionalDataInfo, bi.numHashTableEntries, isCorePsm);
     bi.iht_optional_data_length = iht_optional_data_length;
     bi.copied_iht_optional_data_length = copied_iht_optional_data_length;
     LOG_TRACE("After SetUserOptionalData: iht_optional_data_length = 0x%x, copied = 0x%x", iht_optional_data_length, copied_iht_optional_data_length);
@@ -3418,9 +3425,8 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                         }
                         else
                         {
-                            std::string golden_cdo_filename = device_name + "_boot" + std::to_string((*slr_id)->index);
-                            CompareCDOSequences(cdo_seq, golden_cdo_filename, (*slr_id)->file);
-                            cdocmd_delete_sequence(cdo_seq);  // Free CDO sequence memory
+                            CompareCDOSequences(cdo_seq, device_name, (*slr_id)->file, (*slr_id)->index);
+                            //cdocmd_delete_sequence(cdo_seq);  // Free CDO sequence memory
                         }
                     }
                 }
@@ -3563,10 +3569,9 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                 }
                 if ((master_cdo_verified == 0) && (device_name != "") && (do_ssit_check != NULL))
                 {
-                    std::string golden_cdo_filename = device_name + "_boot0";
                     master_cdo_verified = 1;
-                    CompareCDOSequences(cdo_seq, golden_cdo_filename, (*slr_id)->file.c_str());
-                    cdocmd_delete_sequence(cdo_seq);  // Free CDO sequence memory
+                    CompareCDOSequences(cdo_seq, device_name, (*slr_id)->file.c_str(), (*slr_id)->index);
+                    //cdocmd_delete_sequence(cdo_seq);  // Free CDO sequence memory
                     #ifdef ENABLE_WDI
                     if(isl::iostreams::xp::is_xp_format(cdo_filename))
                     {
@@ -4017,6 +4022,18 @@ void VersalImageHeader::CreateSlrConfigPartition(BootImage& bi)
                             LOG_WARNING("Incorrect CDO length read from : %s", cdo_filename);
                         }
                         p_offset += (master_chunk_size);
+                        if (bi.options.GetSyncFlag())
+                        {
+                            /* Add SSIT Sync Slave command */
+                            size += sizeof(CdoSsitSlaves);
+                            p_buffer.resize(size);
+                            /* Add SSIT Sync Slave command */
+                            CdoSsitSlaves *ssit_sync_slaves_cmd = CdoCmdWriteSsitSyncSlaves(((1 << num_of_slrs) - 1) & 0xFF);
+                            memcpy(p_buffer.data() + p_offset, ssit_sync_slaves_cmd, sizeof(CdoSsitSlaves));
+                            p_offset += sizeof(CdoSsitSlaves);
+                            delete ssit_sync_slaves_cmd;
+                        }
+
                         (*slr_info)->offset += (master_chunk_size);
                         master_file_size += master_chunk_size;
                         total_slr_chunk_size += master_chunk_size;
@@ -4088,7 +4105,11 @@ void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size
     VersalImageHeaderTableStructure* iHT = (VersalImageHeaderTableStructure*)data;
     size_t offset = iHT->firstPartitionHeaderWordOffset * 4;
     slr_info->partition_sizes.push_back(sizeof(VersalImageHeaderTableStructure) + (iHT->optionalDataSize * 4) + (iHT->totalMetaHdrLength * 4));
-
+    if (bi != nullptr && bi->options.GetSyncFlag())
+    {
+        LOG_TRACE("SSIT: Sync flag is set");
+        iHT->imageHeaderTableAttributes |= (0x1 & vNetihtEndofPDISynckMask) << vNetihtEndofPDISyncShift;
+    }
     for (uint8_t index = 0; index < iHT->partitionTotalCount; index++)
     {
         VersalPartitionHeaderTableStructure* pHT = (VersalPartitionHeaderTableStructure*)(data + offset);

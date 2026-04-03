@@ -64,6 +64,8 @@
 
 \-bif_help                  return tok::_BIF_HELP;
 
+\-setsyncflag               return tok::_SYNCFLAG;
+
 \-encrypt                   return tok::_ENCRYPT;
     bbram                   return tok::BBRAM;
     efuse                   return tok::EFUSE;
@@ -115,6 +117,10 @@
     ecdsa-p384              return tok::ECDSA;
     ecdsa-p521              return tok::ECDSAP521;
     lms                     return tok::LMS;
+    lms-sha256              return tok::LMS_SHA256;
+    lms-shake256            return tok::LMS_SHAKE256;
+    hss-sha256              return tok::HSS_SHA256;
+    hss-shake256            return tok::HSS_SHAKE256;
 
 \-nonbooting                return tok::_NONBOOTING;
 \-spksignature              return tok::_SPKSIGNATURE;
@@ -213,6 +219,7 @@ spksignature                return tok::H_BIF_SPKSIGN;
 headersignature             return tok::H_BIF_HDRSIGN;
 bootimage                   return tok::H_BIF_BOOTIMAGE;
 bootloader                  return tok::H_BIF_BL;
+pldata                      return tok::H_BIF_PLDATA;
 encryption                  return tok::H_BIF_ENCR;
 pid                         return tok::H_BIF_PID;
 authentication              return tok::H_BIF_AUTH;

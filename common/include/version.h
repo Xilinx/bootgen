@@ -135,6 +135,7 @@
  pcr                  - PCR register number                                   |\n\
  pcr_mindex           - PCR measurement index                                 |\n\
  imagestore           - ID corresponding to Image Store PDI                   |\n\
+ pldata               - Bitstream data in binary format                       |\n\
 ------------------------------------------------------------------------------+\n\
  Encryption attributes                                                        |\n\
 ------------------------------------------------------------------------------+\n\

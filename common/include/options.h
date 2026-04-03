@@ -54,7 +54,8 @@ struct Arch
         VERSALNET,
         VERSALGEN2, //versal_2ve_2vm
         SPARTANUP,
-        SPARTANUPV2 //DL9
+        SPARTANUPV2, //DL9
+        VERSAL_2VP,
     } Type;
 };
 
@@ -122,6 +123,7 @@ public:
         , versalNetSeries(false)
         , dl9Series(false)
         , outType(File::Unknown)
+        , syncFlag(false)
         , authOptimizationEnabled(false)
         
     {
@@ -192,7 +194,8 @@ public:
     void SetOutType (File::Type);
      void SetDl9Series(uint32_t);
     void SetAuthOptimization(void);
-    
+    void SetSyncFlag(bool flag);
+
     bool IsAuthOptimizationEnabled(void);
     std::string GetBifFilename (void);
     KeySource::Type GetEncryptedKeySource (void);
@@ -230,6 +233,7 @@ public:
     bool GetMetalKeyGeneration (void);
     bool GetEncryptionDumpFlag (void);
     bool GetZynqmpes1Flag (void);
+    bool GetSyncFlag (void);
     OutputMode::Type GetOutputMode (void);
     File::Type GetOutputFormat (void);
     std::string GetReadImageFile(void);
@@ -303,6 +307,7 @@ public:
     std::string secureDebugImageFilename;
     std::string overlayCDOFile;
 	File::Type outType;
+    bool syncFlag;
 private:
     bool versalNetSeries;
     bool authOptimizationEnabled;

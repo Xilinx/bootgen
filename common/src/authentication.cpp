@@ -205,13 +205,27 @@ AuthHash::Type AuthenticationContext::GetHashType(void)
 }
 
 /******************************************************************************/
+void AuthenticationContext::WritePaddedSHAFile(const uint8_t* buffer, size_t bufferLen, const std::string& hashfilename)
+{
+    std::string filename =  StringUtils::BaseName(hashfilename);
+    std::ofstream f(filename.c_str(),std::ios_base::out|std::ios_base::binary);
+    f.write((char*)buffer, bufferLen);
+    f.close();
+
+    if (f.fail())
+    {
+        LOG_ERROR("-generate_hashes failure !!!\n           Failed to write generated hash to the file: %s", filename.c_str());
+    }
+    LOG_TRACE("Hash file %s generated successfully", filename.c_str());
+}
+
+/******************************************************************************/
 void AuthenticationContext::WritePaddedSHAFile(const uint8_t* shaBuf, const std::string& hashfilename)
 {
     std::string filename =  StringUtils::BaseName(hashfilename);
     std::ofstream f(filename.c_str(),std::ios_base::out|std::ios_base::binary);
     f.write((char*)shaBuf, signatureLength);
     f.close();
-
     if (f.fail())
     {
         LOG_ERROR("-generate_hashes failure !!!\n           Failed to write generated hash to the file: %s", filename.c_str());
@@ -279,6 +293,7 @@ void AuthenticationContext::GetPresign(const std::string& presignFilename, uint8
     }
 
     LOG_TRACE("Reading presign file - %s", filename.c_str());
+    signature = new uint8_t[signatureLength];
     FILE* filePtr;
     filePtr = fopen(filename.c_str(),"rb");
     if (filePtr) 

@@ -1275,7 +1275,7 @@ void Versal_2ve_2vmImageHeader::ImportBin(BootImage& bi)
     }
     else
     {
-        memcpy(tempBuffer.get(), data.bytes, alignlen);
+        memcpy(tempBuffer.get(), data.bytes, data.len);
     }
     auto hdr = std::make_unique<Versal_2ve_2vmPartitionHeader>(this, 0);
     hdr->firstValidIndex = true;

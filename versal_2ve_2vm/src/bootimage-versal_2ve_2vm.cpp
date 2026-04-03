@@ -34,6 +34,8 @@ extern "C" {
 #include "lms-utils.h"
 #include "hss_verify.h"
 };
+
+
 /*
 -------------------------------------------------------------------------------
 *****************************************************   F U N C T I O N S   ***
@@ -210,6 +212,42 @@ void Versal_2ve_2vmBootImage::ConfigureAuthenticationContext(ImageHeader * image
         currentAuthCtx->sskFile = image->GetSskFile();
         currentAuthCtx->spkSignFile = image->GetSpkSignFile();
         currentAuthCtx->spkIdentification = image->GetSpkRevocationId();
+        currentAuthCtx->lmsOnly = partitionbifoptions->lmsOnly;
+
+        //Copying primary and secondary LmsKeyParam from bifOptions to authCxt
+        std::vector<LmsKeyParam> primaryLmsParams = bifOptions->GetPrimaryLmsParams();
+        currentAuthCtx->primaryLmsParamsSize = primaryLmsParams.size() * 2;
+        currentAuthCtx->primaryLmsParams = new int[currentAuthCtx->primaryLmsParamsSize];
+        for (int i = 0, j = 0; i < currentAuthCtx->primaryLmsParamsSize && j < (int)primaryLmsParams.size(); i=i+2, j++)
+        {
+            currentAuthCtx->primaryLmsParams[i] = primaryLmsParams[j].h;
+            currentAuthCtx->primaryLmsParams[i+1] = primaryLmsParams[j].w;
+        }
+
+        std::vector<LmsKeyParam> secondaryLmsParams = bifOptions->GetSecondaryLmsParams();
+        currentAuthCtx->secondaryLmsParamsSize = secondaryLmsParams.size() * 2;
+        currentAuthCtx->secondaryLmsParams = new int[currentAuthCtx->secondaryLmsParamsSize];
+        for (int i = 0, j = 0; i < currentAuthCtx->secondaryLmsParamsSize && j < (int)secondaryLmsParams.size(); i=i+2, j++)
+        {
+            currentAuthCtx->secondaryLmsParams[i] = secondaryLmsParams[j].h;
+            currentAuthCtx->secondaryLmsParams[i+1] = secondaryLmsParams[j].w;
+        }
+
+        /*
+        for (int i = 0; i < currentAuthCtx->primaryLmsParamsSize; i=i+2)
+        {
+            LOG_TRACE("Primary Key Parameters :");
+            LOG_TRACE("height %d", currentAuthCtx->primaryLmsParams[i]);
+            LOG_TRACE("widht %d", currentAuthCtx->primaryLmsParams[i+1]);
+        }
+        for (int i = 0; i < currentAuthCtx->secondaryLmsParamsSize; i=i+2)
+        {
+            LOG_TRACE("Secondary Key Parameters :");
+            LOG_TRACE("height %d", currentAuthCtx->secondaryLmsParams[i]);
+            LOG_TRACE("widht %d", currentAuthCtx->secondaryLmsParams[i+1]);
+        }
+        */
+
         if (authType == Authentication::RSA)
             currentAuthCtx->signatureLength = SIGN_LENGTH_VERSAL;
         else if (authType == Authentication::ECDSA)
@@ -218,17 +256,10 @@ void Versal_2ve_2vmBootImage::ConfigureAuthenticationContext(ImageHeader * image
             currentAuthCtx->signatureLength = EC_P521_KEY_LENGTH2 * 2;
         else if ((authType == Authentication::LMS_SHA2_256) || (authType == Authentication::LMS_SHAKE256))
         {
-            if (currentAuthCtx->spkSignLoaded)
-            {
-                currentAuthCtx->signatureLength = GetLmsSignLength(currentAuthCtx->ppkFile.c_str(), currentAuthCtx->lmsOnly);
-            }
-            else
-            {
-                currentAuthCtx->signatureLength = GetLmsSignLength(currentAuthCtx->pskFile.c_str(), currentAuthCtx->lmsOnly);   
-            }
+            currentAuthCtx->signatureLength = GetLmsSignatureLength(currentAuthCtx->primaryLmsParams, currentAuthCtx->primaryLmsParamsSize,
+                currentAuthCtx->pskFile.c_str(), currentAuthCtx->ppkFile.c_str(), currentAuthCtx->lmsOnly);
         }
         currentAuthCtx->SetSPKSignatureFile(image->GetSpkSignFile());
-        currentAuthCtx->lmsOnly = partitionbifoptions->lmsOnly;
 
         if (image->GetBhSignFile() != "")
         {
@@ -783,6 +814,10 @@ void Versal_2ve_2vmBootImage::ValidateSecureAttributes(ImageHeader * image, BifO
     switch (partitionBifOptions->authType)
     {
     case Authentication::RSA:
+    case Authentication::ECDSA:
+    case Authentication::ECDSAp521:
+    case Authentication::LMS_SHA2_256:
+    case Authentication::LMS_SHAKE256:
     {
         if (XipMode)
         {
@@ -1115,38 +1150,55 @@ void Versal_2ve_2vmBootImage::OutputOptionalSecureDebugImage()
 {
     std::string secureDebugImageFile = options.GetSecureDebugImageFile();
 
-    uint32_t authJtagImageSize = sizeof(AuthenticatedJtagRSAImageStructure);
-    if (options.GetSecureDebugAuthType() == Authentication::ECDSA)
-    {
-        authJtagImageSize = sizeof(AuthenticatedJtagECP384ImageStructure);
-    }
-
-    auto writedata = std::make_unique<uint8_t[]>(authJtagImageSize);
-    memset(writedata.get(), 0, authJtagImageSize);
-
     if (options.GetSecureDebugAuthType() != Authentication::None)
     {
-        auto authCtx_ptr = std::make_unique<Versal_2ve_2vmAuthenticationContext>(this->currentAuthCtx.get(), options.GetSecureDebugAuthType());
+        Authentication::Type authType = options.GetSecureDebugAuthType();
+        bool isHss = (authType == Authentication::HSS_SHA2_256 || authType == Authentication::HSS_SHAKE256);
+        if (isHss) {
+            authType = (authType == Authentication::HSS_SHA2_256) ? Authentication::LMS_SHA2_256 : Authentication::LMS_SHAKE256;
+        }
+        auto authCtx_ptr = std::make_unique<Versal_2ve_2vmAuthenticationContext>(this->currentAuthCtx.get(), authType);
         Versal_2ve_2vmAuthenticationContext* authCtx = authCtx_ptr.get();
+        if (isHss) {
+            authCtx->lmsOnly = false;
+        }
+
         if (authCtx)
         {
+            uint32_t authJtagImageSize = authCtx->GetAuthJtagImageSize();
+            auto writedata = std::make_unique<uint8_t[]>(authJtagImageSize);
+            memset(writedata.get(), 0, authJtagImageSize);
+
             authCtx->hashType = authHash;
-            authCtx->hash = hash.get();  // Non-owning reference to BootImage's hash
-            authCtx->CreateAuthJtagImage(writedata.get(), bifOptions->authJtagInfo);
+            if (authCtx->ownsHash && authCtx->hash != nullptr) {
+                delete authCtx->hash;
+            }
+            authCtx->hash = hash.get();
+            authCtx->ownsHash = false;
+            authCtx->CreateAuthJtagImage(options, writedata.get(), bifOptions->authJtagInfo);
+
+            std::ofstream ofs;
+            ofs.open(secureDebugImageFile.c_str(), std::ios::binary);
+
+            if (!ofs)
+            {
+                LOG_ERROR("Cannot write output to file : %s", secureDebugImageFile.c_str());
+            }
+            else
+            {
+                uint32_t bytesToWrite = authJtagImageSize;
+                Authentication::Type origAuthType = options.GetSecureDebugAuthType();
+                if (origAuthType == Authentication::LMS_SHA2_256 || origAuthType == Authentication::LMS_SHAKE256 ||
+                    origAuthType == Authentication::HSS_SHA2_256 || origAuthType == Authentication::HSS_SHAKE256)
+                {
+                    const uint8_t* p = writedata.get() + 4;
+                    bytesToWrite = (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+                }
+                ofs.write((const char*)writedata.get(), bytesToWrite);
+                ofs.close();
+                LOG_TRACE("Authenticated Jtag Image : '%s' generated.", secureDebugImageFile.c_str());
+            }
         }
-
-        std::ofstream ofs;
-        ofs.open(secureDebugImageFile.c_str(), std::ios::binary);
-
-        if (!ofs)
-        {
-            LOG_ERROR("Cannot write output to file : %s", secureDebugImageFile.c_str());
-        }
-
-        ofs.write((const char*)writedata.get(), authJtagImageSize);
-        ofs.close();
-
-        LOG_TRACE("Authenticated Jtag Image : '%s' generated.", secureDebugImageFile.c_str());
     }
 }
 
@@ -1370,15 +1422,45 @@ void Versal_2ve_2vmBootImage::Add(BifOptions* bifoptions)
         }
     }
 
+    //Copying primary and secondary LmsKeyParam from bifOptions to authCxt
+    std::vector<LmsKeyParam> primaryLmsParams = bifOptions->GetPrimaryLmsParams();
+    currentAuthCtx->primaryLmsParamsSize = primaryLmsParams.size() * 2;
+    currentAuthCtx->primaryLmsParams = new int[currentAuthCtx->primaryLmsParamsSize];
+    for (int i = 0, j = 0; i < currentAuthCtx->primaryLmsParamsSize && j < (int)primaryLmsParams.size(); i=i+2, j++)
+    {
+        currentAuthCtx->primaryLmsParams[i] = primaryLmsParams[j].h;
+        currentAuthCtx->primaryLmsParams[i+1] = primaryLmsParams[j].w;
+    }
+
+    std::vector<LmsKeyParam> secondaryLmsParams = bifOptions->GetSecondaryLmsParams();
+    currentAuthCtx->secondaryLmsParamsSize = secondaryLmsParams.size() * 2;
+    currentAuthCtx->secondaryLmsParams = new int[currentAuthCtx->secondaryLmsParamsSize];
+    for (int i = 0, j = 0; i < currentAuthCtx->secondaryLmsParamsSize && j < (int)secondaryLmsParams.size(); i=i+2, j++)
+    {
+        currentAuthCtx->secondaryLmsParams[i] = secondaryLmsParams[j].h;
+        currentAuthCtx->secondaryLmsParams[i+1] = secondaryLmsParams[j].w;
+    }
+
     if (bifoptions->GetSPKSignFileName() != "")
     {
         LOG_TRACE("Parsing SPK Signature File");
+
+        if(options.GetSecureDebugAuthType() == Authentication::LMS_SHA2_256 || options.GetSecureDebugAuthType() == Authentication::LMS_SHAKE256
+           || options.GetSecureDebugAuthType() == Authentication::HSS_SHA2_256 || options.GetSecureDebugAuthType() == Authentication::HSS_SHAKE256)
+        {
+            currentAuthCtx->signatureLength = GetLmsSignatureLength(currentAuthCtx->primaryLmsParams, currentAuthCtx->primaryLmsParamsSize,
+                currentAuthCtx->pskFile.c_str(), currentAuthCtx->ppkFile.c_str(), currentAuthCtx->lmsOnly);
+        }
+        currentAuthCtx->spksignature = std::make_unique<uint8_t[]>(currentAuthCtx->signatureLength);
+        memset(currentAuthCtx->spksignature.get(), 0, currentAuthCtx->signatureLength);
         currentAuthCtx->SetSPKSignatureFile(bifoptions->GetSPKSignFileName());
     }
 
     if (bifoptions->GetBHSignFileName() != "")
     {
         LOG_TRACE("Parsing BH Signature File");
+        currentAuthCtx->bHsignature = std::make_unique<uint8_t[]>(currentAuthCtx->signatureLength);
+        memset(currentAuthCtx->bHsignature.get(), 0, currentAuthCtx->signatureLength);
         currentAuthCtx->SetBHSignatureFile(bifoptions->GetBHSignFileName());
     }
 
@@ -1815,7 +1897,11 @@ void Versal_2ve_2vmBootImage::OutputOptionalEfuseHash()
                     authCtx = std::make_unique<Versal_2ve_2vmAuthenticationContext>(currentAuthCtx.get(), Authentication::LMS_SHA2_256);
                 }
 
-                authCtx->hash = hash.get();  // Non-owning reference to BootImage's hash
+                if (authCtx->ownsHash && authCtx->hash != nullptr) {
+                    delete authCtx->hash;
+                }
+                authCtx->hash = hash.get();
+                authCtx->ownsHash = false;
                 authCtx->GeneratePPKHash(hashFile);
             }
         }
@@ -1862,7 +1948,11 @@ void Versal_2ve_2vmBootImage::OutputOptionalEfuseHash()
                 {
                     authCtx = std::make_unique<Versal_2ve_2vmAuthenticationContext>(currentAuthCtx.get(), Authentication::RSA);
                 }
-                authCtx->hash = hash.get();  // Non-owning reference to BootImage's hash
+                if (authCtx->ownsHash && authCtx->hash != nullptr) {
+                    delete authCtx->hash;
+                }
+                authCtx->hash = hash.get();
+                authCtx->ownsHash = false;
                 authCtx->GeneratePPKHash(hashFile);
             }
         }
@@ -1943,7 +2033,8 @@ void Versal_2ve_2vmBootImage::OutputOptionalPufPDI()
 
         Versal_2ve_2vmBootHeaderStructure *bHTable = (Versal_2ve_2vmBootHeaderStructure*)pufPDITemp.get();
         bHTable->pufPDIIdentificationWord = PUF_IMAGE_ID_WORD;
-
+        bHTable->bhAttributes |= bifOptions->GetPufMode() << BH_PUF_MODE_BIT_SHIFT;
+        
         bHTable->headerChecksum = bootHeader->ComputeWordChecksum(&bHTable->widthDetectionWord, bootHeader->GetBootHeaderSize() - sizeof(uint32_t) - sizeof(Versal_2ve_2vmSmapWidthTable));
 
         if (filePtr != NULL)

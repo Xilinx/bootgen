@@ -326,6 +326,10 @@ public:
         , firstChunkSize(0)
         , signatureLength(0)
         , lmsOnly(true)
+        , primaryLmsParams(NULL)
+        , primaryLmsParamsSize(0)
+        , secondaryLmsParams(NULL)
+        , secondaryLmsParamsSize(0)
     { };
 
     virtual ~AuthenticationContext() { 
@@ -372,6 +376,7 @@ public:
     void GetAC(const std::string& presignFilename, uint8_t* signature, uint32_t index);
     void LoadUdfData(const std::string & udfFilename, uint8_t * signature);
     void WritePaddedSHAFile(const uint8_t * shaBuf, const std::string & hashfilename);
+    void WritePaddedSHAFile(const uint8_t* buffer, size_t bufferLen, const std::string& hashfilename);
     void WriteHashFile(const uint8_t* shaBuf, const std::string& hashfilename, bool isHeader);
 
     void SetPresignFile(const std::string& filename);
@@ -437,6 +442,10 @@ public:
     std::string acFile;
     std::string udfFile;
     bool lmsOnly;
+    int* primaryLmsParams;
+    int primaryLmsParamsSize;
+    int* secondaryLmsParams;
+    int secondaryLmsParamsSize;
     uint8_t hashLength;  // CRITICAL: Instance variable, NOT static (each context has its own)
 protected:
     static uint16_t authKeyLength;

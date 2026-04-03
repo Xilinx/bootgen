@@ -281,6 +281,32 @@ typedef struct
     uint8_t       authJtagSignature[2 * EC_P384_KEY_LENGTH]; //0x180
 } AuthenticatedJtagECP384ImageStructure; //0x1E0
 
+/* LMS/HSS Authenticated-Jtag Image - layout is variable; PPK/SPK/sign offsets computed at runtime from key/sign sizes */
+#define AUTH_JTAG_LMS_PUBLIC_KEY_SIZE       60   /* sizeof(HssPublicKey), max PPK/SPK size */
+#define AUTH_JTAG_LMS_PPK_REGION_SIZE       64   /* AUTH_JTAG_LMS_PUBLIC_KEY_SIZE padded to 16B */
+#define AUTH_JTAG_LMS_SPK_REGION_SIZE       64   /* same for SPK */
+#define AUTH_JTAG_LMS_SPK_HEADER_LENGTH     32   /* TELLURIDE_AC_SPK_HDR_LENGTH */
+#define AUTH_JTAG_LMS_MAX_SIGNATURE_SIZE    8192 /* max SPK and auth JTAG signature length supported */
+/* Max image size for allocation: fixed header 0x40 + PPK region + SPK header + SPK region + max SPK sign + max auth sign */
+#define AUTH_JTAG_LMS_IMAGE_MAX_SIZE        (AUTH_JTAG_LMS_FIXED_HEADER_SIZE + AUTH_JTAG_LMS_PPK_REGION_SIZE + \
+                                             AUTH_JTAG_LMS_SPK_HEADER_LENGTH + AUTH_JTAG_LMS_SPK_REGION_SIZE + \
+                                             AUTH_JTAG_LMS_MAX_SIGNATURE_SIZE + AUTH_JTAG_LMS_MAX_SIGNATURE_SIZE)
+
+/* Auth JTAG LMS fixed header only (offsets 0x00-0x3F); PPK/SPK/SPK sign/auth sign offsets computed in CreateAuthJtagImage */
+#define AUTH_JTAG_LMS_FIXED_HEADER_SIZE     0x40
+#define AUTH_JTAG_LMS_ID_WORD_OFFSET                0x00
+#define AUTH_JTAG_LMS_IMAGE_LENGTH_OFFSET            0x04
+#define AUTH_JTAG_LMS_AC_HEADER_OFFSET               0x08
+#define AUTH_JTAG_LMS_TOTAL_PPK_SIZE_OFFSET          0x0C
+#define AUTH_JTAG_LMS_ACTUAL_PPK_SIZE_OFFSET         0x10
+#define AUTH_JTAG_LMS_TOTAL_AUTH_SIGN_SIZE_OFFSET    0x14
+#define AUTH_JTAG_LMS_ACTUAL_AUTH_SIGN_SIZE_OFFSET   0x18
+#define AUTH_JTAG_LMS_MSG_REVOKE_ID_OFFSET           0x1C
+#define AUTH_JTAG_LMS_ATTRIBUTES_OFFSET              0x20
+#define AUTH_JTAG_LMS_DEVICE_DNA_OFFSET              0x24
+#define AUTH_JTAG_LMS_JTAG_TIMEOUT_OFFSET            0x34
+#define AUTH_JTAG_LMS_PPK_OFFSET                     0x40  /* PPK starts after fixed header */
+
 typedef enum
 {
     authJtagMessageShift = 0,
