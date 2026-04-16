@@ -411,6 +411,18 @@ void Options::SetSyncFlag(bool flag)
 {
     syncFlag = flag;
 }
+
+/******************************************************************************/
+void Options::SetGenerateTlBin(bool flag)
+{
+    generateTlBin = flag;
+}
+
+/******************************************************************************/
+bool Options::GetGenerateTlBin(void)
+{
+    return generateTlBin;
+}
 /******************************************************************************/
 void Options::SetPadHeaderTable(bool flag)
 {

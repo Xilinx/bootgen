@@ -156,6 +156,7 @@
 \-zynqmpes1                 return tok::_ZYNQMPES1;
 \-overlay_cdo               return tok::_OVERLAYCDO;
 \-out_type                  return tok::_OUT_TYPE;
+\-tlbin                     return tok::_TLBIN;
 
 \-h                         return tok::_H;
 \-help                      return tok::_H;

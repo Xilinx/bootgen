@@ -811,7 +811,7 @@ namespace BIF {
 
   case 80:
 /* Line 670 of lalr1.cc  */
-#line 361 "parser/bif.y"
+#line 365 "parser/bif.y"
     { if (options.GetArchType() == Arch::ZYNQ || options.GetArchType() == Arch::ZYNQMP)
                                                                                   {
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t  'pcr measurement index' is not supported for the specified architecture");
@@ -825,7 +825,7 @@ namespace BIF {
 
   case 86:
 /* Line 670 of lalr1.cc  */
-#line 381 "parser/bif.y"
+#line 385 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQ || options.GetArchType() != Arch::ZYNQMP)
                                                                                     LOG_WARNING("BIF attribute error !!! [keysrc_encryption] not supported for the specified architecture.\n\t   Refer 'bootgen -bif_help' for more details");
                                                                                   currentBifOptions->SetEncryptionKeySource((yysemantic_stack_[(4) - (4)].encrkeysrc_t)); options.SetEncryptedKeySource((yysemantic_stack_[(4) - (4)].encrkeysrc_t)); }
@@ -833,14 +833,14 @@ namespace BIF {
 
   case 87:
 /* Line 670 of lalr1.cc  */
-#line 384 "parser/bif.y"
+#line 388 "parser/bif.y"
     { if(options.GetArchType() == Arch::ZYNQ)
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t\t[fsbl_config] not supported in ZYNQ architecture"); }
     break;
 
   case 91:
 /* Line 670 of lalr1.cc  */
-#line 389 "parser/bif.y"
+#line 393 "parser/bif.y"
     { if(options.GetArchType() == Arch::ZYNQ)
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t\t[bootdevice] not supported in ZYNQ architecture"); 
                                                                                   if(options.GetArchType() != Arch::ZYNQMP)
@@ -850,122 +850,122 @@ namespace BIF {
 
   case 92:
 /* Line 670 of lalr1.cc  */
-#line 394 "parser/bif.y"
+#line 398 "parser/bif.y"
     { LOG_ERROR("This usage of boot_device is no more supported.\n\t   Refer 'bootgen -bif_help' for more details"); }
     break;
 
   case 103:
 /* Line 670 of lalr1.cc  */
-#line 409 "parser/bif.y"
+#line 413 "parser/bif.y"
     { currentBifOptions->SetBootDevice((yysemantic_stack_[(1) - (1)].bootdevice_t)); }
     break;
 
   case 104:
 /* Line 670 of lalr1.cc  */
-#line 410 "parser/bif.y"
+#line 414 "parser/bif.y"
     { currentBifOptions->SetBootDevice(BootDevice::IMAGESTORE); }
     break;
 
   case 105:
 /* Line 670 of lalr1.cc  */
-#line 411 "parser/bif.y"
+#line 415 "parser/bif.y"
     { currentBifOptions->SetBootDeviceAddress((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 112:
 /* Line 670 of lalr1.cc  */
-#line 424 "parser/bif.y"
+#line 428 "parser/bif.y"
     { currentBifOptions->SetAuthJtagRevokeID((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 113:
 /* Line 670 of lalr1.cc  */
-#line 425 "parser/bif.y"
+#line 429 "parser/bif.y"
     { currentBifOptions->SetAuthJtagSPKRevokeID((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 114:
 /* Line 670 of lalr1.cc  */
-#line 426 "parser/bif.y"
+#line 430 "parser/bif.y"
     { currentBifOptions->SetAuthJtagDeviceDna((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 115:
 /* Line 670 of lalr1.cc  */
-#line 427 "parser/bif.y"
+#line 431 "parser/bif.y"
     { currentBifOptions->SetAuthJtagTimeOut((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 116:
 /* Line 670 of lalr1.cc  */
-#line 428 "parser/bif.y"
+#line 432 "parser/bif.y"
     { currentBifOptions->SetAuthJtagSignatureFile((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 117:
 /* Line 670 of lalr1.cc  */
-#line 431 "parser/bif.y"
+#line 435 "parser/bif.y"
     { currentBifOptions->SetCore((yysemantic_stack_[(1) - (1)].core_t));
                                                                                   LOG_WARNING("[fsbl_config] a53_x64 | a53_x32 | r5_single | r5_dual is no more supported. Use 'destination_cpu' attribute for bootloader partition"); }
     break;
 
   case 118:
 /* Line 670 of lalr1.cc  */
-#line 434 "parser/bif.y"
+#line 438 "parser/bif.y"
     { currentBifOptions->SetBhRsa((yysemantic_stack_[(1) - (1)].bhrsa_t)); }
     break;
 
   case 119:
 /* Line 670 of lalr1.cc  */
-#line 436 "parser/bif.y"
+#line 440 "parser/bif.y"
     { LOG_ERROR("Authentication using SHA2 is no more supported."); }
     break;
 
   case 120:
 /* Line 670 of lalr1.cc  */
-#line 438 "parser/bif.y"
+#line 442 "parser/bif.y"
     { LOG_ERROR("[fsbl_config] bi_integrity_sha3 is no more supported. Use 'checksum' attribute of bootloader partition"); }
     break;
 
   case 121:
 /* Line 670 of lalr1.cc  */
-#line 440 "parser/bif.y"
+#line 444 "parser/bif.y"
     { currentBifOptions->SetPufHdLoc((yysemantic_stack_[(1) - (1)].pufhdloc_t)); }
     break;
 
   case 122:
 /* Line 670 of lalr1.cc  */
-#line 442 "parser/bif.y"
+#line 446 "parser/bif.y"
     { currentBifOptions->SetAuthOnly((yysemantic_stack_[(1) - (1)].authonly_t)); }
     break;
 
   case 123:
 /* Line 670 of lalr1.cc  */
-#line 444 "parser/bif.y"
+#line 448 "parser/bif.y"
     { currentBifOptions->SetOptKey((yysemantic_stack_[(1) - (1)].optkey_t)); }
     break;
 
   case 124:
 /* Line 670 of lalr1.cc  */
-#line 446 "parser/bif.y"
+#line 450 "parser/bif.y"
     { currentBifOptions->SetPufMode(PufMode::PUF4K); }
     break;
 
   case 125:
 /* Line 670 of lalr1.cc  */
-#line 448 "parser/bif.y"
+#line 452 "parser/bif.y"
     { currentBifOptions->SetShutterValue((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 126:
 /* Line 670 of lalr1.cc  */
-#line 450 "parser/bif.y"
+#line 454 "parser/bif.y"
     {  currentBifOptions->SetDpaCM((yysemantic_stack_[(1) - (1)].dpacm_t));}
     break;
 
   case 127:
 /* Line 670 of lalr1.cc  */
-#line 452 "parser/bif.y"
+#line 456 "parser/bif.y"
     { if(((yysemantic_stack_[(3) - (3)].number) != 8) && ((yysemantic_stack_[(3) - (3)].number) !=16) && ((yysemantic_stack_[(3) - (3)].number) != 32) && ((yysemantic_stack_[(3) - (3)].number) != 0))
                                                                                         LOG_ERROR("Invalid smap_width value in BIF. Valid values are 8, 16 and 32");
                                                                                   currentBifOptions->SetSmapWidth((yysemantic_stack_[(3) - (3)].number));
@@ -974,44 +974,44 @@ namespace BIF {
 
   case 128:
 /* Line 670 of lalr1.cc  */
-#line 456 "parser/bif.y"
+#line 460 "parser/bif.y"
     { currentBifOptions->SetBypassIdcodeFlag(true); }
     break;
 
   case 129:
 /* Line 670 of lalr1.cc  */
-#line 457 "parser/bif.y"
+#line 461 "parser/bif.y"
     { currentBifOptions->SetAHwRoTFlag(true); }
     break;
 
   case 130:
 /* Line 670 of lalr1.cc  */
-#line 458 "parser/bif.y"
+#line 462 "parser/bif.y"
     { currentBifOptions->SetSHwRoTFlag(true); }
     break;
 
   case 131:
 /* Line 670 of lalr1.cc  */
-#line 459 "parser/bif.y"
+#line 463 "parser/bif.y"
     { currentBifOptions->SetPufRingOscilltorSwapConfigValue((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 132:
 /* Line 670 of lalr1.cc  */
-#line 460 "parser/bif.y"
+#line 464 "parser/bif.y"
     { currentBifOptions->SetDiceEnable(); }
     break;
 
   case 133:
 /* Line 670 of lalr1.cc  */
-#line 463 "parser/bif.y"
+#line 467 "parser/bif.y"
     { currentPartitionBifOptions = new PartitionBifOptions();
                                                                                   currentPartitionBifOptions->SetArchType(options.GetArchType(),options.IsVersalNetSeries(),  currentBifOptions->GetIdCode()); }
     break;
 
   case 134:
 /* Line 670 of lalr1.cc  */
-#line 466 "parser/bif.y"
+#line 470 "parser/bif.y"
     { currentPartitionBifOptions->filename = (yysemantic_stack_[(5) - (5)].string);
                                                                                   currentPartitionBifOptions->filelist.push_back((yysemantic_stack_[(5) - (5)].string));
                                                                                   currentBifOptions->Add(currentPartitionBifOptions, currentImageBifOptions);
@@ -1020,7 +1020,7 @@ namespace BIF {
 
   case 135:
 /* Line 670 of lalr1.cc  */
-#line 470 "parser/bif.y"
+#line 474 "parser/bif.y"
     { currentPartitionBifOptions = new PartitionBifOptions();
                                                                                   currentPartitionBifOptions->SetArchType(options.GetArchType(), options.IsVersalNetSeries(),  currentBifOptions->GetIdCode());
                                                                                   currentPartitionBifOptions->filename = (yysemantic_stack_[(1) - (1)].string); 
@@ -1031,14 +1031,14 @@ namespace BIF {
 
   case 136:
 /* Line 670 of lalr1.cc  */
-#line 476 "parser/bif.y"
+#line 480 "parser/bif.y"
     { currentPartitionBifOptions = new PartitionBifOptions();
                                                                                   currentPartitionBifOptions->SetArchType(options.GetArchType(), options.IsVersalNetSeries(),  currentBifOptions->GetIdCode()); }
     break;
 
   case 144:
 /* Line 670 of lalr1.cc  */
-#line 490 "parser/bif.y"
+#line 494 "parser/bif.y"
     { currentPartitionBifOptions->filename = (yysemantic_stack_[(3) - (3)].string);
                                                                                   currentPartitionBifOptions->filelist.push_back((yysemantic_stack_[(3) - (3)].string));
                                                                                   currentBifOptions->Add(currentPartitionBifOptions, currentImageBifOptions); }
@@ -1046,26 +1046,26 @@ namespace BIF {
 
   case 145:
 /* Line 670 of lalr1.cc  */
-#line 493 "parser/bif.y"
+#line 497 "parser/bif.y"
     { currentPartitionBifOptions->partitionId = (yysemantic_stack_[(3) - (3)].number); }
     break;
 
   case 146:
 /* Line 670 of lalr1.cc  */
-#line 494 "parser/bif.y"
+#line 498 "parser/bif.y"
     { currentPartitionBifOptions->imageStoreId = (yysemantic_stack_[(3) - (3)].number);
                                                                                   currentPartitionBifOptions->SetPartitionType(PartitionType::IMAGE_STORE_PDI); }
     break;
 
   case 148:
 /* Line 670 of lalr1.cc  */
-#line 497 "parser/bif.y"
+#line 501 "parser/bif.y"
     { currentPartitionBifOptions->fileType = (yysemantic_stack_[(3) - (3)].number); }
     break;
 
   case 149:
 /* Line 670 of lalr1.cc  */
-#line 498 "parser/bif.y"
+#line 502 "parser/bif.y"
     { currentPartitionBifOptions->bifSection = (yysemantic_stack_[(3) - (3)].string);
                                                                                   currentPartitionBifOptions->filename = currentPartitionBifOptions->GetOutputFileFromBifSection(options.GetOutputFileNames().front(), (yysemantic_stack_[(3) - (3)].string), currentImageBifOptions->GetImageType());
                                                                                   currentBifOptions->Add(currentPartitionBifOptions, currentImageBifOptions); }
@@ -1073,7 +1073,7 @@ namespace BIF {
 
   case 163:
 /* Line 670 of lalr1.cc  */
-#line 526 "parser/bif.y"
+#line 530 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP) 
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t\t[bootvectors] is supported only for ZYNQMP architecture");
                                                                                   currentBifOptions->SetBootVectorArray((yysemantic_stack_[(1) - (1)].number)); }
@@ -1081,67 +1081,67 @@ namespace BIF {
 
   case 164:
 /* Line 670 of lalr1.cc  */
-#line 531 "parser/bif.y"
+#line 535 "parser/bif.y"
     { currentPartitionBifOptions->SetAuthBlockAttr((yysemantic_stack_[(1) - (1)].number)); }
     break;
 
   case 165:
 /* Line 670 of lalr1.cc  */
-#line 533 "parser/bif.y"
+#line 537 "parser/bif.y"
     { currentPartitionBifOptions->bootloader = true;}
     break;
 
   case 166:
 /* Line 670 of lalr1.cc  */
-#line 534 "parser/bif.y"
+#line 538 "parser/bif.y"
     { currentPartitionBifOptions->boot = true;}
     break;
 
   case 167:
 /* Line 670 of lalr1.cc  */
-#line 535 "parser/bif.y"
+#line 539 "parser/bif.y"
     { currentPartitionBifOptions->user = true;}
     break;
 
   case 168:
 /* Line 670 of lalr1.cc  */
-#line 536 "parser/bif.y"
+#line 540 "parser/bif.y"
     { currentPartitionBifOptions->Static = true;}
     break;
 
   case 169:
 /* Line 670 of lalr1.cc  */
-#line 537 "parser/bif.y"
+#line 541 "parser/bif.y"
     { currentPartitionBifOptions->noautostart = true;}
     break;
 
   case 170:
 /* Line 670 of lalr1.cc  */
-#line 538 "parser/bif.y"
+#line 542 "parser/bif.y"
     { currentPartitionBifOptions->multiboot = true;}
     break;
 
   case 171:
 /* Line 670 of lalr1.cc  */
-#line 539 "parser/bif.y"
+#line 543 "parser/bif.y"
     { currentPartitionBifOptions->Protected = true;}
     break;
 
   case 172:
 /* Line 670 of lalr1.cc  */
-#line 540 "parser/bif.y"
+#line 544 "parser/bif.y"
     { currentPartitionBifOptions->SetEarlyHandoff(true); }
     break;
 
   case 173:
 /* Line 670 of lalr1.cc  */
-#line 541 "parser/bif.y"
+#line 545 "parser/bif.y"
     { currentPartitionBifOptions->SetHivec(true); }
     break;
 
   case 174:
 /* Line 670 of lalr1.cc  */
-#line 542 "parser/bif.y"
+#line 546 "parser/bif.y"
     { if(currentPartitionBifOptions->bootloader!=true)
                                                                                         LOG_ERROR("XIP mode can be enabled only for bootloader"); 
                                                                                   currentBifOptions->SetXipMode(); }
@@ -1149,331 +1149,331 @@ namespace BIF {
 
   case 175:
 /* Line 670 of lalr1.cc  */
-#line 545 "parser/bif.y"
+#line 549 "parser/bif.y"
     { currentPartitionBifOptions->fileType = (yysemantic_stack_[(1) - (1)].number); }
     break;
 
   case 176:
 /* Line 670 of lalr1.cc  */
-#line 546 "parser/bif.y"
+#line 550 "parser/bif.y"
     { currentPartitionBifOptions->bootImage = true; }
     break;
 
   case 177:
 /* Line 670 of lalr1.cc  */
-#line 547 "parser/bif.y"
+#line 551 "parser/bif.y"
     { currentPartitionBifOptions->fileType = (yysemantic_stack_[(1) - (1)].number); }
     break;
 
   case 178:
 /* Line 670 of lalr1.cc  */
-#line 548 "parser/bif.y"
+#line 552 "parser/bif.y"
     { currentPartitionBifOptions->fileType = (yysemantic_stack_[(1) - (1)].number); }
     break;
 
   case 179:
 /* Line 670 of lalr1.cc  */
-#line 549 "parser/bif.y"
+#line 553 "parser/bif.y"
     { currentPartitionBifOptions->SetPartitionType((yysemantic_stack_[(1) - (1)].ptype_t)); }
     break;
 
   case 180:
 /* Line 670 of lalr1.cc  */
-#line 550 "parser/bif.y"
+#line 554 "parser/bif.y"
     { currentPartitionBifOptions->SetLockStepFlag();}
     break;
 
   case 181:
 /* Line 670 of lalr1.cc  */
-#line 553 "parser/bif.y"
+#line 557 "parser/bif.y"
     { currentPartitionBifOptions->SetTrustZone(::TrustZone::Secure); }
     break;
 
   case 182:
 /* Line 670 of lalr1.cc  */
-#line 554 "parser/bif.y"
+#line 558 "parser/bif.y"
     { currentPartitionBifOptions->SetTrustZone((yysemantic_stack_[(3) - (3)].trustzone_t)); }
     break;
 
   case 183:
 /* Line 670 of lalr1.cc  */
-#line 557 "parser/bif.y"
+#line 561 "parser/bif.y"
     { currentPartitionBifOptions->SetEncryptionBlocks((yysemantic_stack_[(1) - (1)].number)); }
     break;
 
   case 184:
 /* Line 670 of lalr1.cc  */
-#line 558 "parser/bif.y"
+#line 562 "parser/bif.y"
     { currentPartitionBifOptions->SetEncryptionBlocks((yysemantic_stack_[(4) - (1)].number), (yysemantic_stack_[(4) - (3)].number)); }
     break;
 
   case 185:
 /* Line 670 of lalr1.cc  */
-#line 559 "parser/bif.y"
+#line 563 "parser/bif.y"
     { currentPartitionBifOptions->SetEncryptionBlocks((yysemantic_stack_[(4) - (1)].number), 0); }
     break;
 
   case 186:
 /* Line 670 of lalr1.cc  */
-#line 561 "parser/bif.y"
+#line 565 "parser/bif.y"
     { currentPartitionBifOptions->SetAuthType((yysemantic_stack_[(3) - (3)].authvalue_t)); }
     break;
 
   case 187:
 /* Line 670 of lalr1.cc  */
-#line 562 "parser/bif.y"
+#line 566 "parser/bif.y"
     { currentPartitionBifOptions->SetEncryptType((yysemantic_stack_[(3) - (3)].encrvalue_t)); }
     break;
 
   case 188:
 /* Line 670 of lalr1.cc  */
-#line 563 "parser/bif.y"
+#line 567 "parser/bif.y"
     { currentPartitionBifOptions->SetChecksumType((yysemantic_stack_[(3) - (3)].checksumvalue_t)); }
     break;
 
   case 189:
 /* Line 670 of lalr1.cc  */
-#line 564 "parser/bif.y"
+#line 568 "parser/bif.y"
     { currentPartitionBifOptions->SetOwnerType((yysemantic_stack_[(3) - (3)].powner_t)); }
     break;
 
   case 190:
 /* Line 670 of lalr1.cc  */
-#line 565 "parser/bif.y"
+#line 569 "parser/bif.y"
     { currentPartitionBifOptions->SetDestCpu((yysemantic_stack_[(3) - (3)].destcpu_t)); }
     break;
 
   case 191:
 /* Line 670 of lalr1.cc  */
-#line 566 "parser/bif.y"
+#line 570 "parser/bif.y"
     { currentPartitionBifOptions->SetDestDevice((yysemantic_stack_[(3) - (3)].destdevice_t));  }
     break;
 
   case 192:
 /* Line 670 of lalr1.cc  */
-#line 567 "parser/bif.y"
+#line 571 "parser/bif.y"
     { currentPartitionBifOptions->SetExceptionLevel((yysemantic_stack_[(3) - (3)].el_t)); }
     break;
 
   case 193:
 /* Line 670 of lalr1.cc  */
-#line 568 "parser/bif.y"
+#line 572 "parser/bif.y"
     { currentPartitionBifOptions->SetAesKeyFile((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 194:
 /* Line 670 of lalr1.cc  */
-#line 569 "parser/bif.y"
+#line 573 "parser/bif.y"
     { currentPartitionBifOptions->ppkFile = ((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 195:
 /* Line 670 of lalr1.cc  */
-#line 570 "parser/bif.y"
+#line 574 "parser/bif.y"
     { currentPartitionBifOptions->pskFile = ((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 196:
 /* Line 670 of lalr1.cc  */
-#line 571 "parser/bif.y"
+#line 575 "parser/bif.y"
     { currentPartitionBifOptions->spkFile = ((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 197:
 /* Line 670 of lalr1.cc  */
-#line 572 "parser/bif.y"
+#line 576 "parser/bif.y"
     { currentPartitionBifOptions->sskFile = ((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 198:
 /* Line 670 of lalr1.cc  */
-#line 573 "parser/bif.y"
+#line 577 "parser/bif.y"
     { currentPartitionBifOptions->spkSelect =((yysemantic_stack_[(3) - (3)].spkselect_t)); currentPartitionBifOptions->spkSelLocal = true; }
     break;
 
   case 199:
 /* Line 670 of lalr1.cc  */
-#line 574 "parser/bif.y"
+#line 578 "parser/bif.y"
     { currentPartitionBifOptions->SetSpkId((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 200:
 /* Line 670 of lalr1.cc  */
-#line 575 "parser/bif.y"
+#line 579 "parser/bif.y"
     { currentPartitionBifOptions->spkSignatureFile = ((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 202:
 /* Line 670 of lalr1.cc  */
-#line 577 "parser/bif.y"
+#line 581 "parser/bif.y"
     { currentPartitionBifOptions->SetPartitionType((yysemantic_stack_[(3) - (3)].ptype_t)); }
     break;
 
   case 203:
 /* Line 670 of lalr1.cc  */
-#line 578 "parser/bif.y"
+#line 582 "parser/bif.y"
     { currentPartitionBifOptions->SetEncryptionKeySource((yysemantic_stack_[(3) - (3)].encrkeysrc_t)); }
     break;
 
   case 204:
 /* Line 670 of lalr1.cc  */
-#line 579 "parser/bif.y"
+#line 583 "parser/bif.y"
     { currentPartitionBifOptions->SetPartitionRevokeId((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 205:
 /* Line 670 of lalr1.cc  */
-#line 580 "parser/bif.y"
+#line 584 "parser/bif.y"
     { currentPartitionBifOptions->SetSPKRevokeId((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 206:
 /* Line 670 of lalr1.cc  */
-#line 581 "parser/bif.y"
+#line 585 "parser/bif.y"
     { currentPartitionBifOptions->SetDpaCM(DpaCM::DpaCMEnable); }
     break;
 
   case 207:
 /* Line 670 of lalr1.cc  */
-#line 582 "parser/bif.y"
+#line 586 "parser/bif.y"
     { currentPartitionBifOptions->SetSlrNum((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 208:
 /* Line 670 of lalr1.cc  */
-#line 583 "parser/bif.y"
+#line 587 "parser/bif.y"
     { currentPartitionBifOptions->SetClusterNum((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 209:
 /* Line 670 of lalr1.cc  */
-#line 584 "parser/bif.y"
+#line 588 "parser/bif.y"
     { currentPartitionBifOptions->SetPufHdLocation(PufHdLoc::PUFinBH); }
     break;
 
   case 210:
 /* Line 670 of lalr1.cc  */
-#line 585 "parser/bif.y"
+#line 589 "parser/bif.y"
     { currentPartitionBifOptions->SetDelayAuth(true); }
     break;
 
   case 211:
 /* Line 670 of lalr1.cc  */
-#line 586 "parser/bif.y"
+#line 590 "parser/bif.y"
     { currentPartitionBifOptions->SetTcmBootFlag(); }
     break;
 
   case 221:
 /* Line 670 of lalr1.cc  */
-#line 600 "parser/bif.y"
+#line 604 "parser/bif.y"
     { (yyval.authvalue_t) = ::Authentication::None;}
     break;
 
   case 223:
 /* Line 670 of lalr1.cc  */
-#line 604 "parser/bif.y"
+#line 608 "parser/bif.y"
     { (yyval.encrvalue_t) = ::Encryption::None;}
     break;
 
   case 225:
 /* Line 670 of lalr1.cc  */
-#line 608 "parser/bif.y"
+#line 612 "parser/bif.y"
     { (yyval.checksumvalue_t) = ::Checksum::None;}
     break;
 
   case 242:
 /* Line 670 of lalr1.cc  */
-#line 657 "parser/bif.y"
+#line 661 "parser/bif.y"
     { currentPartitionBifOptions->alignment = (yysemantic_stack_[(3) - (3)].number); }
     break;
 
   case 243:
 /* Line 670 of lalr1.cc  */
-#line 658 "parser/bif.y"
+#line 662 "parser/bif.y"
     { currentPartitionBifOptions->offset = (yysemantic_stack_[(3) - (3)].number); }
     break;
 
   case 244:
 /* Line 670 of lalr1.cc  */
-#line 659 "parser/bif.y"
+#line 663 "parser/bif.y"
     { currentPartitionBifOptions->SetReserveLength((yysemantic_stack_[(3) - (3)].number), false); }
     break;
 
   case 245:
 /* Line 670 of lalr1.cc  */
-#line 660 "parser/bif.y"
+#line 664 "parser/bif.y"
     { currentPartitionBifOptions->SetReserveLength((yysemantic_stack_[(3) - (3)].number), true); }
     break;
 
   case 246:
 /* Line 670 of lalr1.cc  */
-#line 661 "parser/bif.y"
+#line 665 "parser/bif.y"
     { currentPartitionBifOptions->load = (yysemantic_stack_[(3) - (3)].number); }
     break;
 
   case 247:
 /* Line 670 of lalr1.cc  */
-#line 662 "parser/bif.y"
+#line 666 "parser/bif.y"
     { currentPartitionBifOptions->startup = (yysemantic_stack_[(3) - (3)].number); }
     break;
 
   case 248:
 /* Line 670 of lalr1.cc  */
-#line 663 "parser/bif.y"
+#line 667 "parser/bif.y"
     { currentPartitionBifOptions->bigEndian = true; }
     break;
 
   case 249:
 /* Line 670 of lalr1.cc  */
-#line 664 "parser/bif.y"
+#line 668 "parser/bif.y"
     { currentPartitionBifOptions->a32Mode = true; }
     break;
 
   case 250:
 /* Line 670 of lalr1.cc  */
-#line 665 "parser/bif.y"
+#line 669 "parser/bif.y"
     { currentPartitionBifOptions->pid = (yysemantic_stack_[(3) - (3)].number); }
     break;
 
   case 251:
 /* Line 670 of lalr1.cc  */
-#line 666 "parser/bif.y"
+#line 670 "parser/bif.y"
     { currentPartitionBifOptions->SetTcmARegion((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 252:
 /* Line 670 of lalr1.cc  */
-#line 667 "parser/bif.y"
+#line 671 "parser/bif.y"
     { currentPartitionBifOptions->SetTcmBRegion((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 253:
 /* Line 670 of lalr1.cc  */
-#line 668 "parser/bif.y"
+#line 672 "parser/bif.y"
     { currentPartitionBifOptions->SetTcmCRegion((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 254:
 /* Line 670 of lalr1.cc  */
-#line 671 "parser/bif.y"
+#line 675 "parser/bif.y"
     { currentPartitionBifOptions->presignFile = (yysemantic_stack_[(3) - (3)].string); }
     break;
 
   case 255:
 /* Line 670 of lalr1.cc  */
-#line 672 "parser/bif.y"
+#line 676 "parser/bif.y"
     { currentPartitionBifOptions->acFile = (yysemantic_stack_[(3) - (3)].string); }
     break;
 
   case 256:
 /* Line 670 of lalr1.cc  */
-#line 673 "parser/bif.y"
+#line 677 "parser/bif.y"
     { currentPartitionBifOptions->SetUdfDataFile((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 273:
 /* Line 670 of lalr1.cc  */
-#line 698 "parser/bif.y"
+#line 702 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP) 
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t\t[auth_params] is supported only in ZYNQMP architecture");
                                                                                   currentBifOptions->SetPPKSelection((yysemantic_stack_[(3) - (3)].number)); }
@@ -1481,7 +1481,7 @@ namespace BIF {
 
   case 274:
 /* Line 670 of lalr1.cc  */
-#line 701 "parser/bif.y"
+#line 705 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP) 
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t\t[auth_params] is supported only in ZYNQMP architecture");
                                                                                   currentBifOptions->SetSPKSelection((yysemantic_stack_[(3) - (3)].spkselect_t)); }
@@ -1489,7 +1489,7 @@ namespace BIF {
 
   case 275:
 /* Line 670 of lalr1.cc  */
-#line 704 "parser/bif.y"
+#line 708 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP) 
                                                                                     LOG_WARNING("BIF attribute error !!!\n\t\t[auth_params] is supported only in ZYNQMP architecture");
                                                                                   currentBifOptions->SetSpkId((yysemantic_stack_[(3) - (3)].number));  }
@@ -1497,7 +1497,7 @@ namespace BIF {
 
   case 276:
 /* Line 670 of lalr1.cc  */
-#line 707 "parser/bif.y"
+#line 711 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP) 
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t\t[auth_params] is supported only in ZYNQMP architecture");
                                                                                   currentBifOptions->SetHeaderAuthentication(); }
@@ -1505,7 +1505,7 @@ namespace BIF {
 
   case 285:
 /* Line 670 of lalr1.cc  */
-#line 728 "parser/bif.y"
+#line 732 "parser/bif.y"
     { if(options.GetArchType() == Arch::ZYNQ || options.GetArchType() == Arch::ZYNQMP || options.GetArchType() == Arch::VERSAL)
                                                                    LOG_ERROR("BIF attribute error !!!\n\t\t'lms_key_params' is not supported with the mentioned -arch");
                                                                  lmsParams.lms_param = (yysemantic_stack_[(1) - (1)].string);
@@ -1515,13 +1515,13 @@ namespace BIF {
 
   case 287:
 /* Line 670 of lalr1.cc  */
-#line 735 "parser/bif.y"
+#line 739 "parser/bif.y"
     { lmsParams.type = (yysemantic_stack_[(2) - (1)].authkeylevel_t);}
     break;
 
   case 290:
 /* Line 670 of lalr1.cc  */
-#line 739 "parser/bif.y"
+#line 743 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP)
                                                                                       LOG_ERROR("BIF attribute error !!!\n\t\t[split] not supported with the mentioned -arch");
                                                                                   currentBifOptions->SetSplitMode((yysemantic_stack_[(3) - (3)].splitmode_t)); }
@@ -1529,7 +1529,7 @@ namespace BIF {
 
   case 294:
 /* Line 670 of lalr1.cc  */
-#line 749 "parser/bif.y"
+#line 753 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP)
                                                                                       LOG_ERROR("BIF attribute error !!!\n\t\t[split] not supported with the mentioned -arch");
                                                                                   currentBifOptions->SetSplitFmt(File::MCS); }
@@ -1537,7 +1537,7 @@ namespace BIF {
 
   case 295:
 /* Line 670 of lalr1.cc  */
-#line 752 "parser/bif.y"
+#line 756 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP)
                                                                                       LOG_ERROR("BIF attribute error !!!\n\t\t[split] not supported with the mentioned -arch");
                                                                                   currentBifOptions->SetSplitFmt(File::BIN); }
@@ -1545,85 +1545,85 @@ namespace BIF {
 
   case 300:
 /* Line 670 of lalr1.cc  */
-#line 764 "parser/bif.y"
+#line 768 "parser/bif.y"
     { (yyval.number) = (yysemantic_stack_[(3) - (2)].number); }
     break;
 
   case 302:
 /* Line 670 of lalr1.cc  */
-#line 771 "parser/bif.y"
+#line 775 "parser/bif.y"
     {(yyval.number) =  (yysemantic_stack_[(2) - (2)].number);     *options.debugstr << (yyval.number) << "    + " << (yysemantic_stack_[(2) - (2)].number) << std::endl;}
     break;
 
   case 303:
 /* Line 670 of lalr1.cc  */
-#line 772 "parser/bif.y"
+#line 776 "parser/bif.y"
     {(yyval.number) = ~(yysemantic_stack_[(2) - (2)].number);     *options.debugstr << (yyval.number) << "    ~ " << (yysemantic_stack_[(2) - (2)].number) << std::endl;}
     break;
 
   case 305:
 /* Line 670 of lalr1.cc  */
-#line 777 "parser/bif.y"
+#line 781 "parser/bif.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) *  (yysemantic_stack_[(3) - (3)].number); *options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " + " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 306:
 /* Line 670 of lalr1.cc  */
-#line 778 "parser/bif.y"
+#line 782 "parser/bif.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) /  (yysemantic_stack_[(3) - (3)].number); *options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " / " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 307:
 /* Line 670 of lalr1.cc  */
-#line 779 "parser/bif.y"
+#line 783 "parser/bif.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) %  (yysemantic_stack_[(3) - (3)].number); *options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " % " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 309:
 /* Line 670 of lalr1.cc  */
-#line 783 "parser/bif.y"
+#line 787 "parser/bif.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) +  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " + " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 310:
 /* Line 670 of lalr1.cc  */
-#line 784 "parser/bif.y"
+#line 788 "parser/bif.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) -  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " - " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 312:
 /* Line 670 of lalr1.cc  */
-#line 788 "parser/bif.y"
+#line 792 "parser/bif.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) << (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " << " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 313:
 /* Line 670 of lalr1.cc  */
-#line 789 "parser/bif.y"
+#line 793 "parser/bif.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) >> (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " >> " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 315:
 /* Line 670 of lalr1.cc  */
-#line 793 "parser/bif.y"
+#line 797 "parser/bif.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) &  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " & " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 317:
 /* Line 670 of lalr1.cc  */
-#line 797 "parser/bif.y"
+#line 801 "parser/bif.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) ^  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " ^ " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 319:
 /* Line 670 of lalr1.cc  */
-#line 802 "parser/bif.y"
+#line 806 "parser/bif.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) |  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " | " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
 
 /* Line 670 of lalr1.cc  */
-#line 1623 "bisonflex/bif.tab.cpp"
+#line 1627 "bisonflex/bif.tab.cpp"
       default:
         break;
       }
@@ -2635,30 +2635,30 @@ namespace BIF {
      302,   303,   304,   306,   307,   308,   309,   310,   313,   314,
      317,   317,   326,   327,   328,   329,   332,   333,   334,   337,
      338,   339,   340,   341,   342,   344,   345,   346,   347,   348,
-     361,   372,   373,   376,   377,   378,   381,   384,   384,   387,
-     388,   389,   394,   395,   396,   397,   398,   399,   400,   401,
-     402,   405,   406,   409,   410,   411,   414,   415,   416,   419,
-     420,   421,   424,   425,   426,   427,   428,   431,   434,   436,
-     438,   440,   442,   444,   446,   448,   450,   452,   456,   457,
-     458,   459,   460,   463,   463,   470,   476,   476,   482,   483,
-     484,   485,   486,   487,   490,   493,   494,   496,   497,   498,
-     503,   504,   507,   508,   509,   510,   511,   514,   515,   518,
-     519,   522,   523,   526,   531,   533,   534,   535,   536,   537,
-     538,   539,   540,   541,   542,   545,   546,   547,   548,   549,
-     550,   553,   554,   557,   558,   559,   561,   562,   563,   564,
-     565,   566,   567,   568,   569,   570,   571,   572,   573,   574,
-     575,   576,   577,   578,   579,   580,   581,   582,   583,   584,
-     585,   586,   589,   590,   591,   592,   593,   594,   595,   596,
-     597,   600,   601,   604,   605,   608,   609,   612,   615,   618,
-     621,   624,   627,   630,   633,   636,   639,   642,   645,   648,
-     651,   654,   657,   658,   659,   660,   661,   662,   663,   664,
-     665,   666,   667,   668,   671,   672,   673,   676,   677,   678,
-     679,   680,   681,   682,   683,   684,   687,   688,   689,   690,
-     693,   694,   695,   698,   701,   704,   707,   710,   713,   717,
-     718,   720,   721,   722,   724,   728,   733,   735,   735,   737,
-     739,   742,   743,   746,   749,   752,   758,   759,   762,   763,
-     764,   770,   771,   772,   776,   777,   778,   779,   782,   783,
-     784,   787,   788,   789,   792,   793,   796,   797,   801,   802
+     365,   376,   377,   380,   381,   382,   385,   388,   388,   391,
+     392,   393,   398,   399,   400,   401,   402,   403,   404,   405,
+     406,   409,   410,   413,   414,   415,   418,   419,   420,   423,
+     424,   425,   428,   429,   430,   431,   432,   435,   438,   440,
+     442,   444,   446,   448,   450,   452,   454,   456,   460,   461,
+     462,   463,   464,   467,   467,   474,   480,   480,   486,   487,
+     488,   489,   490,   491,   494,   497,   498,   500,   501,   502,
+     507,   508,   511,   512,   513,   514,   515,   518,   519,   522,
+     523,   526,   527,   530,   535,   537,   538,   539,   540,   541,
+     542,   543,   544,   545,   546,   549,   550,   551,   552,   553,
+     554,   557,   558,   561,   562,   563,   565,   566,   567,   568,
+     569,   570,   571,   572,   573,   574,   575,   576,   577,   578,
+     579,   580,   581,   582,   583,   584,   585,   586,   587,   588,
+     589,   590,   593,   594,   595,   596,   597,   598,   599,   600,
+     601,   604,   605,   608,   609,   612,   613,   616,   619,   622,
+     625,   628,   631,   634,   637,   640,   643,   646,   649,   652,
+     655,   658,   661,   662,   663,   664,   665,   666,   667,   668,
+     669,   670,   671,   672,   675,   676,   677,   680,   681,   682,
+     683,   684,   685,   686,   687,   688,   691,   692,   693,   694,
+     697,   698,   699,   702,   705,   708,   711,   714,   717,   721,
+     722,   724,   725,   726,   728,   732,   737,   739,   739,   741,
+     743,   746,   747,   750,   753,   756,   762,   763,   766,   767,
+     768,   774,   775,   776,   780,   781,   782,   783,   786,   787,
+     788,   791,   792,   793,   796,   797,   800,   801,   805,   806
   };
 
   // Print the state stack on the debug stream.
@@ -2765,9 +2765,9 @@ namespace BIF {
 #line 24 "parser/bif.y"
 } // BIF
 /* Line 1141 of lalr1.cc  */
-#line 2765 "bisonflex/bif.tab.cpp"
+#line 2769 "bisonflex/bif.tab.cpp"
 /* Line 1142 of lalr1.cc  */
-#line 807 "parser/bif.y"
+#line 811 "parser/bif.y"
 
 void BIF::BisonParser::error(const BIF::BisonParser::location_type &loc, const std::string &msg) {
         Parsing::Error(loc,msg);

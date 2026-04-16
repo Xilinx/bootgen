@@ -69,7 +69,7 @@ void ShowCommonHelp(int,bool);
 /* Free strdup'd strings when they're no longer needed to prevent memory leaks */
 %destructor { free($$); } <cstring>
 
-%token _IMAGE _FILL _O_TOK I _H _DEBUG_TOK _LEGACY _NONBOOTING _PACKAGENAME _BIF_HELP
+%token _IMAGE _FILL _O_TOK I _H _DEBUG_TOK _LEGACY _NONBOOTING _PACKAGENAME _BIF_HELP _TLBIN
 %token _LOG ERROR WARNING INFO DEBUG TRACE
 %token _SPLIT _PROCESS_BITSTREAM MCS BIN _OUT_TYPE
 %token _DUMP DUMP_PLM DUMP_PMC_CDO DUMP_BOOT_FILES _DUMP_DIR _PUF DUMP_SLAVE_PDIS DUMP_PUF_PDI _SYNCFLAG
@@ -152,6 +152,7 @@ option          : _IMAGE filename                   { options.SetBifFilename($2)
                 | _AUTH_OPTIMIZATION                { options.SetAuthOptimization();}
                 | _OVERLAYCDO filename              { options.SetOverlayCDOFileName($2); }
                 | _OUT_TYPE outputType
+                | _TLBIN                            { options.SetGenerateTlBin(true); }
                 ;
 
 filename        : HEXSTRING | IDENTIFIER | FILENAME | QFILENAME;

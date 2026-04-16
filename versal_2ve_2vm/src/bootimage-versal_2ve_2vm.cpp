@@ -26,6 +26,9 @@
 #include "checksum-versal_2ve_2vm.h"
 #include "authentication-versal_2ve_2vm.h"
 #include "authentication.h"
+#include "elftools.h"
+#include "fileutils.h"
+#include "tlbingeneration.h"
 extern "C" {
 #include "cdo-command.h"
 #include "cdo-overlay.h"
@@ -1339,6 +1342,12 @@ void Versal_2ve_2vmBootImage::ConfigureProcessingStages(ImageHeader* image, Part
 /******************************************************************************/
 void Versal_2ve_2vmBootImage::Add(BifOptions* bifoptions)
 {
+    // TlBin generation and swaping the .dtb file with tl.bin
+    if(options.GetGenerateTlBin())
+    {
+        GenerateTlBin(bifoptions);
+    }
+
     uint8_t slr_boot_cnt = 0;
     uint8_t slr_cfg_cnt = 0;
     // Add 'LOG_WARNING("A bootimage cannot be generated on the go, with '-generate_keys'.\n           However, the requested keys will be generated.");'
@@ -2189,4 +2198,124 @@ uint64_t Versal_2ve_2vmBootImage::GetSecureChunkSize(bool isBootloader)
     {
         return (SECURE_32K_CHUNK - hash->GetHashLength());
     }
+}
+
+/******************************************************************************/
+void Versal_2ve_2vmBootImage::GenerateTlBin(BifOptions* bifoptions)
+{
+    std::string dtbFilepath;
+    uint64_t teeLoadAddr = 0;
+    uint64_t ubootExecAddr = 0;
+    bool teeTrustZone = false;
+    bool ubootTrustZone = false;
+    PartitionBifOptions* dtbPartition = nullptr;
+
+    for (auto imageItr = bifoptions->imageBifOptionList.begin(); imageItr != bifoptions->imageBifOptionList.end(); imageItr++)
+    {
+        if ((*imageItr)->GetImageName() == "apu_ss")
+        {
+            for (auto partitionItr = (*imageItr)->partitionBifOptionsList.begin(); partitionItr != (*imageItr)->partitionBifOptionsList.end(); partitionItr++)
+            {
+                std::string filename = (*partitionItr)->filename;
+                if (filename.size() >= 4 && filename.substr(filename.size() - 4) == ".dtb")
+                {
+                    dtbFilepath = filename;
+                    dtbPartition = *partitionItr;
+                }
+
+                if((*partitionItr)->exceptionLevel == ExceptionLevel::EL1)
+                {
+                    teeTrustZone = (*partitionItr)->trustzone == TrustZone::Secure;
+                    if ((*partitionItr)->load.IsSet()) 
+                    {
+                        teeLoadAddr = (*partitionItr)->load.Value();
+                    }
+                }
+
+                if((*partitionItr)->exceptionLevel == ExceptionLevel::EL2)
+                {
+                    // load address from ELF file
+                    std::string ubootFilename = (*partitionItr)->filename;
+                    ByteFile elfdata(ubootFilename);
+                    ElfClass::Type elfclass = (ElfClass::Type)elfdata.bytes[EI_CLASS];
+                    uint8_t proc_state = 0;
+                    auto elf = ElfFormat::GetElfFormat(elfclass, elfdata.bytes, &proc_state);
+                    ubootExecAddr = elf->GetStartUpAddress();
+                    delete elf;
+
+                    ubootTrustZone = (*partitionItr)->trustzone == TrustZone::Secure;
+                }
+            }
+        }
+    }
+
+    LOG_TRACE("tl.bin parameters: teeLoadAddr=0x%lx, ubootExecAddr=0x%lx, teeTrustZone=%d, ubootTrustZone=%d, dtbFilepath=%s",
+        teeLoadAddr, ubootExecAddr, teeTrustZone, ubootTrustZone, dtbFilepath.c_str());
+
+    std::string yaml;
+    yaml += "execution_state: aarch64\n";
+    yaml += "has_checksum: true\n";
+    yaml += "max_size: 6291456\n";
+    yaml += "entries:\n";
+
+    yaml += "        - tag_id: 258\n";
+    yaml += "          ep_info:\n";
+    yaml += "                  args:\n";
+    for (int i = 0; i < 8; i++)
+        yaml += "                          - 0\n";
+    yaml += "                  h:\n";
+    yaml += "                          attr: " + std::to_string(teeTrustZone ? 0 : 1) + "\n";
+    yaml += "                          type: " + std::to_string(teeTrustZone ? 0 : 1) + "\n";
+    yaml += "                          version: 1\n";
+    yaml += "                  pc: " + std::to_string(teeLoadAddr) + "\n";
+    yaml += "                  spsr: 0\n";
+
+    yaml += "        - tag_id: 258\n";
+    yaml += "          ep_info:\n";
+    yaml += "                  args:\n";
+    for (int i = 0; i < 8; i++)
+        yaml += "                          - 0\n";
+    yaml += "                  h:\n";
+    yaml += "                          attr: " + std::to_string(ubootTrustZone ? 0 : 1) + "\n";
+    yaml += "                          type: " + std::to_string(ubootTrustZone ? 0 : 1) + "\n";
+    yaml += "                          version: 1\n";
+    yaml += "                  pc: " + std::to_string(ubootExecAddr) + "\n";
+    yaml += "                  spsr: 969\n";
+
+    yaml += "        - tag_id: 1\n";
+    yaml += "          blob_file_path: \"" + dtbFilepath + "\"\n";
+
+    std::string yamlOutputPath = "tl_generated.yaml";
+    std::ofstream yamlFile(yamlOutputPath);
+    if (!yamlFile)
+    {
+        LOG_ERROR("Cannot create YAML file: %s", yamlOutputPath.c_str());
+    }
+    yamlFile << yaml;
+    yamlFile.close();
+
+    std::string tlbinOutputPath = "tl.bin";
+    char* tlc_argv[] = {
+        const_cast<char*>("tlc"),
+        const_cast<char*>("create"),
+        const_cast<char*>("--from-yaml"),
+        const_cast<char*>(yamlOutputPath.c_str()),
+        const_cast<char*>(tlbinOutputPath.c_str())
+    };
+    int tlc_argc = 5;
+    int result = create_tlbin(tlc_argc, tlc_argv);
+    if (result != 0)
+    {
+        LOG_ERROR("Failed to generate TL.BIN");
+    }
+    else
+    {
+        LOG_INFO("TL.BIN generated successfully");
+    }
+
+    if (dtbPartition != nullptr)
+    {
+        dtbPartition->filename = tlbinOutputPath;
+    }
+    LOG_INFO("Replaced %s with %s in the BIF", dtbFilepath.c_str(), dtbPartition->filename.c_str());
 }

@@ -65,6 +65,7 @@ public:
     void OutputOptionalSecureDebugImage();
     void ConfigureEncryptionBlocks(ImageHeader * image, PartitionBifOptions* partitionBifOptions);
     void SetPmcdataFile(const std::string & filename);
+    void GenerateTlBin(BifOptions* bifoptions);
 
     uint32_t current_image_block;
     uint32_t prev_image_block;

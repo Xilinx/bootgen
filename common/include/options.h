@@ -126,6 +126,7 @@ public:
         , syncFlag(false)
         , authOptimizationEnabled(false)
         
+        , generateTlBin(false)
     {
         cmdEncryptOptions = std::make_unique<CommndLineEncryptOptions>();
     };
@@ -195,6 +196,8 @@ public:
      void SetDl9Series(uint32_t);
     void SetAuthOptimization(void);
     void SetSyncFlag(bool flag);
+    void SetGenerateTlBin(bool flag);
+    bool GetGenerateTlBin(void);
 
     bool IsAuthOptimizationEnabled(void);
     std::string GetBifFilename (void);
@@ -308,6 +311,7 @@ public:
     std::string overlayCDOFile;
 	File::Type outType;
     bool syncFlag;
+    bool generateTlBin;
 private:
     bool versalNetSeries;
     bool authOptimizationEnabled;
