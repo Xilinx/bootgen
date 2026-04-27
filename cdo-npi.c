@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <errno.h>
-#include <malloc.h>
+
 #include <string.h>
 #include <assert.h>
 #include <inttypes.h>

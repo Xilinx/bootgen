@@ -36,7 +36,7 @@
 #include "encryption-zynqmp.h"
 
 #ifdef _WIN32
-#include "openssl/ms/applink.c"
+
 #endif
 static const char* time_stamp = __TIME__;
 static const char* date_stamp = __DATE__;
