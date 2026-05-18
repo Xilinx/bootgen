@@ -1597,10 +1597,6 @@ void Versal_2ve_2vmPartitionHeaderTable::Link(BootImage & bi)
         EncryptionContext* encryptCtx = bi.imageHeaderTable->GetEncryptContext();
 
         bi.imageHeaderTable->SetTotalMetaHdrLength(bi.encryptedHeaders->Length);
-        if (bi.bifOptions->GetHeaderAC())
-        {
-            bi.imageHeaderTable->SetTotalMetaHdrLength(bi.encryptedHeaders->Length );
-        }
         bi.imageHeaderTable->SetChecksum();
 
         encryptCtx->Process(bi);

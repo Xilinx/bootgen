@@ -150,6 +150,12 @@ void Key::Parse(const std::string& filename, bool isSecret0)
         /* Calculate the modulus extension, i.e. Montgomery Reduction term RR 
            and some sanity check for the keys passed */
         {
+#ifdef _MSC_VER
+            /* On Windows/MSVC, direct BIGNUM struct field access (d, dmax, top)
+               causes BN_MONT_CTX_set to fail due to struct layout differences
+               between GCC and MSVC OpenSSL builds. Use public API instead. */
+            ComputeModulusExtension(N.get(), N_ext.get(), keySize);
+#else
             BIGNUM m;
             m.d = (BN_ULONG*)N.get();
             m.dmax = keySize / sizeof(BN_ULONG);
@@ -161,6 +167,7 @@ void Key::Parse(const std::string& filename, bool isSecret0)
             BN_MONT_CTX_Class montClass(ctxInst);
             montClass.Set(m);
             montClass.GetModulusExtension(N_ext.get(), m, keySize);
+#endif
         }
         Loaded = true;
     }
@@ -169,6 +176,47 @@ void Key::Parse(const std::string& filename, bool isSecret0)
         fclose(f);
         throw;
     }
+}
+
+/******************************************************************************/
+/* Compute Montgomery reduction term (R^2 mod N) using public OpenSSL API.
+   This avoids direct BIGNUM struct field access which fails on Windows/MSVC
+   due to struct layout mismatch between GCC and MSVC OpenSSL builds. */
+void Key::ComputeModulusExtension(const uint8_t* modulus, uint8_t* extension, size_t keyLen)
+{
+    BIGNUM *m = BN_lebin2bn(modulus, (int)keyLen, NULL);
+    if (m == NULL)
+    {
+        LOG_ERROR("Failed to create BIGNUM from modulus data");
+    }
+
+    BN_CTX *ctx = BN_CTX_new();
+    if (ctx == NULL)
+    {
+        BN_free(m);
+        LOG_ERROR("Failed to allocate BN_CTX");
+    }
+
+    BIGNUM *R = BN_new();
+    BIGNUM *RR = BN_new();
+    if (R == NULL || RR == NULL)
+    {
+        BN_free(R);
+        BN_free(RR);
+        BN_CTX_free(ctx);
+        BN_free(m);
+        LOG_ERROR("Failed to allocate BIGNUMs for modulus extension");
+    }
+
+    int bits = BN_num_bits(m);
+    BN_set_bit(R, bits);
+    BN_mod_mul(RR, R, R, m, ctx);
+    BN_bn2lebinpad(RR, extension, (int)keyLen);
+
+    BN_free(R);
+    BN_free(RR);
+    BN_CTX_free(ctx);
+    BN_free(m);
 }
 
 /******************************************************************************/
@@ -195,7 +243,13 @@ uint8_t Key::ParseOpenSSLKey(FILE* f)
             LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", keySzRd * 8, keySize * 8);
         }
 #if OPENSSL_VERSION_NUMBER > 0x10100000L
+#ifdef _MSC_VER
+        /* Use BN_bn2lebinpad for safe BIGNUM-to-buffer conversion on MSVC,
+           direct ->d access is unsafe due to BIGNUM struct layout mismatch */
+        BN_bn2lebinpad(RSA_get0_d(rsaInst.rsa), D.get(), keySize);
+#else
         memcpy(D.get(), RSA_get0_d(rsaInst.rsa)->d, keySize);
+#endif
 #else
         memcpy(D.get(), rsaInst.rsa->d->d, keySize);
 #endif
@@ -219,8 +273,15 @@ uint8_t Key::ParseOpenSSLKey(FILE* f)
         memset(D.get(),0,keySize);
     }
 #if OPENSSL_VERSION_NUMBER > 0x10100000L
+#ifdef _MSC_VER
+    /* Use BN_bn2lebinpad for safe BIGNUM-to-buffer conversion on MSVC,
+       direct ->d access is unsafe due to BIGNUM struct layout mismatch */
+    BN_bn2lebinpad(RSA_get0_n(rsaInst.rsa), N.get(), keySize);
+    BN_bn2lebinpad(RSA_get0_e(rsaInst.rsa), E.get(), sizeof(uint32_t));
+#else
     memcpy(N.get(), RSA_get0_n(rsaInst.rsa)->d, keySize);
     memcpy(E.get(), RSA_get0_e(rsaInst.rsa)->d, sizeof(uint32_t));
+#endif
 #else
     memcpy(N.get(), rsaInst.rsa->n->d, keySize);
     memcpy(E.get(), rsaInst.rsa->e->d, sizeof(uint32_t));

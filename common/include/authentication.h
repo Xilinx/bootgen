@@ -201,12 +201,19 @@ public:
         }
     }
 
-    void Set(BIGNUM& m) 
+    /* Pointer overload allows passing BIGNUMs created via public OpenSSL API
+       (BN_lebin2bn, BN_bin2bn) where direct struct access is unavailable on MSVC. */
+    void Set(BIGNUM* m) 
     {
-        if (!BN_MONT_CTX_set(mont,&m, ctx)) 
+        if (!BN_MONT_CTX_set(mont, m, ctx)) 
         {
             LOG_ERROR("Failed to calculated montgomery reduction in BN_MONT_CTX_set");
         }
+    }
+
+    void Set(BIGNUM& m) 
+    {
+        Set(&m);
     }
 
     void GetModulusExtension(uint8_t* ptr, BIGNUM& m, size_t len) 

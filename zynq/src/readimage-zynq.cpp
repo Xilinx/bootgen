@@ -175,7 +175,7 @@ void ZynqReadImage::ReadHeaderTableDetails()
         memset(iH_local.get(), 0, sizeof(ZynqImageHeaderStructure));
         if (!(fseek(binFile, offset, SEEK_SET)))
         {
-            result = fread(iH.get(), 1, 4 * sizeof(uint32_t), binFile);
+            result = fread(iH_local.get(), 1, 4 * sizeof(uint32_t), binFile);
             if (result != (4 * sizeof(uint32_t)))
             {
                 LOG_ERROR("Error reading Image header");
@@ -202,13 +202,13 @@ void ZynqReadImage::ReadHeaderTableDetails()
             }
 
             iHNames.push_back(name);
+            offset = 4 * (iH_local->nextImageHeaderWordOffset);
             iHs.push_back(std::move(iH_local));
         }
         else
         {
             LOG_ERROR("Error parsing Image Headers from bin file");
         }
-        offset = 4 * (iH_local->nextImageHeaderWordOffset);
     } while (offset != 0);
 
     /* Partition Header Extraction */

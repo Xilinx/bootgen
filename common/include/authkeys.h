@@ -346,6 +346,8 @@ public:
     std::unique_ptr<uint8_t[]> D;         // secret (decryption) exponent (2048 bits).
     Authentication :: Type authType;
     bool lmsOnly;
+    /* Compute R^2 mod N using public OpenSSL API for MSVC compatibility */
+    static void ComputeModulusExtension(const uint8_t* modulus, uint8_t* extension, size_t keyLen);
 protected:
     void Multiply_p_q(uint8_t p[], uint8_t q[], uint8_t n[]);
     void Hex2Byte(FILE* f, uint8_t* data, int count);

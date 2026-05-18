@@ -29,7 +29,7 @@
 #if ! defined(yyFlexLexerOnce)
 #undef yyFlexLexer
 #define yyFlexLexer bifFlexLexer
-#include "FlexLexer.h"
+#include "../win_include/FlexLexer.h"
 #endif
 
 // Override the interface for yylex since we namespaced it
@@ -38,9 +38,6 @@
 
 // Include Bison for types / tokens
 #include "bif.tab.hpp"
-
-extern bool includefound;
-
 
 /*
 -------------------------------------------------------------------------------
@@ -53,9 +50,7 @@ namespace BIF
     class FlexScanner : public yyFlexLexer 
     {
         public:
-            // save the pointer to yylval so we can change it, and invoke scanner
-            // Constructor and destructor
-            FlexScanner() { includefound = false; }
+            FlexScanner() {}
             ~FlexScanner() { cleanup_include_stacks(); }
             int yylex(BIF::BisonParser::semantic_type * lval, BIF::BisonParser::location_type* loc) { 
                 yylval = lval; 
@@ -64,7 +59,6 @@ namespace BIF
             }
             void comment();
             void cleanup_include_stacks();
-            void reset_includefound() { includefound = false; }
             std::string filename;
 
         private:

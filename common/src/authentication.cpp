@@ -25,6 +25,7 @@
 #include <iostream>
 
 #include "authentication.h"
+#include "authkeys.h"
 #include "bootgenexception.h"
 #include "stringutils.h"
 #include "binary.h"
@@ -716,6 +717,63 @@ Section* RSA2048AuthenticationCertificate::AttachBootHeaderToFsbl(BootImage& bi)
 /******************************************************************************/
 void AuthenticationAlgorithm::RSA_Exponentiation(const uint8_t *base, const uint8_t* modular, const uint8_t *modular_ext, const uint8_t *exponent, uint8_t *result0)
 {
+#ifdef _MSC_VER
+    /* On Windows/MSVC, direct BIGNUM struct field access (d, dmax, top, etc.)
+       causes BN_MONT_CTX_set failure due to struct layout differences between GCC and MSVC.
+       Use public OpenSSL API (BN_lebin2bn, BN_mod_exp_mont, BN_bn2lebinpad) instead. */
+    uint16_t keyLength = AuthenticationContext::GetRsaKeyLength();
+
+    BIGNUM *a = BN_lebin2bn(base, keyLength, NULL);
+    BIGNUM *power = BN_lebin2bn(exponent, keyLength, NULL);
+    BIGNUM *m = BN_lebin2bn(modular, keyLength, NULL);
+    if (a == NULL || power == NULL || m == NULL)
+    {
+        BN_free(a);
+        BN_free(power);
+        BN_free(m);
+        LOG_ERROR("Failed to create BIGNUMs for RSA exponentiation");
+    }
+
+    BN_CTX_Class ctxInst;
+    BN_MONT_CTX_Class montClass(ctxInst);
+    montClass.Set(m);
+
+    auto sanityExtension = std::make_unique<uint8_t[]>(keyLength);
+    Key::ComputeModulusExtension(modular, sanityExtension.get(), keyLength);
+    int comp = memcmp(sanityExtension.get(), modular_ext, keyLength);
+
+    if (comp)
+    {
+        LOG_ERROR("Internal Error : Montgomery Reduction is not same as externally calculated value.");
+    }
+
+    BIGNUM *result = BN_new();
+    if (result == NULL)
+    {
+        BN_free(a);
+        BN_free(power);
+        BN_free(m);
+        LOG_ERROR("Failed to allocate result BIGNUM");
+    }
+
+    int ret = BN_mod_exp_mont(result, a, power, m, ctxInst.ctx, montClass.mont);
+
+    if (ret != 1)
+    {
+        BN_free(result);
+        BN_free(a);
+        BN_free(power);
+        BN_free(m);
+        LOG_DEBUG(DEBUG_STAMP, "Error in calculating Modulus Exponent");
+        LOG_ERROR("Authentication Error !!!");
+    }
+
+    BN_bn2lebinpad(result, result0, keyLength);
+    BN_free(result);
+    BN_free(a);
+    BN_free(power);
+    BN_free(m);
+#else
     BIGNUM result;
     BIGNUM a; // base
     BIGNUM power; // exponent
@@ -766,6 +824,7 @@ void AuthenticationAlgorithm::RSA_Exponentiation(const uint8_t *base, const uint
         LOG_DEBUG(DEBUG_STAMP, "Error in calculating Modulus Exponent");
         LOG_ERROR("Authentication Error !!!");
     }
+#endif
 }
 
 /******************************************************************************/

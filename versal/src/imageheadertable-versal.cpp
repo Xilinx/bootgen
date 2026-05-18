@@ -4866,7 +4866,7 @@ void VersalImageHeader::CheckIdsInCdo(CdoSequence * seq, bool isVersalNetSeries,
                {
                   LOG_WARNING("The architecture(%s) in '%s' does not match '-arch versalnet'", marker_arch, cdo_filename.c_str());
                }
-               else if(!isVersalNetSeries && ((strstr(marker_arch,"versalnet") != 0) || (strstr(marker_arch,"versal") == 0)))
+               else if(!isVersalNetSeries && (strstr(marker_arch,"versal") == 0))
                {
                   LOG_WARNING("The architecture(%s) in '%s' does not match '-arch versal'", marker_arch, cdo_filename.c_str());
                }

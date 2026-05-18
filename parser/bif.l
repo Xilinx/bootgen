@@ -35,7 +35,6 @@
  static std::stack<std::string> filename_stack;
  static std::stack<std::string> scanner_filename_stack; // Track scanner filenames
  static const int MAX_INCLUDE_DEPTH = 50; // Prevent infinite recursion
- bool includefound = false; // Define the global variable
 %}
 
 /* see http://www.lysator.liu.se/c/ANSI-C-grammar-l.html */
@@ -83,7 +82,6 @@ section                                                             return tok::
 lockstep                                                            return tok::LOCKSTEP;
 include[ \t]*:[ \t]*(\"([^\"]+)\"|([^ \t\n]+)) {
     char filename[256];
-    includefound = true;
     // Check if filename is quoted or unquoted
     if (strchr(yytext, '"') != NULL) {
         // Quoted filename
@@ -149,7 +147,8 @@ include[ \t]*:[ \t]*(\"([^\"]+)\"|([^ \t\n]+)) {
         return 0; // Signal error/EOF
     }   
 }
-[ \t\n]+ ;  // Ignore whitespace
+[ \t]+ ;
+[\n]+ { yylloc->lines(yyleng); yylloc->step(); }
 <<EOF>> {
     if (!buffer_stack.empty()) {
         // Clean up current buffer
@@ -425,6 +424,9 @@ lms_key_params      yylval->number = tok::LMS_KEY_PARAMS;           return tok::
     secondary       yylval->number = AuthKeyLevel::SECONDARY;       return tok::AUTH_KEY_LEVEL;
 
 
+8[_][Bb]it          yylval->number=8;                               return tok::DECVALUE;
+16[_][Bb]it         yylval->number=16;                              return tok::DECVALUE;
+32[_][Bb]it         yylval->number=32;                              return tok::DECVALUE;
 [0-9]+              yylval->number=atoi(yytext);                    return tok::DECVALUE;
 0[xX][0-9a-fA-F]+   yylval->number=strtoul(yytext+2,NULL,16);       return tok::HEXVALUE;
 [a-fA-F0-9]+        yylval->string=strdup(yytext);                  return tok::HEXWORD;

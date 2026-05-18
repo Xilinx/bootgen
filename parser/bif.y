@@ -215,19 +215,6 @@ group_list              :   /* empty */
                         |   group_list bifoptions
                         ;
 bifoptions              :   INCLUDE COLON filename                              { options.includeBifOptionsList.push_back($3); }
-                        |   WORD                                                { if (!includefound)
-                                                                                      {currentBifOptions = new BifOptions(options.GetArchType(), options.IsVersalNetSeries(), options.IsDl9Series(), $1);}
-                                                                                  else{
-                                                                                    if (!currentBifOptions) {
-                                                                                    currentBifOptions = new BifOptions(options.GetArchType(), options.IsVersalNetSeries(), options.IsDl9Series(), $1);
-                                                                                    options.bifOptions = currentBifOptions;
-                                                                                    options.bifOptionsList.push_back(currentBifOptions);}
-                                                                                  } }
-                            COLON 
-                            OBRACE file_list EBRACE                             { if (!includefound){options.bifOptions = currentBifOptions;
-                                                                                  options.bifOptionsList.push_back(currentBifOptions);} }    
-
-bifoptions              :   INCLUDE COLON filename                              { options.includeBifOptionsList.push_back($3); }
                         |   WORD                                                { currentBifOptions = new BifOptions(options.GetArchType(), options.IsVersalNetSeries(), options.IsDl9Series(), $1); }
                             COLON 
                             OBRACE file_list EBRACE                             { options.bifOptions = currentBifOptions;
@@ -342,9 +329,21 @@ image_attributes        :   ID EQUAL expression                                 
                         |   COPY EQUAL expression                               { LOG_ERROR("Copy to Memory feature with the attribute 'copy' is no more supported.\n\t   This can be duplicated with the option 'imagestore'. Please refer UG1283 for more details.");
                                                                                   currentImageBifOptions->SetMemCopyAddress($3); }
                         |   PARTITION_TYPE EQUAL ptypevalue                     { currentImageBifOptions->SetImageType($3); }
-                        |   UNIQUE_ID EQUAL expression                          { currentImageBifOptions->SetUniqueId($3); }
-                        |   PARENT_UNIQUE_ID EQUAL expression                   { currentImageBifOptions->SetParentUniqueId($3); }
-                        |   FUNCTION_ID EQUAL expression                        { currentImageBifOptions->SetFunctionId($3); }
+                        |   UNIQUE_ID EQUAL expression                          { if ($3 == 0xFFFFFFFF)
+                                                                                  {
+                                                                                    LOG_WARNING("uid value 0xFFFFFFFF is reserved and not allowed, it will be treated as unset");
+                                                                                  }
+                                                                                  currentImageBifOptions->SetUniqueId($3); }
+                        |   PARENT_UNIQUE_ID EQUAL expression                   { if ($3 == 0xFFFFFFFF)
+                                                                                  {
+                                                                                    LOG_WARNING("parent_uid value 0xFFFFFFFF is reserved and not allowed, it will be treated as unset");
+                                                                                  }
+                                                                                  currentImageBifOptions->SetParentUniqueId($3); }
+                        |   FUNCTION_ID EQUAL expression                        { if ($3 == 0xFFFFFFFF)
+                                                                                  {
+                                                                                    LOG_WARNING("function_id value 0xFFFFFFFF is reserved and not allowed, it will be treated as unset");
+                                                                                  }
+                                                                                  currentImageBifOptions->SetFunctionId($3); }
                         |   PCR_NUMBER EQUAL expression                         { if (options.GetArchType() == Arch::ZYNQ || options.GetArchType() == Arch::ZYNQMP)
                                                                                   {
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t  'pcr' is not supported for the specified architecture");

@@ -93,6 +93,24 @@ bool ZynqMpReadImage::VerifySignature(bool nist, uint8_t * data, size_t dataLeng
 
     rsa = RSA_new();
 
+#ifdef _MSC_VER
+    /* On Windows/MSVC, use BN_bin2bn to construct BIGNUMs from raw key data
+       instead of directly assigning to internal struct fields (d, dmax, top). Direct struct
+       access causes Montgomery reduction failure due to GCC/MSVC struct layout mismatch. */
+    BIGNUM* n = BN_bin2bn(acKey->N, RSA_4096_KEY_LENGTH, NULL);
+    BIGNUM* e = BN_bin2bn(acKey->E, sizeof(uint32_t), NULL);
+    if (n == NULL || e == NULL)
+    {
+        LOG_ERROR("Failed to create BIGNUMs from AC key data");
+    }
+
+#if OPENSSL_VERSION_NUMBER > 0x10100000L
+    RSA_set0_key(rsa, n, e, NULL);
+#else
+    rsa->n = n;
+    rsa->e = e;
+#endif
+#else
     BIGNUM* n = BN_new();
     n->d = (BN_ULONG*)acKey->N;
     n->dmax = RSA_4096_KEY_LENGTH / sizeof(BN_ULONG);
@@ -118,21 +136,26 @@ bool ZynqMpReadImage::VerifySignature(bool nist, uint8_t * data, size_t dataLeng
     RearrangeEndianess((uint8_t*)rsa->e->d, sizeof(uint32_t));
     RearrangeEndianess((uint8_t*)rsa->n->d, RSA_4096_KEY_LENGTH);
 #endif
+#endif
 
-    /* Find SHA-384 hash from signature */    
-    auto opensslHashPadded = std::make_unique<uint8_t[]>(RSA_4096_KEY_LENGTH); //chnage key length to signature length
+    auto opensslHashPadded = std::make_unique<uint8_t[]>(RSA_4096_KEY_LENGTH);
     
     if (RSA_public_encrypt(RSA_4096_KEY_LENGTH, signature, (unsigned char*)opensslHashPadded.get(), rsa, RSA_NO_PADDING) < 0)
     {
         LOG_ERROR("RSA_public_encrypt error");
     }
-    /* comment */
+
+    /* RearrangeEndianess is only needed for the GCC path where BIGNUMs were
+       constructed via direct struct access. On MSVC, BN_bin2bn handles
+       endianness correctly so no post-encrypt fixup is needed. */
+#ifndef _MSC_VER
 #if OPENSSL_VERSION_NUMBER > 0x10100000L
     RearrangeEndianess((uint8_t*)RSA_get0_n(rsa)->d, RSA_4096_KEY_LENGTH);
     RearrangeEndianess((uint8_t*)RSA_get0_e(rsa)->d, sizeof(uint32_t));
 #else
     RearrangeEndianess((uint8_t*)rsa->n->d, RSA_4096_KEY_LENGTH);
     RearrangeEndianess((uint8_t*)rsa->e->d, sizeof(uint32_t));
+#endif
 #endif
 
     auto opensslHash = std::make_unique<uint8_t[]>(hashLength);

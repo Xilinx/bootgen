@@ -38,13 +38,30 @@ void SpartanupReadImage::VerifyAuthentication(bool verifyImageOption)
 {
     ReadBinaryFile();
 
+    if (bH == nullptr)
+    {
+        LOG_ERROR("Boot Header not found in %s. Authentication verification cannot be done.", binFilename.c_str());
+    }
+
+    Authentication::Type authType = (Authentication::Type)IdentifyAuthtype(bH->authHeader1);
+    if (authType == Authentication::None)
+    {
+        LOG_ERROR("Bootimage %s is not authenticated. Authentication verification cannot be done on this image.", binFilename.c_str());
+    }
+
+    if (authType == Authentication::LMS_SHA2_256 || authType == Authentication::LMS_SHAKE256)
+    {
+        LOG_ERROR("'-verify' option is not supported for LMS/HSS authenticated images on this architecture.");
+    }
+
+    if (iHT == nullptr)
+    {
+        LOG_ERROR("Image Header Table not found in %s. Authentication verification cannot be done.", binFilename.c_str());
+    }
+
     if (iHT->headerAuthCertificateWordOffset != 0)
     {
         VerifyHeaderTableSignature();
-    }
-    else
-    {
-        //LOG_ERROR("Bootimage %s is not authenticated. Authentication verification cannot be done on this image.", binFilename.c_str());
     }
 
     VerifyPartitionSignature();

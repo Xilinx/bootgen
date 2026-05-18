@@ -65,19 +65,26 @@ void Parsing::Error2(const BIF::BisonParser::location_type &loc, const std::stri
         {
             len = 70;
         }
-        std::cerr << linedata.substr(first-1,70) << "\n";
+        if (static_cast<size_t>(first - 1) >= linedata.size())
+        {
+            std::cerr << linedata << "\n";
+        }
+        else
+        {
+            size_t maxlen = linedata.size() - (first - 1);
+            std::cerr << linedata.substr(first-1, maxlen < 70 ? maxlen : 70) << "\n";
+        }
         unsigned int i;
         if (first != 1)
         {
             std::cerr << "    ";
         }
-        for(i=first;i<loc.begin.column;i++)  std::cerr << (linedata[i-1]=='\t'?'\t':' ');
+        for(i=first;i<loc.begin.column && (i-1) < linedata.size();i++)  std::cerr << (linedata[i-1]=='\t'?'\t':' ');
         for(;i<loc.end.column;i++) std::cerr << "^";
         std::cerr << "\n" << std::endl;
     }
     catch(...)
     {
         std::cerr << "Parsing problem at " << loc << std::endl;
-        throw;
     }
 }

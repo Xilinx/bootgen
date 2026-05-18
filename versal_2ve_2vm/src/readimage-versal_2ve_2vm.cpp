@@ -1338,6 +1338,7 @@ void Versal_2ve_2vmReadImage::DisplayIhtAttributes(uint32_t value)
         case 19: val = "[mmc0]";        break;
         case 20: val = "[mmc0-raw]";    break;
         case 21: val = "[imagestore]";  break;
+        case 22: val = "[ufs]";         break;
         default: val = "[n/a]";         break;
     }
     val1 = val;

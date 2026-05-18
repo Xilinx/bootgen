@@ -268,6 +268,8 @@ static void RearrangeEndianess(uint8_t *array, uint32_t size)
 }
 
 /******************************************************************************/
+/* BN_num_bytes may return fewer bytes than the curve's key size when
+   coordinates have leading zeros - use upper-bound check (>) not equality */
 uint8_t SpartanupKey::ParseECDSAOpenSSLKey(const std::string& filename)
 {
     OpenSSL_add_all_algorithms();
@@ -338,12 +340,12 @@ uint8_t SpartanupKey::ParseECDSAOpenSSLKey(const std::string& filename)
                 if (EC_POINT_get_affine_coordinates_GFp(ecgroup, pub, X, Y, NULL))
                 {
                     keySzRdX = BN_num_bytes(X);
-                    if (keySzRdX != keySize)
+                    if (keySzRdX > keySize || keySzRdX < keySize - 4)
                     {
                         LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", BN_num_bits(X), keySize * 8);
                     }
                     keySzRdY = BN_num_bytes(Y);
-                    if (keySzRdY != keySize)
+                    if (keySzRdY > keySize || keySzRdY < keySize - 4)
                     {
                         LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", BN_num_bits(Y), keySize * 8);
                     }
@@ -363,12 +365,12 @@ uint8_t SpartanupKey::ParseECDSAOpenSSLKey(const std::string& filename)
                 if (EC_POINT_get_affine_coordinates_GFp(ecgroup, pub, X, Y, NULL))
                 {
                     keySizeX = BN_num_bytes(X);
-                    if (keySizeX != EC_P521_KEY_LENGTH1 && keySizeX != EC_P521_KEY_LENGTH2)
+                    if (keySizeX > EC_P521_KEY_LENGTH2)
                     {
                         LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", BN_num_bits(X), 521);
                     }
                     keySizeY = BN_num_bytes(Y);
-                    if (keySizeY != EC_P521_KEY_LENGTH1 && keySizeY != EC_P521_KEY_LENGTH2)
+                    if (keySizeY > EC_P521_KEY_LENGTH2)
                     {
                         LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", BN_num_bits(Y), 521);
                     }
@@ -426,12 +428,12 @@ uint8_t SpartanupKey::ParseECDSAOpenSSLKey(const std::string& filename)
                 if (EC_POINT_get_affine_coordinates_GFp(ecgroup, pub, X, Y, NULL))
                 {
                     keySzRdX = BN_num_bytes(X);
-                    if (keySzRdX != keySize)
+                    if (keySzRdX > keySize || keySzRdX < keySize - 4)
                     {
                         LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", BN_num_bits(X), keySize * 8);
                     }
                     keySzRdY = BN_num_bytes(Y);
-                    if (keySzRdY != keySize)
+                    if (keySzRdY > keySize || keySzRdY < keySize - 4)
                     {
                         LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", BN_num_bits(Y), keySize * 8);
                     }
@@ -451,12 +453,12 @@ uint8_t SpartanupKey::ParseECDSAOpenSSLKey(const std::string& filename)
                 if (EC_POINT_get_affine_coordinates_GFp(ecgroup, pub, X, Y, NULL))
                 {
                     keySizeX = BN_num_bytes(X);
-                    if (keySizeX != EC_P521_KEY_LENGTH1 && keySizeX != EC_P521_KEY_LENGTH2)
+                    if (keySizeX > EC_P521_KEY_LENGTH2)
                     {
                         LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", BN_num_bits(X), 521);
                     }
                     keySizeY = BN_num_bytes(Y);
-                    if (keySizeY != EC_P521_KEY_LENGTH1 && keySizeY != EC_P521_KEY_LENGTH2)
+                    if (keySizeY > EC_P521_KEY_LENGTH2)
                     {
                         LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", BN_num_bits(Y), 521);
                     }
