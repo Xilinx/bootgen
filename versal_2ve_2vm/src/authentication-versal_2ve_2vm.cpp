@@ -1442,14 +1442,16 @@ void Versal_2ve_2vmAuthenticationContext::CopySPKSignature(BootImage& bi, uint8_
     else
     {
         if ((authAlgorithm->Type() == Authentication::LMS_SHA2_256 || authAlgorithm->Type() == Authentication::LMS_SHAKE256)
-            && bi.spkFileAndSpkSignature.find({spkFile.c_str(), ppkFile.c_str()}) != bi.spkFileAndSpkSignature.end())
+            && bi.spkFileAndSpkSignature.find(std::make_tuple(spkFile, ppkFile, spkIdentification)) != bi.spkFileAndSpkSignature.end())
         {
-                 memcpy(spksignature.get(), bi.spkFileAndSpkSignature.find({spkFile.c_str(), ppkFile.c_str()})->second, signatureLength);
+                 auto& cached = bi.spkFileAndSpkSignature.find(std::make_tuple(spkFile, ppkFile, spkIdentification))->second;
+                 memcpy(spksignature.get(), cached.data(), signatureLength);
         }
         else if ((authAlgorithm->Type() == Authentication::RSA || authAlgorithm->Type() == Authentication::ECDSA)
-            && bi.spkFileAndSpkSignature.find({sskFile.c_str(), pskFile.c_str()}) != bi.spkFileAndSpkSignature.end())
+            && bi.spkFileAndSpkSignature.find(std::make_tuple(sskFile, pskFile, spkIdentification)) != bi.spkFileAndSpkSignature.end())
         {
-            memcpy(spksignature.get(), bi.spkFileAndSpkSignature.find({sskFile.c_str(), pskFile.c_str()})->second, signatureLength);
+            auto& cached = bi.spkFileAndSpkSignature.find(std::make_tuple(sskFile, pskFile, spkIdentification))->second;
+            memcpy(spksignature.get(), cached.data(), signatureLength);
         }
         else
         {
@@ -2464,13 +2466,15 @@ void Versal_2ve_2vmAuthenticationContext::CreateSPKSignature(BootImage& bi)
 
     if(authAlgorithm->Type() == Authentication::LMS_SHA2_256 || authAlgorithm->Type() == Authentication::LMS_SHAKE256)
     {
-        if(bi.spkFileAndSpkSignature.find(std::make_pair(spkFile.c_str(), ppkFile.c_str())) == bi.spkFileAndSpkSignature.end())
-            bi.spkFileAndSpkSignature.insert({std::make_pair(spkFile.c_str(), ppkFile.c_str()), spksignature.get()});
+        auto cacheKey = std::make_tuple(spkFile, ppkFile, spkIdentification);
+        if(bi.spkFileAndSpkSignature.find(cacheKey) == bi.spkFileAndSpkSignature.end())
+            bi.spkFileAndSpkSignature.emplace(cacheKey, std::vector<uint8_t>(spksignature.get(), spksignature.get() + signatureLength));
     }
     else
     {
-        if(bi.spkFileAndSpkSignature.find(std::make_pair(sskFile.c_str(), pskFile.c_str())) == bi.spkFileAndSpkSignature.end())
-            bi.spkFileAndSpkSignature.insert({std::make_pair(sskFile.c_str(), pskFile.c_str()), spksignature.get()});
+        auto cacheKey = std::make_tuple(sskFile, pskFile, spkIdentification);
+        if(bi.spkFileAndSpkSignature.find(cacheKey) == bi.spkFileAndSpkSignature.end())
+            bi.spkFileAndSpkSignature.emplace(cacheKey, std::vector<uint8_t>(spksignature.get(), spksignature.get() + signatureLength));
     }
 
     LOG_INFO("SPK signature created successfully");

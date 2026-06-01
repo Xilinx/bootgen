@@ -70,6 +70,45 @@ void BIF_File::Process(Options& options)
 
         includeBifOptionList = options.bifOptionsList;
 
+        if (includeBifOptionList.size() < bifOptionList.size()) {
+            bifOptionList.erase(bifOptionList.begin(), bifOptionList.begin() + includeBifOptionList.size());
+        }
+
+        // Inherit global keys to partitions for include BIF (safe for all architectures)
+        for (std::vector<BifOptions*>::iterator bifoptions = includeBifOptionList.begin(); bifoptions != includeBifOptionList.end(); bifoptions++)
+        {
+            for (std::list<PartitionBifOptions*>::iterator partitr = (*bifoptions)->partitionBifOptionList.begin(); 
+                 partitr != (*bifoptions)->partitionBifOptionList.end(); partitr++)
+            {
+                bool hasPartitionKeys = !(*partitr)->ppkFile.empty() || !(*partitr)->pskFile.empty() || 
+                                       !(*partitr)->spkFile.empty() || !(*partitr)->sskFile.empty();
+                
+                bool hasGlobalKeys = !(*bifoptions)->GetPPKFileName().empty() || !(*bifoptions)->GetPSKFileName().empty() || 
+                                    !(*bifoptions)->GetSPKFileName().empty() || !(*bifoptions)->GetSSKFileName().empty();
+                
+                if (!hasPartitionKeys && hasGlobalKeys) {
+                    LOG_TRACE("Partition has no local keys - inheriting from global keys");
+                    
+                    if (!(*bifoptions)->GetPPKFileName().empty()) {
+                        (*partitr)->ppkFile = (*bifoptions)->GetPPKFileName();
+                        LOG_TRACE("Partition inheriting global ppkfile: %s", (*partitr)->ppkFile.c_str());
+                    }
+                    if (!(*bifoptions)->GetPSKFileName().empty()) {
+                        (*partitr)->pskFile = (*bifoptions)->GetPSKFileName();
+                        LOG_TRACE("Partition inheriting global pskfile: %s", (*partitr)->pskFile.c_str());
+                    }
+                    if (!(*bifoptions)->GetSPKFileName().empty()) {
+                        (*partitr)->spkFile = (*bifoptions)->GetSPKFileName();
+                        LOG_TRACE("Partition inheriting global spkfile: %s", (*partitr)->spkFile.c_str());
+                    }
+                    if (!(*bifoptions)->GetSSKFileName().empty()) {
+                        (*partitr)->sskFile = (*bifoptions)->GetSSKFileName();
+                        LOG_TRACE("Partition inheriting global sskfile: %s", (*partitr)->sskFile.c_str());
+                    }
+                }
+            }
+        }
+
         if (options.IsSsitBif())
         {
             includeBifOptionList.back()->slrNum = 0x00;
@@ -826,6 +865,10 @@ void BIF_File::ParseBifFile(Options& options)
     if (res)
     {
         LOG_ERROR("BIF file - %s, parsing failed with code %d", basefile.c_str(), res);
+    }
+
+    for (const auto& f : scanner.includedFiles) {
+        options.includeBifOptionsList.push_back(strdup(f.c_str()));
     }
 
     LOG_INFO("BIF file parsed successfully - %s ", basefile.c_str());

@@ -35,6 +35,7 @@
  static std::stack<std::string> filename_stack;
  static std::stack<std::string> scanner_filename_stack; // Track scanner filenames
  static const int MAX_INCLUDE_DEPTH = 50; // Prevent infinite recursion
+ static int brace_depth = 0;
 %}
 
 /* see http://www.lysator.liu.se/c/ANSI-C-grammar-l.html */
@@ -126,6 +127,10 @@ include[ \t]*:[ \t]*(\"([^\"]+)\"|([^ \t\n]+)) {
 
     std::ifstream* new_stream = new std::ifstream(filename);
     if (new_stream->is_open()) {
+        if (brace_depth == 0) {
+            includedFiles.push_back(std::string(filename));
+        }
+
         // Push current state onto stacks
         buffer_stack.push(YY_CURRENT_BUFFER);
         stream_stack.push(new_stream);
@@ -437,8 +442,8 @@ lms_key_params      yylval->number = tok::LMS_KEY_PARAMS;           return tok::
 ,                                                                   return tok::COMMA;
 \[                                                                  return tok::OBRACKET;
 \]                                                                  return tok::EBRACKET;
-\{                                                                  return tok::OBRACE;
-\}                                                                  return tok::EBRACE;
+\{                                                                  brace_depth++; return tok::OBRACE;
+\}                                                                  brace_depth--; return tok::EBRACE;
 \(                                                                  return tok::LPAREN;
 \)                                                                  return tok::RPAREN;
 \*                                                                  return tok::ASTERISK;

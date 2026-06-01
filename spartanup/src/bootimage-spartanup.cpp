@@ -1829,7 +1829,8 @@ void SpartanBootImage::OutputOptionalEfuseHash()
                     authCtx = std::make_unique<SpartanupAuthenticationContext>(currentAuthCtx.get(), Authentication::LMS_SHA2_256);
                 }
 
-                authCtx->hash = hash.get();  // Non-owning reference to BootImage's hash
+                authCtx->hash = hash.get();
+                authCtx->ownsHash = false;
                 authCtx->GeneratePPKHash(hashFile);
             }
         }
@@ -1876,7 +1877,8 @@ void SpartanBootImage::OutputOptionalEfuseHash()
                 {
                     authCtx = std::make_unique<SpartanupAuthenticationContext>(currentAuthCtx.get(), Authentication::RSA);
                 }
-                authCtx->hash = hash.get();  // Non-owning reference to BootImage's hash
+                authCtx->hash = hash.get();
+                authCtx->ownsHash = false;
                 authCtx->GeneratePPKHash(hashFile);
             }
         }

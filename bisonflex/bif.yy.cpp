@@ -16,8 +16,8 @@
 
 #define FLEX_SCANNER
 #define YY_FLEX_MAJOR_VERSION 2
-#define YY_FLEX_MINOR_VERSION 6
-#define YY_FLEX_SUBMINOR_VERSION 1
+#define YY_FLEX_MINOR_VERSION 5
+#define YY_FLEX_SUBMINOR_VERSION 35
 #if YY_FLEX_SUBMINOR_VERSION > 0
 #define FLEX_BETA
 #endif
@@ -29,7 +29,7 @@
      * We will address this in a future release of flex, or omit the C++ scanner
      * altogether.
      */
-    #define yyFlexLexer yyFlexLexer
+    #define yyFlexLexer bifFlexLexer
 /* %endif */
 
 /* %if-c-only */
@@ -79,6 +79,7 @@ typedef int flex_int32_t;
 typedef unsigned char flex_uint8_t; 
 typedef unsigned short int flex_uint16_t;
 typedef unsigned int flex_uint32_t;
+#endif /* ! C99 */
 
 /* Limits of integral types. */
 #ifndef INT8_MIN
@@ -109,8 +110,6 @@ typedef unsigned int flex_uint32_t;
 #define UINT32_MAX             (4294967295U)
 #endif
 
-#endif /* ! C99 */
-
 #endif /* ! FLEXINT_H */
 
 /* %endif */
@@ -120,18 +119,29 @@ typedef unsigned int flex_uint32_t;
 #include <iostream> 
 #include <errno.h>
 #include <cstdlib>
-#include <cstdio>
 #include <cstring>
 /* end standard C++ headers. */
 /* %endif */
 
-/* TODO: this is always defined, so inline it */
-#define yyconst const
+#ifdef __cplusplus
 
-#if defined(__GNUC__) && __GNUC__ >= 3
-#define yynoreturn __attribute__((__noreturn__))
+/* The "const" storage-class-modifier is valid. */
+#define YY_USE_CONST
+
+#else	/* ! __cplusplus */
+
+/* C99 requires __STDC__ to be defined as 1. */
+#if defined (__STDC__)
+
+#define YY_USE_CONST
+
+#endif	/* defined (__STDC__) */
+#endif	/* ! __cplusplus */
+
+#ifdef YY_USE_CONST
+#define yyconst const
 #else
-#define yynoreturn
+#define yyconst
 #endif
 
 /* %not-for-header */
@@ -180,15 +190,7 @@ typedef unsigned int flex_uint32_t;
 
 /* Size of default input buffer. */
 #ifndef YY_BUF_SIZE
-#ifdef __ia64__
-/* On IA-64, the buffer size is 16k, not 8k.
- * Moreover, YY_BUF_SIZE is 2*YY_READ_BUF_SIZE in the general case.
- * Ditto for the __ia64__ case accordingly.
- */
-#define YY_BUF_SIZE 32768
-#else
 #define YY_BUF_SIZE 16384
-#endif /* __ia64__ */
 #endif
 
 /* The state buf must be large enough to hold one state per character in the main buffer.
@@ -198,11 +200,6 @@ typedef unsigned int flex_uint32_t;
 #ifndef YY_TYPEDEF_YY_BUFFER_STATE
 #define YY_TYPEDEF_YY_BUFFER_STATE
 typedef struct yy_buffer_state *YY_BUFFER_STATE;
-#endif
-
-#ifndef YY_TYPEDEF_YY_SIZE_T
-#define YY_TYPEDEF_YY_SIZE_T
-typedef size_t yy_size_t;
 #endif
 
 /* %if-not-reentrant */
@@ -219,14 +216,13 @@ extern int yyleng;
 #define EOB_ACT_LAST_MATCH 2
 
     #define YY_LESS_LINENO(n)
-    #define YY_LINENO_REWIND_TO(ptr)
     
 /* Return all but the first "n" matched characters back to the input stream. */
 #define yyless(n) \
 	do \
 		{ \
 		/* Undo effects of setting up yytext. */ \
-        yy_size_t yyless_macro_arg = (n); \
+        int yyless_macro_arg = (n); \
         YY_LESS_LINENO(yyless_macro_arg);\
 		*yy_cp = (yy_hold_char); \
 		YY_RESTORE_YY_MORE_OFFSET \
@@ -237,6 +233,11 @@ extern int yyleng;
 
 #define unput(c) yyunput( c, (yytext_ptr)  )
 
+#ifndef YY_TYPEDEF_YY_SIZE_T
+#define YY_TYPEDEF_YY_SIZE_T
+typedef size_t yy_size_t;
+#endif
+
 #ifndef YY_STRUCT_YY_BUFFER_STATE
 #define YY_STRUCT_YY_BUFFER_STATE
 struct yy_buffer_state
@@ -245,7 +246,7 @@ struct yy_buffer_state
 /* %endif */
 
 /* %if-c++-only */
-	std::streambuf* yy_input_file; 
+	std::istream* yy_input_file;
 /* %endif */
 
 	char *yy_ch_buf;		/* input buffer */
@@ -254,7 +255,7 @@ struct yy_buffer_state
 	/* Size of input buffer in bytes, not including room for EOB
 	 * characters.
 	 */
-	int yy_buf_size;
+	yy_size_t yy_buf_size;
 
 	/* Number of characters read into yy_ch_buf, not including EOB
 	 * characters.
@@ -340,9 +341,9 @@ struct yy_buffer_state
 /* %endif */
 /* %endif */
 
-void *yyalloc (yy_size_t  );
-void *yyrealloc (void *,yy_size_t  );
-void yyfree (void *  );
+void *bifalloc (yy_size_t  );
+void *bifrealloc (void *,yy_size_t  );
+void biffree (void *  );
 
 #define yy_new_buffer yy_create_buffer
 
@@ -378,7 +379,7 @@ typedef unsigned char YY_CHAR;
 
 #define yytext_ptr yytext
 
-#include <FlexLexer.h>
+#include "../win_include/FlexLexer.h"
 
 int yyFlexLexer::yywrap() { return 1; }
 int yyFlexLexer::yylex()
@@ -389,8 +390,6 @@ int yyFlexLexer::yylex()
 
 #define YY_DECL int FlexScanner::yylex()
 
-/* %% [1.5] DFA */
-
 /* %if-c-only Standard (non-C++) definition */
 /* %endif */
 
@@ -400,7 +399,7 @@ int yyFlexLexer::yylex()
 #define YY_DO_BEFORE_ACTION \
 	(yytext_ptr) = yy_bp; \
 /* %% [2.0] code to fiddle yytext and yyleng for yymore() goes here \ */\
-	yyleng = (int) (yy_cp - yy_bp); \
+	yyleng = (size_t) (yy_cp - yy_bp); \
 	(yy_hold_char) = *yy_cp; \
 	*yy_cp = '\0'; \
 /* %% [3.0] code to copy yytext_ptr to yytext[] goes here, if %array \ */\
@@ -565,7 +564,7 @@ static yyconst flex_int16_t yy_accept[1321] =
       281,  281,   77,   78,  164,  138,  141,  139,  142,    0
     } ;
 
-static yyconst YY_CHAR yy_ec[256] =
+static yyconst flex_int32_t yy_ec[256] =
     {   0,
         1,    1,    1,    1,    1,    1,    1,    1,    2,    3,
         1,    1,    4,    1,    1,    1,    1,    1,    1,    1,
@@ -597,7 +596,7 @@ static yyconst YY_CHAR yy_ec[256] =
         1,    1,    1,    1,    1
     } ;
 
-static yyconst YY_CHAR yy_meta[72] =
+static yyconst flex_int32_t yy_meta[72] =
     {   0,
         1,    1,    2,    1,    3,    3,    3,    3,    3,    3,
         3,    1,    4,    1,    4,    4,    4,    4,    4,    4,
@@ -609,7 +608,7 @@ static yyconst YY_CHAR yy_meta[72] =
         1
     } ;
 
-static yyconst flex_uint16_t yy_base[1328] =
+static yyconst flex_int16_t yy_base[1328] =
     {   0,
         0,    0, 2676, 2677,   70, 2672, 2677,   71, 2677, 2677,
      2677, 2677, 2677,    0, 2677,    0,    0,   61,  121,  125,
@@ -909,7 +908,7 @@ static yyconst flex_int16_t yy_def[1328] =
      1320, 1320, 1320, 1320, 1320, 1320, 1320
     } ;
 
-static yyconst flex_uint16_t yy_nxt[2749] =
+static yyconst flex_int16_t yy_nxt[2749] =
     {   0,
         4,    5,    6,    7,    5,    4,    8,    9,   10,   11,
        12,   13,   14,   15,   16,   17,   18,   19,   20,   21,
@@ -1523,37 +1522,37 @@ static yyconst flex_int16_t yy_chk[2749] =
 
 static yyconst flex_int16_t yy_rule_linenum[288] =
     {   0,
-       54,   55,   57,   58,   59,   60,   61,   62,   63,   64,
-       65,   66,   67,   68,   69,   70,   71,   72,   73,   74,
-       75,   76,   77,   78,   79,   80,   81,   82,   83,  150,
-      151,  183,  184,  186,  187,  188,  189,  190,  191,  192,
-      193,  194,  195,  196,  197,  198,  199,  200,  201,  202,
-      203,  204,  205,  206,  207,  208,  209,  210,  211,  212,
-      213,  214,  215,  216,  217,  218,  219,  220,  221,  222,
-      223,  224,  225,  227,  228,  229,  230,  231,  232,  234,
-      236,  237,  238,  240,  241,  242,  243,  244,  245,  246,
-      247,  248,  250,  251,  252,  253,  255,  256,  257,  258,
+       55,   56,   58,   59,   60,   61,   62,   63,   64,   65,
+       66,   67,   68,   69,   70,   71,   72,   73,   74,   75,
+       76,   77,   78,   79,   80,   81,   82,   83,   84,  155,
+      156,  188,  189,  191,  192,  193,  194,  195,  196,  197,
+      198,  199,  200,  201,  202,  203,  204,  205,  206,  207,
+      208,  209,  210,  211,  212,  213,  214,  215,  216,  217,
+      218,  219,  220,  221,  222,  223,  224,  225,  226,  227,
+      228,  229,  230,  232,  233,  234,  235,  236,  237,  239,
+      241,  242,  243,  245,  246,  247,  248,  249,  250,  251,
+      252,  253,  255,  256,  257,  258,  260,  261,  262,  263,
 
-      259,  260,  261,  262,  264,  265,  266,  267,  268,  269,
-      270,  271,  272,  273,  274,  275,  277,  278,  279,  280,
-      281,  282,  283,  284,  285,  286,  287,  288,  289,  290,
-      291,  292,  293,  294,  295,  296,  297,  298,  299,  300,
-      301,  302,  303,  305,  306,  307,  308,  309,  310,  311,
-      312,  313,  314,  315,  316,  317,  318,  319,  320,  321,
-      322,  323,  324,  325,  326,  327,  329,  330,  331,  332,
-      333,  334,  335,  336,  337,  338,  339,  340,  341,  342,
-      343,  344,  345,  346,  347,  348,  349,  350,  351,  353,
-      354,  355,  356,  357,  358,  359,  360,  361,  362,  363,
+      264,  265,  266,  267,  269,  270,  271,  272,  273,  274,
+      275,  276,  277,  278,  279,  280,  282,  283,  284,  285,
+      286,  287,  288,  289,  290,  291,  292,  293,  294,  295,
+      296,  297,  298,  299,  300,  301,  302,  303,  304,  305,
+      306,  307,  308,  310,  311,  312,  313,  314,  315,  316,
+      317,  318,  319,  320,  321,  322,  323,  324,  325,  326,
+      327,  328,  329,  330,  331,  332,  334,  335,  336,  337,
+      338,  339,  340,  341,  342,  343,  344,  345,  346,  347,
+      348,  349,  350,  351,  352,  353,  354,  355,  356,  358,
+      359,  360,  361,  362,  363,  364,  365,  366,  367,  368,
 
-      364,  365,  366,  367,  368,  369,  370,  371,  372,  373,
-      374,  375,  376,  377,  378,  380,  381,  382,  383,  384,
-      386,  387,  388,  389,  390,  392,  393,  394,  396,  398,
-      399,  400,  401,  402,  403,  404,  406,  407,  409,  410,
-      411,  412,  413,  414,  415,  417,  418,  419,  420,  422,
-      423,  424,  427,  428,  429,  430,  431,  432,  434,  435,
-      436,  437,  438,  439,  440,  441,  442,  443,  444,  446,
-      447,  448,  449,  450,  451,  452,  453,  454,  455,  456,
-      458,  459,  460,  462,  463,  464,  465
+      369,  370,  371,  372,  373,  374,  375,  376,  377,  378,
+      379,  380,  381,  382,  383,  385,  386,  387,  388,  389,
+      391,  392,  393,  394,  395,  397,  398,  399,  401,  403,
+      404,  405,  406,  407,  408,  409,  411,  412,  414,  415,
+      416,  417,  418,  419,  420,  422,  423,  424,  425,  427,
+      428,  429,  432,  433,  434,  435,  436,  437,  439,  440,
+      441,  442,  443,  444,  445,  446,  447,  448,  449,  451,
+      452,  453,  454,  455,  456,  457,  458,  459,  460,  461,
+      463,  464,  465,  467,  468,  469,  470
     } ;
 
 /* The intent behind this definition is that it'll catch
@@ -1599,8 +1598,9 @@ static yyconst flex_int16_t yy_rule_linenum[288] =
  static std::stack<std::string> filename_stack;
  static std::stack<std::string> scanner_filename_stack; // Track scanner filenames
  static const int MAX_INCLUDE_DEPTH = 50; // Prevent infinite recursion
+ static int brace_depth = 0;
 /* see http://www.lysator.liu.se/c/ANSI-C-grammar-l.html */
-#line 45 "parser/bif.l"
+#line 46 "parser/bif.l"
      # define YY_USER_ACTION  yylloc->columns (yyleng);
 #line 1606 "bisonflex/bif.yy.cpp"
 
@@ -1659,12 +1659,7 @@ static int yy_flex_strlen (yyconst char * );
 
 /* Amount of stuff to slurp up with each read. */
 #ifndef YY_READ_BUF_SIZE
-#ifdef __ia64__
-/* On IA-64, the buffer size is 16k, not 8k */
-#define YY_READ_BUF_SIZE 16384
-#else
 #define YY_READ_BUF_SIZE 8192
-#endif /* __ia64__ */
 #endif
 
 /* Copy whatever the last rule matched to the standard output. */
@@ -1684,7 +1679,7 @@ static int yy_flex_strlen (yyconst char * );
 /* %% [5.0] fread()/read() definition of YY_INPUT goes here unless we're doing C++ \ */\
 \
 /* %if-c++-only C++ definition \ */\
-	if ( (int)(result = LexerInput( (char *) buf, max_size )) < 0 ) \
+	if ( (result = LexerInput( (char *) buf, max_size )) < 0 ) \
 		YY_FATAL_ERROR( "input in flex scanner failed" );
 /* %endif */
 
@@ -1746,7 +1741,7 @@ static int yy_flex_strlen (yyconst char * );
 
 /* Code executed at the end of each rule. */
 #ifndef YY_BREAK
-#define YY_BREAK /*LINTED*/break;
+#define YY_BREAK break;
 #endif
 
 /* %% [6.0] YY_RULE_SETUP definition goes here */
@@ -1759,10 +1754,20 @@ static int yy_flex_strlen (yyconst char * );
  */
 YY_DECL
 {
-	yy_state_type yy_current_state;
-	char *yy_cp, *yy_bp;
-	int yy_act;
+	register yy_state_type yy_current_state;
+	register char *yy_cp, *yy_bp;
+	register int yy_act;
     
+/* %% [7.0] user's declarations go here */
+#line 49 "parser/bif.l"
+
+
+
+   yylloc->step ();
+
+
+#line 1770 "bisonflex/bif.yy.cpp"
+
 	if ( !(yy_init) )
 		{
 		(yy_init) = 1;
@@ -1778,14 +1783,14 @@ YY_DECL
 /* %if-c-only */
 /* %endif */
 /* %if-c++-only */
-			yyin.rdbuf(std::cin.rdbuf());
+			yyin = & std::cin;
 /* %endif */
 
 		if ( ! yyout )
 /* %if-c-only */
 /* %endif */
 /* %if-c++-only */
-			yyout.rdbuf(std::cout.rdbuf());
+			yyout = & std::cout;
 /* %endif */
 
 		if ( ! YY_CURRENT_BUFFER ) {
@@ -1797,18 +1802,7 @@ YY_DECL
 		yy_load_buffer_state(  );
 		}
 
-	{
-/* %% [7.0] user's declarations go here */
-#line 48 "parser/bif.l"
-
-
-
-   yylloc->step ();
-
-
-#line 1810 "bisonflex/bif.yy.cpp"
-
-	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
+	while ( 1 )		/* loops until end-of-file is reached */
 		{
 /* %% [8.0] yymore()-related code goes here */
 		yy_cp = (yy_c_buf_p);
@@ -1826,7 +1820,7 @@ YY_DECL
 yy_match:
 		do
 			{
-			YY_CHAR yy_c = yy_ec[YY_SC_TO_UI(*yy_cp)] ;
+			register YY_CHAR yy_c = yy_ec[YY_SC_TO_UI(*yy_cp)];
 			if ( yy_accept[yy_current_state] )
 				{
 				(yy_last_accepting_state) = yy_current_state;
@@ -1838,7 +1832,7 @@ yy_match:
 				if ( yy_current_state >= 1321 )
 					yy_c = yy_meta[(unsigned int) yy_c];
 				}
-			yy_current_state = yy_nxt[yy_base[yy_current_state] + (flex_int16_t) yy_c];
+			yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
 			++yy_cp;
 			}
 		while ( yy_current_state != 1320 );
@@ -1883,149 +1877,149 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 54 "parser/bif.l"
+#line 55 "parser/bif.l"
 { comment(); }
 	YY_BREAK
 case 2:
 /* rule 2 can match eol */
 YY_RULE_SETUP
-#line 55 "parser/bif.l"
+#line 56 "parser/bif.l"
 yylloc->lines (1); yylloc->step ();
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 57 "parser/bif.l"
+#line 58 "parser/bif.l"
 return tok::BOOTLOADER;
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 58 "parser/bif.l"
+#line 59 "parser/bif.l"
 return tok::PRESIGN;
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 59 "parser/bif.l"
+#line 60 "parser/bif.l"
 return tok::AC;
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 60 "parser/bif.l"
+#line 61 "parser/bif.l"
 return tok::UDF_DATA;
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 61 "parser/bif.l"
+#line 62 "parser/bif.l"
 return tok::XIP_MODE;
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 62 "parser/bif.l"
+#line 63 "parser/bif.l"
 return tok::BOOT;
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 63 "parser/bif.l"
+#line 64 "parser/bif.l"
 return tok::USER;
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 64 "parser/bif.l"
+#line 65 "parser/bif.l"
 return tok::STATIC;
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 65 "parser/bif.l"
+#line 66 "parser/bif.l"
 return tok::NOAUTOSTART;
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 66 "parser/bif.l"
+#line 67 "parser/bif.l"
 return tok::MULTIBOOT;
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 67 "parser/bif.l"
+#line 68 "parser/bif.l"
 return tok::PROTECTED;
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 68 "parser/bif.l"
+#line 69 "parser/bif.l"
 return tok::ALIGNMENT;
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 69 "parser/bif.l"
+#line 70 "parser/bif.l"
 return tok::EARLY_HANDOFF;
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 70 "parser/bif.l"
+#line 71 "parser/bif.l"
 return tok::DELAY_HANDOFF;
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 71 "parser/bif.l"
+#line 72 "parser/bif.l"
 return tok::DELAY_LOAD;
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 72 "parser/bif.l"
+#line 73 "parser/bif.l"
 return tok::DELAY_AUTH;
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 73 "parser/bif.l"
+#line 74 "parser/bif.l"
 return tok::HIVEC;
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 74 "parser/bif.l"
+#line 75 "parser/bif.l"
 return tok::BLOCKS;
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 75 "parser/bif.l"
+#line 76 "parser/bif.l"
 return tok::AUTHBLOCKS;
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 76 "parser/bif.l"
+#line 77 "parser/bif.l"
 return tok::BIGENDIAN;
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 77 "parser/bif.l"
+#line 78 "parser/bif.l"
 return tok::A32_MODE;
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 78 "parser/bif.l"
+#line 79 "parser/bif.l"
 return tok::PARTITION;
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 79 "parser/bif.l"
+#line 80 "parser/bif.l"
 return tok::IMAGE;
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 80 "parser/bif.l"
+#line 81 "parser/bif.l"
 return tok::METAHEADER;
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 81 "parser/bif.l"
+#line 82 "parser/bif.l"
 return tok::BIF_SECTION;
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 82 "parser/bif.l"
+#line 83 "parser/bif.l"
 return tok::LOCKSTEP;
 	YY_BREAK
 case 29:
 /* rule 29 can match eol */
 YY_RULE_SETUP
-#line 83 "parser/bif.l"
+#line 84 "parser/bif.l"
 {
     char filename[256];
     // Check if filename is quoted or unquoted
@@ -2072,6 +2066,10 @@ YY_RULE_SETUP
 
     std::ifstream* new_stream = new std::ifstream(filename);
     if (new_stream->is_open()) {
+        if (brace_depth == 0) {
+            includedFiles.push_back(std::string(filename));
+        }
+
         // Push current state onto stacks
         buffer_stack.push(YY_CURRENT_BUFFER);
         stream_stack.push(new_stream);
@@ -2096,17 +2094,17 @@ YY_RULE_SETUP
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 150 "parser/bif.l"
+#line 155 "parser/bif.l"
 ;
 	YY_BREAK
 case 31:
 /* rule 31 can match eol */
 YY_RULE_SETUP
-#line 151 "parser/bif.l"
+#line 156 "parser/bif.l"
 { yylloc->lines(yyleng); yylloc->step(); }
 	YY_BREAK
 case YY_STATE_EOF(INITIAL):
-#line 152 "parser/bif.l"
+#line 157 "parser/bif.l"
 {
     if (!buffer_stack.empty()) {
         // Clean up current buffer
@@ -2141,1291 +2139,1291 @@ case YY_STATE_EOF(INITIAL):
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 183 "parser/bif.l"
+#line 188 "parser/bif.l"
 return tok::TCM_BOOT;
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 184 "parser/bif.l"
+#line 189 "parser/bif.l"
 return tok::OPTIONAL_DATA;
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 186 "parser/bif.l"
+#line 191 "parser/bif.l"
 yylval->number = tok::OFFSET;                   return tok::OFFSET;
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
-#line 187 "parser/bif.l"
+#line 192 "parser/bif.l"
 yylval->number = tok::RESERVE_LEGACY;           return tok::RESERVE_LEGACY;
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 188 "parser/bif.l"
+#line 193 "parser/bif.l"
 yylval->number = tok::RESERVE;                  return tok::RESERVE;
 	YY_BREAK
 case 37:
 YY_RULE_SETUP
-#line 189 "parser/bif.l"
+#line 194 "parser/bif.l"
 yylval->number = tok::LOAD;                     return tok::LOAD;
 	YY_BREAK
 case 38:
 YY_RULE_SETUP
-#line 190 "parser/bif.l"
+#line 195 "parser/bif.l"
 yylval->number = tok::COPY;                     return tok::COPY;
 	YY_BREAK
 case 39:
 YY_RULE_SETUP
-#line 191 "parser/bif.l"
+#line 196 "parser/bif.l"
 yylval->number = tok::STARTUP;                  return tok::STARTUP;
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 192 "parser/bif.l"
+#line 197 "parser/bif.l"
 yylval->number = tok::PARTITION_NUM;            return tok::PARTITION_NUM;
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
-#line 193 "parser/bif.l"
+#line 198 "parser/bif.l"
 yylval->number = tok::INIT;                     return tok::INIT;
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 194 "parser/bif.l"
+#line 199 "parser/bif.l"
 yylval->number = tok::UDF_BH;                   return tok::UDF_BH;
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 195 "parser/bif.l"
+#line 200 "parser/bif.l"
 yylval->number = tok::AES_KEY_FILE;             return tok::AES_KEY_FILE;
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
-#line 196 "parser/bif.l"
+#line 201 "parser/bif.l"
 yylval->number = tok::PPK_FILE;                 return tok::PPK_FILE;
 	YY_BREAK
 case 45:
 YY_RULE_SETUP
-#line 197 "parser/bif.l"
+#line 202 "parser/bif.l"
 yylval->number = tok::PSK_FILE;                 return tok::PSK_FILE;
 	YY_BREAK
 case 46:
 YY_RULE_SETUP
-#line 198 "parser/bif.l"
+#line 203 "parser/bif.l"
 yylval->number = tok::SPK_FILE;                 return tok::SPK_FILE;
 	YY_BREAK
 case 47:
 YY_RULE_SETUP
-#line 199 "parser/bif.l"
+#line 204 "parser/bif.l"
 yylval->number = tok::SSK_FILE;                 return tok::SSK_FILE;
 	YY_BREAK
 case 48:
 YY_RULE_SETUP
-#line 200 "parser/bif.l"
+#line 205 "parser/bif.l"
 yylval->number = tok::SPK_SIGNATURE_FILE;       return tok::SPK_SIGNATURE_FILE;
 	YY_BREAK
 case 49:
 YY_RULE_SETUP
-#line 201 "parser/bif.l"
+#line 206 "parser/bif.l"
 yylval->number = tok::BH_SIGNATURE_FILE;        return tok::BH_SIGNATURE_FILE;
 	YY_BREAK
 case 50:
 YY_RULE_SETUP
-#line 202 "parser/bif.l"
+#line 207 "parser/bif.l"
 yylval->number = tok::HEADER_SIGNATURE_FILE;    return tok::HEADER_SIGNATURE_FILE;
 	YY_BREAK
 case 51:
 YY_RULE_SETUP
-#line 203 "parser/bif.l"
+#line 208 "parser/bif.l"
 yylval->number = tok::BOOTVECTORS;              return tok::BOOTVECTORS;
 	YY_BREAK
 case 52:
 YY_RULE_SETUP
-#line 204 "parser/bif.l"
+#line 209 "parser/bif.l"
 yylval->number = tok::BOOTIMAGE;                return tok::BOOTIMAGE;
 	YY_BREAK
 case 53:
 YY_RULE_SETUP
-#line 205 "parser/bif.l"
+#line 210 "parser/bif.l"
 yylval->number = tok::PARENT_ID;                return tok::PARENT_ID; 
 	YY_BREAK
 case 54:
 YY_RULE_SETUP
-#line 206 "parser/bif.l"
+#line 211 "parser/bif.l"
 yylval->number = tok::ID_CODE;                  return tok::ID_CODE;
 	YY_BREAK
 case 55:
 YY_RULE_SETUP
-#line 207 "parser/bif.l"
+#line 212 "parser/bif.l"
 yylval->number = tok::EXT_ID_CODE;              return tok::EXT_ID_CODE;
 	YY_BREAK
 case 56:
 YY_RULE_SETUP
-#line 208 "parser/bif.l"
+#line 213 "parser/bif.l"
 yylval->number = tok::ID;                       return tok::ID; 
 	YY_BREAK
 case 57:
 YY_RULE_SETUP
-#line 209 "parser/bif.l"
+#line 214 "parser/bif.l"
 yylval->number = tok::NAME;                     return tok::NAME; 
 	YY_BREAK
 case 58:
 YY_RULE_SETUP
-#line 210 "parser/bif.l"
+#line 215 "parser/bif.l"
 yylval->number = tok::PFILE;                    return tok::PFILE;
 	YY_BREAK
 case 59:
 YY_RULE_SETUP
-#line 211 "parser/bif.l"
+#line 216 "parser/bif.l"
 yylval->number = tok::BH_KEY_FILE;              return tok::BH_KEY_FILE;
 	YY_BREAK
 case 60:
 YY_RULE_SETUP
-#line 212 "parser/bif.l"
+#line 217 "parser/bif.l"
 yylval->number = tok::PUF_HELPER_FILE;          return tok::PUF_HELPER_FILE;
 	YY_BREAK
 case 61:
 YY_RULE_SETUP
-#line 213 "parser/bif.l"
+#line 218 "parser/bif.l"
 yylval->number = tok::PMUFW_IMAGE;              return tok::PMUFW_IMAGE;
 	YY_BREAK
 case 62:
 YY_RULE_SETUP
-#line 214 "parser/bif.l"
+#line 219 "parser/bif.l"
 yylval->number = tok::PMCDATA;                  return tok::PMCDATA;
 	YY_BREAK
 case 63:
 YY_RULE_SETUP
-#line 215 "parser/bif.l"
+#line 220 "parser/bif.l"
 yylval->number = tok::PMCDATA;                  return tok::PMCDATA;
 	YY_BREAK
 case 64:
 YY_RULE_SETUP
-#line 216 "parser/bif.l"
+#line 221 "parser/bif.l"
 yylval->number = tok::BH_KEY_IV;                return tok::BH_KEY_IV;
 	YY_BREAK
 case 65:
 YY_RULE_SETUP
-#line 217 "parser/bif.l"
+#line 222 "parser/bif.l"
 yylval->number = tok::UNIQUE_ID;                return tok::UNIQUE_ID;
 	YY_BREAK
 case 66:
 YY_RULE_SETUP
-#line 218 "parser/bif.l"
+#line 223 "parser/bif.l"
 yylval->number = tok::PARENT_UNIQUE_ID;         return tok::PARENT_UNIQUE_ID;
 	YY_BREAK
 case 67:
 YY_RULE_SETUP
-#line 219 "parser/bif.l"
+#line 224 "parser/bif.l"
 yylval->number = tok::FUNCTION_ID;              return tok::FUNCTION_ID;
 	YY_BREAK
 case 68:
 YY_RULE_SETUP
-#line 220 "parser/bif.l"
+#line 225 "parser/bif.l"
 yylval->number = tok::PCR_NUMBER;               return tok::PCR_NUMBER;
 	YY_BREAK
 case 69:
 YY_RULE_SETUP
-#line 221 "parser/bif.l"
+#line 226 "parser/bif.l"
 yylval->number = tok::PCR_MEASUREMENT_INDEX;    return tok::PCR_MEASUREMENT_INDEX;
 	YY_BREAK
 case 70:
 YY_RULE_SETUP
-#line 222 "parser/bif.l"
+#line 227 "parser/bif.l"
 yylval->number = tok::IMAGE_STORE;              return tok::IMAGE_STORE;
 	YY_BREAK
 case 71:
 YY_RULE_SETUP
-#line 223 "parser/bif.l"
+#line 228 "parser/bif.l"
 yylval->number = tok::TCM_A_REGION;             return tok::TCM_A_REGION;
 	YY_BREAK
 case 72:
 YY_RULE_SETUP
-#line 224 "parser/bif.l"
+#line 229 "parser/bif.l"
 yylval->number = tok::TCM_B_REGION;             return tok::TCM_B_REGION;
 	YY_BREAK
 case 73:
 YY_RULE_SETUP
-#line 225 "parser/bif.l"
+#line 230 "parser/bif.l"
 yylval->number = tok::TCM_C_REGION;             return tok::TCM_C_REGION;
 	YY_BREAK
 case 74:
 YY_RULE_SETUP
-#line 227 "parser/bif.l"
+#line 232 "parser/bif.l"
 yylval->number = tok::BBRAM_KEK_IV;             return tok::BBRAM_KEK_IV;
 	YY_BREAK
 case 75:
 YY_RULE_SETUP
-#line 228 "parser/bif.l"
+#line 233 "parser/bif.l"
 yylval->number = tok::BH_KEK_IV;                return tok::BH_KEK_IV;
 	YY_BREAK
 case 76:
 YY_RULE_SETUP
-#line 229 "parser/bif.l"
+#line 234 "parser/bif.l"
 yylval->number = tok::EFUSE_KEK_IV;             return tok::EFUSE_KEK_IV;
 	YY_BREAK
 case 77:
 YY_RULE_SETUP
-#line 230 "parser/bif.l"
+#line 235 "parser/bif.l"
 yylval->number = tok::EFUSE_USER_KEK0_IV;       return tok::EFUSE_USER_KEK0_IV;
 	YY_BREAK
 case 78:
 YY_RULE_SETUP
-#line 231 "parser/bif.l"
+#line 236 "parser/bif.l"
 yylval->number = tok::EFUSE_USER_KEK1_IV;       return tok::EFUSE_USER_KEK1_IV;
 	YY_BREAK
 case 79:
 YY_RULE_SETUP
-#line 232 "parser/bif.l"
+#line 237 "parser/bif.l"
 yylval->number = tok::USER_KEYS;                return tok::USER_KEYS;
 	YY_BREAK
 case 80:
 YY_RULE_SETUP
-#line 234 "parser/bif.l"
+#line 239 "parser/bif.l"
 yylval->number = tok::FAMILY_KEY;               return tok::FAMILY_KEY;
 	YY_BREAK
 case 81:
 YY_RULE_SETUP
-#line 236 "parser/bif.l"
+#line 241 "parser/bif.l"
 return tok::ENCRYPTION;
 	YY_BREAK
 case 82:
 YY_RULE_SETUP
-#line 237 "parser/bif.l"
+#line 242 "parser/bif.l"
 yylval->number = 0;                             return tok::NONE;
 	YY_BREAK
 case 83:
 YY_RULE_SETUP
-#line 238 "parser/bif.l"
+#line 243 "parser/bif.l"
 yylval->number = Encryption::AES;               return tok::ENCRVALUE;
 	YY_BREAK
 case 84:
 YY_RULE_SETUP
-#line 240 "parser/bif.l"
+#line 245 "parser/bif.l"
 return tok::AUTHENTICATION;
 	YY_BREAK
 case 85:
 YY_RULE_SETUP
-#line 241 "parser/bif.l"
+#line 246 "parser/bif.l"
 yylval->number = Authentication::RSA;           return tok::AUTHVALUE;
 	YY_BREAK
 case 86:
 YY_RULE_SETUP
-#line 242 "parser/bif.l"
+#line 247 "parser/bif.l"
 yylval->number = Authentication::ECDSA;         return tok::AUTHVALUE;
 	YY_BREAK
 case 87:
 YY_RULE_SETUP
-#line 243 "parser/bif.l"
+#line 248 "parser/bif.l"
 yylval->number = Authentication::ECDSA;         return tok::AUTHVALUE;
 	YY_BREAK
 case 88:
 YY_RULE_SETUP
-#line 244 "parser/bif.l"
+#line 249 "parser/bif.l"
 yylval->number = Authentication::ECDSAp521;     return tok::AUTHVALUE;
 	YY_BREAK
 case 89:
 YY_RULE_SETUP
-#line 245 "parser/bif.l"
+#line 250 "parser/bif.l"
 yylval->number = Authentication::LMS_SHA2_256;  return tok::AUTHVALUE;
 	YY_BREAK
 case 90:
 YY_RULE_SETUP
-#line 246 "parser/bif.l"
+#line 251 "parser/bif.l"
 yylval->number = Authentication::LMS_SHAKE256;  return tok::AUTHVALUE;
 	YY_BREAK
 case 91:
 YY_RULE_SETUP
-#line 247 "parser/bif.l"
+#line 252 "parser/bif.l"
 yylval->number = Authentication::HSS_SHA2_256;  return tok::AUTHVALUE;
 	YY_BREAK
 case 92:
 YY_RULE_SETUP
-#line 248 "parser/bif.l"
+#line 253 "parser/bif.l"
 yylval->number = Authentication::HSS_SHAKE256;  return tok::AUTHVALUE;
 	YY_BREAK
 case 93:
 YY_RULE_SETUP
-#line 250 "parser/bif.l"
+#line 255 "parser/bif.l"
 return tok::CHECKSUM;
 	YY_BREAK
 case 94:
 YY_RULE_SETUP
-#line 251 "parser/bif.l"
+#line 256 "parser/bif.l"
 yylval->number = Checksum::MD5;                 return tok::CHECKSUMVALUE;
 	YY_BREAK
 case 95:
 YY_RULE_SETUP
-#line 252 "parser/bif.l"
+#line 257 "parser/bif.l"
 yylval->number = Checksum::SHA2;                return tok::CHECKSUMVALUE;
 	YY_BREAK
 case 96:
 YY_RULE_SETUP
-#line 253 "parser/bif.l"
+#line 258 "parser/bif.l"
 yylval->number = Checksum::SHA3;                return tok::CHECKSUMVALUE;
 	YY_BREAK
 case 97:
 YY_RULE_SETUP
-#line 255 "parser/bif.l"
+#line 260 "parser/bif.l"
 return tok::PARTITION_OWNER;
 	YY_BREAK
 case 98:
 YY_RULE_SETUP
-#line 256 "parser/bif.l"
+#line 261 "parser/bif.l"
 return tok::PARTITION_OWNER;
 	YY_BREAK
 case 99:
 YY_RULE_SETUP
-#line 257 "parser/bif.l"
+#line 262 "parser/bif.l"
 yylval->number = PartitionOwner::FSBL;          return tok::POWNERVALUE ;
 	YY_BREAK
 case 100:
 YY_RULE_SETUP
-#line 258 "parser/bif.l"
+#line 263 "parser/bif.l"
 yylval->number = PartitionOwner::UBOOT;         return tok::POWNERVALUE ;
 	YY_BREAK
 case 101:
 YY_RULE_SETUP
-#line 259 "parser/bif.l"
+#line 264 "parser/bif.l"
 yylval->number = PartitionOwner::FSBL;          return tok::POWNERVALUE ;
 	YY_BREAK
 case 102:
 YY_RULE_SETUP
-#line 260 "parser/bif.l"
+#line 265 "parser/bif.l"
 yylval->number = PartitionOwner::UBOOT;         return tok::POWNERVALUE ;
 	YY_BREAK
 case 103:
 YY_RULE_SETUP
-#line 261 "parser/bif.l"
+#line 266 "parser/bif.l"
 yylval->number = PartitionOwner::FSBL;          return tok::POWNERVALUE ;
 	YY_BREAK
 case 104:
 YY_RULE_SETUP
-#line 262 "parser/bif.l"
+#line 267 "parser/bif.l"
 yylval->number = PartitionOwner::UBOOT;         return tok::POWNERVALUE ;
 	YY_BREAK
 case 105:
 YY_RULE_SETUP
-#line 264 "parser/bif.l"
+#line 269 "parser/bif.l"
 return tok::PARTITION_TYPE;
 	YY_BREAK
 case 106:
 YY_RULE_SETUP
-#line 265 "parser/bif.l"
+#line 270 "parser/bif.l"
 return tok::PARTITION_TYPE;
 	YY_BREAK
 case 107:
 YY_RULE_SETUP
-#line 266 "parser/bif.l"
+#line 271 "parser/bif.l"
 yylval->number = PartitionType::CONFIG_DATA_OBJ;   return tok::PTYPEVALUE;
 	YY_BREAK
 case 108:
 YY_RULE_SETUP
-#line 267 "parser/bif.l"
+#line 272 "parser/bif.l"
 yylval->number = PartitionType::RAW;               return tok::PTYPEVALUE;
 	YY_BREAK
 case 109:
 YY_RULE_SETUP
-#line 268 "parser/bif.l"
+#line 273 "parser/bif.l"
 yylval->number = PartitionType::CFI;               return tok::PTYPEVALUE;
 	YY_BREAK
 case 110:
 YY_RULE_SETUP
-#line 269 "parser/bif.l"
+#line 274 "parser/bif.l"
 yylval->number = PartitionType::CFI_GSC;           return tok::PTYPEVALUE;
 	YY_BREAK
 case 111:
 YY_RULE_SETUP
-#line 270 "parser/bif.l"
+#line 275 "parser/bif.l"
 yylval->number = PartitionType::SLR_BOOT;          return tok::PTYPEVALUE;
 	YY_BREAK
 case 112:
 YY_RULE_SETUP
-#line 271 "parser/bif.l"
+#line 276 "parser/bif.l"
 yylval->number = PartitionType::SLR_CONFIG;        return tok::PTYPEVALUE;
 	YY_BREAK
 case 113:
 YY_RULE_SETUP
-#line 272 "parser/bif.l"
+#line 277 "parser/bif.l"
 yylval->number = PartitionType::SLR_SLAVE;         return tok::PTYPEVALUE;
 	YY_BREAK
 case 114:
 YY_RULE_SETUP
-#line 273 "parser/bif.l"
+#line 278 "parser/bif.l"
 yylval->number = PartitionType::SLR_SLAVE_BOOT;    return tok::PTYPEVALUE;
 	YY_BREAK
 case 115:
 YY_RULE_SETUP
-#line 274 "parser/bif.l"
+#line 279 "parser/bif.l"
 yylval->number = PartitionType::SLR_SLAVE_CONFIG;  return tok::PTYPEVALUE;
 	YY_BREAK
 case 116:
 YY_RULE_SETUP
-#line 275 "parser/bif.l"
+#line 280 "parser/bif.l"
 yylval->number = PartitionType::ELF;               return tok::PTYPEVALUE;
 	YY_BREAK
 case 117:
 YY_RULE_SETUP
-#line 277 "parser/bif.l"
+#line 282 "parser/bif.l"
 yylval->number = tok::KEYSRC_ENCRYPTION;        return tok::KEYSRC_ENCRYPTION;
 	YY_BREAK
 case 118:
 YY_RULE_SETUP
-#line 278 "parser/bif.l"
+#line 283 "parser/bif.l"
 yylval->number = tok::KEYSRC_ENCRYPTION;        return tok::KEYSRC_ENCRYPTION;
 	YY_BREAK
 case 119:
 YY_RULE_SETUP
-#line 279 "parser/bif.l"
+#line 284 "parser/bif.l"
 yylval->number = KeySource::EfuseRedKey;        return tok::KEY_SRC;
 	YY_BREAK
 case 120:
 YY_RULE_SETUP
-#line 280 "parser/bif.l"
+#line 285 "parser/bif.l"
 yylval->number = KeySource::BbramRedKey;        return tok::KEY_SRC;
 	YY_BREAK
 case 121:
 YY_RULE_SETUP
-#line 281 "parser/bif.l"
+#line 286 "parser/bif.l"
 yylval->number = KeySource::EfuseRedKey;        return tok::KEY_SRC;
 	YY_BREAK
 case 122:
 YY_RULE_SETUP
-#line 282 "parser/bif.l"
+#line 287 "parser/bif.l"
 yylval->number = KeySource::EfuseBlkKey;        return tok::KEY_SRC;
 	YY_BREAK
 case 123:
 YY_RULE_SETUP
-#line 283 "parser/bif.l"
+#line 288 "parser/bif.l"
 yylval->number = KeySource::EfuseGryKey;        return tok::KEY_SRC;
 	YY_BREAK
 case 124:
 YY_RULE_SETUP
-#line 284 "parser/bif.l"
+#line 289 "parser/bif.l"
 yylval->number = KeySource::BbramRedKey;        return tok::KEY_SRC;
 	YY_BREAK
 case 125:
 YY_RULE_SETUP
-#line 285 "parser/bif.l"
+#line 290 "parser/bif.l"
 yylval->number = KeySource::BbramBlkKey;        return tok::KEY_SRC;
 	YY_BREAK
 case 126:
 YY_RULE_SETUP
-#line 286 "parser/bif.l"
+#line 291 "parser/bif.l"
 yylval->number = KeySource::BbramGryKey;        return tok::KEY_SRC;
 	YY_BREAK
 case 127:
 YY_RULE_SETUP
-#line 287 "parser/bif.l"
+#line 292 "parser/bif.l"
 yylval->number = KeySource::BhGryKey;           return tok::KEY_SRC;
 	YY_BREAK
 case 128:
 YY_RULE_SETUP
-#line 288 "parser/bif.l"
+#line 293 "parser/bif.l"
 yylval->number = KeySource::BhBlkKey;           return tok::KEY_SRC;
 	YY_BREAK
 case 129:
 YY_RULE_SETUP
-#line 289 "parser/bif.l"
+#line 294 "parser/bif.l"
 yylval->number = KeySource::UserKey0;           return tok::KEY_SRC;
 	YY_BREAK
 case 130:
 YY_RULE_SETUP
-#line 290 "parser/bif.l"
+#line 295 "parser/bif.l"
 yylval->number = KeySource::UserKey1;           return tok::KEY_SRC;
 	YY_BREAK
 case 131:
 YY_RULE_SETUP
-#line 291 "parser/bif.l"
+#line 296 "parser/bif.l"
 yylval->number = KeySource::UserKey2;           return tok::KEY_SRC;
 	YY_BREAK
 case 132:
 YY_RULE_SETUP
-#line 292 "parser/bif.l"
+#line 297 "parser/bif.l"
 yylval->number = KeySource::UserKey3;           return tok::KEY_SRC;
 	YY_BREAK
 case 133:
 YY_RULE_SETUP
-#line 293 "parser/bif.l"
+#line 298 "parser/bif.l"
 yylval->number = KeySource::UserKey4;           return tok::KEY_SRC;
 	YY_BREAK
 case 134:
 YY_RULE_SETUP
-#line 294 "parser/bif.l"
+#line 299 "parser/bif.l"
 yylval->number = KeySource::UserKey5;           return tok::KEY_SRC;
 	YY_BREAK
 case 135:
 YY_RULE_SETUP
-#line 295 "parser/bif.l"
+#line 300 "parser/bif.l"
 yylval->number = KeySource::UserKey6;           return tok::KEY_SRC;
 	YY_BREAK
 case 136:
 YY_RULE_SETUP
-#line 296 "parser/bif.l"
+#line 301 "parser/bif.l"
 yylval->number = KeySource::UserKey7;           return tok::KEY_SRC;
 	YY_BREAK
 case 137:
 YY_RULE_SETUP
-#line 297 "parser/bif.l"
+#line 302 "parser/bif.l"
 yylval->number = KeySource::EfuseUserKey0;      return tok::KEY_SRC;
 	YY_BREAK
 case 138:
 YY_RULE_SETUP
-#line 298 "parser/bif.l"
+#line 303 "parser/bif.l"
 yylval->number = KeySource::EfuseUserBlkKey0;   return tok::KEY_SRC;
 	YY_BREAK
 case 139:
 YY_RULE_SETUP
-#line 299 "parser/bif.l"
+#line 304 "parser/bif.l"
 yylval->number = KeySource::EfuseUserGryKey0;   return tok::KEY_SRC;
 	YY_BREAK
 case 140:
 YY_RULE_SETUP
-#line 300 "parser/bif.l"
+#line 305 "parser/bif.l"
 yylval->number = KeySource::EfuseUserKey1;      return tok::KEY_SRC;
 	YY_BREAK
 case 141:
 YY_RULE_SETUP
-#line 301 "parser/bif.l"
+#line 306 "parser/bif.l"
 yylval->number = KeySource::EfuseUserBlkKey1;   return tok::KEY_SRC;
 	YY_BREAK
 case 142:
 YY_RULE_SETUP
-#line 302 "parser/bif.l"
+#line 307 "parser/bif.l"
 yylval->number = KeySource::EfuseUserGryKey1;   return tok::KEY_SRC;
 	YY_BREAK
 case 143:
 YY_RULE_SETUP
-#line 303 "parser/bif.l"
+#line 308 "parser/bif.l"
 yylval->number = KeySource::BhKupKey;           return tok::KEY_SRC;
 	YY_BREAK
 case 144:
 YY_RULE_SETUP
-#line 305 "parser/bif.l"
+#line 310 "parser/bif.l"
 yylval->number = tok::FSBL_CONFIG;              return tok::FSBL_CONFIG;
 	YY_BREAK
 case 145:
 YY_RULE_SETUP
-#line 306 "parser/bif.l"
+#line 311 "parser/bif.l"
 yylval->number = tok::FSBL_CONFIG;              return tok::FSBL_CONFIG;
 	YY_BREAK
 case 146:
 YY_RULE_SETUP
-#line 307 "parser/bif.l"
+#line 312 "parser/bif.l"
 yylval->number = tok::FSBL_CONFIG;              return tok::FSBL_CONFIG;
 	YY_BREAK
 case 147:
 YY_RULE_SETUP
-#line 308 "parser/bif.l"
+#line 313 "parser/bif.l"
 yylval->number = Core::R5Single;                return tok::CORE;
 	YY_BREAK
 case 148:
 YY_RULE_SETUP
-#line 309 "parser/bif.l"
+#line 314 "parser/bif.l"
 yylval->number = Core::A53Singlex32;            return tok::CORE;
 	YY_BREAK
 case 149:
 YY_RULE_SETUP
-#line 310 "parser/bif.l"
+#line 315 "parser/bif.l"
 yylval->number = Core::A53Singlex32;            return tok::CORE;
 	YY_BREAK
 case 150:
 YY_RULE_SETUP
-#line 311 "parser/bif.l"
+#line 316 "parser/bif.l"
 yylval->number = Core::A53Singlex64;            return tok::CORE;
 	YY_BREAK
 case 151:
 YY_RULE_SETUP
-#line 312 "parser/bif.l"
+#line 317 "parser/bif.l"
 yylval->number = Core::A53Singlex64;            return tok::CORE;
 	YY_BREAK
 case 152:
 YY_RULE_SETUP
-#line 313 "parser/bif.l"
+#line 318 "parser/bif.l"
 yylval->number = Core::R5Dual;                  return tok::CORE;
 	YY_BREAK
 case 153:
 YY_RULE_SETUP
-#line 314 "parser/bif.l"
+#line 319 "parser/bif.l"
 yylval->number = BhRsa::BhRsaEnable;            return tok::BH_RSA;
 	YY_BREAK
 case 154:
 YY_RULE_SETUP
-#line 315 "parser/bif.l"
+#line 320 "parser/bif.l"
 yylval->number = AuthHash::Sha2;                return tok::AUTH_HASH;
 	YY_BREAK
 case 155:
 YY_RULE_SETUP
-#line 316 "parser/bif.l"
+#line 321 "parser/bif.l"
 yylval->number = PufHdLoc::PUFinBH;             return tok::PUFHD_LOC;
 	YY_BREAK
 case 156:
 YY_RULE_SETUP
-#line 317 "parser/bif.l"
+#line 322 "parser/bif.l"
 yylval->number = AuthOnly::Enabled;             return tok::AUTH_ONLY;
 	YY_BREAK
 case 157:
 YY_RULE_SETUP
-#line 318 "parser/bif.l"
+#line 323 "parser/bif.l"
 yylval->number = OptKey::OptKeyinSecHdr;        return tok::OPT_KEY;
 	YY_BREAK
 case 158:
 YY_RULE_SETUP
-#line 319 "parser/bif.l"
+#line 324 "parser/bif.l"
 yylval->number = PufMode::PUF4K;                return tok::PUF4KMODE;
 	YY_BREAK
 case 159:
 YY_RULE_SETUP
-#line 320 "parser/bif.l"
+#line 325 "parser/bif.l"
 yylval->number = tok::SHUTTER;                  return tok::SHUTTER;
 	YY_BREAK
 case 160:
 YY_RULE_SETUP
-#line 321 "parser/bif.l"
+#line 326 "parser/bif.l"
 yylval->number = tok::PUFROSWAP;                return tok::PUFROSWAP;
 	YY_BREAK
 case 161:
 YY_RULE_SETUP
-#line 322 "parser/bif.l"
+#line 327 "parser/bif.l"
 yylval->number = DpaCM::DpaCMEnable;            return tok::DPA_CM;
 	YY_BREAK
 case 162:
 YY_RULE_SETUP
-#line 323 "parser/bif.l"
+#line 328 "parser/bif.l"
 yylval->number = tok::DICE;                     return tok::DICE;
 	YY_BREAK
 case 163:
 YY_RULE_SETUP
-#line 324 "parser/bif.l"
+#line 329 "parser/bif.l"
 yylval->number = tok::SMAP_WIDTH;               return tok::SMAP_WIDTH;
 	YY_BREAK
 case 164:
 YY_RULE_SETUP
-#line 325 "parser/bif.l"
+#line 330 "parser/bif.l"
 yylval->number = tok::BYPASS_IDCODE_CHECK;      return tok::BYPASS_IDCODE_CHECK;
 	YY_BREAK
 case 165:
 YY_RULE_SETUP
-#line 326 "parser/bif.l"
+#line 331 "parser/bif.l"
 yylval->number = tok::A_HWROT;                  return tok::A_HWROT;
 	YY_BREAK
 case 166:
 YY_RULE_SETUP
-#line 327 "parser/bif.l"
+#line 332 "parser/bif.l"
 yylval->number = tok::S_HWROT;                  return tok::S_HWROT;
 	YY_BREAK
 case 167:
 YY_RULE_SETUP
-#line 329 "parser/bif.l"
+#line 334 "parser/bif.l"
 return tok::BOOT_DEVICE;
 	YY_BREAK
 case 168:
 YY_RULE_SETUP
-#line 330 "parser/bif.l"
+#line 335 "parser/bif.l"
 yylval->number = tok::ADDRESS;                  return tok::ADDRESS;
 	YY_BREAK
 case 169:
 YY_RULE_SETUP
-#line 331 "parser/bif.l"
+#line 336 "parser/bif.l"
 yylval->number = BootDevice::QSPI32;            return tok::BOOT_DEVICE_TYPE ;
 	YY_BREAK
 case 170:
 YY_RULE_SETUP
-#line 332 "parser/bif.l"
+#line 337 "parser/bif.l"
 yylval->number = BootDevice::QSPI24;            return tok::BOOT_DEVICE_TYPE ;
 	YY_BREAK
 case 171:
 YY_RULE_SETUP
-#line 333 "parser/bif.l"
+#line 338 "parser/bif.l"
 yylval->number = BootDevice::NAND;              return tok::BOOT_DEVICE_TYPE ;
 	YY_BREAK
 case 172:
 YY_RULE_SETUP
-#line 334 "parser/bif.l"
+#line 339 "parser/bif.l"
 yylval->number = BootDevice::SD0;               return tok::BOOT_DEVICE_TYPE ;
 	YY_BREAK
 case 173:
 YY_RULE_SETUP
-#line 335 "parser/bif.l"
+#line 340 "parser/bif.l"
 yylval->number = BootDevice::SD1;               return tok::BOOT_DEVICE_TYPE ;
 	YY_BREAK
 case 174:
 YY_RULE_SETUP
-#line 336 "parser/bif.l"
+#line 341 "parser/bif.l"
 yylval->number = BootDevice::SDLS;              return tok::BOOT_DEVICE_TYPE ;
 	YY_BREAK
 case 175:
 YY_RULE_SETUP
-#line 337 "parser/bif.l"
+#line 342 "parser/bif.l"
 yylval->number = BootDevice::MMC;               return tok::BOOT_DEVICE_TYPE ;
 	YY_BREAK
 case 176:
 YY_RULE_SETUP
-#line 338 "parser/bif.l"
+#line 343 "parser/bif.l"
 yylval->number = BootDevice::USB;               return tok::BOOT_DEVICE_TYPE ;
 	YY_BREAK
 case 177:
 YY_RULE_SETUP
-#line 339 "parser/bif.l"
+#line 344 "parser/bif.l"
 yylval->number = BootDevice::ETHERNET;          return tok::BOOT_DEVICE_TYPE ;
 	YY_BREAK
 case 178:
 YY_RULE_SETUP
-#line 340 "parser/bif.l"
+#line 345 "parser/bif.l"
 yylval->number = BootDevice::PCIE;              return tok::BOOT_DEVICE_TYPE ;
 	YY_BREAK
 case 179:
 YY_RULE_SETUP
-#line 341 "parser/bif.l"
+#line 346 "parser/bif.l"
 yylval->number = BootDevice::SATA;              return tok::BOOT_DEVICE_TYPE ;
 	YY_BREAK
 case 180:
 YY_RULE_SETUP
-#line 342 "parser/bif.l"
+#line 347 "parser/bif.l"
 yylval->number = BootDevice::OSPI;              return tok::BOOT_DEVICE_TYPE ;
 	YY_BREAK
 case 181:
 YY_RULE_SETUP
-#line 343 "parser/bif.l"
+#line 348 "parser/bif.l"
 yylval->number = BootDevice::SMAP;              return tok::BOOT_DEVICE_TYPE ;
 	YY_BREAK
 case 182:
 YY_RULE_SETUP
-#line 344 "parser/bif.l"
+#line 349 "parser/bif.l"
 yylval->number = BootDevice::SBI;               return tok::BOOT_DEVICE_TYPE ;
 	YY_BREAK
 case 183:
 YY_RULE_SETUP
-#line 345 "parser/bif.l"
+#line 350 "parser/bif.l"
 yylval->number = BootDevice::SD0RAW;            return tok::BOOT_DEVICE_TYPE ;
 	YY_BREAK
 case 184:
 YY_RULE_SETUP
-#line 346 "parser/bif.l"
+#line 351 "parser/bif.l"
 yylval->number = BootDevice::SD1RAW;            return tok::BOOT_DEVICE_TYPE ;
 	YY_BREAK
 case 185:
 YY_RULE_SETUP
-#line 347 "parser/bif.l"
+#line 352 "parser/bif.l"
 yylval->number = BootDevice::SDLSRAW;           return tok::BOOT_DEVICE_TYPE ;
 	YY_BREAK
 case 186:
 YY_RULE_SETUP
-#line 348 "parser/bif.l"
+#line 353 "parser/bif.l"
 yylval->number = BootDevice::MMCRAW;            return tok::BOOT_DEVICE_TYPE ;
 	YY_BREAK
 case 187:
 YY_RULE_SETUP
-#line 349 "parser/bif.l"
+#line 354 "parser/bif.l"
 yylval->number = BootDevice::MMC0;              return tok::BOOT_DEVICE_TYPE ;
 	YY_BREAK
 case 188:
 YY_RULE_SETUP
-#line 350 "parser/bif.l"
+#line 355 "parser/bif.l"
 yylval->number = BootDevice::MMC0RAW;           return tok::BOOT_DEVICE_TYPE ;
 	YY_BREAK
 case 189:
 YY_RULE_SETUP
-#line 351 "parser/bif.l"
+#line 356 "parser/bif.l"
 yylval->number = BootDevice::UFS;               return tok::BOOT_DEVICE_TYPE ;
 	YY_BREAK
 case 190:
 YY_RULE_SETUP
-#line 353 "parser/bif.l"
+#line 358 "parser/bif.l"
 return tok::DEST_CPU;
 	YY_BREAK
 case 191:
 YY_RULE_SETUP
-#line 354 "parser/bif.l"
+#line 359 "parser/bif.l"
 return tok::DEST_CPU;
 	YY_BREAK
 case 192:
 YY_RULE_SETUP
-#line 355 "parser/bif.l"
+#line 360 "parser/bif.l"
 yylval->number = DestinationCPU::A53_0;         return tok::DEST_CPU_TYPE;
 	YY_BREAK
 case 193:
 YY_RULE_SETUP
-#line 356 "parser/bif.l"
+#line 361 "parser/bif.l"
 yylval->number = DestinationCPU::A53_0;         return tok::DEST_CPU_TYPE;
 	YY_BREAK
 case 194:
 YY_RULE_SETUP
-#line 357 "parser/bif.l"
+#line 362 "parser/bif.l"
 yylval->number = DestinationCPU::A53_0;         return tok::DEST_CPU_TYPE;
 	YY_BREAK
 case 195:
 YY_RULE_SETUP
-#line 358 "parser/bif.l"
+#line 363 "parser/bif.l"
 yylval->number = DestinationCPU::A53_0;         return tok::DEST_CPU_TYPE;
 	YY_BREAK
 case 196:
 YY_RULE_SETUP
-#line 359 "parser/bif.l"
+#line 364 "parser/bif.l"
 yylval->number = DestinationCPU::A53_1;         return tok::DEST_CPU_TYPE;
 	YY_BREAK
 case 197:
 YY_RULE_SETUP
-#line 360 "parser/bif.l"
+#line 365 "parser/bif.l"
 yylval->number = DestinationCPU::A53_1;         return tok::DEST_CPU_TYPE;
 	YY_BREAK
 case 198:
 YY_RULE_SETUP
-#line 361 "parser/bif.l"
+#line 366 "parser/bif.l"
 yylval->number = DestinationCPU::A53_1;         return tok::DEST_CPU_TYPE;
 	YY_BREAK
 case 199:
 YY_RULE_SETUP
-#line 362 "parser/bif.l"
+#line 367 "parser/bif.l"
 yylval->number = DestinationCPU::A53_1;         return tok::DEST_CPU_TYPE;
 	YY_BREAK
 case 200:
 YY_RULE_SETUP
-#line 363 "parser/bif.l"
+#line 368 "parser/bif.l"
 yylval->number = DestinationCPU::A53_2;         return tok::DEST_CPU_TYPE;
 	YY_BREAK
 case 201:
 YY_RULE_SETUP
-#line 364 "parser/bif.l"
+#line 369 "parser/bif.l"
 yylval->number = DestinationCPU::A53_2;         return tok::DEST_CPU_TYPE;
 	YY_BREAK
 case 202:
 YY_RULE_SETUP
-#line 365 "parser/bif.l"
+#line 370 "parser/bif.l"
 yylval->number = DestinationCPU::A53_2;         return tok::DEST_CPU_TYPE;
 	YY_BREAK
 case 203:
 YY_RULE_SETUP
-#line 366 "parser/bif.l"
+#line 371 "parser/bif.l"
 yylval->number = DestinationCPU::A53_3;         return tok::DEST_CPU_TYPE;
 	YY_BREAK
 case 204:
 YY_RULE_SETUP
-#line 367 "parser/bif.l"
+#line 372 "parser/bif.l"
 yylval->number = DestinationCPU::A53_3;         return tok::DEST_CPU_TYPE;
 	YY_BREAK
 case 205:
 YY_RULE_SETUP
-#line 368 "parser/bif.l"
+#line 373 "parser/bif.l"
 yylval->number = DestinationCPU::A53_3;         return tok::DEST_CPU_TYPE;
 	YY_BREAK
 case 206:
 YY_RULE_SETUP
-#line 369 "parser/bif.l"
+#line 374 "parser/bif.l"
 yylval->number = DestinationCPU::R5_0;          return tok::DEST_CPU_TYPE;
 	YY_BREAK
 case 207:
 YY_RULE_SETUP
-#line 370 "parser/bif.l"
+#line 375 "parser/bif.l"
 yylval->number = DestinationCPU::R5_0;          return tok::DEST_CPU_TYPE;
 	YY_BREAK
 case 208:
 YY_RULE_SETUP
-#line 371 "parser/bif.l"
+#line 376 "parser/bif.l"
 yylval->number = DestinationCPU::R5_1;          return tok::DEST_CPU_TYPE;
 	YY_BREAK
 case 209:
 YY_RULE_SETUP
-#line 372 "parser/bif.l"
+#line 377 "parser/bif.l"
 yylval->number = DestinationCPU::R5_1;          return tok::DEST_CPU_TYPE;
 	YY_BREAK
 case 210:
 YY_RULE_SETUP
-#line 373 "parser/bif.l"
+#line 378 "parser/bif.l"
 yylval->number = DestinationCPU::R5_lockstep;   return tok::DEST_CPU_TYPE;
 	YY_BREAK
 case 211:
 YY_RULE_SETUP
-#line 374 "parser/bif.l"
+#line 379 "parser/bif.l"
 yylval->number = DestinationCPU::PMU;           return tok::DEST_CPU_TYPE;
 	YY_BREAK
 case 212:
 YY_RULE_SETUP
-#line 375 "parser/bif.l"
+#line 380 "parser/bif.l"
 yylval->number = DestinationCPU::PMU;           return tok::DEST_CPU_TYPE;
 	YY_BREAK
 case 213:
 YY_RULE_SETUP
-#line 376 "parser/bif.l"
+#line 381 "parser/bif.l"
 yylval->number = DestinationCPU::PMU;           return tok::DEST_CPU_TYPE;
 	YY_BREAK
 case 214:
 YY_RULE_SETUP
-#line 377 "parser/bif.l"
+#line 382 "parser/bif.l"
 yylval->number = DestinationCPU::AIE;           return tok::DEST_CPU_TYPE;
 	YY_BREAK
 case 215:
 YY_RULE_SETUP
-#line 378 "parser/bif.l"
+#line 383 "parser/bif.l"
 yylval->number = tok::CLUSTER_NUM;              return tok::CLUSTER_NUM;
 	YY_BREAK
 case 216:
 YY_RULE_SETUP
-#line 380 "parser/bif.l"
+#line 385 "parser/bif.l"
 return tok::DEST_DEVICE;
 	YY_BREAK
 case 217:
 YY_RULE_SETUP
-#line 381 "parser/bif.l"
+#line 386 "parser/bif.l"
 yylval->number = DestinationDevice::DEST_DEV_PS;    return tok::DEST_DEVICE_TYPE;
 	YY_BREAK
 case 218:
 YY_RULE_SETUP
-#line 382 "parser/bif.l"
+#line 387 "parser/bif.l"
 yylval->number = DestinationDevice::DEST_DEV_PL;    return tok::DEST_DEVICE_TYPE;
 	YY_BREAK
 case 219:
 YY_RULE_SETUP
-#line 383 "parser/bif.l"
+#line 388 "parser/bif.l"
 yylval->number = DestinationDevice::DEST_DEV_PMU;   return tok::DEST_DEVICE_TYPE;
 	YY_BREAK
 case 220:
 YY_RULE_SETUP
-#line 384 "parser/bif.l"
+#line 389 "parser/bif.l"
 yylval->number = DestinationDevice::DEST_DEV_XIP;   return tok::DEST_DEVICE_TYPE;
 	YY_BREAK
 case 221:
 YY_RULE_SETUP
-#line 386 "parser/bif.l"
+#line 391 "parser/bif.l"
 return tok::EXCEPTION_LEVEL;
 	YY_BREAK
 case 222:
 YY_RULE_SETUP
-#line 387 "parser/bif.l"
+#line 392 "parser/bif.l"
 yylval->number = ExceptionLevel::EL0;           return tok::EXCEPTION_LEVEL_TYPE;
 	YY_BREAK
 case 223:
 YY_RULE_SETUP
-#line 388 "parser/bif.l"
+#line 393 "parser/bif.l"
 yylval->number = ExceptionLevel::EL1;           return tok::EXCEPTION_LEVEL_TYPE;
 	YY_BREAK
 case 224:
 YY_RULE_SETUP
-#line 389 "parser/bif.l"
+#line 394 "parser/bif.l"
 yylval->number = ExceptionLevel::EL2;           return tok::EXCEPTION_LEVEL_TYPE;
 	YY_BREAK
 case 225:
 YY_RULE_SETUP
-#line 390 "parser/bif.l"
+#line 395 "parser/bif.l"
 yylval->number = ExceptionLevel::EL3;           return tok::EXCEPTION_LEVEL_TYPE;
 	YY_BREAK
 case 226:
 YY_RULE_SETUP
-#line 392 "parser/bif.l"
+#line 397 "parser/bif.l"
 return tok::TRUSTZONE;
 	YY_BREAK
 case 227:
 YY_RULE_SETUP
-#line 393 "parser/bif.l"
+#line 398 "parser/bif.l"
 yylval->number = TrustZone::Secure;             return tok::TRUSTZONE_TYPE;
 	YY_BREAK
 case 228:
 YY_RULE_SETUP
-#line 394 "parser/bif.l"
+#line 399 "parser/bif.l"
 yylval->number = TrustZone::NonSecure;          return tok::TRUSTZONE_TYPE;
 	YY_BREAK
 case 229:
 YY_RULE_SETUP
-#line 396 "parser/bif.l"
+#line 401 "parser/bif.l"
 yylval->number = tok::SLR_NUM;                  return tok::SLR_NUM;
 	YY_BREAK
 case 230:
 YY_RULE_SETUP
-#line 398 "parser/bif.l"
+#line 403 "parser/bif.l"
 yylval->number = tok::AUTH_PARAMS;              return tok::AUTH_PARAMS;
 	YY_BREAK
 case 231:
 YY_RULE_SETUP
-#line 399 "parser/bif.l"
+#line 404 "parser/bif.l"
 yylval->number = tok::PPK_SELECT;               return tok::PPK_SELECT;
 	YY_BREAK
 case 232:
 YY_RULE_SETUP
-#line 400 "parser/bif.l"
+#line 405 "parser/bif.l"
 yylval->number = tok::SPK_SELECT;               return tok::SPK_SELECT;
 	YY_BREAK
 case 233:
 YY_RULE_SETUP
-#line 401 "parser/bif.l"
+#line 406 "parser/bif.l"
 yylval->number = SpkSelect::SPK_eFUSE;          return tok::SPKSELECT;
 	YY_BREAK
 case 234:
 YY_RULE_SETUP
-#line 402 "parser/bif.l"
+#line 407 "parser/bif.l"
 yylval->number = SpkSelect::USER_eFUSE;         return tok::SPKSELECT;
 	YY_BREAK
 case 235:
 YY_RULE_SETUP
-#line 403 "parser/bif.l"
+#line 408 "parser/bif.l"
 yylval->number = tok::SPK_ID;                   return tok::SPK_ID; 
 	YY_BREAK
 case 236:
 YY_RULE_SETUP
-#line 404 "parser/bif.l"
+#line 409 "parser/bif.l"
 return tok::HEADER_AUTH;
 	YY_BREAK
 case 237:
 YY_RULE_SETUP
-#line 406 "parser/bif.l"
+#line 411 "parser/bif.l"
 yylval->number = tok::REVOKE_ID;                return tok::REVOKE_ID;
 	YY_BREAK
 case 238:
 YY_RULE_SETUP
-#line 407 "parser/bif.l"
+#line 412 "parser/bif.l"
 yylval->number = tok::SPK_REVOKE_ID;            return tok::SPK_REVOKE_ID;
 	YY_BREAK
 case 239:
 YY_RULE_SETUP
-#line 409 "parser/bif.l"
+#line 414 "parser/bif.l"
 yylval->number = tok::SPLIT;                    return tok::SPLIT;
 	YY_BREAK
 case 240:
 YY_RULE_SETUP
-#line 410 "parser/bif.l"
+#line 415 "parser/bif.l"
 yylval->number = tok::SPLIT_MODE;               return tok::SPLIT_MODE;
 	YY_BREAK
 case 241:
 YY_RULE_SETUP
-#line 411 "parser/bif.l"
+#line 416 "parser/bif.l"
 yylval->number = SplitMode::SlaveMode;          return tok::SPLITMODE;
 	YY_BREAK
 case 242:
 YY_RULE_SETUP
-#line 412 "parser/bif.l"
+#line 417 "parser/bif.l"
 yylval->number = SplitMode::Normal;             return tok::SPLITMODE;
 	YY_BREAK
 case 243:
 YY_RULE_SETUP
-#line 413 "parser/bif.l"
+#line 418 "parser/bif.l"
 yylval->number = tok::SPLIT_FMT;                return tok::SPLIT_FMT; 
 	YY_BREAK
 case 244:
 YY_RULE_SETUP
-#line 414 "parser/bif.l"
+#line 419 "parser/bif.l"
 return tok::MCS;
 	YY_BREAK
 case 245:
 YY_RULE_SETUP
-#line 415 "parser/bif.l"
+#line 420 "parser/bif.l"
 return tok::BIN;
 	YY_BREAK
 case 246:
 YY_RULE_SETUP
-#line 417 "parser/bif.l"
+#line 422 "parser/bif.l"
 yylval->number = tok::AUTHJTAG_CONFIG;          return tok::AUTHJTAG_CONFIG;
 	YY_BREAK
 case 247:
 YY_RULE_SETUP
-#line 418 "parser/bif.l"
+#line 423 "parser/bif.l"
 yylval->number = tok::DEVICE_DNA;               return tok::DEVICE_DNA;
 	YY_BREAK
 case 248:
 YY_RULE_SETUP
-#line 419 "parser/bif.l"
+#line 424 "parser/bif.l"
 yylval->number = tok::JTAG_TIMEOUT;             return tok::JTAG_TIMEOUT;
 	YY_BREAK
 case 249:
 YY_RULE_SETUP
-#line 420 "parser/bif.l"
+#line 425 "parser/bif.l"
 yylval->number = tok::AUTHJTAG_SIGN;            return tok::AUTHJTAG_SIGN;
 	YY_BREAK
 case 250:
 YY_RULE_SETUP
-#line 422 "parser/bif.l"
+#line 427 "parser/bif.l"
 yylval->number = tok::LMS_KEY_PARAMS;           return tok::LMS_KEY_PARAMS;
 	YY_BREAK
 case 251:
 YY_RULE_SETUP
-#line 423 "parser/bif.l"
+#line 428 "parser/bif.l"
 yylval->number = AuthKeyLevel::PRIMARY;         return tok::AUTH_KEY_LEVEL;
 	YY_BREAK
 case 252:
 YY_RULE_SETUP
-#line 424 "parser/bif.l"
+#line 429 "parser/bif.l"
 yylval->number = AuthKeyLevel::SECONDARY;       return tok::AUTH_KEY_LEVEL;
 	YY_BREAK
 case 253:
 YY_RULE_SETUP
-#line 427 "parser/bif.l"
+#line 432 "parser/bif.l"
 yylval->number=8;                               return tok::DECVALUE;
 	YY_BREAK
 case 254:
 YY_RULE_SETUP
-#line 428 "parser/bif.l"
+#line 433 "parser/bif.l"
 yylval->number=16;                              return tok::DECVALUE;
 	YY_BREAK
 case 255:
 YY_RULE_SETUP
-#line 429 "parser/bif.l"
+#line 434 "parser/bif.l"
 yylval->number=32;                              return tok::DECVALUE;
 	YY_BREAK
 case 256:
 YY_RULE_SETUP
-#line 430 "parser/bif.l"
+#line 435 "parser/bif.l"
 yylval->number=atoi(yytext);                    return tok::DECVALUE;
 	YY_BREAK
 case 257:
 YY_RULE_SETUP
-#line 431 "parser/bif.l"
+#line 436 "parser/bif.l"
 yylval->number=strtoul(yytext+2,NULL,16);       return tok::HEXVALUE;
 	YY_BREAK
 case 258:
 YY_RULE_SETUP
-#line 432 "parser/bif.l"
+#line 437 "parser/bif.l"
 yylval->string=strdup(yytext);                  return tok::HEXWORD;
 	YY_BREAK
 case 259:
 YY_RULE_SETUP
-#line 434 "parser/bif.l"
+#line 439 "parser/bif.l"
 return tok::COLON;
 	YY_BREAK
 case 260:
 YY_RULE_SETUP
-#line 435 "parser/bif.l"
+#line 440 "parser/bif.l"
 return tok::SEMICOLON;
 	YY_BREAK
 case 261:
 YY_RULE_SETUP
-#line 436 "parser/bif.l"
+#line 441 "parser/bif.l"
 return tok::EQUAL;
 	YY_BREAK
 case 262:
 YY_RULE_SETUP
-#line 437 "parser/bif.l"
+#line 442 "parser/bif.l"
 return tok::COMMA;
 	YY_BREAK
 case 263:
 YY_RULE_SETUP
-#line 438 "parser/bif.l"
+#line 443 "parser/bif.l"
 return tok::OBRACKET;
 	YY_BREAK
 case 264:
 YY_RULE_SETUP
-#line 439 "parser/bif.l"
+#line 444 "parser/bif.l"
 return tok::EBRACKET;
 	YY_BREAK
 case 265:
 YY_RULE_SETUP
-#line 440 "parser/bif.l"
-return tok::OBRACE;
+#line 445 "parser/bif.l"
+brace_depth++; return tok::OBRACE;
 	YY_BREAK
 case 266:
 YY_RULE_SETUP
-#line 441 "parser/bif.l"
-return tok::EBRACE;
+#line 446 "parser/bif.l"
+brace_depth--; return tok::EBRACE;
 	YY_BREAK
 case 267:
 YY_RULE_SETUP
-#line 442 "parser/bif.l"
+#line 447 "parser/bif.l"
 return tok::LPAREN;
 	YY_BREAK
 case 268:
 YY_RULE_SETUP
-#line 443 "parser/bif.l"
+#line 448 "parser/bif.l"
 return tok::RPAREN;
 	YY_BREAK
 case 269:
 YY_RULE_SETUP
-#line 444 "parser/bif.l"
+#line 449 "parser/bif.l"
 return tok::ASTERISK;
 	YY_BREAK
 case 270:
 YY_RULE_SETUP
-#line 446 "parser/bif.l"
+#line 451 "parser/bif.l"
 return tok::PLUS;
 	YY_BREAK
 case 271:
 YY_RULE_SETUP
-#line 447 "parser/bif.l"
+#line 452 "parser/bif.l"
 return tok::MINUS;
 	YY_BREAK
 case 272:
 YY_RULE_SETUP
-#line 448 "parser/bif.l"
+#line 453 "parser/bif.l"
 return tok::LSHIFT;
 	YY_BREAK
 case 273:
 YY_RULE_SETUP
-#line 449 "parser/bif.l"
+#line 454 "parser/bif.l"
 return tok::RSHIFT;
 	YY_BREAK
 case 274:
 YY_RULE_SETUP
-#line 450 "parser/bif.l"
+#line 455 "parser/bif.l"
 return tok::MULT;
 	YY_BREAK
 case 275:
 YY_RULE_SETUP
-#line 451 "parser/bif.l"
+#line 456 "parser/bif.l"
 return tok::DIVIDE;
 	YY_BREAK
 case 276:
 YY_RULE_SETUP
-#line 452 "parser/bif.l"
+#line 457 "parser/bif.l"
 return tok::MODULO;
 	YY_BREAK
 case 277:
 YY_RULE_SETUP
-#line 453 "parser/bif.l"
+#line 458 "parser/bif.l"
 return tok::NEGATION;
 	YY_BREAK
 case 278:
 YY_RULE_SETUP
-#line 454 "parser/bif.l"
+#line 459 "parser/bif.l"
 return tok::AND;
 	YY_BREAK
 case 279:
 YY_RULE_SETUP
-#line 455 "parser/bif.l"
+#line 460 "parser/bif.l"
 return tok::OR;
 	YY_BREAK
 case 280:
 YY_RULE_SETUP
-#line 456 "parser/bif.l"
+#line 461 "parser/bif.l"
 return tok::XOR;
 	YY_BREAK
 case 281:
 YY_RULE_SETUP
-#line 458 "parser/bif.l"
+#line 463 "parser/bif.l"
 yylval->string=strdup(yytext);      return tok::WORD;
 	YY_BREAK
 case 282:
 YY_RULE_SETUP
-#line 459 "parser/bif.l"
+#line 464 "parser/bif.l"
 yylval->string=strdup(yytext);      return tok::FILENAME;
 	YY_BREAK
 case 283:
 YY_RULE_SETUP
-#line 460 "parser/bif.l"
+#line 465 "parser/bif.l"
 yylval->string=strdup(yytext+1); yylval->string[strlen(yytext)-2]=0; return tok::QFILENAME;
 	YY_BREAK
 case 284:
 YY_RULE_SETUP
-#line 462 "parser/bif.l"
+#line 467 "parser/bif.l"
 yylloc->step ();
 	YY_BREAK
 case 285:
 /* rule 285 can match eol */
 YY_RULE_SETUP
-#line 463 "parser/bif.l"
+#line 468 "parser/bif.l"
 yylloc->lines (yyleng); yylloc->step ();
 	YY_BREAK
 case 286:
 YY_RULE_SETUP
-#line 464 "parser/bif.l"
+#line 469 "parser/bif.l"
 /* ignore (Linux only) */
 	YY_BREAK
 case 287:
 YY_RULE_SETUP
-#line 465 "parser/bif.l"
+#line 470 "parser/bif.l"
 LOG_ERROR("BIF parsing error : Invalid character (0x%02X) in BIF file",  (unsigned char)yytext[0]);
 	YY_BREAK
 case 288:
 YY_RULE_SETUP
-#line 466 "parser/bif.l"
+#line 471 "parser/bif.l"
 YY_FATAL_ERROR( "flex scanner jammed" );
 	YY_BREAK
-#line 3429 "bisonflex/bif.yy.cpp"
+#line 3427 "bisonflex/bif.yy.cpp"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -3448,11 +3446,7 @@ YY_FATAL_ERROR( "flex scanner jammed" );
 			 * back-up) that will match for the new input source.
 			 */
 			(yy_n_chars) = YY_CURRENT_BUFFER_LVALUE->yy_n_chars;
-/* %if-c-only */
-/* %endif */
-/* %if-c++-only */
-			YY_CURRENT_BUFFER_LVALUE->yy_input_file = yyin.rdbuf();
-/* %endif */
+			YY_CURRENT_BUFFER_LVALUE->yy_input_file = yyin;
 			YY_CURRENT_BUFFER_LVALUE->yy_buffer_status = YY_BUFFER_NORMAL;
 			}
 
@@ -3560,7 +3554,6 @@ YY_FATAL_ERROR( "flex scanner jammed" );
 			"fatal flex scanner internal error--no action found" );
 	} /* end of action switch */
 		} /* end of scanning one token */
-	} /* end of user's declarations */
 } /* end of yylex */
 /* %ok-for-header */
 
@@ -3568,29 +3561,11 @@ YY_FATAL_ERROR( "flex scanner jammed" );
 /* %not-for-header */
 
 /* The contents of this function are C++ specific, so the () macro is not used.
- * This constructor simply maintains backward compatibility.
- * DEPRECATED
  */
-yyFlexLexer::yyFlexLexer( std::istream* arg_yyin, std::ostream* arg_yyout ):
-	yyin(arg_yyin ? arg_yyin->rdbuf() : std::cin.rdbuf()),
-	yyout(arg_yyout ? arg_yyout->rdbuf() : std::cout.rdbuf())
+yyFlexLexer::yyFlexLexer( std::istream* arg_yyin, std::ostream* arg_yyout )
 {
-	ctor_common();
-}
-
-/* The contents of this function are C++ specific, so the () macro is not used.
- */
-yyFlexLexer::yyFlexLexer( std::istream& arg_yyin, std::ostream& arg_yyout ):
-	yyin(arg_yyin.rdbuf()),
-	yyout(arg_yyout.rdbuf())
-{
-	ctor_common();
-}
-
-/* The contents of this function are C++ specific, so the () macro is not used.
- */
-void yyFlexLexer::ctor_common()
-{
+	yyin = arg_yyin;
+	yyout = arg_yyout;
 	yy_c_buf_p = 0;
 	yy_init = 0;
 	yy_start = 0;
@@ -3607,7 +3582,7 @@ void yyFlexLexer::ctor_common()
 	yy_start_stack_ptr = yy_start_stack_depth = 0;
 	yy_start_stack = NULL;
 
-	yy_buffer_stack = NULL;
+	yy_buffer_stack = 0;
 	yy_buffer_stack_top = 0;
 	yy_buffer_stack_max = 0;
 
@@ -3620,36 +3595,23 @@ void yyFlexLexer::ctor_common()
 yyFlexLexer::~yyFlexLexer()
 {
 	delete [] yy_state_buf;
-	yyfree(yy_start_stack  );
+	biffree(yy_start_stack  );
 	yy_delete_buffer( YY_CURRENT_BUFFER );
-	yyfree(yy_buffer_stack  );
-}
-
-/* The contents of this function are C++ specific, so the () macro is not used.
- */
-void yyFlexLexer::switch_streams( std::istream& new_in, std::ostream& new_out )
-{
-	// was if( new_in )
-	yy_delete_buffer( YY_CURRENT_BUFFER );
-	yy_switch_to_buffer( yy_create_buffer( new_in, YY_BUF_SIZE  ) );
-
-	// was if( new_out )
-	yyout.rdbuf(new_out.rdbuf());
+	biffree(yy_buffer_stack  );
 }
 
 /* The contents of this function are C++ specific, so the () macro is not used.
  */
 void yyFlexLexer::switch_streams( std::istream* new_in, std::ostream* new_out )
 {
-	if( ! new_in ) {
-		new_in = &yyin;
-	}
+	if ( new_in )
+		{
+		yy_delete_buffer( YY_CURRENT_BUFFER );
+		yy_switch_to_buffer( yy_create_buffer( new_in, YY_BUF_SIZE  ) );
+		}
 
-	if ( ! new_out ) {
-		new_out = &yyout;
-	}
-
-	switch_streams(*new_in, *new_out);
+	if ( new_out )
+		yyout = new_out;
 }
 
 #ifdef YY_INTERACTIVE
@@ -3658,33 +3620,33 @@ int yyFlexLexer::LexerInput( char* buf, int /* max_size */ )
 int yyFlexLexer::LexerInput( char* buf, int max_size )
 #endif
 {
-	if ( yyin.eof() || yyin.fail() )
+	if ( yyin->eof() || yyin->fail() )
 		return 0;
 
 #ifdef YY_INTERACTIVE
-	yyin.get( buf[0] );
+	yyin->get( buf[0] );
 
-	if ( yyin.eof() )
+	if ( yyin->eof() )
 		return 0;
 
-	if ( yyin.bad() )
+	if ( yyin->bad() )
 		return -1;
 
 	return 1;
 
 #else
-	(void) yyin.read( buf, max_size );
+	(void) yyin->read( buf, max_size );
 
-	if ( yyin.bad() )
+	if ( yyin->bad() )
 		return -1;
 	else
-		return yyin.gcount();
+		return yyin->gcount();
 #endif
 }
 
 void yyFlexLexer::LexerOutput( const char* buf, int size )
 {
-	(void) yyout.write( buf, size );
+	(void) yyout->write( buf, size );
 }
 /* %ok-for-header */
 
@@ -3703,9 +3665,9 @@ void yyFlexLexer::LexerOutput( const char* buf, int size )
 int yyFlexLexer::yy_get_next_buffer()
 /* %endif */
 {
-    	char *dest = YY_CURRENT_BUFFER_LVALUE->yy_ch_buf;
-	char *source = (yytext_ptr);
-	yy_size_t number_to_move, i;
+    	register char *dest = YY_CURRENT_BUFFER_LVALUE->yy_ch_buf;
+	register char *source = (yytext_ptr);
+	register int number_to_move, i;
 	int ret_val;
 
 	if ( (yy_c_buf_p) > &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[(yy_n_chars) + 1] )
@@ -3734,7 +3696,7 @@ int yyFlexLexer::yy_get_next_buffer()
 	/* Try to read more data. */
 
 	/* First move last chars to start of buffer. */
-	number_to_move = (yy_size_t) ((yy_c_buf_p) - (yytext_ptr)) - 1;
+	number_to_move = (int) ((yy_c_buf_p) - (yytext_ptr)) - 1;
 
 	for ( i = 0; i < number_to_move; ++i )
 		*(dest++) = *(source++);
@@ -3754,7 +3716,7 @@ int yyFlexLexer::yy_get_next_buffer()
 			{ /* Not enough room in the buffer - grow it. */
 
 			/* just a shorter name for the current buffer */
-			YY_BUFFER_STATE b = YY_CURRENT_BUFFER_LVALUE;
+			YY_BUFFER_STATE b = YY_CURRENT_BUFFER;
 
 			int yy_c_buf_p_offset =
 				(int) ((yy_c_buf_p) - b->yy_ch_buf);
@@ -3770,11 +3732,11 @@ int yyFlexLexer::yy_get_next_buffer()
 
 				b->yy_ch_buf = (char *)
 					/* Include room in for 2 EOB chars. */
-					yyrealloc((void *) b->yy_ch_buf,(yy_size_t) (b->yy_buf_size + 2)  );
+					bifrealloc((void *) b->yy_ch_buf,b->yy_buf_size + 2  );
 				}
 			else
 				/* Can't grow it, we don't own it. */
-				b->yy_ch_buf = NULL;
+				b->yy_ch_buf = 0;
 
 			if ( ! b->yy_ch_buf )
 				YY_FATAL_ERROR(
@@ -3792,7 +3754,7 @@ int yyFlexLexer::yy_get_next_buffer()
 
 		/* Read in more data. */
 		YY_INPUT( (&YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[number_to_move]),
-			(yy_n_chars), num_to_read );
+			(yy_n_chars), (size_t) num_to_read );
 
 		YY_CURRENT_BUFFER_LVALUE->yy_n_chars = (yy_n_chars);
 		}
@@ -3816,10 +3778,10 @@ int yyFlexLexer::yy_get_next_buffer()
 	else
 		ret_val = EOB_ACT_CONTINUE_SCAN;
 
-	if ((int) ((yy_n_chars) + number_to_move) > YY_CURRENT_BUFFER_LVALUE->yy_buf_size) {
+	if ((yy_size_t) ((yy_n_chars) + number_to_move) > YY_CURRENT_BUFFER_LVALUE->yy_buf_size) {
 		/* Extend the array by 50%, plus the number we really need. */
-		int new_size = (yy_n_chars) + number_to_move + ((yy_n_chars) >> 1);
-		YY_CURRENT_BUFFER_LVALUE->yy_ch_buf = (char *) yyrealloc((void *) YY_CURRENT_BUFFER_LVALUE->yy_ch_buf,(yy_size_t) new_size  );
+		yy_size_t new_size = (yy_n_chars) + number_to_move + ((yy_n_chars) >> 1);
+		YY_CURRENT_BUFFER_LVALUE->yy_ch_buf = (char *) bifrealloc((void *) YY_CURRENT_BUFFER_LVALUE->yy_ch_buf,new_size  );
 		if ( ! YY_CURRENT_BUFFER_LVALUE->yy_ch_buf )
 			YY_FATAL_ERROR( "out of dynamic memory in yy_get_next_buffer()" );
 	}
@@ -3843,8 +3805,8 @@ int yyFlexLexer::yy_get_next_buffer()
     yy_state_type yyFlexLexer::yy_get_previous_state()
 /* %endif */
 {
-	yy_state_type yy_current_state;
-	char *yy_cp;
+	register yy_state_type yy_current_state;
+	register char *yy_cp;
     
 /* %% [15.0] code to get the start state into yy_current_state goes here */
 	yy_current_state = (yy_start);
@@ -3852,7 +3814,7 @@ int yyFlexLexer::yy_get_next_buffer()
 	for ( yy_cp = (yytext_ptr) + YY_MORE_ADJ; yy_cp < (yy_c_buf_p); ++yy_cp )
 		{
 /* %% [16.0] code to find the next state goes here */
-		YY_CHAR yy_c = (*yy_cp ? yy_ec[YY_SC_TO_UI(*yy_cp)] : 1);
+		register YY_CHAR yy_c = (*yy_cp ? yy_ec[YY_SC_TO_UI(*yy_cp)] : 1);
 		if ( yy_accept[yy_current_state] )
 			{
 			(yy_last_accepting_state) = yy_current_state;
@@ -3864,7 +3826,7 @@ int yyFlexLexer::yy_get_next_buffer()
 			if ( yy_current_state >= 1321 )
 				yy_c = yy_meta[(unsigned int) yy_c];
 			}
-		yy_current_state = yy_nxt[yy_base[yy_current_state] + (flex_int16_t) yy_c];
+		yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
 		}
 
 	return yy_current_state;
@@ -3881,11 +3843,11 @@ int yyFlexLexer::yy_get_next_buffer()
     yy_state_type yyFlexLexer::yy_try_NUL_trans( yy_state_type yy_current_state )
 /* %endif */
 {
-	int yy_is_jam;
+	register int yy_is_jam;
     /* %% [17.0] code to find the next state, and perhaps do backing up, goes here */
-	char *yy_cp = (yy_c_buf_p);
+	register char *yy_cp = (yy_c_buf_p);
 
-	YY_CHAR yy_c = 1;
+	register YY_CHAR yy_c = 1;
 	if ( yy_accept[yy_current_state] )
 		{
 		(yy_last_accepting_state) = yy_current_state;
@@ -3897,20 +3859,19 @@ int yyFlexLexer::yy_get_next_buffer()
 		if ( yy_current_state >= 1321 )
 			yy_c = yy_meta[(unsigned int) yy_c];
 		}
-	yy_current_state = yy_nxt[yy_base[yy_current_state] + (flex_int16_t) yy_c];
+	yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
 	yy_is_jam = (yy_current_state == 1320);
 
-		return yy_is_jam ? 0 : yy_current_state;
+	return yy_is_jam ? 0 : yy_current_state;
 }
 
-#ifndef YY_NO_UNPUT
 /* %if-c-only */
 /* %endif */
 /* %if-c++-only */
-    void yyFlexLexer::yyunput( int c, char* yy_bp)
+    void yyFlexLexer::yyunput( int c, register char* yy_bp)
 /* %endif */
 {
-	char *yy_cp;
+	register char *yy_cp;
     
     yy_cp = (yy_c_buf_p);
 
@@ -3920,10 +3881,10 @@ int yyFlexLexer::yy_get_next_buffer()
 	if ( yy_cp < YY_CURRENT_BUFFER_LVALUE->yy_ch_buf + 2 )
 		{ /* need to shift things up to make room */
 		/* +2 for EOB chars. */
-		int number_to_move = (yy_n_chars) + 2;
-		char *dest = &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[
+		register int number_to_move = (yy_n_chars) + 2;
+		register char *dest = &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[
 					YY_CURRENT_BUFFER_LVALUE->yy_buf_size + 2];
-		char *source =
+		register char *source =
 				&YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[number_to_move];
 
 		while ( source > YY_CURRENT_BUFFER_LVALUE->yy_ch_buf )
@@ -3932,7 +3893,7 @@ int yyFlexLexer::yy_get_next_buffer()
 		yy_cp += (int) (dest - source);
 		yy_bp += (int) (dest - source);
 		YY_CURRENT_BUFFER_LVALUE->yy_n_chars =
-			(yy_n_chars) = (int) YY_CURRENT_BUFFER_LVALUE->yy_buf_size;
+			(yy_n_chars) = YY_CURRENT_BUFFER_LVALUE->yy_buf_size;
 
 		if ( yy_cp < YY_CURRENT_BUFFER_LVALUE->yy_ch_buf + 2 )
 			YY_FATAL_ERROR( "flex scanner push-back overflow" );
@@ -3948,7 +3909,6 @@ int yyFlexLexer::yy_get_next_buffer()
 }
 /* %if-c-only */
 /* %endif */
-#endif
 
 /* %if-c-only */
 /* %endif */
@@ -3996,7 +3956,7 @@ int yyFlexLexer::yy_get_next_buffer()
 				case EOB_ACT_END_OF_FILE:
 					{
 					if ( yywrap(  ) )
-						return 0;
+						return EOF;
 
 					if ( ! (yy_did_buffer_switch_on_eof) )
 						YY_NEW_FILE;
@@ -4033,7 +3993,7 @@ int yyFlexLexer::yy_get_next_buffer()
 /* %if-c-only */
 /* %endif */
 /* %if-c++-only */
-    void yyFlexLexer::yyrestart( std::istream& input_file )
+    void yyFlexLexer::yyrestart( std::istream* input_file )
 /* %endif */
 {
     
@@ -4046,18 +4006,6 @@ int yyFlexLexer::yy_get_next_buffer()
 	yy_init_buffer( YY_CURRENT_BUFFER, input_file );
 	yy_load_buffer_state(  );
 }
-
-/* %if-c++-only */
-/** Delegate to the new version that takes an istream reference.
- * @param input_file A readable stream.
- * 
- * @note This function does not reset the start condition to @c INITIAL .
- */
-void yyFlexLexer::yyrestart( std::istream* input_file )
-{
-	yyrestart( *input_file );
-}
-/* %endif */
 
 /** Switch to a different input buffer.
  * @param new_buffer The new input buffer.
@@ -4106,11 +4054,7 @@ void yyFlexLexer::yyrestart( std::istream* input_file )
 {
     	(yy_n_chars) = YY_CURRENT_BUFFER_LVALUE->yy_n_chars;
 	(yytext_ptr) = (yy_c_buf_p) = YY_CURRENT_BUFFER_LVALUE->yy_buf_pos;
-/* %if-c-only */
-/* %endif */
-/* %if-c++-only */
-	yyin.rdbuf(YY_CURRENT_BUFFER_LVALUE->yy_input_file);
-/* %endif */
+	yyin = YY_CURRENT_BUFFER_LVALUE->yy_input_file;
 	(yy_hold_char) = *(yy_c_buf_p);
 }
 
@@ -4123,12 +4067,12 @@ void yyFlexLexer::yyrestart( std::istream* input_file )
 /* %if-c-only */
 /* %endif */
 /* %if-c++-only */
-    YY_BUFFER_STATE yyFlexLexer::yy_create_buffer( std::istream& file, int size )
+    YY_BUFFER_STATE yyFlexLexer::yy_create_buffer( std::istream* file, int size )
 /* %endif */
 {
 	YY_BUFFER_STATE b;
     
-	b = (YY_BUFFER_STATE) yyalloc(sizeof( struct yy_buffer_state )  );
+	b = (YY_BUFFER_STATE) bifalloc(sizeof( struct yy_buffer_state )  );
 	if ( ! b )
 		YY_FATAL_ERROR( "out of dynamic memory in yy_create_buffer()" );
 
@@ -4137,7 +4081,7 @@ void yyFlexLexer::yyrestart( std::istream* input_file )
 	/* yy_ch_buf has to be 2 characters longer than the size given because
 	 * we need to put in 2 end-of-buffer characters.
 	 */
-	b->yy_ch_buf = (char *) yyalloc((yy_size_t) (b->yy_buf_size + 2)  );
+	b->yy_ch_buf = (char *) bifalloc(b->yy_buf_size + 2  );
 	if ( ! b->yy_ch_buf )
 		YY_FATAL_ERROR( "out of dynamic memory in yy_create_buffer()" );
 
@@ -4147,19 +4091,6 @@ void yyFlexLexer::yyrestart( std::istream* input_file )
 
 	return b;
 }
-
-/* %if-c++-only */
-/** Delegate creation of buffers to the new version that takes an istream reference.
- * @param file A readable stream.
- * @param size The character buffer size in bytes. When in doubt, use @c YY_BUF_SIZE.
- * 
- * @return the allocated buffer state.
- */
-	YY_BUFFER_STATE yyFlexLexer::yy_create_buffer( std::istream* file, int size )
-{
-	return yy_create_buffer( *file, size );
-}
-/* %endif */
 
 /** Destroy the buffer.
  * @param b a buffer created with yy_create_buffer()
@@ -4179,10 +4110,19 @@ void yyFlexLexer::yyrestart( std::istream* input_file )
 		YY_CURRENT_BUFFER_LVALUE = (YY_BUFFER_STATE) 0;
 
 	if ( b->yy_is_our_buffer )
-		yyfree((void *) b->yy_ch_buf  );
+		biffree((void *) b->yy_ch_buf  );
 
-	yyfree((void *) b  );
+	biffree((void *) b  );
 }
+
+/* %if-c-only */
+/* %endif */
+
+/* %if-c++-only */
+
+extern "C" int isatty (int );
+
+/* %endif */
 
 /* Initializes or reinitializes a buffer.
  * This function is sometimes called more than once on the same buffer,
@@ -4191,7 +4131,7 @@ void yyFlexLexer::yyrestart( std::istream* input_file )
 /* %if-c-only */
 /* %endif */
 /* %if-c++-only */
-    void yyFlexLexer::yy_init_buffer( YY_BUFFER_STATE b, std::istream& file )
+    void yyFlexLexer::yy_init_buffer( YY_BUFFER_STATE b, std::istream* file )
 /* %endif */
 
 {
@@ -4199,11 +4139,7 @@ void yyFlexLexer::yyrestart( std::istream* input_file )
     
 	yy_flush_buffer( b );
 
-/* %if-c-only */
-/* %endif */
-/* %if-c++-only */
-	b->yy_input_file = file.rdbuf();
-/* %endif */
+	b->yy_input_file = file;
 	b->yy_fill_buffer = 1;
 
     /* If b is the current buffer, then yy_init_buffer was _probably_
@@ -4336,8 +4272,8 @@ void yyFlexLexer::yyensure_buffer_stack(void)
 		 * scanner will even need a stack. We use 2 instead of 1 to avoid an
 		 * immediate realloc on the next call.
          */
-      num_to_alloc = 1; /* After all that talk, this was set to 1 anyways... */
-		(yy_buffer_stack) = (struct yy_buffer_state**)yyalloc
+		num_to_alloc = 1;
+		(yy_buffer_stack) = (struct yy_buffer_state**)bifalloc
 								(num_to_alloc * sizeof(struct yy_buffer_state*)
 								);
 		if ( ! (yy_buffer_stack) )
@@ -4353,10 +4289,10 @@ void yyFlexLexer::yyensure_buffer_stack(void)
 	if ((yy_buffer_stack_top) >= ((yy_buffer_stack_max)) - 1){
 
 		/* Increase the buffer to prepare for a possible push. */
-		yy_size_t grow_size = 8 /* arbitrary grow size */;
+		int grow_size = 8 /* arbitrary grow size */;
 
 		num_to_alloc = (yy_buffer_stack_max) + grow_size;
-		(yy_buffer_stack) = (struct yy_buffer_state**)yyrealloc
+		(yy_buffer_stack) = (struct yy_buffer_state**)bifrealloc
 								((yy_buffer_stack),
 								num_to_alloc * sizeof(struct yy_buffer_state*)
 								);
@@ -4382,7 +4318,7 @@ void yyFlexLexer::yyensure_buffer_stack(void)
 /* %if-c-only */
 /* %endif */
 /* %if-c++-only */
-    void yyFlexLexer::yy_push_state( int _new_state )
+    void yyFlexLexer::yy_push_state( int new_state )
 /* %endif */
 {
     	if ( (yy_start_stack_ptr) >= (yy_start_stack_depth) )
@@ -4390,13 +4326,13 @@ void yyFlexLexer::yyensure_buffer_stack(void)
 		yy_size_t new_size;
 
 		(yy_start_stack_depth) += YY_START_STACK_INCR;
-		new_size = (yy_size_t) (yy_start_stack_depth) * sizeof( int );
+		new_size = (yy_start_stack_depth) * sizeof( int );
 
 		if ( ! (yy_start_stack) )
-			(yy_start_stack) = (int *) yyalloc(new_size  );
+			(yy_start_stack) = (int *) bifalloc(new_size  );
 
 		else
-			(yy_start_stack) = (int *) yyrealloc((void *) (yy_start_stack),new_size  );
+			(yy_start_stack) = (int *) bifrealloc((void *) (yy_start_stack),new_size  );
 
 		if ( ! (yy_start_stack) )
 			YY_FATAL_ERROR( "out of memory expanding start-condition stack" );
@@ -4404,7 +4340,7 @@ void yyFlexLexer::yyensure_buffer_stack(void)
 
 	(yy_start_stack)[(yy_start_stack_ptr)++] = YY_START;
 
-	BEGIN(_new_state);
+	BEGIN(new_state);
 }
 
 /* %if-c-only */
@@ -4435,7 +4371,7 @@ void yyFlexLexer::yyensure_buffer_stack(void)
 /* %if-c-only */
 /* %endif */
 /* %if-c++-only */
-void yyFlexLexer::LexerError( yyconst char* msg )
+void yyFlexLexer::LexerError( yyconst char msg[] )
 {
     	std::cerr << msg << std::endl;
 	exit( YY_EXIT_FAILURE );
@@ -4449,7 +4385,7 @@ void yyFlexLexer::LexerError( yyconst char* msg )
 	do \
 		{ \
 		/* Undo effects of setting up yytext. */ \
-        yy_size_t yyless_macro_arg = (n); \
+        int yyless_macro_arg = (n); \
         YY_LESS_LINENO(yyless_macro_arg);\
 		yytext[yyleng] = (yy_hold_char); \
 		(yy_c_buf_p) = yytext + yyless_macro_arg; \
@@ -4488,8 +4424,7 @@ void yyFlexLexer::LexerError( yyconst char* msg )
 #ifndef yytext_ptr
 static void yy_flex_strncpy (char* s1, yyconst char * s2, int n )
 {
-		
-	int i;
+	register int i;
 	for ( i = 0; i < n; ++i )
 		s1[i] = s2[i];
 }
@@ -4498,7 +4433,7 @@ static void yy_flex_strncpy (char* s1, yyconst char * s2, int n )
 #ifdef YY_NEED_STRLEN
 static int yy_flex_strlen (yyconst char * s )
 {
-	int n;
+	register int n;
 	for ( n = 0; s[n]; ++n )
 		;
 
@@ -4506,14 +4441,13 @@ static int yy_flex_strlen (yyconst char * s )
 }
 #endif
 
-void *yyalloc (yy_size_t  size )
+void *bifalloc (yy_size_t  size )
 {
-			return malloc(size);
+	return (void *) malloc( size );
 }
 
-void *yyrealloc  (void * ptr, yy_size_t  size )
+void *bifrealloc  (void * ptr, yy_size_t  size )
 {
-		
 	/* The cast to (char *) in the following accommodates both
 	 * implementations that use char* generic pointers, and those
 	 * that use void* generic pointers.  It works with the latter
@@ -4521,12 +4455,12 @@ void *yyrealloc  (void * ptr, yy_size_t  size )
 	 * any pointer type to void*, and deal with argument conversions
 	 * as though doing an assignment.
 	 */
-	return realloc(ptr, size);
+	return (void *) realloc( (char *) ptr, size );
 }
 
-void yyfree (void * ptr )
+void biffree (void * ptr )
 {
-			free( (char *) ptr );	/* see yyrealloc() for (char *) cast */
+	free( (char *) ptr );	/* see bifrealloc() for (char *) cast */
 }
 
 /* %if-tables-serialization definitions */
@@ -4536,7 +4470,7 @@ void yyfree (void * ptr )
 
 /* %ok-for-header */
 
-#line 466 "parser/bif.l"
+#line 471 "parser/bif.l"
 
 
 

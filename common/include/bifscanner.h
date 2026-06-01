@@ -60,6 +60,7 @@ namespace BIF
             void comment();
             void cleanup_include_stacks();
             std::string filename;
+            std::vector<std::string> includedFiles;
 
         private:
             // Scanning function created by Flex; make this private to force usage

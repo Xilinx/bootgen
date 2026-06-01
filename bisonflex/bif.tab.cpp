@@ -1,38 +1,39 @@
-// A Bison parser, made by GNU Bison 3.0.4.
+/* A Bison parser, made by GNU Bison 2.7.  */
 
-// Skeleton implementation for Bison LALR(1) parsers in C++
+/* Skeleton implementation for Bison LALR(1) parsers in C++
+   
+      Copyright (C) 2002-2012 Free Software Foundation, Inc.
+   
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+   
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+   
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-// Copyright (C) 2002-2015 Free Software Foundation, Inc.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-// As a special exception, you may create a larger work that contains
-// part or all of the Bison parser skeleton and distribute that work
-// under terms of your choice, so long as that work isn't itself a
-// parser generator using the skeleton or a modified version thereof
-// as a parser skeleton.  Alternatively, if you modify or redistribute
-// the parser skeleton itself, you may (at your option) remove this
-// special exception, which will cause the skeleton and the resulting
-// Bison output files to be licensed under the GNU General Public
-// License without this special exception.
-
-// This special exception was added by the Free Software Foundation in
-// version 2.2 of Bison.
+/* As a special exception, you may create a larger work that contains
+   part or all of the Bison parser skeleton and distribute that work
+   under terms of your choice, so long as that work isn't itself a
+   parser generator using the skeleton or a modified version thereof
+   as a parser skeleton.  Alternatively, if you modify or redistribute
+   the parser skeleton itself, you may (at your option) remove this
+   special exception, which will cause the skeleton and the resulting
+   Bison output files to be licensed under the GNU General Public
+   License without this special exception.
+   
+   This special exception was added by the Free Software Foundation in
+   version 2.2 of Bison.  */
 
 
-// First part of user declarations.
-#line 53 "parser/bif.y" // lalr1.cc:404
+/* First part of user declarations.  */
+/* Line 279 of lalr1.cc  */
+#line 53 "parser/bif.y"
 
 #include <stdio.h>
 #include "bootimage.h"
@@ -52,34 +53,40 @@ PartitionBifOptions* currentPartitionBifOptions ;
 ImageBifOptions* currentImageBifOptions;
 LmsKeyTypeParam lmsParams;
 
-#line 56 "bisonflex/bif.tab.cpp" // lalr1.cc:404
+/* Line 279 of lalr1.cc  */
+#line 58 "bisonflex/bif.tab.cpp"
 
-# ifndef YY_NULLPTR
-#  if defined __cplusplus && 201103L <= __cplusplus
-#   define YY_NULLPTR nullptr
-#  else
-#   define YY_NULLPTR 0
-#  endif
-# endif
 
 #include "bif.tab.hpp"
 
-// User implementation prologue.
+/* User implementation prologue.  */
 
-#line 70 "bisonflex/bif.tab.cpp" // lalr1.cc:412
-// Unqualified %code blocks.
-#line 47 "parser/bif.y" // lalr1.cc:413
+/* Line 285 of lalr1.cc  */
+#line 66 "bisonflex/bif.tab.cpp"
+/* Unqualified %code blocks.  */
+/* Line 286 of lalr1.cc  */
+#line 47 "parser/bif.y"
 
     static int yylex(BIF::BisonParser::semantic_type * yylval, BIF::BisonParser::location_type* loc, BIF::FlexScanner &scanner);
     #include "options.h"
 
-#line 77 "bisonflex/bif.tab.cpp" // lalr1.cc:413
 
+/* Line 286 of lalr1.cc  */
+#line 76 "bisonflex/bif.tab.cpp"
+
+
+# ifndef YY_NULL
+#  if defined __cplusplus && 201103L <= __cplusplus
+#   define YY_NULL nullptr
+#  else
+#   define YY_NULL 0
+#  endif
+# endif
 
 #ifndef YY_
 # if defined YYENABLE_NLS && YYENABLE_NLS
 #  if ENABLE_NLS
-#   include <libintl.h> // FIXME: INFRINGES ON USER NAME SPACE.
+#   include <libintl.h> /* FIXME: INFRINGES ON USER NAME SPACE */
 #   define YY_(msgid) dgettext ("bison-runtime", msgid)
 #  endif
 # endif
@@ -88,7 +95,7 @@ LmsKeyTypeParam lmsParams;
 # endif
 #endif
 
-#define YYRHSLOC(Rhs, K) ((Rhs)[K].location)
+#define YYRHSLOC(Rhs, K) ((Rhs)[K])
 /* YYLLOC_DEFAULT -- Set CURRENT to span from RHS[1] to RHS[N].
    If N is 0, then set CURRENT to the empty location which ends
    the previous symbol: RHS[0] (always defined).  */
@@ -109,57 +116,59 @@ LmsKeyTypeParam lmsParams;
 # endif
 
 
-// Suppress unused-variable warnings by "using" E.
-#define YYUSE(E) ((void) (E))
+/* Suppress unused-variable warnings by "using" E.  */
+#define YYUSE(e) ((void) (e))
 
-// Enable debugging if requested.
+/* Enable debugging if requested.  */
 #if YYDEBUG
 
-// A pseudo ostream that takes yydebug_ into account.
+/* A pseudo ostream that takes yydebug_ into account.  */
 # define YYCDEBUG if (yydebug_) (*yycdebug_)
 
-# define YY_SYMBOL_PRINT(Title, Symbol)         \
-  do {                                          \
-    if (yydebug_)                               \
-    {                                           \
-      *yycdebug_ << Title << ' ';               \
-      yy_print_ (*yycdebug_, Symbol);           \
-      *yycdebug_ << std::endl;                  \
-    }                                           \
-  } while (false)
+# define YY_SYMBOL_PRINT(Title, Type, Value, Location)	\
+do {							\
+  if (yydebug_)						\
+    {							\
+      *yycdebug_ << Title << ' ';			\
+      yy_symbol_print_ ((Type), (Value), (Location));	\
+      *yycdebug_ << std::endl;				\
+    }							\
+} while (false)
 
-# define YY_REDUCE_PRINT(Rule)          \
-  do {                                  \
-    if (yydebug_)                       \
-      yy_reduce_print_ (Rule);          \
-  } while (false)
+# define YY_REDUCE_PRINT(Rule)		\
+do {					\
+  if (yydebug_)				\
+    yy_reduce_print_ (Rule);		\
+} while (false)
 
-# define YY_STACK_PRINT()               \
-  do {                                  \
-    if (yydebug_)                       \
-      yystack_print_ ();                \
-  } while (false)
+# define YY_STACK_PRINT()		\
+do {					\
+  if (yydebug_)				\
+    yystack_print_ ();			\
+} while (false)
 
-#else // !YYDEBUG
+#else /* !YYDEBUG */
 
 # define YYCDEBUG if (false) std::cerr
-# define YY_SYMBOL_PRINT(Title, Symbol)  YYUSE(Symbol)
-# define YY_REDUCE_PRINT(Rule)           static_cast<void>(0)
-# define YY_STACK_PRINT()                static_cast<void>(0)
+# define YY_SYMBOL_PRINT(Title, Type, Value, Location) YYUSE(Type)
+# define YY_REDUCE_PRINT(Rule)        static_cast<void>(0)
+# define YY_STACK_PRINT()             static_cast<void>(0)
 
-#endif // !YYDEBUG
+#endif /* !YYDEBUG */
 
-#define yyerrok         (yyerrstatus_ = 0)
-#define yyclearin       (yyla.clear ())
+#define yyerrok		(yyerrstatus_ = 0)
+#define yyclearin	(yychar = yyempty_)
 
-#define YYACCEPT        goto yyacceptlab
-#define YYABORT         goto yyabortlab
-#define YYERROR         goto yyerrorlab
+#define YYACCEPT	goto yyacceptlab
+#define YYABORT		goto yyabortlab
+#define YYERROR		goto yyerrorlab
 #define YYRECOVERING()  (!!yyerrstatus_)
 
-#line 24 "parser/bif.y" // lalr1.cc:479
+/* Line 353 of lalr1.cc  */
+#line 24 "parser/bif.y"
 namespace BIF {
-#line 163 "bisonflex/bif.tab.cpp" // lalr1.cc:479
+/* Line 353 of lalr1.cc  */
+#line 172 "bisonflex/bif.tab.cpp"
 
   /// Build a parser object.
   BisonParser::BisonParser (BIF::FlexScanner& scanner_yyarg, Options& options_yyarg)
@@ -170,291 +179,107 @@ namespace BIF {
 #endif
       scanner (scanner_yyarg),
       options (options_yyarg)
-  {}
+  {
+  }
 
   BisonParser::~BisonParser ()
-  {}
-
-
-  /*---------------.
-  | Symbol types.  |
-  `---------------*/
-
-  inline
-  BisonParser::syntax_error::syntax_error (const location_type& l, const std::string& m)
-    : std::runtime_error (m)
-    , location (l)
-  {}
-
-  // basic_symbol.
-  template <typename Base>
-  inline
-  BisonParser::basic_symbol<Base>::basic_symbol ()
-    : value ()
-  {}
-
-  template <typename Base>
-  inline
-  BisonParser::basic_symbol<Base>::basic_symbol (const basic_symbol& other)
-    : Base (other)
-    , value ()
-    , location (other.location)
   {
-    value = other.value;
-  }
-
-
-  template <typename Base>
-  inline
-  BisonParser::basic_symbol<Base>::basic_symbol (typename Base::kind_type t, const semantic_type& v, const location_type& l)
-    : Base (t)
-    , value (v)
-    , location (l)
-  {}
-
-
-  /// Constructor for valueless symbols.
-  template <typename Base>
-  inline
-  BisonParser::basic_symbol<Base>::basic_symbol (typename Base::kind_type t, const location_type& l)
-    : Base (t)
-    , value ()
-    , location (l)
-  {}
-
-  template <typename Base>
-  inline
-  BisonParser::basic_symbol<Base>::~basic_symbol ()
-  {
-    clear ();
-  }
-
-  template <typename Base>
-  inline
-  void
-  BisonParser::basic_symbol<Base>::clear ()
-  {
-    Base::clear ();
-  }
-
-  template <typename Base>
-  inline
-  bool
-  BisonParser::basic_symbol<Base>::empty () const
-  {
-    return Base::type_get () == empty_symbol;
-  }
-
-  template <typename Base>
-  inline
-  void
-  BisonParser::basic_symbol<Base>::move (basic_symbol& s)
-  {
-    super_type::move(s);
-    value = s.value;
-    location = s.location;
-  }
-
-  // by_type.
-  inline
-  BisonParser::by_type::by_type ()
-    : type (empty_symbol)
-  {}
-
-  inline
-  BisonParser::by_type::by_type (const by_type& other)
-    : type (other.type)
-  {}
-
-  inline
-  BisonParser::by_type::by_type (token_type t)
-    : type (yytranslate_ (t))
-  {}
-
-  inline
-  void
-  BisonParser::by_type::clear ()
-  {
-    type = empty_symbol;
-  }
-
-  inline
-  void
-  BisonParser::by_type::move (by_type& that)
-  {
-    type = that.type;
-    that.clear ();
-  }
-
-  inline
-  int
-  BisonParser::by_type::type_get () const
-  {
-    return type;
-  }
-
-
-  // by_state.
-  inline
-  BisonParser::by_state::by_state ()
-    : state (empty_state)
-  {}
-
-  inline
-  BisonParser::by_state::by_state (const by_state& other)
-    : state (other.state)
-  {}
-
-  inline
-  void
-  BisonParser::by_state::clear ()
-  {
-    state = empty_state;
-  }
-
-  inline
-  void
-  BisonParser::by_state::move (by_state& that)
-  {
-    state = that.state;
-    that.clear ();
-  }
-
-  inline
-  BisonParser::by_state::by_state (state_type s)
-    : state (s)
-  {}
-
-  inline
-  BisonParser::symbol_number_type
-  BisonParser::by_state::type_get () const
-  {
-    if (state == empty_state)
-      return empty_symbol;
-    else
-      return yystos_[state];
-  }
-
-  inline
-  BisonParser::stack_symbol_type::stack_symbol_type ()
-  {}
-
-
-  inline
-  BisonParser::stack_symbol_type::stack_symbol_type (state_type s, symbol_type& that)
-    : super_type (s, that.location)
-  {
-    value = that.value;
-    // that is emptied.
-    that.type = empty_symbol;
-  }
-
-  inline
-  BisonParser::stack_symbol_type&
-  BisonParser::stack_symbol_type::operator= (const stack_symbol_type& that)
-  {
-    state = that.state;
-    value = that.value;
-    location = that.location;
-    return *this;
-  }
-
-
-  template <typename Base>
-  inline
-  void
-  BisonParser::yy_destroy_ (const char* yymsg, basic_symbol<Base>& yysym) const
-  {
-    if (yymsg)
-      YY_SYMBOL_PRINT (yymsg, yysym);
-
-    // User destructor.
-    switch (yysym.type_get ())
-    {
-            case 91: // WORD
-
-#line 109 "parser/bif.y" // lalr1.cc:614
-        { free((yysym.value.string)); }
-#line 379 "bisonflex/bif.tab.cpp" // lalr1.cc:614
-        break;
-
-      case 92: // HEXWORD
-
-#line 109 "parser/bif.y" // lalr1.cc:614
-        { free((yysym.value.string)); }
-#line 386 "bisonflex/bif.tab.cpp" // lalr1.cc:614
-        break;
-
-      case 93: // FILENAME
-
-#line 109 "parser/bif.y" // lalr1.cc:614
-        { free((yysym.value.string)); }
-#line 393 "bisonflex/bif.tab.cpp" // lalr1.cc:614
-        break;
-
-      case 94: // QFILENAME
-
-#line 109 "parser/bif.y" // lalr1.cc:614
-        { free((yysym.value.string)); }
-#line 400 "bisonflex/bif.tab.cpp" // lalr1.cc:614
-        break;
-
-      case 259: // filename
-
-#line 109 "parser/bif.y" // lalr1.cc:614
-        { free((yysym.value.string)); }
-#line 407 "bisonflex/bif.tab.cpp" // lalr1.cc:614
-        break;
-
-
-      default:
-        break;
-    }
   }
 
 #if YYDEBUG
-  template <typename Base>
-  void
-  BisonParser::yy_print_ (std::ostream& yyo,
-                                     const basic_symbol<Base>& yysym) const
+  /*--------------------------------.
+  | Print this symbol on YYOUTPUT.  |
+  `--------------------------------*/
+
+  inline void
+  BisonParser::yy_symbol_value_print_ (int yytype,
+			   const semantic_type* yyvaluep, const location_type* yylocationp)
   {
+    YYUSE (yylocationp);
+    YYUSE (yyvaluep);
+    std::ostream& yyo = debug_stream ();
     std::ostream& yyoutput = yyo;
     YYUSE (yyoutput);
-    symbol_number_type yytype = yysym.type_get ();
-    // Avoid a (spurious) G++ 4.8 warning about "array subscript is
-    // below array bounds".
-    if (yysym.empty ())
-      std::abort ();
-    yyo << (yytype < yyntokens_ ? "token" : "nterm")
-        << ' ' << yytname_[yytype] << " ("
-        << yysym.location << ": ";
-    YYUSE (yytype);
-    yyo << ')';
+    switch (yytype)
+      {
+         default:
+	  break;
+      }
+  }
+
+
+  void
+  BisonParser::yy_symbol_print_ (int yytype,
+			   const semantic_type* yyvaluep, const location_type* yylocationp)
+  {
+    *yycdebug_ << (yytype < yyntokens_ ? "token" : "nterm")
+	       << ' ' << yytname_[yytype] << " ("
+	       << *yylocationp << ": ";
+    yy_symbol_value_print_ (yytype, yyvaluep, yylocationp);
+    *yycdebug_ << ')';
   }
 #endif
 
-  inline
   void
-  BisonParser::yypush_ (const char* m, state_type s, symbol_type& sym)
+  BisonParser::yydestruct_ (const char* yymsg,
+			   int yytype, semantic_type* yyvaluep, location_type* yylocationp)
   {
-    stack_symbol_type t (s, sym);
-    yypush_ (m, t);
+    YYUSE (yylocationp);
+    YYUSE (yymsg);
+    YYUSE (yyvaluep);
+
+    if (yymsg)
+      YY_SYMBOL_PRINT (yymsg, yytype, yyvaluep, yylocationp);
+
+    switch (yytype)
+      {
+        case 91: /* WORD */
+/* Line 455 of lalr1.cc  */
+#line 109 "parser/bif.y"
+        { free(((*yyvaluep).string)); };
+/* Line 455 of lalr1.cc  */
+#line 242 "bisonflex/bif.tab.cpp"
+        break;
+      case 92: /* HEXWORD */
+/* Line 455 of lalr1.cc  */
+#line 109 "parser/bif.y"
+        { free(((*yyvaluep).string)); };
+/* Line 455 of lalr1.cc  */
+#line 249 "bisonflex/bif.tab.cpp"
+        break;
+      case 93: /* FILENAME */
+/* Line 455 of lalr1.cc  */
+#line 109 "parser/bif.y"
+        { free(((*yyvaluep).string)); };
+/* Line 455 of lalr1.cc  */
+#line 256 "bisonflex/bif.tab.cpp"
+        break;
+      case 94: /* QFILENAME */
+/* Line 455 of lalr1.cc  */
+#line 109 "parser/bif.y"
+        { free(((*yyvaluep).string)); };
+/* Line 455 of lalr1.cc  */
+#line 263 "bisonflex/bif.tab.cpp"
+        break;
+      case 259: /* filename */
+/* Line 455 of lalr1.cc  */
+#line 109 "parser/bif.y"
+        { free(((*yyvaluep).string)); };
+/* Line 455 of lalr1.cc  */
+#line 270 "bisonflex/bif.tab.cpp"
+        break;
+
+	default:
+	  break;
+      }
   }
 
-  inline
-  void
-  BisonParser::yypush_ (const char* m, stack_symbol_type& s)
-  {
-    if (m)
-      YY_SYMBOL_PRINT (m, s);
-    yystack_.push (s);
-  }
-
-  inline
   void
   BisonParser::yypop_ (unsigned int n)
   {
-    yystack_.pop (n);
+    yystate_stack_.pop (n);
+    yysemantic_stack_.pop (n);
+    yylocation_stack_.pop (n);
   }
 
 #if YYDEBUG
@@ -482,17 +307,7 @@ namespace BIF {
   {
     yydebug_ = l;
   }
-#endif // YYDEBUG
-
-  inline BisonParser::state_type
-  BisonParser::yy_lr_goto_state_ (state_type yystate, int yysym)
-  {
-    int yyr = yypgoto_[yysym - yyntokens_] + yystate;
-    if (0 <= yyr && yyr <= yylast_ && yycheck_[yyr] == yystate)
-      return yytable_[yyr];
-    else
-      return yydefgoto_[yysym - yyntokens_];
-  }
+#endif
 
   inline bool
   BisonParser::yy_pact_value_is_default_ (int yyvalue)
@@ -509,22 +324,32 @@ namespace BIF {
   int
   BisonParser::parse ()
   {
+    /// Lookahead and lookahead in internal form.
+    int yychar = yyempty_;
+    int yytoken = 0;
+
     // State.
     int yyn;
-    /// Length of the RHS of the rule being reduced.
     int yylen = 0;
+    int yystate = 0;
 
     // Error handling.
     int yynerrs_ = 0;
     int yyerrstatus_ = 0;
 
-    /// The lookahead symbol.
-    symbol_type yyla;
-
+    /// Semantic value of the lookahead.
+    static semantic_type yyval_default;
+    semantic_type yylval = yyval_default;
+    /// Location of the lookahead.
+    location_type yylloc;
     /// The locations where the error started and ended.
-    stack_symbol_type yyerror_range[3];
+    location_type yyerror_range[3];
 
-    /// The return value of parse ().
+    /// $$.
+    semantic_type yyval;
+    /// @$.
+    location_type yyloc;
+
     int yyresult;
 
     // FIXME: This shoud be completely indented.  It is not yet to
@@ -534,85 +359,102 @@ namespace BIF {
     YYCDEBUG << "Starting parse" << std::endl;
 
 
-    // User initialization code.
-    #line 31 "parser/bif.y" // lalr1.cc:741
+/* User initialization code.  */
+/* Line 545 of lalr1.cc  */
+#line 31 "parser/bif.y"
 {
        // Initialize the initial location.
-       yyla.location.begin.filename = yyla.location.end.filename = &scanner.filename;
+       yylloc.begin.filename = yylloc.end.filename = &scanner.filename;
 }
+/* Line 545 of lalr1.cc  */
+#line 371 "bisonflex/bif.tab.cpp"
 
-#line 545 "bisonflex/bif.tab.cpp" // lalr1.cc:741
-
-    /* Initialize the stack.  The initial state will be set in
+    /* Initialize the stacks.  The initial state will be pushed in
        yynewstate, since the latter expects the semantical and the
        location values to have been already stored, initialize these
        stacks with a primary value.  */
-    yystack_.clear ();
-    yypush_ (YY_NULLPTR, 0, yyla);
+    yystate_stack_ = state_stack_type (0);
+    yysemantic_stack_ = semantic_stack_type (0);
+    yylocation_stack_ = location_stack_type (0);
+    yysemantic_stack_.push (yylval);
+    yylocation_stack_.push (yylloc);
 
-    // A new symbol was pushed on the stack.
+    /* New state.  */
   yynewstate:
-    YYCDEBUG << "Entering state " << yystack_[0].state << std::endl;
+    yystate_stack_.push (yystate);
+    YYCDEBUG << "Entering state " << yystate << std::endl;
 
-    // Accept?
-    if (yystack_[0].state == yyfinal_)
+    /* Accept?  */
+    if (yystate == yyfinal_)
       goto yyacceptlab;
 
     goto yybackup;
 
-    // Backup.
+    /* Backup.  */
   yybackup:
 
-    // Try to take a decision without lookahead.
-    yyn = yypact_[yystack_[0].state];
+    /* Try to take a decision without lookahead.  */
+    yyn = yypact_[yystate];
     if (yy_pact_value_is_default_ (yyn))
       goto yydefault;
 
-    // Read a lookahead token.
-    if (yyla.empty ())
+    /* Read a lookahead token.  */
+    if (yychar == yyempty_)
       {
         YYCDEBUG << "Reading a token: ";
-        try
-          {
-            yyla.type = yytranslate_ (yylex (&yyla.value, &yyla.location, scanner));
-          }
-        catch (const syntax_error& yyexc)
-          {
-            error (yyexc);
-            goto yyerrlab1;
-          }
+        yychar = yylex (&yylval, &yylloc, scanner);
       }
-    YY_SYMBOL_PRINT ("Next token is", yyla);
 
-    /* If the proper action on seeing token YYLA.TYPE is to reduce or
-       to detect an error, take that action.  */
-    yyn += yyla.type_get ();
-    if (yyn < 0 || yylast_ < yyn || yycheck_[yyn] != yyla.type_get ())
+    /* Convert token to internal form.  */
+    if (yychar <= yyeof_)
+      {
+	yychar = yytoken = yyeof_;
+	YYCDEBUG << "Now at end of input." << std::endl;
+      }
+    else
+      {
+	yytoken = yytranslate_ (yychar);
+	YY_SYMBOL_PRINT ("Next token is", yytoken, &yylval, &yylloc);
+      }
+
+    /* If the proper action on seeing token YYTOKEN is to reduce or to
+       detect an error, take that action.  */
+    yyn += yytoken;
+    if (yyn < 0 || yylast_ < yyn || yycheck_[yyn] != yytoken)
       goto yydefault;
 
-    // Reduce or error.
+    /* Reduce or error.  */
     yyn = yytable_[yyn];
     if (yyn <= 0)
       {
-        if (yy_table_value_is_error_ (yyn))
-          goto yyerrlab;
-        yyn = -yyn;
-        goto yyreduce;
+	if (yy_table_value_is_error_ (yyn))
+	  goto yyerrlab;
+	yyn = -yyn;
+	goto yyreduce;
       }
 
-    // Count tokens shifted since error; after three, turn off error status.
+    /* Shift the lookahead token.  */
+    YY_SYMBOL_PRINT ("Shifting", yytoken, &yylval, &yylloc);
+
+    /* Discard the token being shifted.  */
+    yychar = yyempty_;
+
+    yysemantic_stack_.push (yylval);
+    yylocation_stack_.push (yylloc);
+
+    /* Count tokens shifted since error; after three, turn off error
+       status.  */
     if (yyerrstatus_)
       --yyerrstatus_;
 
-    // Shift the lookahead token.
-    yypush_ ("Shifting", yyn, yyla);
+    yystate = yyn;
     goto yynewstate;
 
   /*-----------------------------------------------------------.
   | yydefault -- do the default action for the current state.  |
   `-----------------------------------------------------------*/
   yydefault:
-    yyn = yydefact_[yystack_[0].state];
+    yyn = yydefact_[yystate];
     if (yyn == 0)
       goto yyerrlab;
     goto yyreduce;
@@ -622,1205 +464,1224 @@ namespace BIF {
   `-----------------------------*/
   yyreduce:
     yylen = yyr2_[yyn];
+    /* If YYLEN is nonzero, implement the default value of the action:
+       `$$ = $1'.  Otherwise, use the top of the stack.
+
+       Otherwise, the following line sets YYVAL to garbage.
+       This behavior is undocumented and Bison
+       users should not rely upon it.  */
+    if (yylen)
+      yyval = yysemantic_stack_[yylen - 1];
+    else
+      yyval = yysemantic_stack_[0];
+
+    // Compute the default @$.
     {
-      stack_symbol_type yylhs;
-      yylhs.state = yy_lr_goto_state_(yystack_[yylen].state, yyr1_[yyn]);
-      /* If YYLEN is nonzero, implement the default value of the
-         action: '$$ = $1'.  Otherwise, use the top of the stack.
+      slice<location_type, location_stack_type> slice (yylocation_stack_, yylen);
+      YYLLOC_DEFAULT (yyloc, slice, yylen);
+    }
 
-         Otherwise, the following line sets YYLHS.VALUE to garbage.
-         This behavior is undocumented and Bison users should not rely
-         upon it.  */
-      if (yylen)
-        yylhs.value = yystack_[yylen - 1].value;
-      else
-        yylhs.value = yystack_[0].value;
-
-      // Compute the default @$.
+    // Perform the reduction.
+    YY_REDUCE_PRINT (yyn);
+    switch (yyn)
       {
-        slice<stack_symbol_type, stack_type> slice (yystack_, yylen);
-        YYLLOC_DEFAULT (yylhs.location, slice, yylen);
-      }
-
-      // Perform the reduction.
-      YY_REDUCE_PRINT (yyn);
-      try
-        {
-          switch (yyn)
-            {
-  case 5:
-#line 217 "parser/bif.y" // lalr1.cc:859
-    { options.includeBifOptionsList.push_back((yystack_[0].value.string)); }
-#line 655 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+          case 5:
+/* Line 670 of lalr1.cc  */
+#line 217 "parser/bif.y"
+    { options.includeBifOptionsList.push_back((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 6:
-#line 218 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions = new BifOptions(options.GetArchType(), options.IsVersalNetSeries(), options.IsDl9Series(), (yystack_[0].value.string)); }
-#line 661 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 218 "parser/bif.y"
+    { currentBifOptions = new BifOptions(options.GetArchType(), options.IsVersalNetSeries(), options.IsDl9Series(), (yysemantic_stack_[(1) - (1)].string)); }
     break;
 
   case 7:
-#line 220 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 220 "parser/bif.y"
     { options.bifOptions = currentBifOptions;
                                                                                   options.bifOptionsList.push_back(currentBifOptions); }
-#line 668 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 16:
-#line 234 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 234 "parser/bif.y"
     { currentPartitionBifOptions = new PartitionBifOptions();
                                                                                    currentPartitionBifOptions->SetArchType(options.GetArchType(), options.IsVersalNetSeries(), currentBifOptions->GetIdCode()); }
-#line 675 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 22:
-#line 245 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->SetMetaHeaderEncryptType((yystack_[0].value.encrvalue_t)); }
-#line 681 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 245 "parser/bif.y"
+    { currentBifOptions->SetMetaHeaderEncryptType((yysemantic_stack_[(3) - (3)].encrvalue_t)); }
     break;
 
   case 23:
-#line 246 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->SetMetaHeaderEncryptionKeySource((yystack_[0].value.encrkeysrc_t)); }
-#line 687 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 246 "parser/bif.y"
+    { currentBifOptions->SetMetaHeaderEncryptionKeySource((yysemantic_stack_[(3) - (3)].encrkeysrc_t)); }
     break;
 
   case 24:
-#line 247 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->SetMetaHeaderEncryptionKeyFile((yystack_[0].value.string)); }
-#line 693 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 247 "parser/bif.y"
+    { currentBifOptions->SetMetaHeaderEncryptionKeyFile((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 25:
-#line 248 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->SetMetaHeaderAuthType((yystack_[0].value.authvalue_t)); }
-#line 699 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 248 "parser/bif.y"
+    { currentBifOptions->SetMetaHeaderAuthType((yysemantic_stack_[(3) - (3)].authvalue_t)); }
     break;
 
   case 26:
-#line 249 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->metaHdrAttributes.ppk = (yystack_[0].value.string); }
-#line 705 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 249 "parser/bif.y"
+    { currentBifOptions->metaHdrAttributes.ppk = (yysemantic_stack_[(3) - (3)].string); }
     break;
 
   case 27:
-#line 250 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->metaHdrAttributes.psk = (yystack_[0].value.string); }
-#line 711 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 250 "parser/bif.y"
+    { currentBifOptions->metaHdrAttributes.psk = (yysemantic_stack_[(3) - (3)].string); }
     break;
 
   case 28:
-#line 251 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->metaHdrAttributes.spk = (yystack_[0].value.string); }
-#line 717 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 251 "parser/bif.y"
+    { currentBifOptions->metaHdrAttributes.spk = (yysemantic_stack_[(3) - (3)].string); }
     break;
 
   case 29:
-#line 252 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->metaHdrAttributes.ssk = (yystack_[0].value.string); }
-#line 723 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 252 "parser/bif.y"
+    { currentBifOptions->metaHdrAttributes.ssk = (yysemantic_stack_[(3) - (3)].string); }
     break;
 
   case 30:
-#line 253 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->metaHdrAttributes.spkSignature = (yystack_[0].value.string); }
-#line 729 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 253 "parser/bif.y"
+    { currentBifOptions->metaHdrAttributes.spkSignature = (yysemantic_stack_[(3) - (3)].string); }
     break;
 
   case 31:
-#line 254 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->metaHdrAttributes.presign = (yystack_[0].value.string); }
-#line 735 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 254 "parser/bif.y"
+    { currentBifOptions->metaHdrAttributes.presign = (yysemantic_stack_[(3) - (3)].string); }
     break;
 
   case 32:
-#line 255 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->metaHdrAttributes.partitionRevokeId = (yystack_[0].value.number);}
-#line 741 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 255 "parser/bif.y"
+    { currentBifOptions->metaHdrAttributes.partitionRevokeId = (yysemantic_stack_[(3) - (3)].number);}
     break;
 
   case 33:
-#line 256 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->metaHdrAttributes.spkRevokeId = (yystack_[0].value.number); 
+/* Line 670 of lalr1.cc  */
+#line 256 "parser/bif.y"
+    { currentBifOptions->metaHdrAttributes.spkRevokeId = (yysemantic_stack_[(3) - (3)].number); 
                                                                                 if(options.GetArchType() == Arch::VERSAL)
                                                                                 {
                                                                                    LOG_ERROR("SPK_REVOKE_ID does not support for versal arch, instead please use revoke_id option.");
                                                                                 }
                                                                                 }
-#line 752 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 34:
-#line 263 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->metaHdrAttributes.checksum = (yystack_[0].value.checksumvalue_t); }
-#line 758 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 263 "parser/bif.y"
+    { currentBifOptions->metaHdrAttributes.checksum = (yysemantic_stack_[(3) - (3)].checksumvalue_t); }
     break;
 
   case 35:
-#line 264 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 264 "parser/bif.y"
     { currentBifOptions->metaHdrAttributes.dpaCM = DpaCM::DpaCMEnable; }
-#line 764 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 37:
-#line 266 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 266 "parser/bif.y"
     { currentBifOptions->metaHdrAttributes.pufHdLoc = PufHdLoc::PUFinBH; 
                                                                                   currentBifOptions->SetPufHdinBHFlag();}
-#line 771 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 40:
-#line 274 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->metaHdrAttributes.ihtOptionalDataInfo.push_back(std::pair<std::string, uint32_t>((yystack_[4].value.string), (yystack_[0].value.number))); }
-#line 777 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 274 "parser/bif.y"
+    { currentBifOptions->metaHdrAttributes.ihtOptionalDataInfo.push_back(std::pair<std::string, uint32_t>((yysemantic_stack_[(5) - (1)].string), (yysemantic_stack_[(5) - (5)].number))); }
     break;
 
   case 44:
-#line 281 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetEncryptionBlocks((yystack_[0].value.number)); 
+/* Line 670 of lalr1.cc  */
+#line 281 "parser/bif.y"
+    { currentPartitionBifOptions->SetEncryptionBlocks((yysemantic_stack_[(1) - (1)].number)); 
                                                                                   currentBifOptions->metaHdrAttributes.encrBlocks = currentPartitionBifOptions->GetEncryptionBlocks(); }
-#line 784 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 45:
-#line 283 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetEncryptionBlocks((yystack_[3].value.number), (yystack_[1].value.number)); 
+/* Line 670 of lalr1.cc  */
+#line 283 "parser/bif.y"
+    { currentPartitionBifOptions->SetEncryptionBlocks((yysemantic_stack_[(4) - (1)].number), (yysemantic_stack_[(4) - (3)].number)); 
                                                                                   currentBifOptions->metaHdrAttributes.encrBlocks = currentPartitionBifOptions->GetEncryptionBlocks(); }
-#line 791 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 46:
-#line 285 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetEncryptionBlocks((yystack_[3].value.number), 0); 
-                                                                                  currentBifOptions->metaHdrAttributes.defEncrBlockSize = (yystack_[3].value.number); }
-#line 798 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 285 "parser/bif.y"
+    { currentPartitionBifOptions->SetEncryptionBlocks((yysemantic_stack_[(4) - (1)].number), 0); 
+                                                                                  currentBifOptions->metaHdrAttributes.defEncrBlockSize = (yysemantic_stack_[(4) - (1)].number); }
     break;
 
   case 47:
-#line 289 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->SetPdiId((yystack_[0].value.number)); }
-#line 804 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 289 "parser/bif.y"
+    { currentBifOptions->SetPdiId((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 48:
-#line 290 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->SetParentId((yystack_[0].value.number)); }
-#line 810 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 290 "parser/bif.y"
+    { currentBifOptions->SetParentId((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 49:
-#line 291 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->SetIdCode((yystack_[0].value.number)); 
-                                                                                  options.SetDl9Series((yystack_[0].value.number)); }
-#line 817 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 291 "parser/bif.y"
+    { currentBifOptions->SetIdCode((yysemantic_stack_[(3) - (3)].number)); 
+                                                                                  options.SetDl9Series((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 50:
-#line 293 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->SetExtendedIdCode((yystack_[0].value.number)); }
-#line 823 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 293 "parser/bif.y"
+    { currentBifOptions->SetExtendedIdCode((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 51:
-#line 294 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->AddFiles((yystack_[2].value.number), (yystack_[0].value.string)); }
-#line 829 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 294 "parser/bif.y"
+    { currentBifOptions->AddFiles((yysemantic_stack_[(3) - (1)].number), (yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 52:
-#line 295 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->SetEncryptionKeySource((yystack_[0].value.encrkeysrc_t)); }
-#line 835 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 295 "parser/bif.y"
+    { currentBifOptions->SetEncryptionKeySource((yysemantic_stack_[(3) - (3)].encrkeysrc_t)); }
     break;
 
   case 53:
-#line 296 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->SetPdiType((yystack_[0].value.ptype_t)); }
-#line 841 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 296 "parser/bif.y"
+    { currentBifOptions->SetPdiType((yysemantic_stack_[(3) - (3)].ptype_t)); }
     break;
 
   case 54:
-#line 297 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->SetRevokeId((yystack_[0].value.number));}
-#line 847 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 297 "parser/bif.y"
+    { currentBifOptions->SetRevokeId((yysemantic_stack_[(3) - (3)].number));}
     break;
 
   case 57:
-#line 304 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 304 "parser/bif.y"
     { currentImageBifOptions = new ImageBifOptions(); }
-#line 853 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 58:
-#line 305 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 305 "parser/bif.y"
     { currentBifOptions->imageBifOptionList.push_back(currentImageBifOptions);
                                                                                   if((options.archType == Arch::SPARTANUP) && (currentBifOptions->imageBifOptionList.size() > 1))
                                                                                   {
                                                                                       LOG_ERROR("'-arch spartanup' cannot accomodate more than one Sub-System.");
                                                                                   }
                                                                                 }
-#line 864 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 66:
-#line 324 "parser/bif.y" // lalr1.cc:859
-    { currentImageBifOptions->SetImageId((yystack_[0].value.number)); }
-#line 870 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 324 "parser/bif.y"
+    { currentImageBifOptions->SetImageId((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 67:
-#line 325 "parser/bif.y" // lalr1.cc:859
-    { currentImageBifOptions->SetImageName((yystack_[0].value.string)); }
-#line 876 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 325 "parser/bif.y"
+    { currentImageBifOptions->SetImageName((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 68:
-#line 326 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 326 "parser/bif.y"
     { currentImageBifOptions->SetDelayHandoff(true); }
-#line 882 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 69:
-#line 327 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 327 "parser/bif.y"
     { currentImageBifOptions->SetDelayLoad(true); }
-#line 888 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 70:
-#line 328 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 328 "parser/bif.y"
     { LOG_ERROR("BIF attribute error !!!\n\t This usage of 'init' is not supported. See 'bootgen -bif_help init' for usage details."); }
-#line 894 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 71:
-#line 329 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 329 "parser/bif.y"
     { LOG_ERROR("Copy to Memory feature with the attribute 'copy' is no more supported.\n\t   This can be duplicated with the option 'imagestore'. Please refer UG1283 for more details.");
-                                                                                  currentImageBifOptions->SetMemCopyAddress((yystack_[0].value.number)); }
-#line 901 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+                                                                                  currentImageBifOptions->SetMemCopyAddress((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 72:
-#line 331 "parser/bif.y" // lalr1.cc:859
-    { currentImageBifOptions->SetImageType((yystack_[0].value.ptype_t)); }
-#line 907 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 331 "parser/bif.y"
+    { currentImageBifOptions->SetImageType((yysemantic_stack_[(3) - (3)].ptype_t)); }
     break;
 
   case 73:
-#line 332 "parser/bif.y" // lalr1.cc:859
-    { if ((yystack_[0].value.number) == 0xFFFFFFFF)
+/* Line 670 of lalr1.cc  */
+#line 332 "parser/bif.y"
+    { if ((yysemantic_stack_[(3) - (3)].number) == 0xFFFFFFFF)
                                                                                   {
                                                                                     LOG_WARNING("uid value 0xFFFFFFFF is reserved and not allowed, it will be treated as unset");
                                                                                   }
-                                                                                  currentImageBifOptions->SetUniqueId((yystack_[0].value.number)); }
-#line 917 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+                                                                                  currentImageBifOptions->SetUniqueId((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 74:
-#line 337 "parser/bif.y" // lalr1.cc:859
-    { if ((yystack_[0].value.number) == 0xFFFFFFFF)
+/* Line 670 of lalr1.cc  */
+#line 337 "parser/bif.y"
+    { if ((yysemantic_stack_[(3) - (3)].number) == 0xFFFFFFFF)
                                                                                   {
                                                                                     LOG_WARNING("parent_uid value 0xFFFFFFFF is reserved and not allowed, it will be treated as unset");
                                                                                   }
-                                                                                  currentImageBifOptions->SetParentUniqueId((yystack_[0].value.number)); }
-#line 927 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+                                                                                  currentImageBifOptions->SetParentUniqueId((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 75:
-#line 342 "parser/bif.y" // lalr1.cc:859
-    { if ((yystack_[0].value.number) == 0xFFFFFFFF)
+/* Line 670 of lalr1.cc  */
+#line 342 "parser/bif.y"
+    { if ((yysemantic_stack_[(3) - (3)].number) == 0xFFFFFFFF)
                                                                                   {
                                                                                     LOG_WARNING("function_id value 0xFFFFFFFF is reserved and not allowed, it will be treated as unset");
                                                                                   }
-                                                                                  currentImageBifOptions->SetFunctionId((yystack_[0].value.number)); }
-#line 937 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+                                                                                  currentImageBifOptions->SetFunctionId((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 76:
-#line 347 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 347 "parser/bif.y"
     { if (options.GetArchType() == Arch::ZYNQ || options.GetArchType() == Arch::ZYNQMP)
                                                                                   {
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t  'pcr' is not supported for the specified architecture");
                                                                                   }
                                                                                   else if(options.GetArchType() == Arch::VERSAL && !options.IsVersalNetSeries())
                                                                                   {
-                                                                                    currentImageBifOptions->SetPcrNumber((yystack_[0].value.number), false);
+                                                                                    currentImageBifOptions->SetPcrNumber((yysemantic_stack_[(3) - (3)].number), false);
                                                                                   }
                                                                                   else if(options.GetArchType() == Arch::VERSAL && options.IsVersalNetSeries())
                                                                                   {
-                                                                                    currentImageBifOptions->SetPcrNumber((yystack_[0].value.number), true);
+                                                                                    currentImageBifOptions->SetPcrNumber((yysemantic_stack_[(3) - (3)].number), true);
                                                                                   }
                                                                                   else if(options.GetArchType() == Arch::VERSALGEN2)
                                                                                   {
-                                                                                    currentImageBifOptions->SetPcrNumber((yystack_[0].value.number), options.IsVersalNetSeries());
+                                                                                    currentImageBifOptions->SetPcrNumber((yysemantic_stack_[(3) - (3)].number), options.IsVersalNetSeries());
                                                                                   }
                                                                                 }
-#line 959 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 77:
-#line 364 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 364 "parser/bif.y"
     { if (options.GetArchType() == Arch::ZYNQ || options.GetArchType() == Arch::ZYNQMP)
                                                                                   {
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t  'pcr measurement index' is not supported for the specified architecture");
                                                                                   }
                                                                                   else if(options.GetArchType() == Arch::VERSAL || options.GetArchType() == Arch::VERSALGEN2)
                                                                                   {
-                                                                                    currentImageBifOptions->SetPcrMeasurementIndex((yystack_[0].value.number));
+                                                                                    currentImageBifOptions->SetPcrMeasurementIndex((yysemantic_stack_[(3) - (3)].number));
                                                                                   }
                                                                                 }
-#line 973 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 83:
-#line 384 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 384 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQ || options.GetArchType() != Arch::ZYNQMP)
                                                                                     LOG_WARNING("BIF attribute error !!! [keysrc_encryption] not supported for the specified architecture.\n\t   Refer 'bootgen -bif_help' for more details");
-                                                                                  currentBifOptions->SetEncryptionKeySource((yystack_[0].value.encrkeysrc_t)); options.SetEncryptedKeySource((yystack_[0].value.encrkeysrc_t)); }
-#line 981 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+                                                                                  currentBifOptions->SetEncryptionKeySource((yysemantic_stack_[(4) - (4)].encrkeysrc_t)); options.SetEncryptedKeySource((yysemantic_stack_[(4) - (4)].encrkeysrc_t)); }
     break;
 
   case 84:
-#line 387 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 387 "parser/bif.y"
     { if(options.GetArchType() == Arch::ZYNQ)
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t\t[fsbl_config] not supported in ZYNQ architecture"); }
-#line 988 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 88:
-#line 392 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 392 "parser/bif.y"
     { if(options.GetArchType() == Arch::ZYNQ)
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t\t[bootdevice] not supported in ZYNQ architecture"); 
                                                                                   if(options.GetArchType() != Arch::ZYNQMP)
                                                                                     LOG_ERROR("This usage of boot_device is no more supported.\n\t   Refer 'bootgen -bif_help' for more details"); 
-                                                                                  currentBifOptions->SetBootDevice((yystack_[0].value.bootdevice_t)); }
-#line 998 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+                                                                                  currentBifOptions->SetBootDevice((yysemantic_stack_[(4) - (4)].bootdevice_t)); }
     break;
 
   case 89:
-#line 397 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 397 "parser/bif.y"
     { LOG_ERROR("This usage of boot_device is no more supported.\n\t   Refer 'bootgen -bif_help' for more details"); }
-#line 1004 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 100:
-#line 412 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->SetBootDevice((yystack_[0].value.bootdevice_t)); }
-#line 1010 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 412 "parser/bif.y"
+    { currentBifOptions->SetBootDevice((yysemantic_stack_[(1) - (1)].bootdevice_t)); }
     break;
 
   case 101:
-#line 413 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 413 "parser/bif.y"
     { currentBifOptions->SetBootDevice(BootDevice::IMAGESTORE); }
-#line 1016 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 102:
-#line 414 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->SetBootDeviceAddress((yystack_[0].value.number)); }
-#line 1022 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 414 "parser/bif.y"
+    { currentBifOptions->SetBootDeviceAddress((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 109:
-#line 427 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->SetAuthJtagRevokeID((yystack_[0].value.number)); }
-#line 1028 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 427 "parser/bif.y"
+    { currentBifOptions->SetAuthJtagRevokeID((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 110:
-#line 428 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->SetAuthJtagSPKRevokeID((yystack_[0].value.number)); }
-#line 1034 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 428 "parser/bif.y"
+    { currentBifOptions->SetAuthJtagSPKRevokeID((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 111:
-#line 429 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->SetAuthJtagDeviceDna((yystack_[0].value.string)); }
-#line 1040 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 429 "parser/bif.y"
+    { currentBifOptions->SetAuthJtagDeviceDna((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 112:
-#line 430 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->SetAuthJtagTimeOut((yystack_[0].value.number)); }
-#line 1046 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 430 "parser/bif.y"
+    { currentBifOptions->SetAuthJtagTimeOut((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 113:
-#line 431 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->SetAuthJtagSignatureFile((yystack_[0].value.string)); }
-#line 1052 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 431 "parser/bif.y"
+    { currentBifOptions->SetAuthJtagSignatureFile((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 114:
-#line 434 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->SetCore((yystack_[0].value.core_t));
+/* Line 670 of lalr1.cc  */
+#line 434 "parser/bif.y"
+    { currentBifOptions->SetCore((yysemantic_stack_[(1) - (1)].core_t));
                                                                                   LOG_WARNING("[fsbl_config] a53_x64 | a53_x32 | r5_single | r5_dual is no more supported. Use 'destination_cpu' attribute for bootloader partition"); }
-#line 1059 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 115:
-#line 437 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->SetBhRsa((yystack_[0].value.bhrsa_t)); }
-#line 1065 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 437 "parser/bif.y"
+    { currentBifOptions->SetBhRsa((yysemantic_stack_[(1) - (1)].bhrsa_t)); }
     break;
 
   case 116:
-#line 439 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 439 "parser/bif.y"
     { LOG_ERROR("Authentication using SHA2 is no more supported."); }
-#line 1071 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 117:
-#line 441 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 441 "parser/bif.y"
     { LOG_ERROR("[fsbl_config] bi_integrity_sha3 is no more supported. Use 'checksum' attribute of bootloader partition"); }
-#line 1077 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 118:
-#line 443 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->SetPufHdLoc((yystack_[0].value.pufhdloc_t)); }
-#line 1083 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 443 "parser/bif.y"
+    { currentBifOptions->SetPufHdLoc((yysemantic_stack_[(1) - (1)].pufhdloc_t)); }
     break;
 
   case 119:
-#line 445 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->SetAuthOnly((yystack_[0].value.authonly_t)); }
-#line 1089 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 445 "parser/bif.y"
+    { currentBifOptions->SetAuthOnly((yysemantic_stack_[(1) - (1)].authonly_t)); }
     break;
 
   case 120:
-#line 447 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->SetOptKey((yystack_[0].value.optkey_t)); }
-#line 1095 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 447 "parser/bif.y"
+    { currentBifOptions->SetOptKey((yysemantic_stack_[(1) - (1)].optkey_t)); }
     break;
 
   case 121:
-#line 449 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 449 "parser/bif.y"
     { currentBifOptions->SetPufMode(PufMode::PUF4K); }
-#line 1101 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 122:
-#line 451 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->SetShutterValue((yystack_[0].value.number)); }
-#line 1107 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 451 "parser/bif.y"
+    { currentBifOptions->SetShutterValue((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 123:
-#line 453 "parser/bif.y" // lalr1.cc:859
-    {  currentBifOptions->SetDpaCM((yystack_[0].value.dpacm_t));}
-#line 1113 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 453 "parser/bif.y"
+    {  currentBifOptions->SetDpaCM((yysemantic_stack_[(1) - (1)].dpacm_t));}
     break;
 
   case 124:
-#line 455 "parser/bif.y" // lalr1.cc:859
-    { if(((yystack_[0].value.number) != 8) && ((yystack_[0].value.number) !=16) && ((yystack_[0].value.number) != 32) && ((yystack_[0].value.number) != 0))
+/* Line 670 of lalr1.cc  */
+#line 455 "parser/bif.y"
+    { if(((yysemantic_stack_[(3) - (3)].number) != 8) && ((yysemantic_stack_[(3) - (3)].number) !=16) && ((yysemantic_stack_[(3) - (3)].number) != 32) && ((yysemantic_stack_[(3) - (3)].number) != 0))
                                                                                         LOG_ERROR("Invalid smap_width value in BIF. Valid values are 8, 16 and 32");
-                                                                                  currentBifOptions->SetSmapWidth((yystack_[0].value.number));
+                                                                                  currentBifOptions->SetSmapWidth((yysemantic_stack_[(3) - (3)].number));
                                                                                 }
-#line 1122 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 125:
-#line 459 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 459 "parser/bif.y"
     { currentBifOptions->SetBypassIdcodeFlag(true); }
-#line 1128 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 126:
-#line 460 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 460 "parser/bif.y"
     { currentBifOptions->SetAHwRoTFlag(true); }
-#line 1134 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 127:
-#line 461 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 461 "parser/bif.y"
     { currentBifOptions->SetSHwRoTFlag(true); }
-#line 1140 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 128:
-#line 462 "parser/bif.y" // lalr1.cc:859
-    { currentBifOptions->SetPufRingOscilltorSwapConfigValue((yystack_[0].value.number)); }
-#line 1146 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 462 "parser/bif.y"
+    { currentBifOptions->SetPufRingOscilltorSwapConfigValue((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 129:
-#line 463 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 463 "parser/bif.y"
     { currentBifOptions->SetDiceEnable(); }
-#line 1152 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 130:
-#line 466 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 466 "parser/bif.y"
     { currentPartitionBifOptions = new PartitionBifOptions();
                                                                                   currentPartitionBifOptions->SetArchType(options.GetArchType(),options.IsVersalNetSeries(),  currentBifOptions->GetIdCode()); }
-#line 1159 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 131:
-#line 469 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->filename = (yystack_[0].value.string);
-                                                                                  currentPartitionBifOptions->filelist.push_back((yystack_[0].value.string));
+/* Line 670 of lalr1.cc  */
+#line 469 "parser/bif.y"
+    { currentPartitionBifOptions->filename = (yysemantic_stack_[(5) - (5)].string);
+                                                                                  currentPartitionBifOptions->filelist.push_back((yysemantic_stack_[(5) - (5)].string));
                                                                                   currentBifOptions->Add(currentPartitionBifOptions, currentImageBifOptions);
                                                                                 }
-#line 1168 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 132:
-#line 473 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 473 "parser/bif.y"
     { currentPartitionBifOptions = new PartitionBifOptions();
                                                                                   currentPartitionBifOptions->SetArchType(options.GetArchType(), options.IsVersalNetSeries(),  currentBifOptions->GetIdCode());
-                                                                                  currentPartitionBifOptions->filename = (yystack_[0].value.string); 
-                                                                                  currentPartitionBifOptions->filelist.push_back((yystack_[0].value.string));
+                                                                                  currentPartitionBifOptions->filename = (yysemantic_stack_[(1) - (1)].string); 
+                                                                                  currentPartitionBifOptions->filelist.push_back((yysemantic_stack_[(1) - (1)].string));
                                                                                   currentBifOptions->Add(currentPartitionBifOptions, currentImageBifOptions);
                                                                                 }
-#line 1179 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 133:
-#line 479 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 479 "parser/bif.y"
     { currentPartitionBifOptions = new PartitionBifOptions();
                                                                                   currentPartitionBifOptions->SetArchType(options.GetArchType(), options.IsVersalNetSeries(),  currentBifOptions->GetIdCode()); }
-#line 1186 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 141:
-#line 493 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->filename = (yystack_[0].value.string);
-                                                                                  currentPartitionBifOptions->filelist.push_back((yystack_[0].value.string));
+/* Line 670 of lalr1.cc  */
+#line 493 "parser/bif.y"
+    { currentPartitionBifOptions->filename = (yysemantic_stack_[(3) - (3)].string);
+                                                                                  currentPartitionBifOptions->filelist.push_back((yysemantic_stack_[(3) - (3)].string));
                                                                                   currentBifOptions->Add(currentPartitionBifOptions, currentImageBifOptions); }
-#line 1194 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 142:
-#line 496 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->partitionId = (yystack_[0].value.number); }
-#line 1200 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 496 "parser/bif.y"
+    { currentPartitionBifOptions->partitionId = (yysemantic_stack_[(3) - (3)].number); }
     break;
 
   case 143:
-#line 497 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->imageStoreId = (yystack_[0].value.number);
+/* Line 670 of lalr1.cc  */
+#line 497 "parser/bif.y"
+    { currentPartitionBifOptions->imageStoreId = (yysemantic_stack_[(3) - (3)].number);
                                                                                   currentPartitionBifOptions->SetPartitionType(PartitionType::IMAGE_STORE_PDI); }
-#line 1207 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 145:
-#line 500 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->fileType = (yystack_[0].value.number); }
-#line 1213 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 500 "parser/bif.y"
+    { currentPartitionBifOptions->fileType = (yysemantic_stack_[(3) - (3)].number); }
     break;
 
   case 146:
-#line 501 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->bifSection = (yystack_[0].value.string);
-                                                                                  currentPartitionBifOptions->filename = currentPartitionBifOptions->GetOutputFileFromBifSection(options.GetOutputFileNames().front(), (yystack_[0].value.string), currentImageBifOptions->GetImageType());
+/* Line 670 of lalr1.cc  */
+#line 501 "parser/bif.y"
+    { currentPartitionBifOptions->bifSection = (yysemantic_stack_[(3) - (3)].string);
+                                                                                  currentPartitionBifOptions->filename = currentPartitionBifOptions->GetOutputFileFromBifSection(options.GetOutputFileNames().front(), (yysemantic_stack_[(3) - (3)].string), currentImageBifOptions->GetImageType());
                                                                                   currentPartitionBifOptions->filelist.push_back(currentPartitionBifOptions->filename);
                                                                                   currentBifOptions->Add(currentPartitionBifOptions, currentImageBifOptions); }
-#line 1222 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 160:
-#line 530 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 530 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP) 
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t\t[bootvectors] is supported only for ZYNQMP architecture");
-                                                                                  currentBifOptions->SetBootVectorArray((yystack_[0].value.number)); }
-#line 1230 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+                                                                                  currentBifOptions->SetBootVectorArray((yysemantic_stack_[(1) - (1)].number)); }
     break;
 
   case 161:
-#line 535 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetAuthBlockAttr((yystack_[0].value.number)); }
-#line 1236 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 535 "parser/bif.y"
+    { currentPartitionBifOptions->SetAuthBlockAttr((yysemantic_stack_[(1) - (1)].number)); }
     break;
 
   case 162:
-#line 537 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 537 "parser/bif.y"
     { currentPartitionBifOptions->bootloader = true;}
-#line 1242 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 163:
-#line 538 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 538 "parser/bif.y"
     { currentPartitionBifOptions->boot = true;}
-#line 1248 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 164:
-#line 539 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 539 "parser/bif.y"
     { currentPartitionBifOptions->user = true;}
-#line 1254 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 165:
-#line 540 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 540 "parser/bif.y"
     { currentPartitionBifOptions->Static = true;}
-#line 1260 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 166:
-#line 541 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 541 "parser/bif.y"
     { currentPartitionBifOptions->noautostart = true;}
-#line 1266 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 167:
-#line 542 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 542 "parser/bif.y"
     { currentPartitionBifOptions->multiboot = true;}
-#line 1272 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 168:
-#line 543 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 543 "parser/bif.y"
     { currentPartitionBifOptions->Protected = true;}
-#line 1278 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 169:
-#line 544 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 544 "parser/bif.y"
     { currentPartitionBifOptions->SetEarlyHandoff(true); }
-#line 1284 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 170:
-#line 545 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 545 "parser/bif.y"
     { currentPartitionBifOptions->SetHivec(true); }
-#line 1290 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 171:
-#line 546 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 546 "parser/bif.y"
     { if(currentPartitionBifOptions->bootloader!=true)
                                                                                         LOG_ERROR("XIP mode can be enabled only for bootloader"); 
                                                                                   currentBifOptions->SetXipMode(); }
-#line 1298 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 172:
-#line 549 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->fileType = (yystack_[0].value.number); }
-#line 1304 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 549 "parser/bif.y"
+    { currentPartitionBifOptions->fileType = (yysemantic_stack_[(1) - (1)].number); }
     break;
 
   case 173:
-#line 550 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 550 "parser/bif.y"
     { currentPartitionBifOptions->bootImage = true; }
-#line 1310 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 174:
-#line 551 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->fileType = (yystack_[0].value.number); }
-#line 1316 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 551 "parser/bif.y"
+    { currentPartitionBifOptions->fileType = (yysemantic_stack_[(1) - (1)].number); }
     break;
 
   case 175:
-#line 552 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->fileType = (yystack_[0].value.number); }
-#line 1322 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 552 "parser/bif.y"
+    { currentPartitionBifOptions->fileType = (yysemantic_stack_[(1) - (1)].number); }
     break;
 
   case 176:
-#line 553 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetPartitionType((yystack_[0].value.ptype_t)); }
-#line 1328 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 553 "parser/bif.y"
+    { currentPartitionBifOptions->SetPartitionType((yysemantic_stack_[(1) - (1)].ptype_t)); }
     break;
 
   case 177:
-#line 554 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 554 "parser/bif.y"
     { currentPartitionBifOptions->SetLockStepFlag();}
-#line 1334 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 178:
-#line 557 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 557 "parser/bif.y"
     { currentPartitionBifOptions->SetTrustZone(::TrustZone::Secure); }
-#line 1340 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 179:
-#line 558 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetTrustZone((yystack_[0].value.trustzone_t)); }
-#line 1346 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 558 "parser/bif.y"
+    { currentPartitionBifOptions->SetTrustZone((yysemantic_stack_[(3) - (3)].trustzone_t)); }
     break;
 
   case 180:
-#line 561 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetEncryptionBlocks((yystack_[0].value.number)); }
-#line 1352 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 561 "parser/bif.y"
+    { currentPartitionBifOptions->SetEncryptionBlocks((yysemantic_stack_[(1) - (1)].number)); }
     break;
 
   case 181:
-#line 562 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetEncryptionBlocks((yystack_[3].value.number), (yystack_[1].value.number)); }
-#line 1358 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 562 "parser/bif.y"
+    { currentPartitionBifOptions->SetEncryptionBlocks((yysemantic_stack_[(4) - (1)].number), (yysemantic_stack_[(4) - (3)].number)); }
     break;
 
   case 182:
-#line 563 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetEncryptionBlocks((yystack_[3].value.number), 0); }
-#line 1364 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 563 "parser/bif.y"
+    { currentPartitionBifOptions->SetEncryptionBlocks((yysemantic_stack_[(4) - (1)].number), 0); }
     break;
 
   case 183:
-#line 565 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetAuthType((yystack_[0].value.authvalue_t)); }
-#line 1370 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 565 "parser/bif.y"
+    { currentPartitionBifOptions->SetAuthType((yysemantic_stack_[(3) - (3)].authvalue_t)); }
     break;
 
   case 184:
-#line 566 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetEncryptType((yystack_[0].value.encrvalue_t)); }
-#line 1376 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 566 "parser/bif.y"
+    { currentPartitionBifOptions->SetEncryptType((yysemantic_stack_[(3) - (3)].encrvalue_t)); }
     break;
 
   case 185:
-#line 567 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetChecksumType((yystack_[0].value.checksumvalue_t)); }
-#line 1382 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 567 "parser/bif.y"
+    { currentPartitionBifOptions->SetChecksumType((yysemantic_stack_[(3) - (3)].checksumvalue_t)); }
     break;
 
   case 186:
-#line 568 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetOwnerType((yystack_[0].value.powner_t)); }
-#line 1388 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 568 "parser/bif.y"
+    { currentPartitionBifOptions->SetOwnerType((yysemantic_stack_[(3) - (3)].powner_t)); }
     break;
 
   case 187:
-#line 569 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetDestCpu((yystack_[0].value.destcpu_t)); }
-#line 1394 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 569 "parser/bif.y"
+    { currentPartitionBifOptions->SetDestCpu((yysemantic_stack_[(3) - (3)].destcpu_t)); }
     break;
 
   case 188:
-#line 570 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetDestDevice((yystack_[0].value.destdevice_t));  }
-#line 1400 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 570 "parser/bif.y"
+    { currentPartitionBifOptions->SetDestDevice((yysemantic_stack_[(3) - (3)].destdevice_t));  }
     break;
 
   case 189:
-#line 571 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetExceptionLevel((yystack_[0].value.el_t)); }
-#line 1406 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 571 "parser/bif.y"
+    { currentPartitionBifOptions->SetExceptionLevel((yysemantic_stack_[(3) - (3)].el_t)); }
     break;
 
   case 190:
-#line 572 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetAesKeyFile((yystack_[0].value.string)); }
-#line 1412 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 572 "parser/bif.y"
+    { currentPartitionBifOptions->SetAesKeyFile((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 191:
-#line 573 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->ppkFile = ((yystack_[0].value.string)); }
-#line 1418 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 573 "parser/bif.y"
+    { currentPartitionBifOptions->ppkFile = ((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 192:
-#line 574 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->pskFile = ((yystack_[0].value.string)); }
-#line 1424 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 574 "parser/bif.y"
+    { currentPartitionBifOptions->pskFile = ((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 193:
-#line 575 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->spkFile = ((yystack_[0].value.string)); }
-#line 1430 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 575 "parser/bif.y"
+    { currentPartitionBifOptions->spkFile = ((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 194:
-#line 576 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->sskFile = ((yystack_[0].value.string)); }
-#line 1436 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 576 "parser/bif.y"
+    { currentPartitionBifOptions->sskFile = ((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 195:
-#line 577 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->spkSelect =((yystack_[0].value.spkselect_t)); currentPartitionBifOptions->spkSelLocal = true; }
-#line 1442 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 577 "parser/bif.y"
+    { currentPartitionBifOptions->spkSelect =((yysemantic_stack_[(3) - (3)].spkselect_t)); currentPartitionBifOptions->spkSelLocal = true; }
     break;
 
   case 196:
-#line 578 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetSpkId((yystack_[0].value.number)); }
-#line 1448 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 578 "parser/bif.y"
+    { currentPartitionBifOptions->SetSpkId((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 197:
-#line 579 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->spkSignatureFile = ((yystack_[0].value.string)); }
-#line 1454 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 579 "parser/bif.y"
+    { currentPartitionBifOptions->spkSignatureFile = ((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 199:
-#line 581 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetPartitionType((yystack_[0].value.ptype_t)); }
-#line 1460 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 581 "parser/bif.y"
+    { currentPartitionBifOptions->SetPartitionType((yysemantic_stack_[(3) - (3)].ptype_t)); }
     break;
 
   case 200:
-#line 582 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetEncryptionKeySource((yystack_[0].value.encrkeysrc_t)); }
-#line 1466 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 582 "parser/bif.y"
+    { currentPartitionBifOptions->SetEncryptionKeySource((yysemantic_stack_[(3) - (3)].encrkeysrc_t)); }
     break;
 
   case 201:
-#line 583 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetPartitionRevokeId((yystack_[0].value.number)); }
-#line 1472 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 583 "parser/bif.y"
+    { currentPartitionBifOptions->SetPartitionRevokeId((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 202:
-#line 584 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetSPKRevokeId((yystack_[0].value.number)); }
-#line 1478 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 584 "parser/bif.y"
+    { currentPartitionBifOptions->SetSPKRevokeId((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 203:
-#line 585 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 585 "parser/bif.y"
     { currentPartitionBifOptions->SetDpaCM(DpaCM::DpaCMEnable); }
-#line 1484 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 204:
-#line 586 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetSlrNum((yystack_[0].value.number)); }
-#line 1490 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 586 "parser/bif.y"
+    { currentPartitionBifOptions->SetSlrNum((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 205:
-#line 587 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetClusterNum((yystack_[0].value.number)); }
-#line 1496 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 587 "parser/bif.y"
+    { currentPartitionBifOptions->SetClusterNum((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 206:
-#line 588 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 588 "parser/bif.y"
     { currentPartitionBifOptions->SetPufHdLocation(PufHdLoc::PUFinBH); }
-#line 1502 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 207:
-#line 589 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 589 "parser/bif.y"
     { currentPartitionBifOptions->SetDelayAuth(true); }
-#line 1508 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 208:
-#line 590 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 590 "parser/bif.y"
     { currentPartitionBifOptions->SetTcmBootFlag(); }
-#line 1514 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 218:
-#line 604 "parser/bif.y" // lalr1.cc:859
-    { (yylhs.value.authvalue_t) = ::Authentication::None;}
-#line 1520 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 604 "parser/bif.y"
+    { (yyval.authvalue_t) = ::Authentication::None;}
     break;
 
   case 220:
-#line 608 "parser/bif.y" // lalr1.cc:859
-    { (yylhs.value.encrvalue_t) = ::Encryption::None;}
-#line 1526 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 608 "parser/bif.y"
+    { (yyval.encrvalue_t) = ::Encryption::None;}
     break;
 
   case 222:
-#line 612 "parser/bif.y" // lalr1.cc:859
-    { (yylhs.value.checksumvalue_t) = ::Checksum::None;}
-#line 1532 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 612 "parser/bif.y"
+    { (yyval.checksumvalue_t) = ::Checksum::None;}
     break;
 
   case 239:
-#line 661 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->alignment = (yystack_[0].value.number); }
-#line 1538 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 661 "parser/bif.y"
+    { currentPartitionBifOptions->alignment = (yysemantic_stack_[(3) - (3)].number); }
     break;
 
   case 240:
-#line 662 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->offset = (yystack_[0].value.number); }
-#line 1544 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 662 "parser/bif.y"
+    { currentPartitionBifOptions->offset = (yysemantic_stack_[(3) - (3)].number); }
     break;
 
   case 241:
-#line 663 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetReserveLength((yystack_[0].value.number), false); }
-#line 1550 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 663 "parser/bif.y"
+    { currentPartitionBifOptions->SetReserveLength((yysemantic_stack_[(3) - (3)].number), false); }
     break;
 
   case 242:
-#line 664 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetReserveLength((yystack_[0].value.number), true); }
-#line 1556 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 664 "parser/bif.y"
+    { currentPartitionBifOptions->SetReserveLength((yysemantic_stack_[(3) - (3)].number), true); }
     break;
 
   case 243:
-#line 665 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->load = (yystack_[0].value.number); }
-#line 1562 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 665 "parser/bif.y"
+    { currentPartitionBifOptions->load = (yysemantic_stack_[(3) - (3)].number); }
     break;
 
   case 244:
-#line 666 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->startup = (yystack_[0].value.number); }
-#line 1568 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 666 "parser/bif.y"
+    { currentPartitionBifOptions->startup = (yysemantic_stack_[(3) - (3)].number); }
     break;
 
   case 245:
-#line 667 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 667 "parser/bif.y"
     { currentPartitionBifOptions->bigEndian = true; }
-#line 1574 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 246:
-#line 668 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 668 "parser/bif.y"
     { currentPartitionBifOptions->a32Mode = true; }
-#line 1580 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 247:
-#line 669 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->pid = (yystack_[0].value.number); }
-#line 1586 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 669 "parser/bif.y"
+    { currentPartitionBifOptions->pid = (yysemantic_stack_[(3) - (3)].number); }
     break;
 
   case 248:
-#line 670 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetTcmARegion((yystack_[0].value.number)); }
-#line 1592 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 670 "parser/bif.y"
+    { currentPartitionBifOptions->SetTcmARegion((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 249:
-#line 671 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetTcmBRegion((yystack_[0].value.number)); }
-#line 1598 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 671 "parser/bif.y"
+    { currentPartitionBifOptions->SetTcmBRegion((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 250:
-#line 672 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetTcmCRegion((yystack_[0].value.number)); }
-#line 1604 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 672 "parser/bif.y"
+    { currentPartitionBifOptions->SetTcmCRegion((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 251:
-#line 675 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->presignFile = (yystack_[0].value.string); }
-#line 1610 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 675 "parser/bif.y"
+    { currentPartitionBifOptions->presignFile = (yysemantic_stack_[(3) - (3)].string); }
     break;
 
   case 252:
-#line 676 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->acFile = (yystack_[0].value.string); }
-#line 1616 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 676 "parser/bif.y"
+    { currentPartitionBifOptions->acFile = (yysemantic_stack_[(3) - (3)].string); }
     break;
 
   case 253:
-#line 677 "parser/bif.y" // lalr1.cc:859
-    { currentPartitionBifOptions->SetUdfDataFile((yystack_[0].value.string)); }
-#line 1622 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 677 "parser/bif.y"
+    { currentPartitionBifOptions->SetUdfDataFile((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 270:
-#line 702 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 702 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP) 
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t\t[auth_params] is supported only in ZYNQMP architecture");
-                                                                                  currentBifOptions->SetPPKSelection((yystack_[0].value.number)); }
-#line 1630 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+                                                                                  currentBifOptions->SetPPKSelection((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 271:
-#line 705 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 705 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP) 
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t\t[auth_params] is supported only in ZYNQMP architecture");
-                                                                                  currentBifOptions->SetSPKSelection((yystack_[0].value.spkselect_t)); }
-#line 1638 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+                                                                                  currentBifOptions->SetSPKSelection((yysemantic_stack_[(3) - (3)].spkselect_t)); }
     break;
 
   case 272:
-#line 708 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 708 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP) 
                                                                                     LOG_WARNING("BIF attribute error !!!\n\t\t[auth_params] is supported only in ZYNQMP architecture");
-                                                                                  currentBifOptions->SetSpkId((yystack_[0].value.number));  }
-#line 1646 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+                                                                                  currentBifOptions->SetSpkId((yysemantic_stack_[(3) - (3)].number));  }
     break;
 
   case 273:
-#line 711 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 711 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP) 
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t\t[auth_params] is supported only in ZYNQMP architecture");
                                                                                   currentBifOptions->SetHeaderAuthentication(); }
-#line 1654 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 282:
-#line 732 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 732 "parser/bif.y"
     { if(options.GetArchType() == Arch::ZYNQ || options.GetArchType() == Arch::ZYNQMP || options.GetArchType() == Arch::VERSAL)
                                                                    LOG_ERROR("BIF attribute error !!!\n\t\t'lms_key_params' is not supported with the mentioned -arch");
-                                                                 lmsParams.lms_param = (yystack_[0].value.string);
+                                                                 lmsParams.lms_param = (yysemantic_stack_[(1) - (1)].string);
                                                                  currentBifOptions->SetLmsParameters(lmsParams) ;
                                                                }
-#line 1664 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 284:
-#line 739 "parser/bif.y" // lalr1.cc:859
-    { lmsParams.type = (yystack_[1].value.authkeylevel_t);}
-#line 1670 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 739 "parser/bif.y"
+    { lmsParams.type = (yysemantic_stack_[(2) - (1)].authkeylevel_t);}
     break;
 
   case 287:
-#line 743 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 743 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP)
                                                                                       LOG_ERROR("BIF attribute error !!!\n\t\t[split] not supported with the mentioned -arch");
-                                                                                  currentBifOptions->SetSplitMode((yystack_[0].value.splitmode_t)); }
-#line 1678 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+                                                                                  currentBifOptions->SetSplitMode((yysemantic_stack_[(3) - (3)].splitmode_t)); }
     break;
 
   case 291:
-#line 753 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 753 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP)
                                                                                       LOG_ERROR("BIF attribute error !!!\n\t\t[split] not supported with the mentioned -arch");
                                                                                   currentBifOptions->SetSplitFmt(File::MCS); }
-#line 1686 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 292:
-#line 756 "parser/bif.y" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 756 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP)
                                                                                       LOG_ERROR("BIF attribute error !!!\n\t\t[split] not supported with the mentioned -arch");
                                                                                   currentBifOptions->SetSplitFmt(File::BIN); }
-#line 1694 "bisonflex/bif.tab.cpp" // lalr1.cc:859
     break;
 
   case 297:
-#line 768 "parser/bif.y" // lalr1.cc:859
-    { (yylhs.value.number) = (yystack_[1].value.number); }
-#line 1700 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 768 "parser/bif.y"
+    { (yyval.number) = (yysemantic_stack_[(3) - (2)].number); }
     break;
 
   case 299:
-#line 775 "parser/bif.y" // lalr1.cc:859
-    {(yylhs.value.number) =  (yystack_[0].value.number);     *options.debugstr << (yylhs.value.number) << "    + " << (yystack_[0].value.number) << std::endl;}
-#line 1706 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 775 "parser/bif.y"
+    {(yyval.number) =  (yysemantic_stack_[(2) - (2)].number);     *options.debugstr << (yyval.number) << "    + " << (yysemantic_stack_[(2) - (2)].number) << std::endl;}
     break;
 
   case 300:
-#line 776 "parser/bif.y" // lalr1.cc:859
-    {(yylhs.value.number) = ~(yystack_[0].value.number);     *options.debugstr << (yylhs.value.number) << "    ~ " << (yystack_[0].value.number) << std::endl;}
-#line 1712 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 776 "parser/bif.y"
+    {(yyval.number) = ~(yysemantic_stack_[(2) - (2)].number);     *options.debugstr << (yyval.number) << "    ~ " << (yysemantic_stack_[(2) - (2)].number) << std::endl;}
     break;
 
   case 302:
-#line 781 "parser/bif.y" // lalr1.cc:859
-    {(yylhs.value.number) = (yystack_[2].value.number) *  (yystack_[0].value.number); *options.debugstr << (yylhs.value.number) << " = " << (yystack_[2].value.number)  << " + " << (yystack_[0].value.number) << std::endl;}
-#line 1718 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 781 "parser/bif.y"
+    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) *  (yysemantic_stack_[(3) - (3)].number); *options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " + " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 303:
-#line 782 "parser/bif.y" // lalr1.cc:859
-    {(yylhs.value.number) = (yystack_[2].value.number) /  (yystack_[0].value.number); *options.debugstr << (yylhs.value.number) << " = " << (yystack_[2].value.number)  << " / " << (yystack_[0].value.number) << std::endl;}
-#line 1724 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 782 "parser/bif.y"
+    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) /  (yysemantic_stack_[(3) - (3)].number); *options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " / " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 304:
-#line 783 "parser/bif.y" // lalr1.cc:859
-    {(yylhs.value.number) = (yystack_[2].value.number) %  (yystack_[0].value.number); *options.debugstr << (yylhs.value.number) << " = " << (yystack_[2].value.number)  << " % " << (yystack_[0].value.number) << std::endl;}
-#line 1730 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 783 "parser/bif.y"
+    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) %  (yysemantic_stack_[(3) - (3)].number); *options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " % " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 306:
-#line 787 "parser/bif.y" // lalr1.cc:859
-    {(yylhs.value.number) = (yystack_[2].value.number) +  (yystack_[0].value.number);*options.debugstr << (yylhs.value.number) << " = " << (yystack_[2].value.number)  << " + " << (yystack_[0].value.number) << std::endl;}
-#line 1736 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 787 "parser/bif.y"
+    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) +  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " + " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 307:
-#line 788 "parser/bif.y" // lalr1.cc:859
-    {(yylhs.value.number) = (yystack_[2].value.number) -  (yystack_[0].value.number);*options.debugstr << (yylhs.value.number) << " = " << (yystack_[2].value.number)  << " - " << (yystack_[0].value.number) << std::endl;}
-#line 1742 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 788 "parser/bif.y"
+    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) -  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " - " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 309:
-#line 792 "parser/bif.y" // lalr1.cc:859
-    {(yylhs.value.number) = (yystack_[2].value.number) << (yystack_[0].value.number);*options.debugstr << (yylhs.value.number) << " = " << (yystack_[2].value.number)  << " << " << (yystack_[0].value.number) << std::endl;}
-#line 1748 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 792 "parser/bif.y"
+    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) << (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " << " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 310:
-#line 793 "parser/bif.y" // lalr1.cc:859
-    {(yylhs.value.number) = (yystack_[2].value.number) >> (yystack_[0].value.number);*options.debugstr << (yylhs.value.number) << " = " << (yystack_[2].value.number)  << " >> " << (yystack_[0].value.number) << std::endl;}
-#line 1754 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 793 "parser/bif.y"
+    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) >> (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " >> " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 312:
-#line 797 "parser/bif.y" // lalr1.cc:859
-    {(yylhs.value.number) = (yystack_[2].value.number) &  (yystack_[0].value.number);*options.debugstr << (yylhs.value.number) << " = " << (yystack_[2].value.number)  << " & " << (yystack_[0].value.number) << std::endl;}
-#line 1760 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 797 "parser/bif.y"
+    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) &  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " & " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 314:
-#line 801 "parser/bif.y" // lalr1.cc:859
-    {(yylhs.value.number) = (yystack_[2].value.number) ^  (yystack_[0].value.number);*options.debugstr << (yylhs.value.number) << " = " << (yystack_[2].value.number)  << " ^ " << (yystack_[0].value.number) << std::endl;}
-#line 1766 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 801 "parser/bif.y"
+    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) ^  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " ^ " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
   case 316:
-#line 806 "parser/bif.y" // lalr1.cc:859
-    {(yylhs.value.number) = (yystack_[2].value.number) |  (yystack_[0].value.number);*options.debugstr << (yylhs.value.number) << " = " << (yystack_[2].value.number)  << " | " << (yystack_[0].value.number) << std::endl;}
-#line 1772 "bisonflex/bif.tab.cpp" // lalr1.cc:859
+/* Line 670 of lalr1.cc  */
+#line 806 "parser/bif.y"
+    {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) |  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " | " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
 
-#line 1776 "bisonflex/bif.tab.cpp" // lalr1.cc:859
-            default:
-              break;
-            }
-        }
-      catch (const syntax_error& yyexc)
-        {
-          error (yyexc);
-          YYERROR;
-        }
-      YY_SYMBOL_PRINT ("-> $$ =", yylhs);
-      yypop_ (yylen);
-      yylen = 0;
-      YY_STACK_PRINT ();
-
-      // Shift the result of the reduction.
-      yypush_ (YY_NULLPTR, yylhs);
-    }
-    goto yynewstate;
-
-  /*--------------------------------------.
-  | yyerrlab -- here on detecting error.  |
-  `--------------------------------------*/
-  yyerrlab:
-    // If not already recovering from an error, report this error.
-    if (!yyerrstatus_)
-      {
-        ++yynerrs_;
-        error (yyla.location, yysyntax_error_ (yystack_[0].state, yyla));
+/* Line 670 of lalr1.cc  */
+#line 1614 "bisonflex/bif.tab.cpp"
+      default:
+        break;
       }
 
+    /* User semantic actions sometimes alter yychar, and that requires
+       that yytoken be updated with the new translation.  We take the
+       approach of translating immediately before every use of yytoken.
+       One alternative is translating here after every semantic action,
+       but that translation would be missed if the semantic action
+       invokes YYABORT, YYACCEPT, or YYERROR immediately after altering
+       yychar.  In the case of YYABORT or YYACCEPT, an incorrect
+       destructor might then be invoked immediately.  In the case of
+       YYERROR, subsequent parser actions might lead to an incorrect
+       destructor call or verbose syntax error message before the
+       lookahead is translated.  */
+    YY_SYMBOL_PRINT ("-> $$ =", yyr1_[yyn], &yyval, &yyloc);
 
-    yyerror_range[1].location = yyla.location;
+    yypop_ (yylen);
+    yylen = 0;
+    YY_STACK_PRINT ();
+
+    yysemantic_stack_.push (yyval);
+    yylocation_stack_.push (yyloc);
+
+    /* Shift the result of the reduction.  */
+    yyn = yyr1_[yyn];
+    yystate = yypgoto_[yyn - yyntokens_] + yystate_stack_[0];
+    if (0 <= yystate && yystate <= yylast_
+	&& yycheck_[yystate] == yystate_stack_[0])
+      yystate = yytable_[yystate];
+    else
+      yystate = yydefgoto_[yyn - yyntokens_];
+    goto yynewstate;
+
+  /*------------------------------------.
+  | yyerrlab -- here on detecting error |
+  `------------------------------------*/
+  yyerrlab:
+    /* Make sure we have latest lookahead translation.  See comments at
+       user semantic actions for why this is necessary.  */
+    yytoken = yytranslate_ (yychar);
+
+    /* If not already recovering from an error, report this error.  */
+    if (!yyerrstatus_)
+      {
+	++yynerrs_;
+	if (yychar == yyempty_)
+	  yytoken = yyempty_;
+	error (yylloc, yysyntax_error_ (yystate, yytoken));
+      }
+
+    yyerror_range[1] = yylloc;
     if (yyerrstatus_ == 3)
       {
         /* If just tried and failed to reuse lookahead token after an
            error, discard it.  */
-
-        // Return failure if at end of input.
-        if (yyla.type_get () == yyeof_)
-          YYABORT;
-        else if (!yyla.empty ())
+        if (yychar <= yyeof_)
           {
-            yy_destroy_ ("Error: discarding", yyla);
-            yyla.clear ();
+            /* Return failure if at end of input.  */
+            if (yychar == yyeof_)
+              YYABORT;
+          }
+        else
+          {
+            yydestruct_ ("Error: discarding", yytoken, &yylval, &yylloc);
+            yychar = yyempty_;
           }
       }
 
-    // Else will try to reuse lookahead token after shifting the error token.
+    /* Else will try to reuse lookahead token after shifting the error
+       token.  */
     goto yyerrlab1;
 
 
@@ -1834,118 +1695,138 @@ namespace BIF {
        code.  */
     if (false)
       goto yyerrorlab;
-    yyerror_range[1].location = yystack_[yylen - 1].location;
-    /* Do not reclaim the symbols of the rule whose action triggered
+
+    yyerror_range[1] = yylocation_stack_[yylen - 1];
+    /* Do not reclaim the symbols of the rule which action triggered
        this YYERROR.  */
     yypop_ (yylen);
     yylen = 0;
+    yystate = yystate_stack_[0];
     goto yyerrlab1;
 
   /*-------------------------------------------------------------.
   | yyerrlab1 -- common code for both syntax error and YYERROR.  |
   `-------------------------------------------------------------*/
   yyerrlab1:
-    yyerrstatus_ = 3;   // Each real token shifted decrements this.
-    {
-      stack_symbol_type error_token;
-      for (;;)
-        {
-          yyn = yypact_[yystack_[0].state];
-          if (!yy_pact_value_is_default_ (yyn))
-            {
-              yyn += yyterror_;
-              if (0 <= yyn && yyn <= yylast_ && yycheck_[yyn] == yyterror_)
-                {
-                  yyn = yytable_[yyn];
-                  if (0 < yyn)
-                    break;
-                }
-            }
+    yyerrstatus_ = 3;	/* Each real token shifted decrements this.  */
 
-          // Pop the current state because it cannot handle the error token.
-          if (yystack_.size () == 1)
-            YYABORT;
+    for (;;)
+      {
+	yyn = yypact_[yystate];
+	if (!yy_pact_value_is_default_ (yyn))
+	{
+	  yyn += yyterror_;
+	  if (0 <= yyn && yyn <= yylast_ && yycheck_[yyn] == yyterror_)
+	    {
+	      yyn = yytable_[yyn];
+	      if (0 < yyn)
+		break;
+	    }
+	}
 
-          yyerror_range[1].location = yystack_[0].location;
-          yy_destroy_ ("Error: popping", yystack_[0]);
-          yypop_ ();
-          YY_STACK_PRINT ();
-        }
+	/* Pop the current state because it cannot handle the error token.  */
+	if (yystate_stack_.height () == 1)
+	  YYABORT;
 
-      yyerror_range[2].location = yyla.location;
-      YYLLOC_DEFAULT (error_token.location, yyerror_range, 2);
+	yyerror_range[1] = yylocation_stack_[0];
+	yydestruct_ ("Error: popping",
+		     yystos_[yystate],
+		     &yysemantic_stack_[0], &yylocation_stack_[0]);
+	yypop_ ();
+	yystate = yystate_stack_[0];
+	YY_STACK_PRINT ();
+      }
 
-      // Shift the error token.
-      error_token.state = yyn;
-      yypush_ ("Shifting", error_token);
-    }
+    yyerror_range[2] = yylloc;
+    // Using YYLLOC is tempting, but would change the location of
+    // the lookahead.  YYLOC is available though.
+    YYLLOC_DEFAULT (yyloc, yyerror_range, 2);
+    yysemantic_stack_.push (yylval);
+    yylocation_stack_.push (yyloc);
+
+    /* Shift the error token.  */
+    YY_SYMBOL_PRINT ("Shifting", yystos_[yyn],
+		     &yysemantic_stack_[0], &yylocation_stack_[0]);
+
+    yystate = yyn;
     goto yynewstate;
 
-    // Accept.
+    /* Accept.  */
   yyacceptlab:
     yyresult = 0;
     goto yyreturn;
 
-    // Abort.
+    /* Abort.  */
   yyabortlab:
     yyresult = 1;
     goto yyreturn;
 
   yyreturn:
-    if (!yyla.empty ())
-      yy_destroy_ ("Cleanup: discarding lookahead", yyla);
+    if (yychar != yyempty_)
+      {
+        /* Make sure we have latest lookahead translation.  See comments
+           at user semantic actions for why this is necessary.  */
+        yytoken = yytranslate_ (yychar);
+        yydestruct_ ("Cleanup: discarding lookahead", yytoken, &yylval,
+                     &yylloc);
+      }
 
-    /* Do not reclaim the symbols of the rule whose action triggered
+    /* Do not reclaim the symbols of the rule which action triggered
        this YYABORT or YYACCEPT.  */
     yypop_ (yylen);
-    while (1 < yystack_.size ())
+    while (1 < yystate_stack_.height ())
       {
-        yy_destroy_ ("Cleanup: popping", yystack_[0]);
+        yydestruct_ ("Cleanup: popping",
+                     yystos_[yystate_stack_[0]],
+                     &yysemantic_stack_[0],
+                     &yylocation_stack_[0]);
         yypop_ ();
       }
 
     return yyresult;
-  }
+    }
     catch (...)
       {
         YYCDEBUG << "Exception caught: cleaning lookahead and stack"
                  << std::endl;
         // Do not try to display the values of the reclaimed symbols,
         // as their printer might throw an exception.
-        if (!yyla.empty ())
-          yy_destroy_ (YY_NULLPTR, yyla);
-
-        while (1 < yystack_.size ())
+        if (yychar != yyempty_)
           {
-            yy_destroy_ (YY_NULLPTR, yystack_[0]);
+            /* Make sure we have latest lookahead translation.  See
+               comments at user semantic actions for why this is
+               necessary.  */
+            yytoken = yytranslate_ (yychar);
+            yydestruct_ (YY_NULL, yytoken, &yylval, &yylloc);
+          }
+
+        while (1 < yystate_stack_.height ())
+          {
+            yydestruct_ (YY_NULL,
+                         yystos_[yystate_stack_[0]],
+                         &yysemantic_stack_[0],
+                         &yylocation_stack_[0]);
             yypop_ ();
           }
         throw;
       }
   }
 
-  void
-  BisonParser::error (const syntax_error& yyexc)
-  {
-    error (yyexc.location, yyexc.what());
-  }
-
   // Generate an error message.
   std::string
-  BisonParser::yysyntax_error_ (state_type, const symbol_type&) const
+  BisonParser::yysyntax_error_ (int, int)
   {
     return YY_("syntax error");
   }
 
 
+  /* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
+     STATE-NUM.  */
   const short int BisonParser::yypact_ninf_ = -463;
-
-  const signed char BisonParser::yytable_ninf_ = -1;
-
   const short int
   BisonParser::yypact_[] =
   {
-    -463,    19,    12,  -463,    14,  -463,  -463,    18,    47,  -463,
+      -463,    19,    12,  -463,    14,  -463,  -463,    18,    47,  -463,
     -463,  -463,    79,  -463,   890,  -463,  -463,   246,    78,   101,
       99,   103,   117,   144,   112,   149,  -463,   118,   157,   159,
      160,   167,   206,  -463,  -463,  -463,  -463,  -463,  -463,  -463,
@@ -2006,10 +1887,13 @@ namespace BIF {
      423,   -79,  -463,  -463
   };
 
+  /* YYDEFACT[S] -- default reduction number in state S.  Performed when
+     YYTABLE doesn't specify something else to do.  Zero means the
+     default is an error.  */
   const unsigned short int
   BisonParser::yydefact_[] =
   {
-       3,     0,     2,     1,     0,     6,     4,     0,     0,   293,
+         3,     0,     2,     1,     0,     6,     4,     0,     0,   293,
      294,     5,     0,     8,     0,   133,     7,   130,     0,     0,
        0,     0,     0,     0,     0,     0,    80,     0,     0,     0,
        0,     0,     0,   260,   259,   212,   211,   213,   214,   215,
@@ -2070,10 +1954,11 @@ namespace BIF {
        0,     0,    46,    45
   };
 
+  /* YYPGOTO[NTERM-NUM].  */
   const short int
   BisonParser::yypgoto_[] =
   {
-    -463,  -463,  -463,  -463,  -463,  -463,  -463,  -463,  -346,  -463,
+      -463,  -463,  -463,  -463,  -463,  -463,  -463,  -463,  -346,  -463,
      258,  -463,    25,  -463,  -463,  -463,   538,  -463,  -463,  -462,
     -463,   264,   574,  -463,  -463,   281,  -463,  -193,  -191,  -463,
     -463,   -10,  -463,   588,  -463,  -148,  -463,   287,   -64,  -463,
@@ -2085,10 +1970,11 @@ namespace BIF {
      313,   -76
   };
 
+  /* YYDEFGOTO[NTERM-NUM].  */
   const short int
   BisonParser::yydefgoto_[] =
   {
-      -1,     1,     2,     6,     8,    14,    52,   209,   354,   355,
+        -1,     1,     2,     6,     8,    14,    52,   209,   354,   355,
      206,   207,   547,   548,    53,    54,    55,   204,   334,   477,
      478,    56,    57,    58,   174,   184,   185,   228,   243,   244,
      229,    91,    72,    92,    65,   159,   160,   178,   161,   162,
@@ -2100,10 +1986,14 @@ namespace BIF {
      199,   304
   };
 
+  /* YYTABLE[YYPACT[STATE-NUM]].  What to do in state STATE-NUM.  If
+     positive, shift that token.  If negative, reduce the rule which
+     number is the opposite.  If YYTABLE_NINF_, syntax error.  */
+  const signed char BisonParser::yytable_ninf_ = -1;
   const unsigned short int
   BisonParser::yytable_[] =
   {
-     200,   201,   202,   203,    59,   205,   305,   378,   179,   499,
+       200,   201,   202,   203,    59,   205,   305,   378,   179,   499,
      180,    15,   298,   300,   187,   297,   540,   516,    90,     3,
       11,     7,    94,    95,    96,    97,    98,    99,   100,   101,
      102,   103,   104,   386,   105,   106,   361,   107,   108,   109,
@@ -2214,10 +2104,11 @@ namespace BIF {
        0,   227
   };
 
+  /* YYCHECK.  */
   const short int
   BisonParser::yycheck_[] =
   {
-      76,    77,    78,    79,    14,    81,   173,     4,    72,   355,
+        76,    77,    78,    79,    14,    81,   173,     4,    72,   355,
       73,     3,   160,   161,    75,     5,   478,   377,    10,     0,
        7,     7,    12,    13,    14,    15,    16,    17,    18,    19,
       20,    21,    22,    95,    24,    25,   229,    27,    28,    29,
@@ -2328,10 +2219,12 @@ namespace BIF {
       -1,   158
   };
 
+  /* STOS_[STATE-NUM] -- The (internal number of the) accessing
+     symbol of state STATE-NUM.  */
   const unsigned short int
   BisonParser::yystos_[] =
   {
-       0,   177,   178,     0,    81,    91,   179,     7,   180,    93,
+         0,   177,   178,     0,    81,    91,   179,     7,   180,    93,
       94,   259,     7,     3,   181,     3,     4,    10,    21,    23,
       41,    66,    67,    68,    75,    76,    83,    85,    86,    98,
       99,   101,   105,   116,   117,   118,   119,   120,   121,   122,
@@ -2392,10 +2285,38 @@ namespace BIF {
      175,   267,   174,   174
   };
 
+#if YYDEBUG
+  /* TOKEN_NUMBER_[YYLEX-NUM] -- Internal symbol number corresponding
+     to YYLEX-NUM.  */
+  const unsigned short int
+  BisonParser::yytoken_number_[] =
+  {
+         0,   256,   257,   258,   259,   260,   261,   262,   263,   264,
+     265,   266,   267,   268,   269,   270,   271,   272,   273,   274,
+     275,   276,   277,   278,   279,   280,   281,   282,   283,   284,
+     285,   286,   287,   288,   289,   290,   291,   292,   293,   294,
+     295,   296,   297,   298,   299,   300,   301,   302,   303,   304,
+     305,   306,   307,   308,   309,   310,   311,   312,   313,   314,
+     315,   316,   317,   318,   319,   320,   321,   322,   323,   324,
+     325,   326,   327,   328,   329,   330,   331,   332,   333,   334,
+     335,   336,   337,   338,   339,   340,   341,   342,   343,   344,
+     345,   346,   347,   348,   349,   350,   351,   352,   353,   354,
+     355,   356,   357,   358,   359,   360,   361,   362,   363,   364,
+     365,   366,   367,   368,   369,   370,   371,   372,   373,   374,
+     375,   376,   377,   378,   379,   380,   381,   382,   383,   384,
+     385,   386,   387,   388,   389,   390,   391,   392,   393,   394,
+     395,   396,   397,   398,   399,   400,   401,   402,   403,   404,
+     405,   406,   407,   408,   409,   410,   411,   412,   413,   414,
+     415,   416,   417,   418,   419,   420,   421,   422,   423,   424,
+     425,   426,   427,   428,   429,   430
+  };
+#endif
+
+  /* YYR1[YYN] -- Symbol number of symbol that rule YYN derives.  */
   const unsigned short int
   BisonParser::yyr1_[] =
   {
-       0,   176,   177,   178,   178,   179,   180,   179,   181,   181,
+         0,   176,   177,   178,   178,   179,   180,   179,   181,   181,
      181,   181,   181,   181,   181,   181,   183,   182,   184,   184,
      184,   185,   185,   185,   185,   185,   185,   185,   185,   185,
      185,   185,   185,   185,   185,   185,   185,   185,   186,   186,
@@ -2429,10 +2350,11 @@ namespace BIF {
      264,   265,   265,   266,   266,   267,   267
   };
 
+  /* YYR2[YYN] -- Number of symbols composing right hand side of rule YYN.  */
   const unsigned char
   BisonParser::yyr2_[] =
   {
-       0,     2,     1,     0,     2,     3,     0,     6,     0,     2,
+         0,     2,     1,     0,     2,     3,     0,     6,     0,     2,
        2,     2,     2,     2,     2,     2,     0,     5,     1,     3,
        2,     0,     3,     3,     3,     3,     3,     3,     3,     3,
        3,     3,     3,     3,     3,     1,     3,     1,     1,     3,
@@ -2466,14 +2388,13 @@ namespace BIF {
        3,     1,     3,     1,     3,     1,     3
   };
 
-
 #if YYDEBUG
-  // YYTNAME[SYMBOL-NUM] -- String name of the symbol SYMBOL-NUM.
-  // First, the terminals, then, starting at \a yyntokens_, nonterminals.
+  /* YYTNAME[SYMBOL-NUM] -- String name of the symbol SYMBOL-NUM.
+     First, the terminals, then, starting at \a yyntokens_, nonterminals.  */
   const char*
   const BisonParser::yytname_[] =
   {
-  "$end", "error", "$undefined", "OBRACE", "EBRACE", "COMMA", "EQUAL",
+    "$end", "error", "$undefined", "OBRACE", "EBRACE", "COMMA", "EQUAL",
   "COLON", "QUOTE", "SEMICOLON", "OBRACKET", "EBRACKET", "BOOTLOADER",
   "XIP_MODE", "EARLY_HANDOFF", "HIVEC", "LOCKSTEP", "AUTHENTICATION",
   "ENCRYPTION", "CHECKSUM", "PARTITION_OWNER", "PARTITION_TYPE",
@@ -2528,14 +2449,157 @@ namespace BIF {
   "lms_params_string_list", "lms_params_string_type_list", "$@7",
   "split_options", "splitmode", "splitfmt", "filename", "number",
   "unary_expression", "multiplicative_expression", "additive_expression",
-  "shift_expression", "and_expression", "xor_expression", "expression", YY_NULLPTR
+  "shift_expression", "and_expression", "xor_expression", "expression", YY_NULL
   };
 
 
+  /* YYRHS -- A `-1'-separated list of the rules' RHS.  */
+  const BisonParser::rhs_number_type
+  BisonParser::yyrhs_[] =
+  {
+       177,     0,    -1,   178,    -1,    -1,   178,   179,    -1,    81,
+       7,   259,    -1,    -1,    91,   180,     7,     3,   181,     4,
+      -1,    -1,   181,   207,    -1,   181,   199,    -1,   181,   191,
+      -1,   181,   182,    -1,   181,   190,    -1,   181,   209,    -1,
+     181,   197,    -1,    -1,    86,     3,   183,   184,     4,    -1,
+     185,    -1,   185,     5,   184,    -1,   185,   184,    -1,    -1,
+      18,     6,   226,    -1,    98,     6,   230,    -1,   130,     6,
+     259,    -1,    17,     6,   225,    -1,   132,     6,   259,    -1,
+     133,     6,   259,    -1,   134,     6,   259,    -1,   135,     6,
+     259,    -1,   136,     6,   259,    -1,    54,     6,   259,    -1,
+      41,     6,   267,    -1,    42,     6,   267,    -1,    19,     6,
+     227,    -1,   158,    -1,    51,     6,   188,    -1,   149,    -1,
+     187,    -1,   187,     9,   186,    -1,   259,     5,    76,     6,
+     267,    -1,    -1,   189,    -1,   189,     9,   188,    -1,   267,
+      -1,   267,   173,   267,   174,    -1,   267,   173,   175,   174,
+      -1,    76,     6,   267,    -1,    66,     6,   267,    -1,    67,
+       6,   267,    -1,    68,     6,   267,    -1,   224,     6,   259,
+      -1,    98,     6,   230,    -1,    21,     6,   229,    -1,    41,
+       6,   267,    -1,   192,    -1,   191,   192,    -1,    -1,    75,
+       3,   193,   194,     4,    -1,    -1,   194,   195,    -1,   194,
+     207,    -1,   194,   197,    -1,   196,    -1,   196,     5,   195,
+      -1,   196,   195,    -1,    76,     6,   267,    -1,    77,     6,
+      91,    -1,    78,    -1,    79,    -1,   128,    -1,    80,     6,
+     267,    -1,    21,     6,   229,    -1,    72,     6,   267,    -1,
+      73,     6,   267,    -1,    74,     6,   267,    -1,    63,     6,
+     267,    -1,    64,     6,   267,    -1,    83,   198,    -1,   198,
+      -1,    -1,   198,   207,    -1,   198,   209,    -1,    10,    98,
+      11,   230,    -1,    -1,    10,    99,   200,    11,   203,    -1,
+      99,     3,   203,     4,    -1,    23,     3,   201,     4,    -1,
+      10,    23,    11,   239,    -1,    23,     6,   239,    -1,    10,
+     100,    11,   248,    -1,    10,   114,    11,   256,    -1,    10,
+      53,    11,   217,    -1,   101,     3,   204,     4,    -1,    85,
+       3,   186,     4,    -1,   105,     3,   250,     4,    -1,   105,
+       3,   253,     4,    -1,   105,     3,   254,     4,    -1,   202,
+      -1,   202,     5,   201,    -1,   239,    -1,    65,    -1,    26,
+       6,   267,    -1,   206,    -1,   206,     5,   203,    -1,   206,
+     203,    -1,   205,    -1,   205,     5,   204,    -1,   205,   204,
+      -1,    41,     6,   267,    -1,    42,     6,   267,    -1,   102,
+       6,    92,    -1,   103,     6,   267,    -1,   104,     6,   259,
+      -1,   231,    -1,   232,    -1,   234,    -1,   235,    -1,   236,
+      -1,   238,    -1,   237,    -1,   111,    -1,   113,     6,   267,
+      -1,   233,    -1,   115,     6,   267,    -1,    69,    -1,    70,
+      -1,    71,    -1,   112,     6,   267,    -1,    62,    -1,    -1,
+      10,   208,   213,    11,   259,    -1,   259,    -1,    -1,     3,
+     210,   211,     4,    -1,   214,    -1,   212,    -1,   212,     5,
+     211,    -1,   214,     5,   211,    -1,   212,   211,    -1,   214,
+     211,    -1,    84,     6,   259,    -1,    76,     6,   267,    -1,
+      65,     6,   267,    -1,    21,     6,   220,    -1,    21,     6,
+     125,    -1,    56,     6,    91,    -1,   214,    -1,   214,     5,
+     213,    -1,   220,    -1,   223,    -1,   243,    -1,   244,    -1,
+     215,    -1,    51,     6,   216,    -1,    52,     6,   219,    -1,
+     222,    -1,   222,     9,   216,    -1,   218,    -1,   218,     5,
+     217,    -1,   267,    -1,   267,    -1,    12,    -1,    45,    -1,
+      46,    -1,    47,    -1,    48,    -1,    49,    -1,    50,    -1,
+      14,    -1,    15,    -1,    13,    -1,   128,    -1,   126,    -1,
+     245,    -1,   247,    -1,   229,    -1,    16,    -1,    28,    -1,
+      28,     6,   156,    -1,   267,    -1,   267,   173,   267,   174,
+      -1,   267,   173,   175,   174,    -1,    17,     6,   225,    -1,
+      18,     6,   226,    -1,    19,     6,   227,    -1,    20,     6,
+     228,    -1,    25,     6,   240,    -1,    24,     6,   241,    -1,
+      27,     6,   242,    -1,   130,     6,   259,    -1,   132,     6,
+     259,    -1,   133,     6,   259,    -1,   134,     6,   259,    -1,
+     135,     6,   259,    -1,    39,     6,   249,    -1,    38,     6,
+     267,    -1,   136,     6,   259,    -1,   221,    -1,    21,     6,
+     229,    -1,    98,     6,   230,    -1,    41,     6,   267,    -1,
+      42,     6,   267,    -1,   158,    -1,    60,     6,   267,    -1,
+      61,     6,   267,    -1,   149,    -1,    82,    -1,    87,    -1,
+     128,    -1,   245,    -1,   119,    -1,   118,    -1,   120,    -1,
+     121,    -1,   122,    -1,   123,    -1,   124,    -1,    95,    -1,
+     139,    -1,    95,    -1,   140,    -1,    95,    -1,   141,    -1,
+     142,    -1,   143,    -1,   144,    -1,   145,    -1,   146,    -1,
+     158,    -1,   147,    -1,   148,    -1,   149,    -1,   150,    -1,
+     151,    -1,   152,    -1,   154,    -1,   153,    -1,   155,    -1,
+      29,     6,   267,    -1,    30,     6,   267,    -1,    31,     6,
+     267,    -1,    32,     6,   267,    -1,    33,     6,   267,    -1,
+      34,     6,   267,    -1,    35,    -1,    36,    -1,    22,     6,
+     267,    -1,    88,     6,   267,    -1,    89,     6,   267,    -1,
+      90,     6,   267,    -1,    54,     6,   259,    -1,    55,     6,
+     259,    -1,    57,     6,   259,    -1,   130,    -1,   246,    -1,
+     136,    -1,   137,    -1,   138,    -1,   117,    -1,   116,    -1,
+     118,    -1,   131,    -1,   132,    -1,   133,    -1,   134,    -1,
+     135,    -1,   129,    -1,   125,    -1,   127,    -1,    37,     6,
+     267,    -1,    39,     6,   249,    -1,    38,     6,   267,    -1,
+      40,    -1,   248,     9,   248,    -1,   159,    -1,   251,    -1,
+     251,     9,   251,    -1,   106,     6,   252,    -1,   108,     6,
+     267,    -1,   107,     6,   267,    -1,   160,    -1,    91,    -1,
+     253,     5,   253,    -1,    -1,   161,     3,   255,   253,     4,
+      -1,   254,   254,    -1,    43,     6,   257,    -1,    44,     6,
+     258,    -1,   256,     5,   256,    -1,   157,    -1,    58,    -1,
+      59,    -1,    93,    -1,    94,    -1,    97,    -1,    96,    -1,
+     173,   267,   174,    -1,   260,    -1,   168,   261,    -1,   172,
+     261,    -1,   261,    -1,   262,   165,   261,    -1,   262,   166,
+     261,    -1,   262,   167,   261,    -1,   262,    -1,   263,   168,
+     262,    -1,   263,   169,   262,    -1,   263,    -1,   264,   170,
+     263,    -1,   264,   171,   263,    -1,   264,    -1,   265,   164,
+     264,    -1,   265,    -1,   266,   163,   265,    -1,   266,    -1,
+     267,   162,   266,    -1
+  };
+
+  /* YYPRHS[YYN] -- Index of the first RHS symbol of rule number YYN in
+     YYRHS.  */
+  const unsigned short int
+  BisonParser::yyprhs_[] =
+  {
+         0,     0,     3,     5,     6,     9,    13,    14,    21,    22,
+      25,    28,    31,    34,    37,    40,    43,    44,    50,    52,
+      56,    59,    60,    64,    68,    72,    76,    80,    84,    88,
+      92,    96,   100,   104,   108,   112,   114,   118,   120,   122,
+     126,   132,   133,   135,   139,   141,   146,   151,   155,   159,
+     163,   167,   171,   175,   179,   183,   185,   188,   189,   195,
+     196,   199,   202,   205,   207,   211,   214,   218,   222,   224,
+     226,   228,   232,   236,   240,   244,   248,   252,   256,   259,
+     261,   262,   265,   268,   273,   274,   280,   285,   290,   295,
+     299,   304,   309,   314,   319,   324,   329,   334,   339,   341,
+     345,   347,   349,   353,   355,   359,   362,   364,   368,   371,
+     375,   379,   383,   387,   391,   393,   395,   397,   399,   401,
+     403,   405,   407,   411,   413,   417,   419,   421,   423,   427,
+     429,   430,   436,   438,   439,   444,   446,   448,   452,   456,
+     459,   462,   466,   470,   474,   478,   482,   486,   488,   492,
+     494,   496,   498,   500,   502,   506,   510,   512,   516,   518,
+     522,   524,   526,   528,   530,   532,   534,   536,   538,   540,
+     542,   544,   546,   548,   550,   552,   554,   556,   558,   560,
+     564,   566,   571,   576,   580,   584,   588,   592,   596,   600,
+     604,   608,   612,   616,   620,   624,   628,   632,   636,   638,
+     642,   646,   650,   654,   656,   660,   664,   666,   668,   670,
+     672,   674,   676,   678,   680,   682,   684,   686,   688,   690,
+     692,   694,   696,   698,   700,   702,   704,   706,   708,   710,
+     712,   714,   716,   718,   720,   722,   724,   726,   728,   730,
+     734,   738,   742,   746,   750,   754,   756,   758,   762,   766,
+     770,   774,   778,   782,   786,   788,   790,   792,   794,   796,
+     798,   800,   802,   804,   806,   808,   810,   812,   814,   816,
+     818,   822,   826,   830,   832,   836,   838,   840,   844,   848,
+     852,   856,   858,   860,   864,   865,   871,   874,   878,   882,
+     886,   888,   890,   892,   894,   896,   898,   900,   904,   906,
+     909,   912,   914,   918,   922,   926,   928,   932,   936,   938,
+     942,   946,   948,   952,   954,   958,   960
+  };
+
+  /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
   const unsigned short int
   BisonParser::yyrline_[] =
   {
-       0,   212,   212,   214,   215,   217,   218,   218,   224,   225,
+         0,   212,   212,   214,   215,   217,   218,   218,   224,   225,
      226,   227,   228,   229,   230,   231,   234,   234,   239,   240,
      241,   244,   245,   246,   247,   248,   249,   250,   251,   252,
      253,   254,   255,   256,   263,   264,   265,   266,   270,   271,
@@ -2574,11 +2638,9 @@ namespace BIF {
   BisonParser::yystack_print_ ()
   {
     *yycdebug_ << "Stack now";
-    for (stack_type::const_iterator
-           i = yystack_.begin (),
-           i_end = yystack_.end ();
-         i != i_end; ++i)
-      *yycdebug_ << ' ' << i->state;
+    for (state_stack_type::const_iterator i = yystate_stack_.begin ();
+	 i != yystate_stack_.end (); ++i)
+      *yycdebug_ << ' ' << *i;
     *yycdebug_ << std::endl;
   }
 
@@ -2588,18 +2650,19 @@ namespace BIF {
   {
     unsigned int yylno = yyrline_[yyrule];
     int yynrhs = yyr2_[yyrule];
-    // Print the symbols being reduced, and their result.
+    /* Print the symbols being reduced, and their result.  */
     *yycdebug_ << "Reducing stack by rule " << yyrule - 1
-               << " (line " << yylno << "):" << std::endl;
-    // The symbols being reduced.
+	       << " (line " << yylno << "):" << std::endl;
+    /* The symbols being reduced.  */
     for (int yyi = 0; yyi < yynrhs; yyi++)
       YY_SYMBOL_PRINT ("   $" << yyi + 1 << " =",
-                       yystack_[(yynrhs) - (yyi + 1)]);
+		       yyrhs_[yyprhs_[yyrule] + yyi],
+		       &(yysemantic_stack_[(yynrhs) - (yyi + 1)]),
+		       &(yylocation_stack_[(yynrhs) - (yyi + 1)]));
   }
 #endif // YYDEBUG
 
-  // Symbol number corresponding to token number t.
-  inline
+  /* YYTRANSLATE(YYLEX) -- Bison symbol number corresponding to YYLEX.  */
   BisonParser::token_number_type
   BisonParser::yytranslate_ (int t)
   {
@@ -2607,7 +2670,7 @@ namespace BIF {
     const token_number_type
     translate_table[] =
     {
-     0,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+           0,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
@@ -2652,21 +2715,31 @@ namespace BIF {
      165,   166,   167,   168,   169,   170,   171,   172,   173,   174,
      175
     };
-    const unsigned int user_token_number_max_ = 430;
-    const token_number_type undef_token_ = 2;
-
-    if (static_cast<int>(t) <= yyeof_)
-      return yyeof_;
-    else if (static_cast<unsigned int> (t) <= user_token_number_max_)
+    if ((unsigned int) t <= yyuser_token_number_max_)
       return translate_table[t];
     else
-      return undef_token_;
+      return yyundef_token_;
   }
 
-#line 24 "parser/bif.y" // lalr1.cc:1167
+  const int BisonParser::yyeof_ = 0;
+  const int BisonParser::yylast_ = 1081;
+  const int BisonParser::yynnts_ = 92;
+  const int BisonParser::yyempty_ = -2;
+  const int BisonParser::yyfinal_ = 3;
+  const int BisonParser::yyterror_ = 1;
+  const int BisonParser::yyerrcode_ = 256;
+  const int BisonParser::yyntokens_ = 176;
+
+  const unsigned int BisonParser::yyuser_token_number_max_ = 430;
+  const BisonParser::token_number_type BisonParser::yyundef_token_ = 2;
+
+/* Line 1141 of lalr1.cc  */
+#line 24 "parser/bif.y"
 } // BIF
-#line 2669 "bisonflex/bif.tab.cpp" // lalr1.cc:1167
-#line 811 "parser/bif.y" // lalr1.cc:1168
+/* Line 1141 of lalr1.cc  */
+#line 2741 "bisonflex/bif.tab.cpp"
+/* Line 1142 of lalr1.cc  */
+#line 811 "parser/bif.y"
 
 void BIF::BisonParser::error(const BIF::BisonParser::location_type &loc, const std::string &msg) {
         Parsing::Error(loc,msg);

@@ -1124,10 +1124,7 @@ void SpartanupAuthenticationContext::GeneratePPKHash(const std::string& filename
         ppkSize = 2 * EC_P521_KEY_LENGTH2;
     if ((authAlgorithm->Type() == Authentication::LMS_SHA2_256) || (authAlgorithm->Type() == Authentication::LMS_SHAKE256))
     {
-        auto hashPtr = std::make_unique<HashSha3_256>();
-        hash = hashPtr.release();  // Transfer ownership to raw pointer
-        ownsHash = true;  // We own this hash
-        ppkSize = GetLmsPublicKeyLength(ppkFile.c_str(), lmsOnly); // sizeof(HssPublicKey);
+        ppkSize = GetLmsPublicKeyLength(ppkFile.c_str(), lmsOnly);
     }
     hashLength = hash->GetHashLength();
     auto ppkTemp = std::make_unique<uint8_t[]>(ppkSize);
@@ -1150,9 +1147,7 @@ void SpartanupAuthenticationContext::GeneratePPKHash(const std::string& filename
         LOG_ERROR("-efuseppkbits error !!!           Failure writing to hash file %s", StringUtils::BaseName(filename).c_str());
     }
 
-    /* For Versal, the efuses are available only for 256 bits.
-    So the upper 256 bits(0x20 bytes) of the hash is dumped, which will be programmed to efuse.*/
-    for (int index = 0; index < 0x20; index++)
+    for (int index = 0; index < hashLength; index++)
     {
         fprintf(filePtr, "%02X", ppkHash[index]);
     }
@@ -1160,8 +1155,6 @@ void SpartanupAuthenticationContext::GeneratePPKHash(const std::string& filename
 
     fclose(filePtr);
     LOG_INFO("Efuse PPK bits written to file %s successfully", filename.c_str());
-
-    // Smart pointers automatically clean up!
 }
 
 /******************************************************************************/
