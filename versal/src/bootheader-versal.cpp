@@ -703,6 +703,12 @@ uint32_t VersalBootHeader::GetBootHeaderSize(void)
 }
 
 /******************************************************************************/
+uint32_t VersalBootHeader::GetBHChecksumDataSize(void)
+{
+    return (uint32_t)(offsetof(VersalBootHeaderStructure, headerChecksum) - sizeof(VersalSmapWidthTable));
+}
+
+/******************************************************************************/
 uint32_t VersalBootHeader::GetWidthDetectionWord(void)
 {
     return bHTable->widthDetectionWord;

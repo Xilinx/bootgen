@@ -222,10 +222,10 @@ void KeyECDSAp521_spartanup::Import(const void * acKey, const std::string & name
 /******************************************************************************/
 void KeyLMS_spartanup::Export(void * acKey)
 {
-    if (!Loaded)
+    if (!Loaded || !public_key)
     {
         std::string pubsec = (isSecret) ? " (Secret)" : " (Public)";
-        LOG_ERROR("%s - $s is not loaded", name.c_str(), pubsec.c_str());
+        LOG_ERROR("%s - %s is not loaded", name.c_str(), pubsec.c_str());
     }
 
     if (lmsOnly)

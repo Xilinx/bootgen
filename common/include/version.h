@@ -32,6 +32,7 @@
     //v8.3  - Added Auth Jtag support with SPK(only for RSA,ECDSA. LMS TBD)
     //v8.4  - Updated partition revoke id and spk revoke id and two different inputs
 #endif
+
 */
 #define COPYRIGHT       "Copyright (c) 2022-2025 Advanced Micro Devices, Inc. All rights reserved.\n"
 
@@ -77,7 +78,7 @@
            Help for such options include a list of supported architectures.   |\n\
            If an option is supported for all architectures, this list is not  |\n\
            included in help                                                   |\n\
- Example : Supported architectures : zynqmp, versal                           |\n\
+ Example : Supported architectures : zynqmp, versal, versal_2ve_2vm, spartanup|\n\
 ------------------------------------------------------------------------------+\n\
  For more information on bootgen options, use the command                     |\n\
            bootgen -help <option>                                             |\n\
@@ -174,7 +175,7 @@
            Help for such attributes include a list of supported architectures.|\n\
            If an attribute is supported for all architectures, this list is   |\n\
            not included in help                                               |\n\
- Example : Supported architectures : zynqmp, versal                           |\n\
+ Example : Supported architectures : zynqmp, versal, versal_2ve_2vm, spartanup|\n\
 ------------------------------------------------------------------------------+\n\
  For more information on bootgen attributes, use the command                  |\n\
            bootgen -bif_help <option>                                         |\n\

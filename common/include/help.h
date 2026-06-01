@@ -336,6 +336,8 @@ generate_hashes
 -------------+----------------------------------------------------------------+\n\
  OPTION      | generate_hashes                                                |\n\
 -------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, zynqmp, versal, versal_2ve_2vm, spartanup                |\n\
+-------------+----------------------------------------------------------------+\n\
  DESCRIPTION | This option generates file containing padded hash              |\n\
              | Zynq   - SHA-2 with PKCS#1v1.5 padding scheme                  |\n\
              | ZynqMP - SHA-3 with PKCS#1v1.5 padding scheme                  |\n\
@@ -372,28 +374,51 @@ generate_keys
              |         -generate_keys obfuscatedkey                           |\n\
 -------------+----------------------------------------------------------------+\n\
  ARGUMENTS   | Format of authentication keys                                  |\n\
-             |   rsa : RSA format keys                                        |\n\
-             |   pem : PEM format keys                                        |\n\
-             |   ecdsa-p384 : ecdsap384 keys                                  |\n\
-             |   ecdsa-p521 : ecdsap521 keys                                  |\n\
-             |   lms-sha256 : lmssha256 keys                                  |\n\
-             |   hss-sha256 : hsssha256 keys                                  |\n\
-             |   lms-shake256 : lmsshake256 keys                              |\n\
-             |   hss-shake256 : hssshake256 keys                              |\n\
+             |   rsa          : RSA format keys                               |\n\
+             |   pem          : PEM format keys                               |\n\
+             |   ecdsa-p384   : ECDSA P-384 keys                              |\n\
+             |   ecdsa-p521   : ECDSA P-521 keys                              |\n\
+             |   lms          : LMS keys (parameters from BIF)                |\n\
+             |   mldsa        : ML-DSA keys                                   |\n\
 -------------+----------------------------------------------------------------+\n\
  USAGE       | For authentication :                                           |\n\
              |         bootgen -image test.bif -generate_keys rsa             |\n\
              |         bootgen -image test.bif -generate_keys ecdsa-p384      |\n\
              |         bootgen -image test.bif -generate_keys ecdsa-p521      |\n\
-             |         bootgen -image test.bif -generate_keys lms-sha256      |\n\
-             |         bootgen -image test.bif -generate_keys hss-sha256      |\n\
-             |         bootgen -image test.bif -generate_keys lms-shake256    |\n\
-             |         bootgen -image test.bif -generate_keys hss-shake256    |\n\
+             |         bootgen -image test.bif -generate_keys lms             |\n\
+             |         bootgen -image test.bif -generate_keys mldsa           |\n\
              | For encryption :                                               |\n\
              |          bootgen -image test.bif -generate_keys obfuscatedkey  |\n\
 -------------+----------------------------------------------------------------+\n\
  EXPLANATION | For authentication :                                           |\n\
              | Contents of BIF file: test.bif                                 |\n\
+             | 1) LMS                                                         |\n\
+             | image:                                                         |\n\
+             | {                                                              |\n\
+             |     lms_key_params                                             |\n\
+             |     {                                                          |\n\
+             |         primary {lms_shake256_h5_w2}                           |\n\
+             |         secondary {lms_shake256_h5_w2}                         |\n\
+             |     }                                                          |\n\
+             |     [ppkfile] <path/ppkgenfile.txt>                            |\n\
+             |     [pskfile] <path/pskgenfile.txt>                            |\n\
+             |     [spkfile] <path/spkgenfile.txt>                            |\n\
+             |     [sskfile] <path/sskgenfile.txt>                            |\n\
+             | }                                                              |\n\
+             | 2) HSS                                                         |\n\
+             | image:                                                         |\n\
+             | {                                                              |\n\
+             |     lms_key_params                                             |\n\
+             |     {                                                          |\n\
+             |         primary {lms_shake256_h15_w2, lms_shake256_h15_w2}     |\n\
+             |         secondary {lms_shake256_h15_w2, lms_shake256_h15_w2}   |\n\
+             |     }                                                          |\n\
+             |     [ppkfile] <path/ppkgenfile.txt>                            |\n\
+             |     [pskfile] <path/pskgenfile.txt>                            |\n\
+             |     [spkfile] <path/spkgenfile.txt>                            |\n\
+             |     [sskfile] <path/sskgenfile.txt>                            |\n\
+             | }                                                              |\n\
+             | 3) Other Algorithms                                            |\n\
              | image:                                                         |\n\
              | {                                                              |\n\
              |     [ppkfile] <path/ppkgenfile.txt>                            |\n\
@@ -401,6 +426,9 @@ generate_keys
              |     [spkfile] <path/spkgenfile.txt>                            |\n\
              |     [sskfile] <path/sskgenfile.txt>                            |\n\
              | }                                                              |\n\
+             | NOTE: Here h and w are <height>, <width> parameters that are   |\n\
+             | need to be specified in the BIF. Even for hss, while           |\n\
+             | generating keys the -generate_keys lms flag need to be used.   |\n\
              | The key files are generated in the paths mentioned above       |\n\
              |----------------------------------------------------------------|\n\
              | For encryption :                                               |\n\
@@ -546,7 +574,7 @@ o
 -------------+----------------------------------------------------------------+\n\
  OPTION      | overlay_cdo                                                    |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | versal                                                         |\n\
+ SUPPORTED   | versal, versal_2ve_2vm, spartanup                              |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION |  CDO overlay option provides a way to modify CDO files         |\n\
              |  after they are generated.                                     |\n\
@@ -672,6 +700,8 @@ read
 -------------+----------------------------------------------------------------+\n\
  OPTION      | read                                                           |\n\
 -------------+----------------------------------------------------------------+\n\
+ SUPPORTED   | zynq, zynqmp, versal, versal_2ve_2vm, spartanup                |\n\
+-------------+----------------------------------------------------------------+\n\
  DESCRIPTION | This options reads the bootimage and dumps the header tables in|\n\
              |  readable form.                                                |\n\
 -------------+----------------------------------------------------------------+\n\
@@ -697,7 +727,7 @@ securedebugimage
 -------------+----------------------------------------------------------------+\n\
  OPTION      | authenticatedjtag                                              |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | versal                                                         |\n\
+ SUPPORTED   | versal, versal_2ve_2vm, spartanup                              |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | This option is used to enable JTAG during secure boot          |\n\
 -------------+----------------------------------------------------------------+\n\
@@ -748,7 +778,7 @@ spksignature
 -------------+----------------------------------------------------------------+\n\
  OPTION      | spksignature                                                   |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynq, zynqmp                                                   |\n\
+ SUPPORTED   | zynq, zynqmp, versal, versal_2ve_2vm, spartanup                |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | This option is used to generate the SPK signature file. This   |\n\
              | option must be used only when [spkfile] & [pskfile] are        |\n\
@@ -769,7 +799,7 @@ verify
 -------------+----------------------------------------------------------------+\n\
  OPTION      | verify                                                         |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | versal, zynqmp                                                 |\n\
+ SUPPORTED   | zynqmp, versal, versal_2ve_2vm, spartanup                      |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | This option is used for verifying authentication of a bootimage|\n\
 -------------+----------------------------------------------------------------+\n\

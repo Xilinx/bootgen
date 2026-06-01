@@ -150,6 +150,7 @@ public:
     void SetSHA3Padding();
 
     uint32_t GetBootHeaderSize(void);
+    uint32_t GetBHChecksumDataSize(void);
     uint32_t GetWidthDetectionWord(void);
     uint32_t GetIdentificationWord(void);
     uint32_t GetSourceOffset(void);

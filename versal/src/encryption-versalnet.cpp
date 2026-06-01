@@ -497,11 +497,17 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
         uint32_t estimatedtotalPmcCdoLength = partHdr->imageHeader->GetTotalPmcFwSizeIh() + (totalpmcdataencrBlocks + 1) * 64;
 
         LOG_INFO("Encrypting Bootloader");
+        if ((partHdr->imageHeader->GetAuthenticationType() != Authentication::None) || (partHdr->imageHeader->GetDelayAuthFlag()))
         {
             Binary::Length_t dataChunksCount = 0;
             // PLM
             dataChunksCount = ((estimatedEncrFsblLength - (SECURE_HDR_SZ + AES_GCM_TAG_SZ)) / bi.GetSecureChunkSize(partHdr->imageHeader->IsBootloader())) +
                 ((((estimatedEncrFsblLength - (SECURE_HDR_SZ + AES_GCM_TAG_SZ)) % bi.GetSecureChunkSize(partHdr->imageHeader->IsBootloader())) == 0 ? 0 : 1));
+
+            if (partHdr->imageHeader->GetTotalPmcFwSizeIh())
+            {
+                estimatedTotalFsblLength += bi.hash->GetHashLength();
+            }
 
             if (dataChunksCount != 1 && dataChunksCount != 0)
             {
@@ -606,7 +612,7 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
         bh->totalPmcCdoLength = estimatedtotalPmcCdoLength;
 
         memcpy_be((uint8_t*)bh->plmSecureHdrIv, tmpIv, BYTES_PER_IV);
-        //memcpy_be((uint8_t*)bh->pmcCdoSecureHdrIv, tmpIvPMCDATA, BYTES_PER_IV);
+        memcpy_be((uint8_t*)bh->pmcCdoSecureHdrIv, tmpIvPMCDATA.get(), BYTES_PER_IV);
 
         if (bi.imageList.size() != 0)
         {
@@ -631,15 +637,16 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
         {
             bh->sourceOffset += sizeof(AuthCertificate4096Sha3PaddingStructure);
         }
+        bh->imageHeaderByteOffset = sizeof(VersalBootHeaderStructure) + bh->totalPlmLength + bh->totalPmcCdoLength;
 
         bh->headerChecksum = bi.bootHeader->ComputeWordChecksum(&bh->widthDetectionWord, bi.bootHeader->GetBHChecksumDataSize());
         if (bh->plmLength != 0)
         {
             ChunkifyAndEncrypt(options,
                 partHdr->partition->section->Data.get(),
-                partHdr->imageHeader->GetFsblFwSizeIh(), NULL, 0,
-                //(uint8_t*)bh + sizeof(VersalSmapWidthTable),
-                //sizeof(VersalBootHeaderStructure) - sizeof(VersalSmapWidthTable),
+                partHdr->imageHeader->GetFsblFwSizeIh(),
+                (uint8_t*)bh + sizeof(VersalSmapWidthTable),
+                sizeof(VersalBootHeaderStructure) - sizeof(VersalSmapWidthTable),
                 encrFsblDataBuffer.get() /* out*/,
                 encrFsblByteLength /* out */);
 
@@ -756,7 +763,7 @@ void VersalEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader*
         auto encrPmcDataBuffer = std::make_unique<uint8_t[]>(estimatedEncrPmcLength);
         LOG_INFO("Encrypting the PMC Data");
 
-        SetIv(options.secHdrIv.get());
+        // SetIv(options.secHdrIv.get());
 
         ChunkifyAndEncrypt(options,
             partHdr->partition->section->Data.get() + partHdr->imageHeader->GetFsblFwSizeIh(),

@@ -1317,6 +1317,10 @@ void VersalBootImage::Add(BifOptions* bifoptions)
 
             if (options.DoGenerateHashes())
             {
+                if (authCtx == nullptr)
+                {
+                    LOG_ERROR("Cannot read SPK public key file - %s, the SPK file must be in PEM format (use '-generate_keys pem').", bifoptions->GetSPKFileName().c_str());
+                }
                 authCtx->hash = hash.get();  // Non-owning reference to BootImage's hash
                 authCtx->spkIdentification = bifOptions->GetRevokeId();
                 LOG_INFO("Generating SPK Hash File");

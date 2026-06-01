@@ -23,6 +23,7 @@
 #include <iostream>
 #include <sstream>
 #include <string> 
+#include <sys/stat.h>
 #include "options.h"
 #include "cmdoptionsscanner.h"
 #include "readimage.h"
@@ -486,6 +487,22 @@ void Options::SetOutType(File::Type type)
 /******************************************************************************/
 void Options::SetDumpDirectory(std::string path)
 {
+    struct stat info;
+    if (stat(path.c_str(), &info) != 0)
+    {
+    #if defined(_WIN64) || defined(_WIN32)
+        LOG_ERROR("Dump directory '%s' does not exist. Please create it manually on Windows.", path.c_str());
+    #else
+        if (mkdir(path.c_str(), 0755) != 0)
+        {
+            LOG_ERROR("Failed to create dump directory '%s'", path.c_str());
+        }
+        else 
+        {
+            LOG_INFO("Dump directory '%s' created successfully", path.c_str());
+        }
+    #endif
+    }
     dumpPath = path;
 }
 

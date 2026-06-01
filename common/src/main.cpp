@@ -60,6 +60,9 @@ static void DisplayBanner()
     LOG_MSG("  **** Build date : %s-%s", date_stamp, time_stamp);
     LOG_MSG("    ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.");
     LOG_MSG("    ** Copyright 2022-%s Advanced Micro Devices, Inc. All Rights Reserved.\n", year ? year : "2023");
+    #ifdef DEBUG
+    LOG_MSG("    ** bootgen is in debug mode, not recommended for production use");
+    #endif 
 }
 
 /******************************************************************************/
