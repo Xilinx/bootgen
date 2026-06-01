@@ -247,8 +247,7 @@ public:
     { };
 
     ~ElfFormat() {};
-    
-    static ElfFormat* GetElfFormat(ElfClass::Type elfClass, uint8_t* start, uint8_t* state);
+    static ElfFormat* GetElfFormat(ElfClass::Type elfClass, uint8_t* start, uint8_t* state, size_t fileSize = 0);
 
     virtual Program_p_flags GetProgramHeaderFlags(uint8_t index) = 0;
     virtual Program_p_type GetProgramHeaderType(uint8_t index) = 0;
@@ -305,7 +304,7 @@ public:
 class ElfFormat32 : public ElfFormat
 {
 public:
-    ElfFormat32(uint8_t* start);
+    ElfFormat32(uint8_t* start, size_t fileSize = 0);
     ~ElfFormat32();
     
     Program_p_flags GetProgramHeaderFlags(uint8_t index);
@@ -329,7 +328,7 @@ private:
 class ElfFormat64 : public ElfFormat
 {
 public:
-    ElfFormat64(uint8_t* start);
+    ElfFormat64(uint8_t* start, size_t fileSize = 0);
     ~ElfFormat64();
     
     Program_p_flags GetProgramHeaderFlags(uint8_t index);

@@ -40,7 +40,6 @@ void ZynqMpReadImage::ReadPartitions()
 
     if (!binFile)
     {
-        fclose(binFile);
         LOG_ERROR("Cannot read file %s", binFilename.c_str());
     }
     std::list<std::string>::iterator partitionName = pHTNames.begin();
@@ -105,7 +104,6 @@ void ZynqMpReadImage::ReadHeaderTableDetails()
 
     if (!binFile)
     {
-        fclose(binFile);
         LOG_ERROR("Cannot read file %s", binFilename.c_str());
     }
 

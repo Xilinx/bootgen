@@ -420,7 +420,7 @@ void ImageHeader::ImportElf(BootImage& bi)
 
     /* Get the ELF Class format - 32-bit elf vs 64-bit elf */
     elfClass = GetElfClass(data.bytes);
-    auto elfRaw = ElfFormat::GetElfFormat(elfClass, data.bytes, &proc_state);
+    auto elfRaw = ElfFormat::GetElfFormat(elfClass, data.bytes, &proc_state, data.len);
     std::unique_ptr<ElfFormat> elf(elfRaw);
 
     /* Check for no. of executable sections & non-zero size LOAD sections */

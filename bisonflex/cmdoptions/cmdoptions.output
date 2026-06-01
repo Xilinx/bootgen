@@ -53,235 +53,236 @@ Grammar
    38       | _READ readImageOptions
    39       | _VERIFY verifyImageOptions
    40       | _DUMP dumpOptions
-   41       | _DUMP_DIR filename
-   42       | _PUF filename
-   43       | _VERIFYKDF filename
-   44       | _AUTH_OPTIMIZATION
-   45       | _OVERLAYCDO filename
-   46       | _OUT_TYPE outputType
-   47       | _TLBIN
+   41       | _DUMP
+   42       | _DUMP_DIR filename
+   43       | _PUF filename
+   44       | _VERIFYKDF filename
+   45       | _AUTH_OPTIMIZATION
+   46       | _OVERLAYCDO filename
+   47       | _OUT_TYPE outputType
+   48       | _TLBIN
 
-   48 filename: HEXSTRING
-   49         | IDENTIFIER
-   50         | FILENAME
-   51         | QFILENAME
+   49 filename: HEXSTRING
+   50         | IDENTIFIER
+   51         | FILENAME
+   52         | QFILENAME
 
-   52 memsplit: MCS
-   53         | BIN
+   53 memsplit: MCS
+   54         | BIN
 
-   54 filloption: _FILL
-   55           | _FILL number
+   55 filloption: _FILL
+   56           | _FILL number
 
-   56 outputType: MCS
-   57           | BIN
+   57 outputType: MCS
+   58           | BIN
 
-   58 helpoption: /* empty */
-   59           | HBIFHELP
-   60           | HARCH
-   61           | HAUTHOPT
-   62           | HIMAGE
-   63           | HFILL
-   64           | H_SPLIT
-   65           | HO
-   66           | HP
-   67           | HW
-   68           | HEFUSEPPKBITS
-   69           | HGENHASHES
-   70           | HLEGACY
-   71           | HPADHDR
-   72           | H_SPKSIGN
-   73           | HPACKAGE
-   74           | HENCRYPT
-   75           | HGENKEYS
-   76           | HDQSPI
-   77           | HLOG
-   78           | HZYNQMPES1
-   79           | HPROCESSBIT
-   80           | HNONBOOTING
-   81           | HENCRDUMP
-   82           | HVERIFY
-   83           | HVERIFYKDF
-   84           | HREAD
-   85           | HSECUREDEBUG
-   86           | HDUMP
-   87           | HDUMPDIR
-   88           | HOVLCDO
-   89           | HOUTTYPE
+   59 helpoption: /* empty */
+   60           | HBIFHELP
+   61           | HARCH
+   62           | HAUTHOPT
+   63           | HIMAGE
+   64           | HFILL
+   65           | H_SPLIT
+   66           | HO
+   67           | HP
+   68           | HW
+   69           | HEFUSEPPKBITS
+   70           | HGENHASHES
+   71           | HLEGACY
+   72           | HPADHDR
+   73           | H_SPKSIGN
+   74           | HPACKAGE
+   75           | HENCRYPT
+   76           | HGENKEYS
+   77           | HDQSPI
+   78           | HLOG
+   79           | HZYNQMPES1
+   80           | HPROCESSBIT
+   81           | HNONBOOTING
+   82           | HENCRDUMP
+   83           | HVERIFY
+   84           | HVERIFYKDF
+   85           | HREAD
+   86           | HSECUREDEBUG
+   87           | HDUMP
+   88           | HDUMPDIR
+   89           | HOVLCDO
+   90           | HOUTTYPE
 
-   90 bifhelpoption: /* empty */
-   91              | H_BIF_INIT
-   92              | H_BIF_UDFBH
-   93              | H_BIF_AES
-   94              | H_BIF_PPK
-   95              | H_BIF_PSK
-   96              | H_BIF_SPK
-   97              | H_BIF_SSK
-   98              | H_BIF_SPKSIGN
-   99              | H_BIF_HDRSIGN
-  100              | H_BIF_BOOTIMAGE
-  101              | H_BIF_BL
-  102              | H_BIF_ENCR
-  103              | H_BIF_PID
-  104              | H_BIF_AUTH
-  105              | H_BIF_TCMBOOT
-  106              | H_BIF_OPTIONALDATA
-  107              | H_BIF_CHKSM
-  108              | H_BIF_POWNER
-  109              | H_BIF_PRESIGN
-  110              | H_BIF_UDF
-  111              | H_BIF_XIP
-  112              | H_BIF_ALIGN
-  113              | H_BIF_OFFSET
-  114              | H_BIF_RES
-  115              | H_BIF_LOAD
-  116              | H_BIF_STARTUP
-  117              | H_BIF_KEYSRC
-  118              | H_BIF_FSBLCFG
-  119              | H_BIF_BOOTDEV
-  120              | H_BIF_DESTCPU
-  121              | H_BIF_DESTDEV
-  122              | H_BIF_EL
-  123              | H_BIF_TZ
-  124              | H_BIF_AUTHPARAM
-  125              | H_BIF_BHKEY
-  126              | H_BIF_PFW
-  127              | H_BIF_BLOCKS
-  128              | H_BIF_BHIV
-  129              | H_BIF_METAL
-  130              | H_BIF_ELYHNDOFF
-  131              | H_BIF_HIVEC
-  132              | H_BIF_BHSIGN
-  133              | H_SPLIT
-  134              | H_SPKSIGN
-  135              | H_BIF_BOOTVEC
-  136              | H_BIF_PUFDATA
-  137              | H_BIF_AARCH32
-  138              | H_BIF_BIGENDIAN
-  139              | H_BIF_BOOTCONFIG
-  140              | H_BIF_COPY
-  141              | H_BIF_CORE
-  142              | H_BIF_DELAY_HANDOFF
-  143              | H_BIF_DELAY_LOAD
-  144              | H_BIF_FILE
-  145              | H_BIF_ID
-  146              | H_BIF_IMAGE
-  147              | H_BIF_METAHDR
-  148              | H_BIF_NAME
-  149              | H_BIF_PARENTID
-  150              | H_BIF_PARTITION
-  151              | H_BIF_SLR
-  152              | H_BIF_TYPE
-  153              | H_BIF_KEYSRCENCR
-  154              | H_DPACM_ENABLE
-  155              | H_BIF_USERKEYS
-  156              | HVN_BIF_PCR
-  157              | HVN_BIF_PCR_MINDEX
-  158              | HV_BIF_IMAGESTORE
+   91 bifhelpoption: /* empty */
+   92              | H_BIF_INIT
+   93              | H_BIF_UDFBH
+   94              | H_BIF_AES
+   95              | H_BIF_PPK
+   96              | H_BIF_PSK
+   97              | H_BIF_SPK
+   98              | H_BIF_SSK
+   99              | H_BIF_SPKSIGN
+  100              | H_BIF_HDRSIGN
+  101              | H_BIF_BOOTIMAGE
+  102              | H_BIF_BL
+  103              | H_BIF_ENCR
+  104              | H_BIF_PID
+  105              | H_BIF_AUTH
+  106              | H_BIF_TCMBOOT
+  107              | H_BIF_OPTIONALDATA
+  108              | H_BIF_CHKSM
+  109              | H_BIF_POWNER
+  110              | H_BIF_PRESIGN
+  111              | H_BIF_UDF
+  112              | H_BIF_XIP
+  113              | H_BIF_ALIGN
+  114              | H_BIF_OFFSET
+  115              | H_BIF_RES
+  116              | H_BIF_LOAD
+  117              | H_BIF_STARTUP
+  118              | H_BIF_KEYSRC
+  119              | H_BIF_FSBLCFG
+  120              | H_BIF_BOOTDEV
+  121              | H_BIF_DESTCPU
+  122              | H_BIF_DESTDEV
+  123              | H_BIF_EL
+  124              | H_BIF_TZ
+  125              | H_BIF_AUTHPARAM
+  126              | H_BIF_BHKEY
+  127              | H_BIF_PFW
+  128              | H_BIF_BLOCKS
+  129              | H_BIF_BHIV
+  130              | H_BIF_METAL
+  131              | H_BIF_ELYHNDOFF
+  132              | H_BIF_HIVEC
+  133              | H_BIF_BHSIGN
+  134              | H_SPLIT
+  135              | H_SPKSIGN
+  136              | H_BIF_BOOTVEC
+  137              | H_BIF_PUFDATA
+  138              | H_BIF_AARCH32
+  139              | H_BIF_BIGENDIAN
+  140              | H_BIF_BOOTCONFIG
+  141              | H_BIF_COPY
+  142              | H_BIF_CORE
+  143              | H_BIF_DELAY_HANDOFF
+  144              | H_BIF_DELAY_LOAD
+  145              | H_BIF_FILE
+  146              | H_BIF_ID
+  147              | H_BIF_IMAGE
+  148              | H_BIF_METAHDR
+  149              | H_BIF_NAME
+  150              | H_BIF_PARENTID
+  151              | H_BIF_PARTITION
+  152              | H_BIF_SLR
+  153              | H_BIF_TYPE
+  154              | H_BIF_KEYSRCENCR
+  155              | H_DPACM_ENABLE
+  156              | H_BIF_USERKEYS
+  157              | HVN_BIF_PCR
+  158              | HVN_BIF_PCR_MINDEX
+  159              | HV_BIF_IMAGESTORE
 
-  159 setsyncflag: /* empty */
+  160 setsyncflag: /* empty */
 
-  160 wopt: /* empty */
-  161     | ON
-  162     | OFF
+  161 wopt: /* empty */
+  162     | ON
+  163     | OFF
 
-  163 loglevel: /* empty */
-  164         | ERROR
-  165         | WARNING
-  166         | INFO
-  167         | DEBUG
-  168         | TRACE
+  164 loglevel: /* empty */
+  165         | ERROR
+  166         | WARNING
+  167         | INFO
+  168         | DEBUG
+  169         | TRACE
 
-  169 keysource: BBRAM
-  170          | EFUSE
+  170 keysource: BBRAM
+  171          | EFUSE
 
-  171 startcbc: /* empty */
-  172         | STARTCBC EQUALS HEXSTRING
+  172 startcbc: /* empty */
+  173         | STARTCBC EQUALS HEXSTRING
 
-  173 key0: /* empty */
-  174     | KEY0 EQUALS HEXSTRING
+  174 key0: /* empty */
+  175     | KEY0 EQUALS HEXSTRING
 
-  175 hmac: /* empty */
-  176     | HMAC EQUALS HEXSTRING
+  176 hmac: /* empty */
+  177     | HMAC EQUALS HEXSTRING
 
-  177 keyfile: /* empty */
-  178        | filename
+  178 keyfile: /* empty */
+  179        | filename
 
-  179 number: HEXVALUE
+  180 number: HEXVALUE
 
-  180 bitfile_type: MCS
-  181             | BIN
+  181 bitfile_type: MCS
+  182             | BIN
 
-  182 qpsi_mode: PARALLEL
-  183          | STACKED qspi_size
+  183 qpsi_mode: PARALLEL
+  184          | STACKED qspi_size
 
-  184 opsi_mode: PARALLEL
-  185          | STACKED ospi_size
+  185 opsi_mode: PARALLEL
+  186          | STACKED ospi_size
 
-  186 qspi_size: HEXVALUE
-  187          | HEXSTRING
+  187 qspi_size: HEXVALUE
+  188          | HEXSTRING
 
-  188 ospi_size: HEXVALUE
-  189          | HEXSTRING
+  189 ospi_size: HEXVALUE
+  190          | HEXSTRING
 
-  190 archOptions: ZYNQ
-  191            | ZYNQMP
-  192            | VERSAL
-  193            | FPGA
-  194            | VERSALNET
-  195            | VERSAL_2VE_2VM
-  196            | SPARTANUP
-  197            | TELLURIDE
-  198            | LASSEN
-  199            | LASSEN_DL9
+  191 archOptions: ZYNQ
+  192            | ZYNQMP
+  193            | VERSAL
+  194            | FPGA
+  195            | VERSALNET
+  196            | VERSAL_2VE_2VM
+  197            | SPARTANUP
+  198            | TELLURIDE
+  199            | LASSEN
+  200            | LASSEN_DL9
 
-  200 key_type: AUTH auth_key_options
-  201         | GREY
-  202         | METAL
-  203         | PEM
-  204         | RSA
-  205         | ECDSA
-  206         | ECDSAP521
-  207         | LMS
+  201 key_type: AUTH auth_key_options
+  202         | GREY
+  203         | METAL
+  204         | PEM
+  205         | RSA
+  206         | ECDSA
+  207         | ECDSAP521
+  208         | LMS
 
-  208 auth_key_options: PEM
-  209                 | RSA
+  209 auth_key_options: PEM
+  210                 | RSA
 
-  210 auth_type: ECDSA
-  211          | RSA
+  211 auth_type: ECDSA
+  212          | RSA
 
-  212 authJtagOptions: authJtagType filename
-  213                | authJtagType
+  213 authJtagOptions: authJtagType filename
+  214                | authJtagType
 
-  214 authJtagType: ECDSA
-  215             | RSA
-  216             | LMS_SHA256
-  217             | LMS_SHAKE256
-  218             | HSS_SHA256
-  219             | HSS_SHAKE256
+  215 authJtagType: ECDSA
+  216             | RSA
+  217             | LMS_SHA256
+  218             | LMS_SHAKE256
+  219             | HSS_SHA256
+  220             | HSS_SHAKE256
 
-  220 verifyImageOptions: filename
+  221 verifyImageOptions: filename
 
-  221 readImageOptions: filename
-  222                 | filename readType
+  222 readImageOptions: filename
+  223                 | filename readType
 
-  223 readType: READ_BH
-  224         | READ_IHT
-  225         | READ_IH
-  226         | READ_PHT
-  227         | READ_AC
+  224 readType: READ_BH
+  225         | READ_IHT
+  226         | READ_IH
+  227         | READ_PHT
+  228         | READ_AC
 
-  228 dumpOptions: READ_BH
-  229            | filename READ_BH
-  230            | READ_BH filename
-  231            | filename
-  232            | filename DUMP_PLM
-  233            | filename DUMP_PMC_CDO
-  234            | filename DUMP_BOOT_FILES
-  235            | DUMP_SLAVE_PDIS
-  236            | DUMP_PUF_PDI
+  229 dumpOptions: READ_BH
+  230            | filename READ_BH
+  231            | READ_BH filename
+  232            | filename
+  233            | filename DUMP_PLM
+  234            | filename DUMP_PMC_CDO
+  235            | filename DUMP_BOOT_FILES
+  236            | DUMP_SLAVE_PDIS
+  237            | DUMP_PUF_PDI
 
-  237 encrDumpOptions: /* empty */
-  238                | filename
+  238 encrDumpOptions: /* empty */
+  239                | filename
 
 
 Terminals, with rules where they appear
@@ -289,7 +290,7 @@ Terminals, with rules where they appear
 $end (0) 0
 error (256)
 _IMAGE (258) 4
-_FILL (259) 54 55
+_FILL (259) 55 56
 _O_TOK (260) 7 8
 I (261) 7
 _H (262) 12
@@ -298,194 +299,194 @@ _LEGACY (264) 20
 _NONBOOTING (265) 19
 _PACKAGENAME (266) 28
 _BIF_HELP (267) 13
-_TLBIN (268) 47
+_TLBIN (268) 48
 _LOG (269) 11
-ERROR (270) 164
-WARNING (271) 165
-INFO (272) 166
-DEBUG (273) 167
-TRACE (274) 168
+ERROR (270) 165
+WARNING (271) 166
+INFO (272) 167
+DEBUG (273) 168
+TRACE (274) 169
 _SPLIT (275) 5
 _PROCESS_BITSTREAM (276) 24
-MCS (277) 52 56 180
-BIN (278) 53 57 181
-_OUT_TYPE (279) 46
-_DUMP (280) 40
-DUMP_PLM (281) 232
-DUMP_PMC_CDO (282) 233
-DUMP_BOOT_FILES (283) 234
-_DUMP_DIR (284) 41
-_PUF (285) 42
-DUMP_SLAVE_PDIS (286) 235
-DUMP_PUF_PDI (287) 236
+MCS (277) 53 57 181
+BIN (278) 54 58 182
+_OUT_TYPE (279) 47
+_DUMP (280) 40 41
+DUMP_PLM (281) 233
+DUMP_PMC_CDO (282) 234
+DUMP_BOOT_FILES (283) 235
+_DUMP_DIR (284) 42
+_PUF (285) 43
+DUMP_SLAVE_PDIS (286) 236
+DUMP_PUF_PDI (287) 237
 _SYNCFLAG (288) 14
 _ARCH (289) 29
-ZYNQ (290) 190
-ZYNQMP (291) 191
-VERSAL (292) 192
+ZYNQ (290) 191
+ZYNQMP (291) 192
+VERSAL (292) 193
 _R (293) 30
-FPGA (294) 193
-VERSALNET (295) 194
-TELLURIDE (296) 197
-VERSAL_2VE_2VM (297) 195
-LASSEN (298) 198
-LASSEN_DL9 (299) 199
-SPARTANUP (300) 196
+FPGA (294) 194
+VERSALNET (295) 195
+TELLURIDE (296) 198
+VERSAL_2VE_2VM (297) 196
+LASSEN (298) 199
+LASSEN_DL9 (299) 200
+SPARTANUP (300) 197
 _DUAL_QSPI_MODE (301) 25
 _DUAL_OSPI_MODE (302) 26
-PARALLEL (303) 182 184
-STACKED (304) 183 185
+PARALLEL (303) 183 185
+STACKED (304) 184 186
 _W (305) 10
-ON (306) 161
-OFF (307) 162
+ON (306) 162
+OFF (307) 163
 _NOAUTHBLOCKS (308) 31
 _ZYNQMPES1 (309) 35
-_OVERLAYCDO (310) 45
+_OVERLAYCDO (310) 46
 _EFUSEPPKBITS (311) 16
 _GENERATE_HASHES (312) 18
 _PADIMAGEHEADER (313) 21 22 23
 _SPKSIGNATURE (314) 27
 _GENERATE_KEYS (315) 32
-PEM (316) 203 208
-RSA (317) 204 209 211 215
-ECDSAP521 (318) 206
-AUTH (319) 200
-GREY (320) 201
-METAL (321) 202
-LMS (322) 207
+PEM (316) 204 209
+RSA (317) 205 210 212 216
+ECDSAP521 (318) 207
+AUTH (319) 201
+GREY (320) 202
+METAL (321) 203
+LMS (322) 208
 _EFUSEPUFBITS (323) 17
 _SECUREDEBUG (324) 36
-ECDSA (325) 205 210 214
+ECDSA (325) 206 211 215
 _AUTHJTAG (326) 37
-LMS_SHA256 (327) 216
-LMS_SHAKE256 (328) 217
-HSS_SHA256 (329) 218
-HSS_SHAKE256 (330) 219
+LMS_SHA256 (327) 217
+LMS_SHAKE256 (328) 218
+HSS_SHA256 (329) 219
+HSS_SHAKE256 (330) 220
 _ENCRYPT (331) 15
-BBRAM (332) 169
-EFUSE (333) 170
+BBRAM (332) 170
+EFUSE (333) 171
 _P_TOK (334) 9
 _READ (335) 38
-READ_BH (336) 223 228 229 230
-READ_IHT (337) 224
-READ_IH (338) 225
-READ_PHT (339) 226
-READ_AC (340) 227
+READ_BH (336) 224 229 230 231
+READ_IHT (337) 225
+READ_IH (338) 226
+READ_PHT (339) 227
+READ_AC (340) 228
 _VERIFY (341) 39
-_VERIFYKDF (342) 43
-_AUTH_OPTIMIZATION (343) 44
+_VERIFYKDF (342) 44
+_AUTH_OPTIMIZATION (343) 45
 _ZYNQMPENCRDUMP (344) 34
-HEXVALUE (345) 179 186 188
-IDENTIFIER (346) 9 28 49
-FILENAME (347) 50
-QFILENAME (348) 51
-HEXSTRING (349) 22 23 48 172 174 176 187 189
-EQUALS (350) 22 172 174 176
-HMAC (351) 176
-STARTCBC (352) 172
-KEY0 (353) 174
+HEXVALUE (345) 180 187 189
+IDENTIFIER (346) 9 28 50
+FILENAME (347) 51
+QFILENAME (348) 52
+HEXSTRING (349) 22 23 49 173 175 177 188 190
+EQUALS (350) 22 173 175 177
+HMAC (351) 177
+STARTCBC (352) 173
+KEY0 (353) 175
 COMMA (354)
-HBIFHELP (355) 59
-HARCH (356) 60
-HIMAGE (357) 62
-HFILL (358) 63
-HO (359) 65
-HP (360) 66
-HW (361) 67
-HEFUSEPPKBITS (362) 68
-HGENHASHES (363) 69
-HLEGACY (364) 70
-HPADHDR (365) 71
-H_SPKSIGN (366) 72 134
-HAUTHOPT (367) 61
-HPACKAGE (368) 73
-HENCRYPT (369) 74
-HGENKEYS (370) 75
-HDQSPI (371) 76
-HLOG (372) 77
-HZYNQMPES1 (373) 78
-HPROCESSBIT (374) 79
-HNONBOOTING (375) 80
-HENCRDUMP (376) 81
-HVERIFY (377) 82
-HSECUREDEBUG (378) 85
-HREAD (379) 84
-HVERIFYKDF (380) 83
-HDUMP (381) 86
-HDUMPDIR (382) 87
-HOVLCDO (383) 88
-HOUTTYPE (384) 89
-H_BIF_INIT (385) 91
-H_BIF_UDFBH (386) 92
-H_BIF_AES (387) 93
-H_BIF_PPK (388) 94
-H_BIF_PSK (389) 95
-H_BIF_SPK (390) 96
-H_BIF_SSK (391) 97
-H_BIF_SPKSIGN (392) 98
-H_BIF_HIVEC (393) 131
-H_BIF_HDRSIGN (394) 99
-H_BIF_BOOTIMAGE (395) 100
-H_BIF_BL (396) 101
+HBIFHELP (355) 60
+HARCH (356) 61
+HIMAGE (357) 63
+HFILL (358) 64
+HO (359) 66
+HP (360) 67
+HW (361) 68
+HEFUSEPPKBITS (362) 69
+HGENHASHES (363) 70
+HLEGACY (364) 71
+HPADHDR (365) 72
+H_SPKSIGN (366) 73 135
+HAUTHOPT (367) 62
+HPACKAGE (368) 74
+HENCRYPT (369) 75
+HGENKEYS (370) 76
+HDQSPI (371) 77
+HLOG (372) 78
+HZYNQMPES1 (373) 79
+HPROCESSBIT (374) 80
+HNONBOOTING (375) 81
+HENCRDUMP (376) 82
+HVERIFY (377) 83
+HSECUREDEBUG (378) 86
+HREAD (379) 85
+HVERIFYKDF (380) 84
+HDUMP (381) 87
+HDUMPDIR (382) 88
+HOVLCDO (383) 89
+HOUTTYPE (384) 90
+H_BIF_INIT (385) 92
+H_BIF_UDFBH (386) 93
+H_BIF_AES (387) 94
+H_BIF_PPK (388) 95
+H_BIF_PSK (389) 96
+H_BIF_SPK (390) 97
+H_BIF_SSK (391) 98
+H_BIF_SPKSIGN (392) 99
+H_BIF_HIVEC (393) 132
+H_BIF_HDRSIGN (394) 100
+H_BIF_BOOTIMAGE (395) 101
+H_BIF_BL (396) 102
 H_BIF_PLDATA (397)
-H_BIF_PID (398) 103
-H_BIF_ENCR (399) 102
-H_BIF_AUTH (400) 104
-H_BIF_CHKSM (401) 107
-H_BIF_ELYHNDOFF (402) 130
-H_BIF_BHSIGN (403) 132
-H_BIF_TCMBOOT (404) 105
-H_BIF_OPTIONALDATA (405) 106
-H_BIF_POWNER (406) 108
-H_BIF_PRESIGN (407) 109
-H_BIF_UDF (408) 110
-H_BIF_XIP (409) 111
-H_BIF_ALIGN (410) 112
-H_BIF_OFFSET (411) 113
-H_BIF_RES (412) 114
-H_BIF_LOAD (413) 115
-H_BIF_TZ (414) 123
-H_BIF_STARTUP (415) 116
-H_BIF_KEYSRC (416) 117
-H_BIF_FSBLCFG (417) 118
-H_BIF_BOOTDEV (418) 119
-H_BIF_DESTCPU (419) 120
-H_BIF_DESTDEV (420) 121
-H_BIF_EL (421) 122
-H_SPLIT (422) 64 133
-H_BIF_AUTHPARAM (423) 124
-H_BIF_BHKEY (424) 125
-H_BIF_PFW (425) 126
-H_BIF_BLOCKS (426) 127
-H_BIF_METAL (427) 129
-H_BIF_BHIV (428) 128
-H_BIF_BOOTVEC (429) 135
-H_BIF_PUFDATA (430) 136
+H_BIF_PID (398) 104
+H_BIF_ENCR (399) 103
+H_BIF_AUTH (400) 105
+H_BIF_CHKSM (401) 108
+H_BIF_ELYHNDOFF (402) 131
+H_BIF_BHSIGN (403) 133
+H_BIF_TCMBOOT (404) 106
+H_BIF_OPTIONALDATA (405) 107
+H_BIF_POWNER (406) 109
+H_BIF_PRESIGN (407) 110
+H_BIF_UDF (408) 111
+H_BIF_XIP (409) 112
+H_BIF_ALIGN (410) 113
+H_BIF_OFFSET (411) 114
+H_BIF_RES (412) 115
+H_BIF_LOAD (413) 116
+H_BIF_TZ (414) 124
+H_BIF_STARTUP (415) 117
+H_BIF_KEYSRC (416) 118
+H_BIF_FSBLCFG (417) 119
+H_BIF_BOOTDEV (418) 120
+H_BIF_DESTCPU (419) 121
+H_BIF_DESTDEV (420) 122
+H_BIF_EL (421) 123
+H_SPLIT (422) 65 134
+H_BIF_AUTHPARAM (423) 125
+H_BIF_BHKEY (424) 126
+H_BIF_PFW (425) 127
+H_BIF_BLOCKS (426) 128
+H_BIF_METAL (427) 130
+H_BIF_BHIV (428) 129
+H_BIF_BOOTVEC (429) 136
+H_BIF_PUFDATA (430) 137
 H_BIF_PTYPE (431)
 H_BIF_IMAGECFG (432)
 H_BIF_PMCCONFIG (433)
-H_BIF_AARCH32 (434) 137
-H_BIF_BIGENDIAN (435) 138
-H_BIF_BOOTCONFIG (436) 139
-H_BIF_COPY (437) 140
-H_BIF_CORE (438) 141
-H_BIF_DELAY_HANDOFF (439) 142
-H_BIF_DELAY_LOAD (440) 143
-H_BIF_FILE (441) 144
-H_BIF_ID (442) 145
-H_BIF_IMAGE (443) 146
-H_BIF_METAHDR (444) 147
-H_BIF_NAME (445) 148
-H_BIF_PARTITION (446) 150
-H_BIF_SLR (447) 151
-H_BIF_TYPE (448) 152
-H_BIF_KEYSRCENCR (449) 153
-H_BIF_PARENTID (450) 149
-H_DPACM_ENABLE (451) 154
-H_BIF_USERKEYS (452) 155
-HVN_BIF_PCR (453) 156
-HVN_BIF_PCR_MINDEX (454) 157
-HV_BIF_IMAGESTORE (455) 158
+H_BIF_AARCH32 (434) 138
+H_BIF_BIGENDIAN (435) 139
+H_BIF_BOOTCONFIG (436) 140
+H_BIF_COPY (437) 141
+H_BIF_CORE (438) 142
+H_BIF_DELAY_HANDOFF (439) 143
+H_BIF_DELAY_LOAD (440) 144
+H_BIF_FILE (441) 145
+H_BIF_ID (442) 146
+H_BIF_IMAGE (443) 147
+H_BIF_METAHDR (444) 148
+H_BIF_NAME (445) 149
+H_BIF_PARTITION (446) 151
+H_BIF_SLR (447) 152
+H_BIF_TYPE (448) 153
+H_BIF_KEYSRCENCR (449) 154
+H_BIF_PARENTID (450) 150
+H_DPACM_ENABLE (451) 155
+H_BIF_USERKEYS (452) 156
+HVN_BIF_PCR (453) 157
+HVN_BIF_PCR_MINDEX (454) 158
+HV_BIF_IMAGESTORE (455) 159
 
 
 Nonterminals, with rules where they appear
@@ -499,75 +500,75 @@ option_list (203)
 option (204)
     on left: 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23
     24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44
-    45 46 47, on right: 3
+    45 46 47 48, on right: 3
 filename (205)
-    on left: 48 49 50 51, on right: 4 7 8 16 17 27 41 42 43 45 178
-    212 220 221 222 229 230 231 232 233 234 238
+    on left: 49 50 51 52, on right: 4 7 8 16 17 27 42 43 44 46 179
+    213 221 222 223 230 231 232 233 234 235 239
 memsplit (206)
-    on left: 52 53, on right: 5
+    on left: 53 54, on right: 5
 filloption (207)
-    on left: 54 55, on right: 6
+    on left: 55 56, on right: 6
 outputType (208)
-    on left: 56 57, on right: 46
+    on left: 57 58, on right: 47
 helpoption (209)
-    on left: 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75
-    76 77 78 79 80 81 82 83 84 85 86 87 88 89, on right: 12
+    on left: 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76
+    77 78 79 80 81 82 83 84 85 86 87 88 89 90, on right: 12
 bifhelpoption (210)
-    on left: 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105
-    106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121
-    122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137
-    138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153
-    154 155 156 157 158, on right: 13
+    on left: 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106
+    107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122
+    123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138
+    139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154
+    155 156 157 158 159, on right: 13
 setsyncflag (211)
-    on left: 159, on right: 14
+    on left: 160, on right: 14
 wopt (212)
-    on left: 160 161 162, on right: 10
+    on left: 161 162 163, on right: 10
 loglevel (213)
-    on left: 163 164 165 166 167 168, on right: 11
+    on left: 164 165 166 167 168 169, on right: 11
 keysource (214)
-    on left: 169 170, on right: 15
+    on left: 170 171, on right: 15
 startcbc (215)
-    on left: 171 172, on right: 15
+    on left: 172 173, on right: 15
 key0 (216)
-    on left: 173 174, on right: 15
+    on left: 174 175, on right: 15
 hmac (217)
-    on left: 175 176, on right: 15
+    on left: 176 177, on right: 15
 keyfile (218)
-    on left: 177 178, on right: 15
+    on left: 178 179, on right: 15
 number (219)
-    on left: 179, on right: 55
+    on left: 180, on right: 56
 bitfile_type (220)
-    on left: 180 181, on right: 24
+    on left: 181 182, on right: 24
 qpsi_mode (221)
-    on left: 182 183, on right: 25
+    on left: 183 184, on right: 25
 opsi_mode (222)
-    on left: 184 185, on right: 26
+    on left: 185 186, on right: 26
 qspi_size (223)
-    on left: 186 187, on right: 183
+    on left: 187 188, on right: 184
 ospi_size (224)
-    on left: 188 189, on right: 185
+    on left: 189 190, on right: 186
 archOptions (225)
-    on left: 190 191 192 193 194 195 196 197 198 199, on right: 29
+    on left: 191 192 193 194 195 196 197 198 199 200, on right: 29
 key_type (226)
-    on left: 200 201 202 203 204 205 206 207, on right: 32
+    on left: 201 202 203 204 205 206 207 208, on right: 32
 auth_key_options (227)
-    on left: 208 209, on right: 200
+    on left: 209 210, on right: 201
 auth_type (228)
-    on left: 210 211, on right: 36
+    on left: 211 212, on right: 36
 authJtagOptions (229)
-    on left: 212 213, on right: 37
+    on left: 213 214, on right: 37
 authJtagType (230)
-    on left: 214 215 216 217 218 219, on right: 212 213
+    on left: 215 216 217 218 219 220, on right: 213 214
 verifyImageOptions (231)
-    on left: 220, on right: 39
+    on left: 221, on right: 39
 readImageOptions (232)
-    on left: 221 222, on right: 38
+    on left: 222 223, on right: 38
 readType (233)
-    on left: 223 224 225 226 227, on right: 222
+    on left: 224 225 226 227 228, on right: 223
 dumpOptions (234)
-    on left: 228 229 230 231 232 233 234 235 236, on right: 40
+    on left: 229 230 231 232 233 234 235 236 237, on right: 40
 encrDumpOptions (235)
-    on left: 237 238, on right: 34
+    on left: 238 239, on right: 34
 
 
 State 0
@@ -661,12 +662,12 @@ State 4
 
 State 5
 
-   54 filloption: _FILL .
-   55           | _FILL . number
+   55 filloption: _FILL .
+   56           | _FILL . number
 
     HEXVALUE  shift, and go to state 52
 
-    $default  reduce using rule 54 (filloption)
+    $default  reduce using rule 55 (filloption)
 
     number  go to state 53
 
@@ -721,7 +722,7 @@ State 7
     HOUTTYPE       shift, and go to state 85
     H_SPLIT        shift, and go to state 86
 
-    $default  reduce using rule 58 (helpoption)
+    $default  reduce using rule 59 (helpoption)
 
     helpoption  go to state 87
 
@@ -827,16 +828,16 @@ State 12
     HVN_BIF_PCR_MINDEX   shift, and go to state 155
     HV_BIF_IMAGESTORE    shift, and go to state 156
 
-    $default  reduce using rule 90 (bifhelpoption)
+    $default  reduce using rule 91 (bifhelpoption)
 
     bifhelpoption  go to state 157
 
 
 State 13
 
-   47 option: _TLBIN .
+   48 option: _TLBIN .
 
-    $default  reduce using rule 47 (option)
+    $default  reduce using rule 48 (option)
 
 
 State 14
@@ -849,7 +850,7 @@ State 14
     DEBUG    shift, and go to state 161
     TRACE    shift, and go to state 162
 
-    $default  reduce using rule 163 (loglevel)
+    $default  reduce using rule 164 (loglevel)
 
     loglevel  go to state 163
 
@@ -876,7 +877,7 @@ State 16
 
 State 17
 
-   46 option: _OUT_TYPE . outputType
+   47 option: _OUT_TYPE . outputType
 
     MCS  shift, and go to state 170
     BIN  shift, and go to state 171
@@ -887,6 +888,7 @@ State 17
 State 18
 
    40 option: _DUMP . dumpOptions
+   41       | _DUMP .
 
     DUMP_SLAVE_PDIS  shift, and go to state 173
     DUMP_PUF_PDI     shift, and go to state 174
@@ -896,13 +898,15 @@ State 18
     QFILENAME        shift, and go to state 49
     HEXSTRING        shift, and go to state 50
 
+    $default  reduce using rule 41 (option)
+
     filename     go to state 176
     dumpOptions  go to state 177
 
 
 State 19
 
-   41 option: _DUMP_DIR . filename
+   42 option: _DUMP_DIR . filename
 
     IDENTIFIER  shift, and go to state 47
     FILENAME    shift, and go to state 48
@@ -914,7 +918,7 @@ State 19
 
 State 20
 
-   42 option: _PUF . filename
+   43 option: _PUF . filename
 
     IDENTIFIER  shift, and go to state 47
     FILENAME    shift, and go to state 48
@@ -928,7 +932,7 @@ State 21
 
    14 option: _SYNCFLAG . setsyncflag
 
-    $default  reduce using rule 159 (setsyncflag)
+    $default  reduce using rule 160 (setsyncflag)
 
     setsyncflag  go to state 180
 
@@ -985,7 +989,7 @@ State 26
     ON   shift, and go to state 198
     OFF  shift, and go to state 199
 
-    $default  reduce using rule 160 (wopt)
+    $default  reduce using rule 161 (wopt)
 
     wopt  go to state 200
 
@@ -1006,7 +1010,7 @@ State 28
 
 State 29
 
-   45 option: _OVERLAYCDO . filename
+   46 option: _OVERLAYCDO . filename
 
     IDENTIFIER  shift, and go to state 47
     FILENAME    shift, and go to state 48
@@ -1157,7 +1161,7 @@ State 41
 
 State 42
 
-   43 option: _VERIFYKDF . filename
+   44 option: _VERIFYKDF . filename
 
     IDENTIFIER  shift, and go to state 47
     FILENAME    shift, and go to state 48
@@ -1169,9 +1173,9 @@ State 42
 
 State 43
 
-   44 option: _AUTH_OPTIMIZATION .
+   45 option: _AUTH_OPTIMIZATION .
 
-    $default  reduce using rule 44 (option)
+    $default  reduce using rule 45 (option)
 
 
 State 44
@@ -1183,7 +1187,7 @@ State 44
     QFILENAME   shift, and go to state 49
     HEXSTRING   shift, and go to state 50
 
-    $default  reduce using rule 237 (encrDumpOptions)
+    $default  reduce using rule 238 (encrDumpOptions)
 
     filename         go to state 236
     encrDumpOptions  go to state 237
@@ -1205,30 +1209,30 @@ State 46
 
 State 47
 
-   49 filename: IDENTIFIER .
-
-    $default  reduce using rule 49 (filename)
-
-
-State 48
-
-   50 filename: FILENAME .
+   50 filename: IDENTIFIER .
 
     $default  reduce using rule 50 (filename)
 
 
-State 49
+State 48
 
-   51 filename: QFILENAME .
+   51 filename: FILENAME .
 
     $default  reduce using rule 51 (filename)
 
 
+State 49
+
+   52 filename: QFILENAME .
+
+    $default  reduce using rule 52 (filename)
+
+
 State 50
 
-   48 filename: HEXSTRING .
+   49 filename: HEXSTRING .
 
-    $default  reduce using rule 48 (filename)
+    $default  reduce using rule 49 (filename)
 
 
 State 51
@@ -1240,16 +1244,16 @@ State 51
 
 State 52
 
-  179 number: HEXVALUE .
+  180 number: HEXVALUE .
 
-    $default  reduce using rule 179 (number)
+    $default  reduce using rule 180 (number)
 
 
 State 53
 
-   55 filloption: _FILL number .
+   56 filloption: _FILL number .
 
-    $default  reduce using rule 55 (filloption)
+    $default  reduce using rule 56 (filloption)
 
 
 State 54
@@ -1273,219 +1277,219 @@ State 55
 
 State 56
 
-   59 helpoption: HBIFHELP .
-
-    $default  reduce using rule 59 (helpoption)
-
-
-State 57
-
-   60 helpoption: HARCH .
+   60 helpoption: HBIFHELP .
 
     $default  reduce using rule 60 (helpoption)
 
 
-State 58
+State 57
 
-   62 helpoption: HIMAGE .
-
-    $default  reduce using rule 62 (helpoption)
-
-
-State 59
-
-   63 helpoption: HFILL .
-
-    $default  reduce using rule 63 (helpoption)
-
-
-State 60
-
-   65 helpoption: HO .
-
-    $default  reduce using rule 65 (helpoption)
-
-
-State 61
-
-   66 helpoption: HP .
-
-    $default  reduce using rule 66 (helpoption)
-
-
-State 62
-
-   67 helpoption: HW .
-
-    $default  reduce using rule 67 (helpoption)
-
-
-State 63
-
-   68 helpoption: HEFUSEPPKBITS .
-
-    $default  reduce using rule 68 (helpoption)
-
-
-State 64
-
-   69 helpoption: HGENHASHES .
-
-    $default  reduce using rule 69 (helpoption)
-
-
-State 65
-
-   70 helpoption: HLEGACY .
-
-    $default  reduce using rule 70 (helpoption)
-
-
-State 66
-
-   71 helpoption: HPADHDR .
-
-    $default  reduce using rule 71 (helpoption)
-
-
-State 67
-
-   72 helpoption: H_SPKSIGN .
-
-    $default  reduce using rule 72 (helpoption)
-
-
-State 68
-
-   61 helpoption: HAUTHOPT .
+   61 helpoption: HARCH .
 
     $default  reduce using rule 61 (helpoption)
 
 
-State 69
+State 58
 
-   73 helpoption: HPACKAGE .
+   63 helpoption: HIMAGE .
+
+    $default  reduce using rule 63 (helpoption)
+
+
+State 59
+
+   64 helpoption: HFILL .
+
+    $default  reduce using rule 64 (helpoption)
+
+
+State 60
+
+   66 helpoption: HO .
+
+    $default  reduce using rule 66 (helpoption)
+
+
+State 61
+
+   67 helpoption: HP .
+
+    $default  reduce using rule 67 (helpoption)
+
+
+State 62
+
+   68 helpoption: HW .
+
+    $default  reduce using rule 68 (helpoption)
+
+
+State 63
+
+   69 helpoption: HEFUSEPPKBITS .
+
+    $default  reduce using rule 69 (helpoption)
+
+
+State 64
+
+   70 helpoption: HGENHASHES .
+
+    $default  reduce using rule 70 (helpoption)
+
+
+State 65
+
+   71 helpoption: HLEGACY .
+
+    $default  reduce using rule 71 (helpoption)
+
+
+State 66
+
+   72 helpoption: HPADHDR .
+
+    $default  reduce using rule 72 (helpoption)
+
+
+State 67
+
+   73 helpoption: H_SPKSIGN .
 
     $default  reduce using rule 73 (helpoption)
 
 
-State 70
+State 68
 
-   74 helpoption: HENCRYPT .
+   62 helpoption: HAUTHOPT .
+
+    $default  reduce using rule 62 (helpoption)
+
+
+State 69
+
+   74 helpoption: HPACKAGE .
 
     $default  reduce using rule 74 (helpoption)
 
 
-State 71
+State 70
 
-   75 helpoption: HGENKEYS .
+   75 helpoption: HENCRYPT .
 
     $default  reduce using rule 75 (helpoption)
 
 
-State 72
+State 71
 
-   76 helpoption: HDQSPI .
+   76 helpoption: HGENKEYS .
 
     $default  reduce using rule 76 (helpoption)
 
 
-State 73
+State 72
 
-   77 helpoption: HLOG .
+   77 helpoption: HDQSPI .
 
     $default  reduce using rule 77 (helpoption)
 
 
-State 74
+State 73
 
-   78 helpoption: HZYNQMPES1 .
+   78 helpoption: HLOG .
 
     $default  reduce using rule 78 (helpoption)
 
 
-State 75
+State 74
 
-   79 helpoption: HPROCESSBIT .
+   79 helpoption: HZYNQMPES1 .
 
     $default  reduce using rule 79 (helpoption)
 
 
-State 76
+State 75
 
-   80 helpoption: HNONBOOTING .
+   80 helpoption: HPROCESSBIT .
 
     $default  reduce using rule 80 (helpoption)
 
 
-State 77
+State 76
 
-   81 helpoption: HENCRDUMP .
+   81 helpoption: HNONBOOTING .
 
     $default  reduce using rule 81 (helpoption)
 
 
-State 78
+State 77
 
-   82 helpoption: HVERIFY .
+   82 helpoption: HENCRDUMP .
 
     $default  reduce using rule 82 (helpoption)
 
 
-State 79
+State 78
 
-   85 helpoption: HSECUREDEBUG .
-
-    $default  reduce using rule 85 (helpoption)
-
-
-State 80
-
-   84 helpoption: HREAD .
-
-    $default  reduce using rule 84 (helpoption)
-
-
-State 81
-
-   83 helpoption: HVERIFYKDF .
+   83 helpoption: HVERIFY .
 
     $default  reduce using rule 83 (helpoption)
 
 
-State 82
+State 79
 
-   86 helpoption: HDUMP .
+   86 helpoption: HSECUREDEBUG .
 
     $default  reduce using rule 86 (helpoption)
 
 
-State 83
+State 80
 
-   87 helpoption: HDUMPDIR .
+   85 helpoption: HREAD .
+
+    $default  reduce using rule 85 (helpoption)
+
+
+State 81
+
+   84 helpoption: HVERIFYKDF .
+
+    $default  reduce using rule 84 (helpoption)
+
+
+State 82
+
+   87 helpoption: HDUMP .
 
     $default  reduce using rule 87 (helpoption)
 
 
-State 84
+State 83
 
-   88 helpoption: HOVLCDO .
+   88 helpoption: HDUMPDIR .
 
     $default  reduce using rule 88 (helpoption)
 
 
-State 85
+State 84
 
-   89 helpoption: HOUTTYPE .
+   89 helpoption: HOVLCDO .
 
     $default  reduce using rule 89 (helpoption)
 
 
+State 85
+
+   90 helpoption: HOUTTYPE .
+
+    $default  reduce using rule 90 (helpoption)
+
+
 State 86
 
-   64 helpoption: H_SPLIT .
+   65 helpoption: H_SPLIT .
 
-    $default  reduce using rule 64 (helpoption)
+    $default  reduce using rule 65 (helpoption)
 
 
 State 87
@@ -1504,478 +1508,478 @@ State 88
 
 State 89
 
-  134 bifhelpoption: H_SPKSIGN .
-
-    $default  reduce using rule 134 (bifhelpoption)
-
-
-State 90
-
-   91 bifhelpoption: H_BIF_INIT .
-
-    $default  reduce using rule 91 (bifhelpoption)
-
-
-State 91
-
-   92 bifhelpoption: H_BIF_UDFBH .
-
-    $default  reduce using rule 92 (bifhelpoption)
-
-
-State 92
-
-   93 bifhelpoption: H_BIF_AES .
-
-    $default  reduce using rule 93 (bifhelpoption)
-
-
-State 93
-
-   94 bifhelpoption: H_BIF_PPK .
-
-    $default  reduce using rule 94 (bifhelpoption)
-
-
-State 94
-
-   95 bifhelpoption: H_BIF_PSK .
-
-    $default  reduce using rule 95 (bifhelpoption)
-
-
-State 95
-
-   96 bifhelpoption: H_BIF_SPK .
-
-    $default  reduce using rule 96 (bifhelpoption)
-
-
-State 96
-
-   97 bifhelpoption: H_BIF_SSK .
-
-    $default  reduce using rule 97 (bifhelpoption)
-
-
-State 97
-
-   98 bifhelpoption: H_BIF_SPKSIGN .
-
-    $default  reduce using rule 98 (bifhelpoption)
-
-
-State 98
-
-  131 bifhelpoption: H_BIF_HIVEC .
-
-    $default  reduce using rule 131 (bifhelpoption)
-
-
-State 99
-
-   99 bifhelpoption: H_BIF_HDRSIGN .
-
-    $default  reduce using rule 99 (bifhelpoption)
-
-
-State 100
-
-  100 bifhelpoption: H_BIF_BOOTIMAGE .
-
-    $default  reduce using rule 100 (bifhelpoption)
-
-
-State 101
-
-  101 bifhelpoption: H_BIF_BL .
-
-    $default  reduce using rule 101 (bifhelpoption)
-
-
-State 102
-
-  103 bifhelpoption: H_BIF_PID .
-
-    $default  reduce using rule 103 (bifhelpoption)
-
-
-State 103
-
-  102 bifhelpoption: H_BIF_ENCR .
-
-    $default  reduce using rule 102 (bifhelpoption)
-
-
-State 104
-
-  104 bifhelpoption: H_BIF_AUTH .
-
-    $default  reduce using rule 104 (bifhelpoption)
-
-
-State 105
-
-  107 bifhelpoption: H_BIF_CHKSM .
-
-    $default  reduce using rule 107 (bifhelpoption)
-
-
-State 106
-
-  130 bifhelpoption: H_BIF_ELYHNDOFF .
-
-    $default  reduce using rule 130 (bifhelpoption)
-
-
-State 107
-
-  132 bifhelpoption: H_BIF_BHSIGN .
-
-    $default  reduce using rule 132 (bifhelpoption)
-
-
-State 108
-
-  105 bifhelpoption: H_BIF_TCMBOOT .
-
-    $default  reduce using rule 105 (bifhelpoption)
-
-
-State 109
-
-  106 bifhelpoption: H_BIF_OPTIONALDATA .
-
-    $default  reduce using rule 106 (bifhelpoption)
-
-
-State 110
-
-  108 bifhelpoption: H_BIF_POWNER .
-
-    $default  reduce using rule 108 (bifhelpoption)
-
-
-State 111
-
-  109 bifhelpoption: H_BIF_PRESIGN .
-
-    $default  reduce using rule 109 (bifhelpoption)
-
-
-State 112
-
-  110 bifhelpoption: H_BIF_UDF .
-
-    $default  reduce using rule 110 (bifhelpoption)
-
-
-State 113
-
-  111 bifhelpoption: H_BIF_XIP .
-
-    $default  reduce using rule 111 (bifhelpoption)
-
-
-State 114
-
-  112 bifhelpoption: H_BIF_ALIGN .
-
-    $default  reduce using rule 112 (bifhelpoption)
-
-
-State 115
-
-  113 bifhelpoption: H_BIF_OFFSET .
-
-    $default  reduce using rule 113 (bifhelpoption)
-
-
-State 116
-
-  114 bifhelpoption: H_BIF_RES .
-
-    $default  reduce using rule 114 (bifhelpoption)
-
-
-State 117
-
-  115 bifhelpoption: H_BIF_LOAD .
-
-    $default  reduce using rule 115 (bifhelpoption)
-
-
-State 118
-
-  123 bifhelpoption: H_BIF_TZ .
-
-    $default  reduce using rule 123 (bifhelpoption)
-
-
-State 119
-
-  116 bifhelpoption: H_BIF_STARTUP .
-
-    $default  reduce using rule 116 (bifhelpoption)
-
-
-State 120
-
-  117 bifhelpoption: H_BIF_KEYSRC .
-
-    $default  reduce using rule 117 (bifhelpoption)
-
-
-State 121
-
-  118 bifhelpoption: H_BIF_FSBLCFG .
-
-    $default  reduce using rule 118 (bifhelpoption)
-
-
-State 122
-
-  119 bifhelpoption: H_BIF_BOOTDEV .
-
-    $default  reduce using rule 119 (bifhelpoption)
-
-
-State 123
-
-  120 bifhelpoption: H_BIF_DESTCPU .
-
-    $default  reduce using rule 120 (bifhelpoption)
-
-
-State 124
-
-  121 bifhelpoption: H_BIF_DESTDEV .
-
-    $default  reduce using rule 121 (bifhelpoption)
-
-
-State 125
-
-  122 bifhelpoption: H_BIF_EL .
-
-    $default  reduce using rule 122 (bifhelpoption)
-
-
-State 126
-
-  133 bifhelpoption: H_SPLIT .
-
-    $default  reduce using rule 133 (bifhelpoption)
-
-
-State 127
-
-  124 bifhelpoption: H_BIF_AUTHPARAM .
-
-    $default  reduce using rule 124 (bifhelpoption)
-
-
-State 128
-
-  125 bifhelpoption: H_BIF_BHKEY .
-
-    $default  reduce using rule 125 (bifhelpoption)
-
-
-State 129
-
-  126 bifhelpoption: H_BIF_PFW .
-
-    $default  reduce using rule 126 (bifhelpoption)
-
-
-State 130
-
-  127 bifhelpoption: H_BIF_BLOCKS .
-
-    $default  reduce using rule 127 (bifhelpoption)
-
-
-State 131
-
-  129 bifhelpoption: H_BIF_METAL .
-
-    $default  reduce using rule 129 (bifhelpoption)
-
-
-State 132
-
-  128 bifhelpoption: H_BIF_BHIV .
-
-    $default  reduce using rule 128 (bifhelpoption)
-
-
-State 133
-
-  135 bifhelpoption: H_BIF_BOOTVEC .
+  135 bifhelpoption: H_SPKSIGN .
 
     $default  reduce using rule 135 (bifhelpoption)
 
 
-State 134
+State 90
 
-  136 bifhelpoption: H_BIF_PUFDATA .
+   92 bifhelpoption: H_BIF_INIT .
+
+    $default  reduce using rule 92 (bifhelpoption)
+
+
+State 91
+
+   93 bifhelpoption: H_BIF_UDFBH .
+
+    $default  reduce using rule 93 (bifhelpoption)
+
+
+State 92
+
+   94 bifhelpoption: H_BIF_AES .
+
+    $default  reduce using rule 94 (bifhelpoption)
+
+
+State 93
+
+   95 bifhelpoption: H_BIF_PPK .
+
+    $default  reduce using rule 95 (bifhelpoption)
+
+
+State 94
+
+   96 bifhelpoption: H_BIF_PSK .
+
+    $default  reduce using rule 96 (bifhelpoption)
+
+
+State 95
+
+   97 bifhelpoption: H_BIF_SPK .
+
+    $default  reduce using rule 97 (bifhelpoption)
+
+
+State 96
+
+   98 bifhelpoption: H_BIF_SSK .
+
+    $default  reduce using rule 98 (bifhelpoption)
+
+
+State 97
+
+   99 bifhelpoption: H_BIF_SPKSIGN .
+
+    $default  reduce using rule 99 (bifhelpoption)
+
+
+State 98
+
+  132 bifhelpoption: H_BIF_HIVEC .
+
+    $default  reduce using rule 132 (bifhelpoption)
+
+
+State 99
+
+  100 bifhelpoption: H_BIF_HDRSIGN .
+
+    $default  reduce using rule 100 (bifhelpoption)
+
+
+State 100
+
+  101 bifhelpoption: H_BIF_BOOTIMAGE .
+
+    $default  reduce using rule 101 (bifhelpoption)
+
+
+State 101
+
+  102 bifhelpoption: H_BIF_BL .
+
+    $default  reduce using rule 102 (bifhelpoption)
+
+
+State 102
+
+  104 bifhelpoption: H_BIF_PID .
+
+    $default  reduce using rule 104 (bifhelpoption)
+
+
+State 103
+
+  103 bifhelpoption: H_BIF_ENCR .
+
+    $default  reduce using rule 103 (bifhelpoption)
+
+
+State 104
+
+  105 bifhelpoption: H_BIF_AUTH .
+
+    $default  reduce using rule 105 (bifhelpoption)
+
+
+State 105
+
+  108 bifhelpoption: H_BIF_CHKSM .
+
+    $default  reduce using rule 108 (bifhelpoption)
+
+
+State 106
+
+  131 bifhelpoption: H_BIF_ELYHNDOFF .
+
+    $default  reduce using rule 131 (bifhelpoption)
+
+
+State 107
+
+  133 bifhelpoption: H_BIF_BHSIGN .
+
+    $default  reduce using rule 133 (bifhelpoption)
+
+
+State 108
+
+  106 bifhelpoption: H_BIF_TCMBOOT .
+
+    $default  reduce using rule 106 (bifhelpoption)
+
+
+State 109
+
+  107 bifhelpoption: H_BIF_OPTIONALDATA .
+
+    $default  reduce using rule 107 (bifhelpoption)
+
+
+State 110
+
+  109 bifhelpoption: H_BIF_POWNER .
+
+    $default  reduce using rule 109 (bifhelpoption)
+
+
+State 111
+
+  110 bifhelpoption: H_BIF_PRESIGN .
+
+    $default  reduce using rule 110 (bifhelpoption)
+
+
+State 112
+
+  111 bifhelpoption: H_BIF_UDF .
+
+    $default  reduce using rule 111 (bifhelpoption)
+
+
+State 113
+
+  112 bifhelpoption: H_BIF_XIP .
+
+    $default  reduce using rule 112 (bifhelpoption)
+
+
+State 114
+
+  113 bifhelpoption: H_BIF_ALIGN .
+
+    $default  reduce using rule 113 (bifhelpoption)
+
+
+State 115
+
+  114 bifhelpoption: H_BIF_OFFSET .
+
+    $default  reduce using rule 114 (bifhelpoption)
+
+
+State 116
+
+  115 bifhelpoption: H_BIF_RES .
+
+    $default  reduce using rule 115 (bifhelpoption)
+
+
+State 117
+
+  116 bifhelpoption: H_BIF_LOAD .
+
+    $default  reduce using rule 116 (bifhelpoption)
+
+
+State 118
+
+  124 bifhelpoption: H_BIF_TZ .
+
+    $default  reduce using rule 124 (bifhelpoption)
+
+
+State 119
+
+  117 bifhelpoption: H_BIF_STARTUP .
+
+    $default  reduce using rule 117 (bifhelpoption)
+
+
+State 120
+
+  118 bifhelpoption: H_BIF_KEYSRC .
+
+    $default  reduce using rule 118 (bifhelpoption)
+
+
+State 121
+
+  119 bifhelpoption: H_BIF_FSBLCFG .
+
+    $default  reduce using rule 119 (bifhelpoption)
+
+
+State 122
+
+  120 bifhelpoption: H_BIF_BOOTDEV .
+
+    $default  reduce using rule 120 (bifhelpoption)
+
+
+State 123
+
+  121 bifhelpoption: H_BIF_DESTCPU .
+
+    $default  reduce using rule 121 (bifhelpoption)
+
+
+State 124
+
+  122 bifhelpoption: H_BIF_DESTDEV .
+
+    $default  reduce using rule 122 (bifhelpoption)
+
+
+State 125
+
+  123 bifhelpoption: H_BIF_EL .
+
+    $default  reduce using rule 123 (bifhelpoption)
+
+
+State 126
+
+  134 bifhelpoption: H_SPLIT .
+
+    $default  reduce using rule 134 (bifhelpoption)
+
+
+State 127
+
+  125 bifhelpoption: H_BIF_AUTHPARAM .
+
+    $default  reduce using rule 125 (bifhelpoption)
+
+
+State 128
+
+  126 bifhelpoption: H_BIF_BHKEY .
+
+    $default  reduce using rule 126 (bifhelpoption)
+
+
+State 129
+
+  127 bifhelpoption: H_BIF_PFW .
+
+    $default  reduce using rule 127 (bifhelpoption)
+
+
+State 130
+
+  128 bifhelpoption: H_BIF_BLOCKS .
+
+    $default  reduce using rule 128 (bifhelpoption)
+
+
+State 131
+
+  130 bifhelpoption: H_BIF_METAL .
+
+    $default  reduce using rule 130 (bifhelpoption)
+
+
+State 132
+
+  129 bifhelpoption: H_BIF_BHIV .
+
+    $default  reduce using rule 129 (bifhelpoption)
+
+
+State 133
+
+  136 bifhelpoption: H_BIF_BOOTVEC .
 
     $default  reduce using rule 136 (bifhelpoption)
 
 
-State 135
+State 134
 
-  137 bifhelpoption: H_BIF_AARCH32 .
+  137 bifhelpoption: H_BIF_PUFDATA .
 
     $default  reduce using rule 137 (bifhelpoption)
 
 
-State 136
+State 135
 
-  138 bifhelpoption: H_BIF_BIGENDIAN .
+  138 bifhelpoption: H_BIF_AARCH32 .
 
     $default  reduce using rule 138 (bifhelpoption)
 
 
-State 137
+State 136
 
-  139 bifhelpoption: H_BIF_BOOTCONFIG .
+  139 bifhelpoption: H_BIF_BIGENDIAN .
 
     $default  reduce using rule 139 (bifhelpoption)
 
 
-State 138
+State 137
 
-  140 bifhelpoption: H_BIF_COPY .
+  140 bifhelpoption: H_BIF_BOOTCONFIG .
 
     $default  reduce using rule 140 (bifhelpoption)
 
 
-State 139
+State 138
 
-  141 bifhelpoption: H_BIF_CORE .
+  141 bifhelpoption: H_BIF_COPY .
 
     $default  reduce using rule 141 (bifhelpoption)
 
 
-State 140
+State 139
 
-  142 bifhelpoption: H_BIF_DELAY_HANDOFF .
+  142 bifhelpoption: H_BIF_CORE .
 
     $default  reduce using rule 142 (bifhelpoption)
 
 
-State 141
+State 140
 
-  143 bifhelpoption: H_BIF_DELAY_LOAD .
+  143 bifhelpoption: H_BIF_DELAY_HANDOFF .
 
     $default  reduce using rule 143 (bifhelpoption)
 
 
-State 142
+State 141
 
-  144 bifhelpoption: H_BIF_FILE .
+  144 bifhelpoption: H_BIF_DELAY_LOAD .
 
     $default  reduce using rule 144 (bifhelpoption)
 
 
-State 143
+State 142
 
-  145 bifhelpoption: H_BIF_ID .
+  145 bifhelpoption: H_BIF_FILE .
 
     $default  reduce using rule 145 (bifhelpoption)
 
 
-State 144
+State 143
 
-  146 bifhelpoption: H_BIF_IMAGE .
+  146 bifhelpoption: H_BIF_ID .
 
     $default  reduce using rule 146 (bifhelpoption)
 
 
-State 145
+State 144
 
-  147 bifhelpoption: H_BIF_METAHDR .
+  147 bifhelpoption: H_BIF_IMAGE .
 
     $default  reduce using rule 147 (bifhelpoption)
 
 
-State 146
+State 145
 
-  148 bifhelpoption: H_BIF_NAME .
+  148 bifhelpoption: H_BIF_METAHDR .
 
     $default  reduce using rule 148 (bifhelpoption)
 
 
-State 147
+State 146
 
-  150 bifhelpoption: H_BIF_PARTITION .
-
-    $default  reduce using rule 150 (bifhelpoption)
-
-
-State 148
-
-  151 bifhelpoption: H_BIF_SLR .
-
-    $default  reduce using rule 151 (bifhelpoption)
-
-
-State 149
-
-  152 bifhelpoption: H_BIF_TYPE .
-
-    $default  reduce using rule 152 (bifhelpoption)
-
-
-State 150
-
-  153 bifhelpoption: H_BIF_KEYSRCENCR .
-
-    $default  reduce using rule 153 (bifhelpoption)
-
-
-State 151
-
-  149 bifhelpoption: H_BIF_PARENTID .
+  149 bifhelpoption: H_BIF_NAME .
 
     $default  reduce using rule 149 (bifhelpoption)
 
 
-State 152
+State 147
 
-  154 bifhelpoption: H_DPACM_ENABLE .
+  151 bifhelpoption: H_BIF_PARTITION .
+
+    $default  reduce using rule 151 (bifhelpoption)
+
+
+State 148
+
+  152 bifhelpoption: H_BIF_SLR .
+
+    $default  reduce using rule 152 (bifhelpoption)
+
+
+State 149
+
+  153 bifhelpoption: H_BIF_TYPE .
+
+    $default  reduce using rule 153 (bifhelpoption)
+
+
+State 150
+
+  154 bifhelpoption: H_BIF_KEYSRCENCR .
 
     $default  reduce using rule 154 (bifhelpoption)
 
 
-State 153
+State 151
 
-  155 bifhelpoption: H_BIF_USERKEYS .
+  150 bifhelpoption: H_BIF_PARENTID .
+
+    $default  reduce using rule 150 (bifhelpoption)
+
+
+State 152
+
+  155 bifhelpoption: H_DPACM_ENABLE .
 
     $default  reduce using rule 155 (bifhelpoption)
 
 
-State 154
+State 153
 
-  156 bifhelpoption: HVN_BIF_PCR .
+  156 bifhelpoption: H_BIF_USERKEYS .
 
     $default  reduce using rule 156 (bifhelpoption)
 
 
-State 155
+State 154
 
-  157 bifhelpoption: HVN_BIF_PCR_MINDEX .
+  157 bifhelpoption: HVN_BIF_PCR .
 
     $default  reduce using rule 157 (bifhelpoption)
 
 
-State 156
+State 155
 
-  158 bifhelpoption: HV_BIF_IMAGESTORE .
+  158 bifhelpoption: HVN_BIF_PCR_MINDEX .
 
     $default  reduce using rule 158 (bifhelpoption)
+
+
+State 156
+
+  159 bifhelpoption: HV_BIF_IMAGESTORE .
+
+    $default  reduce using rule 159 (bifhelpoption)
 
 
 State 157
@@ -1987,37 +1991,37 @@ State 157
 
 State 158
 
-  164 loglevel: ERROR .
-
-    $default  reduce using rule 164 (loglevel)
-
-
-State 159
-
-  165 loglevel: WARNING .
+  165 loglevel: ERROR .
 
     $default  reduce using rule 165 (loglevel)
 
 
-State 160
+State 159
 
-  166 loglevel: INFO .
+  166 loglevel: WARNING .
 
     $default  reduce using rule 166 (loglevel)
 
 
-State 161
+State 160
 
-  167 loglevel: DEBUG .
+  167 loglevel: INFO .
 
     $default  reduce using rule 167 (loglevel)
 
 
-State 162
+State 161
 
-  168 loglevel: TRACE .
+  168 loglevel: DEBUG .
 
     $default  reduce using rule 168 (loglevel)
+
+
+State 162
+
+  169 loglevel: TRACE .
+
+    $default  reduce using rule 169 (loglevel)
 
 
 State 163
@@ -2029,16 +2033,16 @@ State 163
 
 State 164
 
-   52 memsplit: MCS .
+   53 memsplit: MCS .
 
-    $default  reduce using rule 52 (memsplit)
+    $default  reduce using rule 53 (memsplit)
 
 
 State 165
 
-   53 memsplit: BIN .
+   54 memsplit: BIN .
 
-    $default  reduce using rule 53 (memsplit)
+    $default  reduce using rule 54 (memsplit)
 
 
 State 166
@@ -2050,16 +2054,16 @@ State 166
 
 State 167
 
-  180 bitfile_type: MCS .
+  181 bitfile_type: MCS .
 
-    $default  reduce using rule 180 (bitfile_type)
+    $default  reduce using rule 181 (bitfile_type)
 
 
 State 168
 
-  181 bitfile_type: BIN .
+  182 bitfile_type: BIN .
 
-    $default  reduce using rule 181 (bitfile_type)
+    $default  reduce using rule 182 (bitfile_type)
 
 
 State 169
@@ -2071,68 +2075,68 @@ State 169
 
 State 170
 
-   56 outputType: MCS .
-
-    $default  reduce using rule 56 (outputType)
-
-
-State 171
-
-   57 outputType: BIN .
+   57 outputType: MCS .
 
     $default  reduce using rule 57 (outputType)
 
 
+State 171
+
+   58 outputType: BIN .
+
+    $default  reduce using rule 58 (outputType)
+
+
 State 172
 
-   46 option: _OUT_TYPE outputType .
+   47 option: _OUT_TYPE outputType .
 
-    $default  reduce using rule 46 (option)
+    $default  reduce using rule 47 (option)
 
 
 State 173
 
-  235 dumpOptions: DUMP_SLAVE_PDIS .
-
-    $default  reduce using rule 235 (dumpOptions)
-
-
-State 174
-
-  236 dumpOptions: DUMP_PUF_PDI .
+  236 dumpOptions: DUMP_SLAVE_PDIS .
 
     $default  reduce using rule 236 (dumpOptions)
 
 
+State 174
+
+  237 dumpOptions: DUMP_PUF_PDI .
+
+    $default  reduce using rule 237 (dumpOptions)
+
+
 State 175
 
-  228 dumpOptions: READ_BH .
-  230            | READ_BH . filename
+  229 dumpOptions: READ_BH .
+  231            | READ_BH . filename
 
     IDENTIFIER  shift, and go to state 47
     FILENAME    shift, and go to state 48
     QFILENAME   shift, and go to state 49
     HEXSTRING   shift, and go to state 50
 
-    $default  reduce using rule 228 (dumpOptions)
+    $default  reduce using rule 229 (dumpOptions)
 
     filename  go to state 239
 
 
 State 176
 
-  229 dumpOptions: filename . READ_BH
-  231            | filename .
-  232            | filename . DUMP_PLM
-  233            | filename . DUMP_PMC_CDO
-  234            | filename . DUMP_BOOT_FILES
+  230 dumpOptions: filename . READ_BH
+  232            | filename .
+  233            | filename . DUMP_PLM
+  234            | filename . DUMP_PMC_CDO
+  235            | filename . DUMP_BOOT_FILES
 
     DUMP_PLM         shift, and go to state 240
     DUMP_PMC_CDO     shift, and go to state 241
     DUMP_BOOT_FILES  shift, and go to state 242
     READ_BH          shift, and go to state 243
 
-    $default  reduce using rule 231 (dumpOptions)
+    $default  reduce using rule 232 (dumpOptions)
 
 
 State 177
@@ -2144,16 +2148,16 @@ State 177
 
 State 178
 
-   41 option: _DUMP_DIR filename .
+   42 option: _DUMP_DIR filename .
 
-    $default  reduce using rule 41 (option)
+    $default  reduce using rule 42 (option)
 
 
 State 179
 
-   42 option: _PUF filename .
+   43 option: _PUF filename .
 
-    $default  reduce using rule 42 (option)
+    $default  reduce using rule 43 (option)
 
 
 State 180
@@ -2165,72 +2169,72 @@ State 180
 
 State 181
 
-  190 archOptions: ZYNQ .
-
-    $default  reduce using rule 190 (archOptions)
-
-
-State 182
-
-  191 archOptions: ZYNQMP .
+  191 archOptions: ZYNQ .
 
     $default  reduce using rule 191 (archOptions)
 
 
-State 183
+State 182
 
-  192 archOptions: VERSAL .
+  192 archOptions: ZYNQMP .
 
     $default  reduce using rule 192 (archOptions)
 
 
-State 184
+State 183
 
-  193 archOptions: FPGA .
+  193 archOptions: VERSAL .
 
     $default  reduce using rule 193 (archOptions)
 
 
-State 185
+State 184
 
-  194 archOptions: VERSALNET .
+  194 archOptions: FPGA .
 
     $default  reduce using rule 194 (archOptions)
 
 
-State 186
+State 185
 
-  197 archOptions: TELLURIDE .
-
-    $default  reduce using rule 197 (archOptions)
-
-
-State 187
-
-  195 archOptions: VERSAL_2VE_2VM .
+  195 archOptions: VERSALNET .
 
     $default  reduce using rule 195 (archOptions)
 
 
-State 188
+State 186
 
-  198 archOptions: LASSEN .
+  198 archOptions: TELLURIDE .
 
     $default  reduce using rule 198 (archOptions)
 
 
-State 189
+State 187
 
-  199 archOptions: LASSEN_DL9 .
+  196 archOptions: VERSAL_2VE_2VM .
+
+    $default  reduce using rule 196 (archOptions)
+
+
+State 188
+
+  199 archOptions: LASSEN .
 
     $default  reduce using rule 199 (archOptions)
 
 
+State 189
+
+  200 archOptions: LASSEN_DL9 .
+
+    $default  reduce using rule 200 (archOptions)
+
+
 State 190
 
-  196 archOptions: SPARTANUP .
+  197 archOptions: SPARTANUP .
 
-    $default  reduce using rule 196 (archOptions)
+    $default  reduce using rule 197 (archOptions)
 
 
 State 191
@@ -2242,14 +2246,14 @@ State 191
 
 State 192
 
-  182 qpsi_mode: PARALLEL .
+  183 qpsi_mode: PARALLEL .
 
-    $default  reduce using rule 182 (qpsi_mode)
+    $default  reduce using rule 183 (qpsi_mode)
 
 
 State 193
 
-  183 qpsi_mode: STACKED . qspi_size
+  184 qpsi_mode: STACKED . qspi_size
 
     HEXVALUE   shift, and go to state 244
     HEXSTRING  shift, and go to state 245
@@ -2266,14 +2270,14 @@ State 194
 
 State 195
 
-  184 opsi_mode: PARALLEL .
+  185 opsi_mode: PARALLEL .
 
-    $default  reduce using rule 184 (opsi_mode)
+    $default  reduce using rule 185 (opsi_mode)
 
 
 State 196
 
-  185 opsi_mode: STACKED . ospi_size
+  186 opsi_mode: STACKED . ospi_size
 
     HEXVALUE   shift, and go to state 247
     HEXSTRING  shift, and go to state 248
@@ -2290,16 +2294,16 @@ State 197
 
 State 198
 
-  161 wopt: ON .
+  162 wopt: ON .
 
-    $default  reduce using rule 161 (wopt)
+    $default  reduce using rule 162 (wopt)
 
 
 State 199
 
-  162 wopt: OFF .
+  163 wopt: OFF .
 
-    $default  reduce using rule 162 (wopt)
+    $default  reduce using rule 163 (wopt)
 
 
 State 200
@@ -2311,9 +2315,9 @@ State 200
 
 State 201
 
-   45 option: _OVERLAYCDO filename .
+   46 option: _OVERLAYCDO filename .
 
-    $default  reduce using rule 45 (option)
+    $default  reduce using rule 46 (option)
 
 
 State 202
@@ -2346,28 +2350,28 @@ State 205
 
 State 206
 
-  203 key_type: PEM .
-
-    $default  reduce using rule 203 (key_type)
-
-
-State 207
-
-  204 key_type: RSA .
+  204 key_type: PEM .
 
     $default  reduce using rule 204 (key_type)
 
 
+State 207
+
+  205 key_type: RSA .
+
+    $default  reduce using rule 205 (key_type)
+
+
 State 208
 
-  206 key_type: ECDSAP521 .
+  207 key_type: ECDSAP521 .
 
-    $default  reduce using rule 206 (key_type)
+    $default  reduce using rule 207 (key_type)
 
 
 State 209
 
-  200 key_type: AUTH . auth_key_options
+  201 key_type: AUTH . auth_key_options
 
     PEM  shift, and go to state 251
     RSA  shift, and go to state 252
@@ -2377,30 +2381,30 @@ State 209
 
 State 210
 
-  201 key_type: GREY .
-
-    $default  reduce using rule 201 (key_type)
-
-
-State 211
-
-  202 key_type: METAL .
+  202 key_type: GREY .
 
     $default  reduce using rule 202 (key_type)
 
 
+State 211
+
+  203 key_type: METAL .
+
+    $default  reduce using rule 203 (key_type)
+
+
 State 212
 
-  207 key_type: LMS .
+  208 key_type: LMS .
 
-    $default  reduce using rule 207 (key_type)
+    $default  reduce using rule 208 (key_type)
 
 
 State 213
 
-  205 key_type: ECDSA .
+  206 key_type: ECDSA .
 
-    $default  reduce using rule 205 (key_type)
+    $default  reduce using rule 206 (key_type)
 
 
 State 214
@@ -2419,16 +2423,16 @@ State 215
 
 State 216
 
-  211 auth_type: RSA .
+  212 auth_type: RSA .
 
-    $default  reduce using rule 211 (auth_type)
+    $default  reduce using rule 212 (auth_type)
 
 
 State 217
 
-  210 auth_type: ECDSA .
+  211 auth_type: ECDSA .
 
-    $default  reduce using rule 210 (auth_type)
+    $default  reduce using rule 211 (auth_type)
 
 
 State 218
@@ -2440,44 +2444,44 @@ State 218
 
 State 219
 
-  215 authJtagType: RSA .
-
-    $default  reduce using rule 215 (authJtagType)
-
-
-State 220
-
-  214 authJtagType: ECDSA .
-
-    $default  reduce using rule 214 (authJtagType)
-
-
-State 221
-
-  216 authJtagType: LMS_SHA256 .
+  216 authJtagType: RSA .
 
     $default  reduce using rule 216 (authJtagType)
 
 
-State 222
+State 220
 
-  217 authJtagType: LMS_SHAKE256 .
+  215 authJtagType: ECDSA .
+
+    $default  reduce using rule 215 (authJtagType)
+
+
+State 221
+
+  217 authJtagType: LMS_SHA256 .
 
     $default  reduce using rule 217 (authJtagType)
 
 
-State 223
+State 222
 
-  218 authJtagType: HSS_SHA256 .
+  218 authJtagType: LMS_SHAKE256 .
 
     $default  reduce using rule 218 (authJtagType)
 
 
-State 224
+State 223
 
-  219 authJtagType: HSS_SHAKE256 .
+  219 authJtagType: HSS_SHA256 .
 
     $default  reduce using rule 219 (authJtagType)
+
+
+State 224
+
+  220 authJtagType: HSS_SHAKE256 .
+
+    $default  reduce using rule 220 (authJtagType)
 
 
 State 225
@@ -2489,31 +2493,31 @@ State 225
 
 State 226
 
-  212 authJtagOptions: authJtagType . filename
-  213                | authJtagType .
+  213 authJtagOptions: authJtagType . filename
+  214                | authJtagType .
 
     IDENTIFIER  shift, and go to state 47
     FILENAME    shift, and go to state 48
     QFILENAME   shift, and go to state 49
     HEXSTRING   shift, and go to state 50
 
-    $default  reduce using rule 213 (authJtagOptions)
+    $default  reduce using rule 214 (authJtagOptions)
 
     filename  go to state 254
 
 
 State 227
 
-  169 keysource: BBRAM .
+  170 keysource: BBRAM .
 
-    $default  reduce using rule 169 (keysource)
+    $default  reduce using rule 170 (keysource)
 
 
 State 228
 
-  170 keysource: EFUSE .
+  171 keysource: EFUSE .
 
-    $default  reduce using rule 170 (keysource)
+    $default  reduce using rule 171 (keysource)
 
 
 State 229
@@ -2522,7 +2526,7 @@ State 229
 
     STARTCBC  shift, and go to state 255
 
-    $default  reduce using rule 171 (startcbc)
+    $default  reduce using rule 172 (startcbc)
 
     startcbc  go to state 256
 
@@ -2536,8 +2540,8 @@ State 230
 
 State 231
 
-  221 readImageOptions: filename .
-  222                 | filename . readType
+  222 readImageOptions: filename .
+  223                 | filename . readType
 
     READ_BH   shift, and go to state 257
     READ_IHT  shift, and go to state 258
@@ -2545,7 +2549,7 @@ State 231
     READ_PHT  shift, and go to state 260
     READ_AC   shift, and go to state 261
 
-    $default  reduce using rule 221 (readImageOptions)
+    $default  reduce using rule 222 (readImageOptions)
 
     readType  go to state 262
 
@@ -2559,9 +2563,9 @@ State 232
 
 State 233
 
-  220 verifyImageOptions: filename .
+  221 verifyImageOptions: filename .
 
-    $default  reduce using rule 220 (verifyImageOptions)
+    $default  reduce using rule 221 (verifyImageOptions)
 
 
 State 234
@@ -2573,16 +2577,16 @@ State 234
 
 State 235
 
-   43 option: _VERIFYKDF filename .
+   44 option: _VERIFYKDF filename .
 
-    $default  reduce using rule 43 (option)
+    $default  reduce using rule 44 (option)
 
 
 State 236
 
-  238 encrDumpOptions: filename .
+  239 encrDumpOptions: filename .
 
-    $default  reduce using rule 238 (encrDumpOptions)
+    $default  reduce using rule 239 (encrDumpOptions)
 
 
 State 237
@@ -2601,79 +2605,79 @@ State 238
 
 State 239
 
-  230 dumpOptions: READ_BH filename .
+  231 dumpOptions: READ_BH filename .
 
-    $default  reduce using rule 230 (dumpOptions)
+    $default  reduce using rule 231 (dumpOptions)
 
 
 State 240
 
-  232 dumpOptions: filename DUMP_PLM .
-
-    $default  reduce using rule 232 (dumpOptions)
-
-
-State 241
-
-  233 dumpOptions: filename DUMP_PMC_CDO .
+  233 dumpOptions: filename DUMP_PLM .
 
     $default  reduce using rule 233 (dumpOptions)
 
 
-State 242
+State 241
 
-  234 dumpOptions: filename DUMP_BOOT_FILES .
+  234 dumpOptions: filename DUMP_PMC_CDO .
 
     $default  reduce using rule 234 (dumpOptions)
 
 
+State 242
+
+  235 dumpOptions: filename DUMP_BOOT_FILES .
+
+    $default  reduce using rule 235 (dumpOptions)
+
+
 State 243
 
-  229 dumpOptions: filename READ_BH .
+  230 dumpOptions: filename READ_BH .
 
-    $default  reduce using rule 229 (dumpOptions)
+    $default  reduce using rule 230 (dumpOptions)
 
 
 State 244
 
-  186 qspi_size: HEXVALUE .
-
-    $default  reduce using rule 186 (qspi_size)
-
-
-State 245
-
-  187 qspi_size: HEXSTRING .
+  187 qspi_size: HEXVALUE .
 
     $default  reduce using rule 187 (qspi_size)
 
 
+State 245
+
+  188 qspi_size: HEXSTRING .
+
+    $default  reduce using rule 188 (qspi_size)
+
+
 State 246
 
-  183 qpsi_mode: STACKED qspi_size .
+  184 qpsi_mode: STACKED qspi_size .
 
-    $default  reduce using rule 183 (qpsi_mode)
+    $default  reduce using rule 184 (qpsi_mode)
 
 
 State 247
 
-  188 ospi_size: HEXVALUE .
-
-    $default  reduce using rule 188 (ospi_size)
-
-
-State 248
-
-  189 ospi_size: HEXSTRING .
+  189 ospi_size: HEXVALUE .
 
     $default  reduce using rule 189 (ospi_size)
 
 
+State 248
+
+  190 ospi_size: HEXSTRING .
+
+    $default  reduce using rule 190 (ospi_size)
+
+
 State 249
 
-  185 opsi_mode: STACKED ospi_size .
+  186 opsi_mode: STACKED ospi_size .
 
-    $default  reduce using rule 185 (opsi_mode)
+    $default  reduce using rule 186 (opsi_mode)
 
 
 State 250
@@ -2685,35 +2689,35 @@ State 250
 
 State 251
 
-  208 auth_key_options: PEM .
-
-    $default  reduce using rule 208 (auth_key_options)
-
-
-State 252
-
-  209 auth_key_options: RSA .
+  209 auth_key_options: PEM .
 
     $default  reduce using rule 209 (auth_key_options)
 
 
+State 252
+
+  210 auth_key_options: RSA .
+
+    $default  reduce using rule 210 (auth_key_options)
+
+
 State 253
 
-  200 key_type: AUTH auth_key_options .
+  201 key_type: AUTH auth_key_options .
 
-    $default  reduce using rule 200 (key_type)
+    $default  reduce using rule 201 (key_type)
 
 
 State 254
 
-  212 authJtagOptions: authJtagType filename .
+  213 authJtagOptions: authJtagType filename .
 
-    $default  reduce using rule 212 (authJtagOptions)
+    $default  reduce using rule 213 (authJtagOptions)
 
 
 State 255
 
-  172 startcbc: STARTCBC . EQUALS HEXSTRING
+  173 startcbc: STARTCBC . EQUALS HEXSTRING
 
     EQUALS  shift, and go to state 263
 
@@ -2724,63 +2728,63 @@ State 256
 
     KEY0  shift, and go to state 264
 
-    $default  reduce using rule 173 (key0)
+    $default  reduce using rule 174 (key0)
 
     key0  go to state 265
 
 
 State 257
 
-  223 readType: READ_BH .
-
-    $default  reduce using rule 223 (readType)
-
-
-State 258
-
-  224 readType: READ_IHT .
+  224 readType: READ_BH .
 
     $default  reduce using rule 224 (readType)
 
 
-State 259
+State 258
 
-  225 readType: READ_IH .
+  225 readType: READ_IHT .
 
     $default  reduce using rule 225 (readType)
 
 
-State 260
+State 259
 
-  226 readType: READ_PHT .
+  226 readType: READ_IH .
 
     $default  reduce using rule 226 (readType)
 
 
-State 261
+State 260
 
-  227 readType: READ_AC .
+  227 readType: READ_PHT .
 
     $default  reduce using rule 227 (readType)
 
 
+State 261
+
+  228 readType: READ_AC .
+
+    $default  reduce using rule 228 (readType)
+
+
 State 262
 
-  222 readImageOptions: filename readType .
+  223 readImageOptions: filename readType .
 
-    $default  reduce using rule 222 (readImageOptions)
+    $default  reduce using rule 223 (readImageOptions)
 
 
 State 263
 
-  172 startcbc: STARTCBC EQUALS . HEXSTRING
+  173 startcbc: STARTCBC EQUALS . HEXSTRING
 
     HEXSTRING  shift, and go to state 266
 
 
 State 264
 
-  174 key0: KEY0 . EQUALS HEXSTRING
+  175 key0: KEY0 . EQUALS HEXSTRING
 
     EQUALS  shift, and go to state 267
 
@@ -2791,28 +2795,28 @@ State 265
 
     HMAC  shift, and go to state 268
 
-    $default  reduce using rule 175 (hmac)
+    $default  reduce using rule 176 (hmac)
 
     hmac  go to state 269
 
 
 State 266
 
-  172 startcbc: STARTCBC EQUALS HEXSTRING .
+  173 startcbc: STARTCBC EQUALS HEXSTRING .
 
-    $default  reduce using rule 172 (startcbc)
+    $default  reduce using rule 173 (startcbc)
 
 
 State 267
 
-  174 key0: KEY0 EQUALS . HEXSTRING
+  175 key0: KEY0 EQUALS . HEXSTRING
 
     HEXSTRING  shift, and go to state 270
 
 
 State 268
 
-  176 hmac: HMAC . EQUALS HEXSTRING
+  177 hmac: HMAC . EQUALS HEXSTRING
 
     EQUALS  shift, and go to state 271
 
@@ -2826,7 +2830,7 @@ State 269
     QFILENAME   shift, and go to state 49
     HEXSTRING   shift, and go to state 50
 
-    $default  reduce using rule 177 (keyfile)
+    $default  reduce using rule 178 (keyfile)
 
     filename  go to state 272
     keyfile   go to state 273
@@ -2834,23 +2838,23 @@ State 269
 
 State 270
 
-  174 key0: KEY0 EQUALS HEXSTRING .
+  175 key0: KEY0 EQUALS HEXSTRING .
 
-    $default  reduce using rule 174 (key0)
+    $default  reduce using rule 175 (key0)
 
 
 State 271
 
-  176 hmac: HMAC EQUALS . HEXSTRING
+  177 hmac: HMAC EQUALS . HEXSTRING
 
     HEXSTRING  shift, and go to state 274
 
 
 State 272
 
-  178 keyfile: filename .
+  179 keyfile: filename .
 
-    $default  reduce using rule 178 (keyfile)
+    $default  reduce using rule 179 (keyfile)
 
 
 State 273
@@ -2862,6 +2866,6 @@ State 273
 
 State 274
 
-  176 hmac: HMAC EQUALS HEXSTRING .
+  177 hmac: HMAC EQUALS HEXSTRING .
 
-    $default  reduce using rule 176 (hmac)
+    $default  reduce using rule 177 (hmac)

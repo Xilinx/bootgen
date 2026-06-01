@@ -2268,7 +2268,7 @@ void Versal_2ve_2vmBootImage::GenerateTlBin(BifOptions* bifoptions)
                     ByteFile elfdata(ubootFilename);
                     ElfClass::Type elfclass = (ElfClass::Type)elfdata.bytes[EI_CLASS];
                     uint8_t proc_state = 0;
-                    auto elf = ElfFormat::GetElfFormat(elfclass, elfdata.bytes, &proc_state);
+                    auto elf = ElfFormat::GetElfFormat(elfclass, elfdata.bytes, &proc_state, elfdata.len);
                     ubootExecAddr = elf->GetStartUpAddress();
                     delete elf;
 

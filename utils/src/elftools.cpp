@@ -116,7 +116,7 @@ uint64_t DeendianUInt64(Endianness::Type endian, uint64_t data64)
 }
 
 /******************************************************************************/
-ElfFormat32::ElfFormat32(uint8_t* start) 
+ElfFormat32::ElfFormat32(uint8_t* start, size_t fileSize)
     : sectionHdrTbl(NULL)
 {
     endian = (Endianness::Type) ((Elf32_Ehdr*)start)->e_ident[EI_DATA];
@@ -150,6 +150,16 @@ ElfFormat32::ElfFormat32(uint8_t* start)
     }
     else
     {
+        if (fileSize != 0)
+        {
+            uint64_t shTableEnd = (uint64_t)header.e_shoff
+                                + (uint64_t)header.e_shnum * (uint64_t)header.e_shentsize;
+            if (header.e_shentsize != 0 &&
+                (header.e_shoff > fileSize || shTableEnd > fileSize))
+            {
+                LOG_ERROR("Malformed ELF - section header table out of bounds");
+            }
+        }
         sectionHdrTbl = (Elf32SectionHdr_t *)(start + header.e_shoff);
         sectionHdrEntrySize = header.e_shentsize;
         sectionHdrEntryCount = header.e_shnum;
@@ -227,6 +237,15 @@ ElfFormat32::ElfFormat32(uint8_t* start)
     }
     else
     {
+        if (fileSize != 0 && header.e_phentsize != 0)
+        {
+            uint64_t phTableEnd = (uint64_t)header.e_phoff
+                                + (uint64_t)header.e_phnum * (uint64_t)header.e_phentsize;
+            if (header.e_phoff > fileSize || phTableEnd > fileSize)
+            {
+                LOG_ERROR("Malformed ELF - program header table out of bounds");
+            }
+        }
         programHdrEntrySize  = header.e_phentsize;
         programHdrEntryCount = header.e_phnum;
 
@@ -479,7 +498,7 @@ void ElfFormat32::TrimUnwantedELFHeaders( Elf32ProgramHeader& prgHeader, uint8_t
 }
 
 /******************************************************************************/
-ElfFormat64::ElfFormat64(uint8_t* start) 
+ElfFormat64::ElfFormat64(uint8_t* start, size_t fileSize)
     : sectionHdrTbl(NULL)
 {
     endian =  (Endianness::Type) ((Elf64_Ehdr*)start)->e_ident[EI_DATA];
@@ -513,6 +532,15 @@ ElfFormat64::ElfFormat64(uint8_t* start)
     }
     else
     {
+        if (fileSize != 0 && header.e_shentsize != 0)
+        {
+            uint64_t shTableEnd = (uint64_t)header.e_shoff
+                                + (uint64_t)header.e_shnum * (uint64_t)header.e_shentsize;
+            if (header.e_shoff > fileSize || shTableEnd > fileSize)
+            {
+                LOG_ERROR("Malformed ELF - section header table out of bounds");
+            }
+        }
         sectionHdrTbl        = (Elf64SectionHdr_t *)(start + header.e_shoff );
         sectionHdrEntrySize  = header.e_shentsize;
         sectionHdrEntryCount = header.e_shnum;
@@ -596,6 +624,16 @@ ElfFormat64::ElfFormat64(uint8_t* start)
     }
     else
     {
+        /* Bound check the program header table. */
+        if (fileSize != 0 && header.e_phentsize != 0)
+        {
+            uint64_t phTableEnd = (uint64_t)header.e_phoff
+                                + (uint64_t)header.e_phnum * (uint64_t)header.e_phentsize;
+            if (header.e_phoff > fileSize || phTableEnd > fileSize)
+            {
+                LOG_ERROR("Malformed ELF - program header table out of bounds");
+            }
+        }
         programHdrEntrySize  = header.e_phentsize;
         programHdrEntryCount = header.e_phnum;
 
@@ -784,23 +822,23 @@ void ElfFormat64::TrimUnwantedELFHeaders(Elf64ProgramHeader& prgHeader, uint8_t*
 }
 
 /******************************************************************************/
-ElfFormat* ElfFormat::GetElfFormat(ElfClass::Type elfClass, uint8_t* start, uint8_t* state)
+ElfFormat* ElfFormat::GetElfFormat(ElfClass::Type elfClass, uint8_t* start, uint8_t* state, size_t fileSize)
 {
     if(elfClass == ElfClass::ELFCLASS64)
     {
         *state = (A53ExecState::Type)A53ExecState::AARCH64;
-        return new ElfFormat64(start);
+        return new ElfFormat64(start, fileSize);
     }
     /* ELF32 may contain either ARMv7/AArch32 or AArch64 using the ILP32 data model */
     else if (((Elf32_Ehdr*)start)->e_machine != 0x28)
     {
         *state = (A53ExecState::Type)A53ExecState::AARCH64;
-        return new ElfFormat32(start);
+        return new ElfFormat32(start, fileSize);
     }
     else
     {
         *state = (A53ExecState::Type)A53ExecState::AARCH32;
-        return new ElfFormat32(start);
+        return new ElfFormat32(start, fileSize);
     }
 }
 

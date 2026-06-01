@@ -181,7 +181,6 @@ void VersalReadImage::ReadPartitions()
 
     if (!binFile)
     {
-        fclose(binFile);
         LOG_ERROR("Cannot read file %s", binFilename.c_str());
     }
     std::list<VersalPartitionHeaderTableStructure*>::iterator pHT = pHTs.begin();

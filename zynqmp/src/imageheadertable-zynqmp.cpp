@@ -336,7 +336,7 @@ uint8_t* ZynqMpImageHeader::AttachPmuFw(uint8_t* fsbl_data, uint64_t* size, std:
     /* If PMU FW is an ELF file */
     if (StringUtils::EndsWith(pmu_fw, ".elf"))
     {
-        ElfFormat32 pmu_elf(pmu_fw_data.bytes);
+        ElfFormat32 pmu_elf(pmu_fw_data.bytes, pmu_fw_data.len);
         partition_data = CombineElfSections(&pmu_elf, &pmu_size, &pmu_addr);
     }
     else

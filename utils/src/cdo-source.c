@@ -401,6 +401,7 @@ static void check_redundant_markers(char * marker_string)
 
 CdoSequence * cdoseq_from_source(FILE * f) {
     CdoSequence * seq = cdocmd_create_sequence();
+    memset(marker_count, 0, sizeof(marker_count));
     uint32_t cap = 2;
     char * line = (char *)malloc(cap * sizeof *line);
     uint32_t first = 1;

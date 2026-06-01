@@ -146,6 +146,8 @@ option          : _IMAGE filename                   { options.SetBifFilename($2)
                 | _READ readImageOptions
                 | _VERIFY verifyImageOptions
                 | _DUMP dumpOptions
+                | _DUMP                             { LOG_ERROR("'-dump' requires a binary file (PDI/boot image) argument. "
+                                                                "Usage: -dump <filename> [bh | boot_files | plm | pmc_cdo | slave_pdis | puf_pdi]"); }
                 | _DUMP_DIR filename                { options.SetDumpDirectory($2); }
                 | _PUF filename                     { options.SetPufOutputFileName($2); }
                 | _VERIFYKDF filename               { options.SetKDFTestVectorFile($2); }

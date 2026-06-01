@@ -80,7 +80,7 @@ public:
     void DisplayPartitionHeaderTable(void);
     void DisplayAuthenicationCertificates(void);
     void DisplayACFields(uint8_t* rsa_ac, Authentication::Type auth_type);
-    void DisplayBhAttributes(uint32_t value);
+    void DisplayBhAttributes(uint32_t value, Authentication::Type authType);
     void DisplayIhtAttributes(uint32_t value);
     void DisplayIhAttributes(uint32_t value);
     void DisplayPhtAttributes(uint32_t value);

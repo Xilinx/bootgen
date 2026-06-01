@@ -1761,7 +1761,7 @@ void Versal_2ve_2vmImageHeader::ImportElf(BootImage& bi)
 
     /* Get the ELF Class format - 32-bit elf vs 64-bit elf */
     elfClass = GetElfClass(data.bytes);
-    auto elf = ElfFormat::GetElfFormat(elfClass, data.bytes, &proc_state);
+    auto elf = ElfFormat::GetElfFormat(elfClass, data.bytes, &proc_state, data.len);
 
     /* Check for no. of executable sections & non-zero size LOAD sections */
     uint8_t exec_count = 0;

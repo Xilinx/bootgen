@@ -100,8 +100,12 @@ void SpartanupReadImage::ReadPartitions()
 
     if (!binFile)
     {
-        fclose(binFile);
         LOG_ERROR("Cannot read file %s", binFilename.c_str());
+    }
+    if (!bH)
+    {
+        fclose(binFile);
+        LOG_ERROR("Boot Header not found in %s", binFilename.c_str());
     }
 
     offset = bH->sourceOffset;
@@ -245,7 +249,6 @@ uint32_t SpartanupReadImage::GetACLength(uint32_t AuthOffset, uint32_t ppksize)
 
     if (!binFile)
     {
-        fclose(binFile);
         LOG_ERROR("Cannot read file %s", binFilename.c_str());
     }
 
@@ -276,7 +279,6 @@ void SpartanupReadImage::ReadHeaderTableDetails()
 
     if (!binFile)
     {
-        fclose(binFile);
         LOG_ERROR("Cannot read file %s", binFilename.c_str());
     }
 

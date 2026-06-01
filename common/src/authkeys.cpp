@@ -232,6 +232,17 @@ uint8_t Key::ParseOpenSSLKey(FILE* f)
         {
             return 1;
         }
+#if OPENSSL_VERSION_NUMBER > 0x10100000L
+        const BIGNUM* dCheck = RSA_get0_d(rsaInst.rsa);
+        const BIGNUM* nCheck = RSA_get0_n(rsaInst.rsa);
+#else
+        const BIGNUM* dCheck = rsaInst.rsa->d;
+        const BIGNUM* nCheck = rsaInst.rsa->n;
+#endif
+        if (dCheck == NULL || nCheck == NULL)
+        {
+            LOG_ERROR("Invalid secret key file - private RSA key not found");
+        }
 
 #if OPENSSL_VERSION_NUMBER > 0x10100000L
         keySzRd = BN_num_bytes(RSA_get0_n(rsaInst.rsa));
@@ -907,16 +918,21 @@ void Key::Multiply_p_q(uint8_t p[], uint8_t q[], uint8_t n[])
 /******************************************************************************/
 void Key::Hex2Byte(FILE* f, uint8_t* data, int count) 
 {
-    std::unique_ptr<char[]> buf = std::make_unique<char[]>(2000);
+    static const int BUF_SIZE = 2000;
+    std::unique_ptr<char[]> buf = std::make_unique<char[]>(BUF_SIZE);
     if (buf)
     {
         char *tempbuf = buf.get();
-        if (fscanf(f, "%s", tempbuf) != 1) 
+        if (fscanf(f, "%1999s", tempbuf) != 1)
         {
             LOG_ERROR("Error parsing key");
         }
-    
+
         int len = strlen(tempbuf) / 2;
+        if (len >= (BUF_SIZE / 2))
+        {
+            LOG_ERROR("Key size %d bytes exceeds maximum %d bytes", len, (BUF_SIZE / 2) - 1);
+        }
         if(len != count)
         {
             LOG_ERROR("Key size is %d bytes, expected size is %d bytes", len, count);

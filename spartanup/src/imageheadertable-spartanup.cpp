@@ -1752,7 +1752,7 @@ void SpartanupImageHeader::ImportElf(BootImage& bi)
 
     /* Get the ELF Class format - 32-bit elf vs 64-bit elf */
     elfClass = GetElfClass(data.bytes);
-    auto elf = ElfFormat::GetElfFormat(elfClass, data.bytes, &proc_state);
+    auto elf = ElfFormat::GetElfFormat(elfClass, data.bytes, &proc_state, data.len);
 
     /* Check for no. of executable sections & non-zero size LOAD sections */
     uint8_t exec_count = 0;
@@ -3253,10 +3253,10 @@ void SpartanupImageHeader::CheckIdsInCdo(CdoSequence * seq, std::string cdo_file
             char* marker_arch = (char*)cmd->buf;
             if (cmd->value == MARKER_ARCHITECTURE)
             {
-               if (strstr(marker_arch,"spartanuplus") == 0)
-               {
-                  LOG_WARNING("The architecture(%s) in '%s' does not match '-arch spartanup'", marker_arch, cdo_filename.c_str());
-               }
+                if (strstr(marker_arch, "spartanuplus") == 0 && strstr(marker_arch, "spartanup") == 0)
+                {
+                   LOG_WARNING("The architecture(%s) in '%s' does not match '-arch spartanup'", marker_arch, cdo_filename.c_str());
+                }
             }
         }
 

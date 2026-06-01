@@ -121,7 +121,6 @@ void Versal_2ve_2vmReadImage::ReadPartitions()
 
     if (!binFile)
     {
-        fclose(binFile);
         LOG_ERROR("Cannot read file %s", binFilename.c_str());
     }
    
@@ -157,6 +156,7 @@ void Versal_2ve_2vmReadImage::ReadPartitions()
                 length = (uint32_t)(fileSize - offset);
             }
             buffer = std::make_unique<uint8_t[]>(length);  // Allocate directly as unique_ptr
+            const uint32_t bufferSize = length;
                 
             if ((*pHT)->dataSectionCount > 0)
             {
@@ -214,7 +214,12 @@ void Versal_2ve_2vmReadImage::ReadPartitions()
                     {
                         if ((dumpType == DumpOption::PARTITIONS) || (dumpType == DumpOption::PMC_CDO) || (dumpType == DumpOption::BOOT_FILES))
                         {
-                            
+                            uint64_t pmcEnd = (uint64_t)bH->totalPlmLength + (uint64_t)bH->totalPmcCdoLength;
+                            if (pmcEnd > (uint64_t)bufferSize)
+                            {
+                                LOG_ERROR("Malformed PDI - PMC CDO range exceeds partition buffer");
+                            }
+
                             if (!(fseek(binFile, bH->sourceOffset + bH->totalPlmLength, SEEK_SET)))
                             {
                                   result = fread(buffer.get(), 1, bH->totalPmcCdoLength, binFile);  // Use .get()
@@ -317,7 +322,6 @@ uint32_t Versal_2ve_2vmReadImage::GetACLength(uint32_t AuthOffset, uint32_t ppks
 
     if (!binFile)
     {
-        fclose(binFile);
         LOG_ERROR("Cannot read file %s", binFilename.c_str());
     }
 
@@ -350,7 +354,6 @@ void Versal_2ve_2vmReadImage::ReadHeaderTableDetails()
 
     if (!binFile)
     {
-        fclose(binFile);
         LOG_ERROR("Cannot read file %s", binFilename.c_str());
     }
 
@@ -848,7 +851,7 @@ void Versal_2ve_2vmReadImage::DisplayBootHeader(void)
     DisplayKey("puf_data (0xb34) : ", bH->puf);   // PUF data offset
     DisplayValue("checksum (0x113c) : ", bH->headerChecksum);
     std::cout << " attribute list - " << std::endl;
-    DisplayBhAttributes(bH->bhAttributes);
+    DisplayBhAttributes(bH->bhAttributes,static_cast<Authentication::Type>(IdentifyAuthtype(bH->authHeader1)));
 }
 
 /******************************************************************************/
@@ -1240,7 +1243,24 @@ void Versal_2ve_2vmReadImage::DisplayImageInfo()
 }
 
 /******************************************************************************/
-void Versal_2ve_2vmReadImage::DisplayBhAttributes(uint32_t value)
+static const char* BhNetSeriesSignedFieldName(Authentication::Type authType)
+{
+    switch (authType)
+    {
+    case Authentication::RSA: return "rsa_signed ";
+    case Authentication::ECDSA: return "ecdsa_signed ";
+    case Authentication::ECDSAp521: return "ecdsap521_signed ";
+    case Authentication::LMS_SHA2_256:
+    case Authentication::LMS_SHAKE256: return "lms_signed ";
+    case Authentication::HSS_SHA2_256:
+    case Authentication::HSS_SHAKE256: return "hss_signed ";
+    case Authentication::None:
+    default: return "signed ";
+    }
+}
+
+/******************************************************************************/
+void Versal_2ve_2vmReadImage::DisplayBhAttributes(uint32_t value, Authentication::Type authType)
 {
     std::string val, val1;
     
@@ -1297,7 +1317,7 @@ void Versal_2ve_2vmReadImage::DisplayBhAttributes(uint32_t value)
             case 3: val = "[enabled]";      break;
             default: val = "[disabled]";    break;
         }
-        DisplayAttributes("rsa_signed ", val1, "dice ", val);
+        DisplayAttributes(BhNetSeriesSignedFieldName(authType), val1, "dice ", val);
     }
    
 }
