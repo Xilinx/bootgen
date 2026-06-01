@@ -876,6 +876,10 @@ void VersalImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::stri
 
         size_t size = 0;
         uint8_t* tempData = (uint8_t*)file_to_buf((char *)optionalDataInfo[i].first.c_str(), &size);
+        if (tempData == NULL)
+        {
+            LOG_ERROR("Cannot read optional data file: %s", optionalDataInfo[i].first.c_str());
+        }
         if(size > 0x20000){
             LOG_ERROR("Maximum allowed size for optional data is 0x20000 bytes, including optional data header of 8 bytes. Refer UG1283 for more details");
         }
@@ -4842,7 +4846,20 @@ VersalSubSysImageHeader::VersalSubSysImageHeader(std::ifstream& ifs)
         LOG_DEBUG(DEBUG_STAMP, "Image header name too long");
         LOG_ERROR("Failure parsing imported bootimage");
     }
-    imageName = name;
+    size_t nameLen = strlen(name);
+    bool validName = (nameLen > 0 && nameLen < sizeof(name));
+    if (validName)
+    {
+        for (size_t c = 0; c < nameLen; c++)
+        {
+            if (!isprint((unsigned char)name[c]))
+            {
+                validName = false;
+                break;
+            }
+        }
+    }
+    imageName = validName ? name : "imported_subsystem";
     uint32_t size = sizeof(VersalImageHeaderStructure);
 
     ifs.seekg(pos);
@@ -4868,7 +4885,6 @@ VersalSubSysImageHeader::VersalSubSysImageHeader(std::ifstream& ifs)
 
     /* Find the no. of image headers to be created */
     num_of_images = 0;
-    uint32_t num_of_sections = 0;
 
     uint32_t p_count = 0;
     if (VersalSubSysImageHeaderTable->dataSectionCount < 32)
@@ -4881,11 +4897,7 @@ VersalSubSysImageHeader::VersalSubSysImageHeader(std::ifstream& ifs)
     for (uint32_t i = 0; i < p_count; i++)
     {
         ifs.seekg(p_offset);
-        ifs.read((char*)&num_of_sections, 4);
-        if (num_of_sections != 0)
-        {
-            num_of_images++;
-        }
+        num_of_images++;
         p_offset += sizeof(VersalPartitionHeaderTableStructure);
     }
 }

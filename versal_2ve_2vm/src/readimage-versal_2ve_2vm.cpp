@@ -125,6 +125,9 @@ void Versal_2ve_2vmReadImage::ReadPartitions()
         LOG_ERROR("Cannot read file %s", binFilename.c_str());
     }
    
+    fseek(binFile, 0, SEEK_END);
+    uint64_t fileSize = ftell(binFile);
+
     std::list<Versal_2ve_2vmPartitionHeaderTableStructure*>::iterator pHT = pHTs.begin();
     for (std::list<Versal_2ve_2vmImageHeaderStructure*>::iterator iH = iHs.begin(); iH != iHs.end(); iH++)
     {
@@ -147,7 +150,11 @@ void Versal_2ve_2vmReadImage::ReadPartitions()
             else       
             {
                 offset = (*pHT)->partitionWordOffset * 4;  
-                length = (*pHT)->encryptedPartitionLength * 4; 
+                length = (*pHT)->totalPartitionLength * 4; 
+            }
+            if (offset + length > fileSize)
+            {
+                length = (uint32_t)(fileSize - offset);
             }
             buffer = std::make_unique<uint8_t[]>(length);  // Allocate directly as unique_ptr
                 

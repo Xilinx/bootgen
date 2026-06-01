@@ -500,6 +500,7 @@ new_attribute           :   PFILE EQUAL filename                                
                         |   PARTITION_TYPE EQUAL PMCDATA                        { currentPartitionBifOptions->fileType = $3; }
                         |   BIF_SECTION EQUAL WORD                              { currentPartitionBifOptions->bifSection = $3;
                                                                                   currentPartitionBifOptions->filename = currentPartitionBifOptions->GetOutputFileFromBifSection(options.GetOutputFileNames().front(), $3, currentImageBifOptions->GetImageType());
+                                                                                  currentPartitionBifOptions->filelist.push_back(currentPartitionBifOptions->filename);
                                                                                   currentBifOptions->Add(currentPartitionBifOptions, currentImageBifOptions); }
                         ;
 

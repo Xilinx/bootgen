@@ -462,7 +462,7 @@ lms_key_params      yylval->number = tok::LMS_KEY_PARAMS;           return tok::
 [ \t]+                  yylloc->step ();
 [\n]+                   yylloc->lines (yyleng); yylloc->step ();
 \r                     /* ignore (Linux only) */
-.                      printf("WARNING: bad character! '%s' (0x%02X)\n",yytext,yytext[0]);
+.                      LOG_ERROR("BIF parsing error : Invalid character (0x%02X) in BIF file",  (unsigned char)yytext[0]);
 %%
 
 

@@ -1085,7 +1085,7 @@ void SpartanupPartitionHeaderTable::Build(BootImage & bi, Binary & cache)
                 Binary::Length_t lastBlock = secureChunkSize - (encrBlocksSize - encrBlocks[itr] + encrOverhead);
                 encrBlocksSize += (lastBlock - encrBlocks[itr]);
                 bi.options.bifOptions->metaHdrAttributes.encrBlocks.push_back((lastBlock));
-                LOG_WARNING("The last encryption block size is truncated to %d to fit into the secure chunk of 32KB.", lastBlock);
+                LOG_WARNING("The last encryption block size is truncated to %d to fit into the secure chunk of %dKB.", lastBlock, (uint32_t)(secureChunkSize/1024));
                 break;
             }
         }
@@ -1112,7 +1112,7 @@ void SpartanupPartitionHeaderTable::Build(BootImage & bi, Binary & cache)
                 {
                     lastBlock = secureChunkSize - (encrBlocksSize + encrOverhead - defaultEncrBlockSize);
                     encrBlocksSize += (lastBlock - defaultEncrBlockSize);
-                    LOG_WARNING("The last encryption block size is truncated to %d to fit into the secure chunk of 32KB.", lastBlock);
+                    LOG_WARNING("The last encryption block size is truncated to %d to fit into the secure chunk of %dKB.", lastBlock, (uint32_t)(secureChunkSize/1024));
                 }
                 bi.options.bifOptions->metaHdrAttributes.encrBlocks.push_back(lastBlock);
             }

@@ -36,13 +36,34 @@ void Versal_2ve_2vmReadImage::VerifyAuthentication(bool verifyImageOption)
 {
     ReadBinaryFile();
 
-    if (iHT->headerAuthCertificateWordOffset != 0)
+    /* An image is considered authenticated if either the Image Header Table
+       has an authentication certificate, or at least one partition has one
+       (e.g. bh_auth_enable images do not sign the IHT but still sign
+       per-partition data). If neither is present, the image is unauthenticated
+       and -verify must reject it. */
+    bool ihtAuthenticated = (iHT->headerAuthCertificateWordOffset != 0);
+    bool anyPartitionAuthenticated = false;
+    for (std::list<Versal_2ve_2vmPartitionHeaderTableStructure*>::iterator p = pHTs.begin(); p != pHTs.end(); ++p)
+    {
+        if ((*p) != NULL && (*p)->authCertificateOffset != 0)
+        {
+            anyPartitionAuthenticated = true;
+            break;
+        }
+    }
+
+    if (!ihtAuthenticated && !anyPartitionAuthenticated)
+    {
+        LOG_ERROR("Bootimage %s is not authenticated. Authentication verification cannot be done on this image.", binFilename.c_str());
+    }
+
+    if (ihtAuthenticated)
     {
         VerifyHeaderTableSignature();
     }
     else
     {
-        //LOG_ERROR("Bootimage %s is not authenticated. Authentication verification cannot be done on this image.", binFilename.c_str());
+        LOG_WARNING("Bootimage %s header is not authenticated. Skipping header verification, proceeding with partition verification.", binFilename.c_str());
     }
 
     VerifyPartitionSignature();

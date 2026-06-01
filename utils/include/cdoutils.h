@@ -335,7 +335,11 @@ inline bool IsCdoFile(std::string file)
         LOG_ERROR("Cannot read file - %s ", (file.c_str()));
     }
     std::string line;
-    getline(stream, line);
+    while (getline(stream, line))
+    {
+        if (!line.empty() && line[0] != '#')
+            break;
+    }
 #else
     std::ifstream stream(file.c_str(), std::ios_base::binary);
     if (!stream)
@@ -343,7 +347,11 @@ inline bool IsCdoFile(std::string file)
         LOG_ERROR("Cannot read file - %s ", (file.c_str()));
     }
     std::string line;
-    getline(stream, line);
+    while (getline(stream, line))
+    {
+        if (!line.empty() && line[0] != '#')
+            break;
+    }
 #endif
     if ((line.find("Xilinx ASCII NPI Deviceimage") != std::string::npos) || (line.find("Xilinx ASCII PSAXIMM Deviceimage") != std::string::npos) || (line.find("version") != std::string::npos))
     {

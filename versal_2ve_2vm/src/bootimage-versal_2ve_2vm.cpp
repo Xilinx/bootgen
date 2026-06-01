@@ -1282,10 +1282,39 @@ void Versal_2ve_2vmBootImage::ConfigureEncryptionBlocks(ImageHeader * image, Par
                         }
                         else
                         {
-                            LOG_ERROR("The keyrolling block size '%d' cannot fit into the secure chunk of 32KB. Please choose another block size.\n           For details, refer to the section 'Design Advisories for Bootgen' from UG1283.", defaultEncrBlockSize);
+                            /* leftover (< per-block overhead) is
+                             * too small to host another (data+overhead) block,
+                             * but the cipher stream requires the chunk to be
+                             * packed exactly. Drop the speculative "next
+                             * default" (counted in encrBlocksSize/encrOverhead
+                             * but never pushed to the list) and grow the most
+                             * recently pushed block by the slack. The grown
+                             * block is >= defaultEncrBlockSize, so when D
+                             * itself satisfies the 5-AES-block
+                             * (80 B) minimum, so does the final block.    */
+                            std::vector<uint32_t>& list = image->GetEncrBlocksList();
+                            if (!list.empty())
+                            {
+                                encrBlocksSize -= defaultEncrBlockSize;
+                                encrOverhead   -= (SECURE_HDR_SZ + AES_GCM_TAG_SZ);
+                                Binary::Length_t slack = secureChunkSize - (encrBlocksSize + encrOverhead);
+                                list.back()    += slack;
+                                encrBlocksSize += slack;
+                                LOG_WARNING("The last encryption block size is enlarged to %d to fit into the secure chunk of 32KB.", (uint32_t)list.back());
+                                /* The chunk is now exactly full; suppress the
+                                 * trailing default-block push below.       */
+                                lastBlock = 0;
+                            }
+                            else
+                            {
+                                LOG_ERROR("The keyrolling block size '%d' cannot fit into the secure chunk of 32KB. Please choose another block size.\n           For details, refer to the section 'Design Advisories for Bootgen' from UG1283.", defaultEncrBlockSize);
+                            }
                         }
                     }
-                    image->InsertEncrBlocksList(lastBlock);
+                    if (lastBlock != 0)
+                    {
+                        image->InsertEncrBlocksList(lastBlock);
+                    }
                 }
                 /* If a default size(using (*)) is not mentioned,
                    then calculate the last block that makes sum of encr blocks and overhead = 64KB and push.*/

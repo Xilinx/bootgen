@@ -800,7 +800,23 @@ void VersalAuthenticationContext::GenerateSPKHash(uint8_t* sha_hash_padded)
     uint8_t spkSHA3Padding[4] = { 0,0,0,0 };
     FillSha3Padding(spkSHA3Padding, sizeof(spkSHA3Padding));
 
-    if (!secondaryKey->Loaded)
+    if (secondaryKey == nullptr)
+    {
+        if (spkFile.empty())
+        {
+            LOG_ERROR("SPK file not specified for hash generation");
+        }
+        ParseSPKeyFile(spkFile);
+    }
+    else     if (secondaryKey == nullptr)
+    {
+        if (spkFile.empty())
+        {
+            LOG_ERROR("SPK file not specified for hash generation");
+        }
+        ParseSPKeyFile(spkFile);
+    }
+    else if (!secondaryKey->Loaded)
     {
         ParseSPKeyFile(spkFile);
     }

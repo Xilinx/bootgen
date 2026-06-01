@@ -292,14 +292,24 @@ void BifOptions::Add(PartitionBifOptions* currentPartitionBifOptions, ImageBifOp
             SetPmcDataAesFile(StringUtils::RemoveExtension(StringUtils::BaseName((currentPartitionBifOptions)->filename)) + ".nky");
         }
 
-        if(!(currentPartitionBifOptions->pmcData))
-            partitionBifOptionList.push_back(currentPartitionBifOptions);
-        currentPartitionBifOptions->pmcData = true;
-
-        if ((currentPartitionBifOptions->arch == Arch::SPARTANUP) && (currentImageBifOptions->partitionBifOptionsList.size() == 0))
+        if ((currentImageBifOptions != NULL) && (parentId != 0))
         {
-            currentPartitionBifOptions->bootloader = true;
+            currentPartitionBifOptions->partitionType = PartitionType::CONFIG_DATA_OBJ;
             currentImageBifOptions->partitionBifOptionsList.push_back(currentPartitionBifOptions);
+        }
+        else if ((currentImageBifOptions != NULL) && (currentPartitionBifOptions->arch == Arch::SPARTANUP) && 
+                 (currentImageBifOptions->partitionBifOptionsList.size() == 0))
+        {
+            currentPartitionBifOptions->partitionType = PartitionType::CONFIG_DATA_OBJ;
+            currentPartitionBifOptions->bootloader = true;
+            currentPartitionBifOptions->pmcData = true;
+            currentImageBifOptions->partitionBifOptionsList.push_back(currentPartitionBifOptions);
+        }
+        else
+        {
+            if(!(currentPartitionBifOptions->pmcData))
+                partitionBifOptionList.push_back(currentPartitionBifOptions);
+            currentPartitionBifOptions->pmcData = true;
         }
         break;
 
@@ -1235,7 +1245,11 @@ void BifOptions::SetPufHdinBHFlag()
 /******************************************************************************/
 void BifOptions::SetAuthJtagRevokeID(uint32_t value)
 {
-    if (value > 0xFF)
+    if (arch == Arch::SPARTANUP && value > 95)
+    {
+        LOG_ERROR("revoke_id can only take values from 0x0 to 0x5F for spartanup.");
+    }
+    else if (value > 0xFF)
     {
         LOG_ERROR("revoke_id can only take values from 0x0 to 0xFF.");
     }
@@ -1246,7 +1260,11 @@ void BifOptions::SetAuthJtagRevokeID(uint32_t value)
 /******************************************************************************/
 void BifOptions::SetAuthJtagSPKRevokeID(uint32_t value)
 {
-    if (value > 0xFF)
+    if (arch == Arch::SPARTANUP && value > 95)
+    {
+        LOG_ERROR("spk_revoke_id can only take values from 0x0 to 0x5F for spartanup.");
+    }
+    else if (value > 0xFF)
     {
         LOG_ERROR("revoke_id can only take values from 0x0 to 0xFF.");
     }
@@ -1326,7 +1344,7 @@ void PartitionBifOptions::SetEncryptionBlocks(uint32_t size, uint32_t num)
         LOG_ERROR("BIF attribute 'blocks' must specify sizes which are multiples of 4, for word alignment.");
     }
 
-    if((arch == Arch::VERSALGEN2 || (arch == Arch::SPARTANUP && !IsDl9Series())) && size < 80)
+    if((arch == Arch::VERSALGEN2 || (arch == Arch::VERSAL && versalNetSeries) || arch == Arch::SPARTANUP) && size < 80)
     {
         LOG_ERROR("BIF attribute error !!!\n\t\tThe minimum block size allowed is 5 AES encryption blocks (i.e., 80 bytes)");
     }
@@ -1497,6 +1515,10 @@ void PartitionBifOptions::SetSpkId(uint32_t id)
     {
         LOG_ERROR("BIF attribute error !!!\n\t\t'spk_id' is not supported with the mentioned -arch.");
     }
+    if (arch == Arch::SPARTANUP && id > 95)
+    {
+        LOG_ERROR("spk_id can only take values from 0x0 to 0x5F for spartanup.");
+    }
     spkId = id;
     spkIdLocal = true;
 }
@@ -1544,7 +1566,11 @@ void PartitionBifOptions::SetHivec(bool flag)
 /******************************************************************************/
 void PartitionBifOptions::SetSPKRevokeId(uint32_t id)
 {
-    if (id > 0xFF)
+    if (arch == Arch::SPARTANUP && id > 95)
+    {
+        LOG_ERROR("spk_revoke_id can only take values from 0x0 to 0x5F for spartanup.");
+    }
+    else if (id > 0xFF)
     {
         LOG_ERROR("revoke_id can only take values from 0x0 to 0xFF.");
     }
@@ -1554,7 +1580,11 @@ void PartitionBifOptions::SetSPKRevokeId(uint32_t id)
 /******************************************************************************/
 void PartitionBifOptions::SetPartitionRevokeId(uint32_t id)
 {
-    if (id > 0xFF)
+    if (arch == Arch::SPARTANUP && id > 95)
+    {
+        LOG_ERROR("partition_revoke_id can only take values from 0x0 to 0x5F for spartanup.");
+    }
+    else if (id > 0xFF)
     {
         LOG_ERROR("partition_revoke_id can only take values from 0x0 to 0xFF.");
     }
@@ -1595,7 +1625,11 @@ void PartitionBifOptions::SetClusterNum(uint8_t id)
 /******************************************************************************/
 void BifOptions::SetRevokeId(uint32_t id)
 {
-    if (id > 0xFF)
+    if (arch == Arch::SPARTANUP && id > 95)
+    {
+        LOG_ERROR("revoke_id can only take values from 0x0 to 0x5F for spartanup.");
+    }
+    else if (id > 0xFF)
     {
         LOG_ERROR("revoke_id can only take values from 0x0 to 0xFF.");
     }
@@ -1907,6 +1941,10 @@ void BifOptions::SetSPKSelection(uint32_t spkSelection)
 /******************************************************************************/
 void BifOptions::SetSpkId(uint32_t id)
 {
+    if (arch == Arch::SPARTANUP && id > 95)
+    {
+        LOG_ERROR("spk_id can only take values from 0x0 to 0x5F for spartanup.");
+    }
     spkId = id;
     isSpkIdGlobal = true;
     LOG_TRACE("Setting SPK ID in Auth Certificate as 0x%x", id);

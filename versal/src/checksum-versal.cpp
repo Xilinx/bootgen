@@ -106,12 +106,18 @@ void VersalChecksumTable::Link(BootImage& bi)
     for (std::list<ImageHeader*>::iterator i = bi.imageList.begin(); i != bi.imageList.end(); i++)
     {
         ImageHeader* hdr = *i;
+        if (hdr->GetChecksumContext() == NULL)
+        {
+            continue;
+        }
         std::list<PartitionHeader*> pHList = hdr->GetPartitionHeaderList();
         for (std::list<PartitionHeader*>::iterator j = pHList.begin(); j != pHList.end(); j++)
         {
             PartitionHeader& partHdr(**j);
-            /* Do not calculate checksum on entire partition for VersalNet bootloader - hashing is calculated on the first chunk + hash of previous chunk in VersalNet
-               This is handled while doing the chunking of the partition. So need need to calculate again */
+            if (partHdr.partition == NULL || partHdr.partition->section == NULL)
+            {
+                continue;
+            }
             if (partHdr.IsBootloader())
             {
                 if (!bi.options.IsVersalNetSeries())

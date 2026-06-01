@@ -1213,7 +1213,7 @@ void SpartanBootImage::ConfigureEncryptionBlocks(ImageHeader * image, PartitionB
                     Binary::Length_t lastBlock = secureChunkSize - (encrBlocksSize - encrBlocks[itr] + encrOverhead);
                     encrBlocksSize += (lastBlock - encrBlocks[itr]);
                     image->InsertEncrBlocksList(lastBlock);
-                    LOG_WARNING("The last encryption block size is truncated to %d to fit into the secure chunk of 32KB.", lastBlock);
+                    LOG_WARNING("The last encryption block size is truncated to %d to fit into the secure chunk of %dKB.", lastBlock, (uint32_t)(secureChunkSize/1024));
                     break;
                 }
             }
@@ -1242,11 +1242,11 @@ void SpartanBootImage::ConfigureEncryptionBlocks(ImageHeader * image, PartitionB
                         {
                             lastBlock = secureChunkSize - (encrBlocksSize + encrOverhead - defaultEncrBlockSize);
                             encrBlocksSize += (lastBlock - defaultEncrBlockSize);
-                            LOG_WARNING("The last encryption block size is truncated to %d to fit into the secure chunk of 32KB.", lastBlock);
+                            LOG_WARNING("The last encryption block size is truncated to %d to fit into the secure chunk of %dKB.", lastBlock, (uint32_t)(secureChunkSize/1024));
                         }
                         else
                         {
-                            LOG_ERROR("The keyrolling block size '%d' cannot fit into the secure chunk of 32KB. Please choose another block size.\n           For details, refer to the section 'Design Advisories for Bootgen' from UG1283.", defaultEncrBlockSize);
+                            LOG_ERROR("The keyrolling block size '%d' cannot fit into the secure chunk of %dKB. Please choose another block size.\n           For details, refer to the section 'Design Advisories for Bootgen' from UG1283.", defaultEncrBlockSize, (uint32_t)(secureChunkSize/1024));
                         }
                     }
                     image->InsertEncrBlocksList(lastBlock);

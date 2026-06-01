@@ -37,13 +37,34 @@ void VersalReadImage::VerifyAuthentication(bool verifyImageOption)
 {
     ReadBinaryFile();
 
-    if (iHT->headerAuthCertificateWordOffset != 0)
+    /* An image is considered authenticated if either the Image Header Table
+       has an authentication certificate, or at least one partition has one
+       (e.g. bh_auth_enable images do not sign the IHT but still sign
+       per-partition data). If neither is present, the image is unauthenticated
+       and -verify must reject it. */
+    bool ihtAuthenticated = (iHT->headerAuthCertificateWordOffset != 0);
+    bool anyPartitionAuthenticated = false;
+    for (std::list<VersalPartitionHeaderTableStructure*>::iterator p = pHTs.begin(); p != pHTs.end(); ++p)
+    {
+        if ((*p) != NULL && (*p)->authCertificateOffset != 0)
+        {
+            anyPartitionAuthenticated = true;
+            break;
+        }
+    }
+
+    if (!ihtAuthenticated && !anyPartitionAuthenticated)
+    {
+        LOG_ERROR("Bootimage %s is not authenticated. Authentication verification cannot be done on this image.", binFilename.c_str());
+    }
+
+    if (ihtAuthenticated)
     {
         VerifyHeaderTableSignature();
     }
     else
     {
-        //LOG_ERROR("Bootimage %s is not authenticated. Authentication verification cannot be done on this image.", binFilename.c_str());
+        LOG_WARNING("Bootimage %s header is not authenticated. Skipping header verification, proceeding with partition verification.", binFilename.c_str());
     }
 
     VerifyPartitionSignature();
@@ -519,12 +540,44 @@ void VersalReadImage::VerifyPartitionSignature(void)
                 /* Verifying Partition SPK Signature */
                 VerifySPKSignature(*auth_cert);
 
+                /*  Match the data layout that generation actually
+                 * signs in VersalAuthenticationContext::CopyPartitionSignature
+                 * (authentication-versal.cpp).
+                 *
+                 *   data = [AC bytes excluding the partition signature slot]
+                 *        + [partition body, length = hashSecLen]
+                 *   hashSecLen = (section->firstChunkSize != 0 &&
+                 *                 !(isBootloader && !IsVersalNetSeries()) &&
+                 *                 section->isPartitionData)
+                 *              ? section->firstChunkSize + hashLength
+                 *              : section->Length;
+                 *   nist = !(isBootloader && !IsVersalNetSeries());
+                 *
+                 * For VersalNet, this means EVERY authenticated partition
+                 * (including the bootloader/PLM) is signed with NIST SHA-3
+                 * padding over (AC + first chunk + chunk-0 hash). For classic
+                 * Versal, the bootloader keeps the legacy Keccak-original
+                 * padding over the entire body.
+                 *
+                 * The pre-existing verify formula
+                 *   dataBufferLength = totalPartitionLength*4 - SIGN_LENGTH_VERSAL
+                 *   nist = false   (for any bootloader)
+                 * was both wrong size and wrong nist flag for the VersalNet
+                 * bootloader, so signature verification of PLM (and any other
+                 * multi-chunk authenticated partition) on VersalNet always
+                 * failed.
+                 */
+                uint32_t bootloaderChunkSize = SECURE_16K_CHUNK - SHA3_LENGTH_BYTES;
                 uint32_t actualSecureChunkSize = SECURE_32K_CHUNK - SHA3_LENGTH_BYTES;
-                bool nist = true;
-                /* Partition Signature should not be included for hash calculation. */
+                bool nist = !(isItBootloader && !versalNetSeries);
                 uint32_t encryptedSize = ((*partitionHdr)->encryptedPartitionLength * 4);
-                uint32_t dataBufferLength = ((*partitionHdr)->totalPartitionLength * 4) - SIGN_LENGTH_VERSAL;
-                uint32_t acBufferLength = sizeof(AuthCertificate4096Sha3PaddingStructure) - SIGN_LENGTH_VERSAL;
+                /* totalPartitionLength (per SetTotalPartitionLength) =
+                 * body_len_words + sum of AC section sizes in words. The body
+                 * (partition data only) is therefore the total minus AC.    */
+                uint32_t acFullSize = sizeof(AuthCertificate4096Sha3PaddingStructure);
+                uint32_t bodyLength = ((*partitionHdr)->totalPartitionLength * 4) - acFullSize;
+                uint32_t acBufferLength = acFullSize - SIGN_LENGTH_VERSAL;
+                uint32_t dataBufferLength = acBufferLength + bodyLength;
                 auto tempBuffer = std::make_unique<uint8_t[]>(dataBufferLength);
                 memset(tempBuffer.get(), 0, dataBufferLength);
 
@@ -545,8 +598,8 @@ void VersalReadImage::VerifyPartitionSignature(void)
                 offset = (*partitionHdr)->partitionWordOffset * 4;
                 if (!(fseek(binFile, offset, SEEK_SET)))
                 {
-                    result = fread(tempBuffer.get() + acBufferLength, 1, dataBufferLength - acBufferLength, binFile);
-                    if (result != dataBufferLength - acBufferLength)
+                    result = fread(tempBuffer.get() + acBufferLength, 1, bodyLength, binFile);
+                    if (result != bodyLength)
                     {
                         LOG_ERROR("Error reading partition for hash calculation");
                     }
@@ -555,23 +608,56 @@ void VersalReadImage::VerifyPartitionSignature(void)
                 {
                     LOG_ERROR("Error parsing Partitions from BootImage file %s", binFilename.c_str());
                 }
+
+                /* Pick the slice of [AC|body] that generation signed. */
+                uint32_t signedLen = dataBufferLength;
+                if (isItBootloader && versalNetSeries)
+                {
+                    signedLen = acBufferLength + bootloaderChunkSize + SHA3_LENGTH_BYTES;
+                    if ((*partitionHdr)->partitionKeySource != KeySource::None)
+                    {
+                        signedLen += SECURE_HDR_SZ + AES_GCM_TAG_SZ;
+                    }
+                }
+                else if (isItBootloader && !versalNetSeries)
+                {
+                    /* Classic Versal bootloader: signs entire body, nist=false. */
+                    signedLen = acBufferLength + bodyLength;
+                }
+                else if (encryptedSize > actualSecureChunkSize)
+                {
+                    /* Multi-chunk non-bootloader: signs first secure chunk only. */
+                    signedLen = acBufferLength + actualSecureChunkSize + SHA3_LENGTH_BYTES;
+                    if ((*partitionHdr)->partitionKeySource != KeySource::None)
+                    {
+                        signedLen += SECURE_HDR_SZ + AES_GCM_TAG_SZ;
+                    }
+                }
+                else
+                {
+                    /* Single-chunk non-bootloader: hashSecLen = section->Length,
+                     * i.e. the entire partition body.                          */
+                    signedLen = acBufferLength + bodyLength;
+                }
+
+                if (signedLen > dataBufferLength)
+                {
+                    signedLen = dataBufferLength;
+                }
+
                 if (encryptedSize <= actualSecureChunkSize || isItBootloader)
                 {
-                    if (isItBootloader)
-                    {
-                        nist = false;
-                    }
                     if ((*(*auth_cert) & 0xF3) == 0x02)
                     {
-                        signatureVerified = VerifyECDSASignature(nist, tempBuffer.get(), dataBufferLength, (ACKeyECDSAp *)(*auth_cert + AC_SPK_KEY_OFFSET), *auth_cert + AC_PARTITION_SIGN_OFFSET);
+                        signatureVerified = VerifyECDSASignature(nist, tempBuffer.get(), signedLen, (ACKeyECDSAp *)(*auth_cert + AC_SPK_KEY_OFFSET), *auth_cert + AC_PARTITION_SIGN_OFFSET);
                     }
                     else if ((*(*auth_cert) & 0xF3) == 0x22)
                     {
-                        signatureVerified = VerifyECDSAP521Signature(nist, tempBuffer.get(), dataBufferLength, (ACKeyECDSApP521 *)(*auth_cert + AC_SPK_KEY_OFFSET), *auth_cert + AC_PARTITION_SIGN_OFFSET);
+                        signatureVerified = VerifyECDSAP521Signature(nist, tempBuffer.get(), signedLen, (ACKeyECDSApP521 *)(*auth_cert + AC_SPK_KEY_OFFSET), *auth_cert + AC_PARTITION_SIGN_OFFSET);
                     }
                     else if ((*(*auth_cert) & 0xF3) == 0x11)
                     {
-                        signatureVerified = VerifySignature(nist, tempBuffer.get(), dataBufferLength, (ACKey4096Sha3Padding *)(*auth_cert + AC_SPK_KEY_OFFSET), *auth_cert + AC_PARTITION_SIGN_OFFSET);
+                        signatureVerified = VerifySignature(nist, tempBuffer.get(), signedLen, (ACKey4096Sha3Padding *)(*auth_cert + AC_SPK_KEY_OFFSET), *auth_cert + AC_PARTITION_SIGN_OFFSET);
                     }
                     else
                     {
@@ -580,12 +666,11 @@ void VersalReadImage::VerifyPartitionSignature(void)
                 }
                 else
                 {
-                    uint32_t chunk0Size = acBufferLength + actualSecureChunkSize + SHA3_LENGTH_BYTES;
-                    if ((*partitionHdr)->partitionKeySource != KeySource::None)
-                    {
-                        chunk0Size += SECURE_HDR_SZ + AES_GCM_TAG_SZ;
-                    }
-                    /* Verify Signature */
+                    /* Multi-chunk non-bootloader: signedLen already covers AC +
+                     * first 32K chunk + chunk-1 hash (+ optional SHE/GCM). The
+                     * chunk-by-chunk hash chain below still uses the same
+                     * actualSecureChunkSize as before.                       */
+                    uint32_t chunk0Size = signedLen;
                     if ((*(*auth_cert) & 0xF3) == 0x02)
                     {
                         signatureVerified = VerifyECDSASignature(true, tempBuffer.get(), chunk0Size, (ACKeyECDSAp *)(*auth_cert + AC_SPK_KEY_OFFSET),*auth_cert + AC_PARTITION_SIGN_OFFSET);
@@ -607,7 +692,8 @@ void VersalReadImage::VerifyPartitionSignature(void)
                     {
                         uint32_t dataSize = actualSecureChunkSize + SHA3_LENGTH_BYTES;
                         auto hashBuffer = std::make_unique<uint8_t[]>(SHA3_LENGTH_BYTES);
-                        if ((*partitionHdr)->partitionKeySource != KeySource::None)
+                        bool isEncrypted = ((*partitionHdr)->partitionKeySource != KeySource::None);
+                        if (isEncrypted)
                         {
                             encryptedSize -= (SECURE_HDR_SZ + AES_GCM_TAG_SZ);
                         }
@@ -615,6 +701,17 @@ void VersalReadImage::VerifyPartitionSignature(void)
                         if (encryptedSize % actualSecureChunkSize != 0)
                         {
                             count = count + 1;
+                        }
+                        if (isEncrypted && count > 1)
+                        {
+                            uint32_t perChunkOverhead = SECURE_HDR_SZ + AES_GCM_TAG_SZ;
+                            uint32_t totalOverhead = (count - 1) * perChunkOverhead;
+                            encryptedSize -= totalOverhead;
+                            count = encryptedSize / actualSecureChunkSize;
+                            if (encryptedSize % actualSecureChunkSize != 0)
+                            {
+                                count = count + 1;
+                            }
                         }
 
                         for (int i = 1; i < count; i++)
