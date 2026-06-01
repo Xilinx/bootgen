@@ -26,11 +26,54 @@
 #include "cdo-command.h"
 
 UserKeys user_keys;
+UserKeyKekIv user_key_kek_iv;
 static CdoSequence * default_seq;
+static int cdocmd_user_keys_versal_2ve_2vm;
 
 #define USER_KEYS_BASE_ADDR 0xF11E0110
 #define USER_KEYS_END_ADDR  0xF11E020C
+#define VERSAL_2VE_2VM_USER_KEY_KEK0_IV_BASE_ADDR 0xF2014384
+#define VERSAL_2VE_2VM_USER_KEY_KEK1_IV_END_ADDR  0xF2014398
 #define USER_KEY_OFFSET     0x20
+
+void cdocmd_set_user_keys_versal_2ve_2vm(int enable) {
+    cdocmd_user_keys_versal_2ve_2vm = enable ? 1 : 0;
+}
+
+void cdocmd_clear_user_keys(void) {
+    memset(&user_keys, 0, sizeof(user_keys));
+}
+
+static uint32_t le32_from_4bytes(const uint8_t * b) {
+    return (uint32_t)b[0]
+        | ((uint32_t)b[1] << 8)
+        | ((uint32_t)b[2] << 16)
+        | ((uint32_t)b[3] << 24);
+}
+
+void cdocmd_set_efuse_user_kek0_iv(const uint8_t * iv12) {
+    uint32_t i;
+    if (iv12 == NULL) {
+        user_key_kek_iv.has_kek0_iv = 0;
+        return;
+    }
+    for (i = 0; i < USER_KEY_KEK_IV_WORDS; i++) {
+        user_key_kek_iv.user_key_kek0_iv_array[i] = le32_from_4bytes(iv12 + (4u * i));
+    }
+    user_key_kek_iv.has_kek0_iv = 1;
+}
+
+void cdocmd_set_efuse_user_kek1_iv(const uint8_t * iv12) {
+    uint32_t i;
+    if (iv12 == NULL) {
+        user_key_kek_iv.has_kek1_iv = 0;
+        return;
+    }
+    for (i = 0; i < USER_KEY_KEK_IV_WORDS; i++) {
+        user_key_kek_iv.user_key_kek1_iv_array[i] = le32_from_4bytes(iv12 + (4u * i));
+    }
+    user_key_kek_iv.has_kek1_iv = 1;
+}
 
 void cdocmd_free(CdoCommand * cmd) {
     if (!list_is_empty(&cmd->link_all)) list_remove(&cmd->link_all);
@@ -301,21 +344,64 @@ static CdoCommand * build_block_write(uint64_t addr, void * buf, uint32_t count,
     cmd->dstaddr = addr;
     cmd->count = count;
 
-    if (addr  >= USER_KEYS_BASE_ADDR && addr <= USER_KEYS_END_ADDR)
+    /* Per-word user-key substitution.
+       For every word of buf whose destination address lands in the AES
+       user-key MMIO range AND whose corresponding user_keyJ slot was actually
+       populated by a `userkeys` BIF directive (loaded_mask bit set), replace
+       that word with the configured key value. Words outside the range, or
+       in slots that were not loaded, pass through unchanged. */
+    if (count > 0
+        && addr <= (uint64_t)USER_KEYS_END_ADDR
+        && addr + (uint64_t)count * 4ull > (uint64_t)USER_KEYS_BASE_ADDR)
     {
-        /* copy user keys*/
-        int i, j;
-        for (j = 0; j < 8; j++)
+        uint32_t * words = (uint32_t *)buf;
+        for (uint32_t w = 0; w < count; w++)
         {
-            for (i = 0; i < 8; i++)
+            uint64_t a = addr + 4ull * w;
+            if (a < USER_KEYS_BASE_ADDR || a > USER_KEYS_END_ADDR) continue;
+            uint64_t rel = a - (uint64_t)USER_KEYS_BASE_ADDR;
+            uint32_t j = (uint32_t)(rel / USER_KEY_OFFSET);
+            uint32_t i = (uint32_t)((rel % USER_KEY_OFFSET) / 4u);
+            if (j >= 8 || i >= 8) continue;
+            if (!(user_keys.loaded_mask & (1u << j))) continue;
+            memcpy(&words[w], &user_keys.user_keys_array[j][7 - i], sizeof(uint32_t));
+        }
+    }
+
+    /* Per-word substitution for Versal 2VE/2VM user-key KEK IVs.
+       Same rules: walk every word, substitute only when the matching IV was
+       actually provided (has_kek0_iv / has_kek1_iv set). */
+    if (cdocmd_user_keys_versal_2ve_2vm && count > 0
+        && addr <= (uint64_t)VERSAL_2VE_2VM_USER_KEY_KEK1_IV_END_ADDR
+        && addr + (uint64_t)count * 4ull > (uint64_t)VERSAL_2VE_2VM_USER_KEY_KEK0_IV_BASE_ADDR)
+    {
+        uint32_t * words = (uint32_t *)buf;
+        for (uint32_t w = 0; w < count; w++)
+        {
+            uint64_t a = addr + 4ull * w;
+            if (a < (uint64_t)VERSAL_2VE_2VM_USER_KEY_KEK0_IV_BASE_ADDR
+                || a > (uint64_t)VERSAL_2VE_2VM_USER_KEY_KEK1_IV_END_ADDR) continue;
+            uint64_t rel = a - (uint64_t)VERSAL_2VE_2VM_USER_KEY_KEK0_IV_BASE_ADDR;
+            if (rel < (uint64_t)EFUSE_USER_KEK_IV_BYTES)
             {
-                if ((addr == USER_KEYS_BASE_ADDR + (USER_KEY_OFFSET * j) + (4 * i)) && (user_keys.user_keys_array[j] != 0))
+                uint32_t j = (uint32_t)(rel / 4u);
+                if (j < USER_KEY_KEK_IV_WORDS && user_key_kek_iv.has_kek0_iv)
                 {
-                    memcpy(buf, &user_keys.user_keys_array[j][7 - i], sizeof(uint32_t));
+                    memcpy(&words[w], &user_key_kek_iv.user_key_kek0_iv_array[j], sizeof(uint32_t));
+                }
+            }
+            else
+            {
+                uint64_t rel1 = rel - (uint64_t)EFUSE_USER_KEK_IV_BYTES;
+                uint32_t j = (uint32_t)(rel1 / 4u);
+                if (j < USER_KEY_KEK_IV_WORDS && user_key_kek_iv.has_kek1_iv)
+                {
+                    memcpy(&words[w], &user_key_kek_iv.user_key_kek1_iv_array[j], sizeof(uint32_t));
                 }
             }
         }
     }
+
     cmd->buf = copy_buf(buf, count, be);
     return cmd;
 }

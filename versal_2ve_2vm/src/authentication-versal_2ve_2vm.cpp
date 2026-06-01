@@ -496,8 +496,8 @@ uint32_t Versal_2ve_2vmAuthenticationContext::GetAuthJtagImageSize(void) const
             + actualppkSize + PADDING_16B(actualppkSize)
             + AUTH_JTAG_LMS_SPK_HEADER_LENGTH
             + actualspkSize + PADDING_16B(actualspkSize)
-            + spkSignLength
-            + authJtagSignLength;
+            + spkSignLength + PADDING_16B(spkSignLength)
+            + authJtagSignLength + PADDING_16B(authJtagSignLength);
 
         return (uint32_t)totalSize;
     }
@@ -2402,28 +2402,28 @@ void Versal_2ve_2vmAuthenticationContext::CreateSPKSignature(BootImage& bi)
         WriteLittleEndian32(tempBuffer.get() + (3 * sizeof(uint32_t)), signatureLength);
         WriteLittleEndian32(tempBuffer.get() + (4 * sizeof(uint32_t)), spkIdentification);
         memcpy(tempBuffer.get() + TELLURIDE_AC_SPK_HDR_LENGTH, spkFull.get(), actualKeySize);
-    #ifdef DEBUG
-        LOG_TRACE("DATA being Hashed for SPK Sign");
-        LOG_DUMP_BYTES(tempBuffer.get(), actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH);
-    #endif
-        if (primaryKey->Loaded && primaryKey->isSecret)
+
+        if(bi.options.DoGenerateHashes())
         {
-            authAlgorithm->CreateSignature(tempBuffer.get(), actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH, pskFile.c_str(),
-                spksignature.get(), signatureLength, lmsOnly, ppkFile.c_str());
-    #ifdef DEBUG
-            LOG_TRACE("spksignature");
-            LOG_DUMP_BYTES(spksignature.get(), signatureLength);
-    #endif
-            authAlgorithm->VerifySignature(tempBuffer.get(), actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH, ppkFile.c_str(),
-                spksignature.get(), signatureLength, lmsOnly);
+            std::string hashfilename = bi.bifOptions->GetSPKFileName() + hash->GetHashFileExtension();
+            WritePaddedSHAFile(tempBuffer.get(), actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH, hashfilename);
         }
         else
         {
-            if(bi.options.DoGenerateHashes())
+        #ifdef DEBUG
+            LOG_TRACE("DATA being Hashed for SPK Sign");
+            LOG_DUMP_BYTES(tempBuffer.get(), actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH);
+        #endif
+            if (primaryKey->Loaded && primaryKey->isSecret)
             {
-                //std::string hashfilename = acSection->Name;
-                std::string hashfilename = bi.bifOptions->GetSPKFileName() + hash->GetHashFileExtension();
-                WritePaddedSHAFile(tempBuffer.get(), actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH, hashfilename);
+                authAlgorithm->CreateSignature(tempBuffer.get(), actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH, pskFile.c_str(),
+                    spksignature.get(), signatureLength, lmsOnly, ppkFile.c_str());
+        #ifdef DEBUG
+                LOG_TRACE("spksignature");
+                LOG_DUMP_BYTES(spksignature.get(), signatureLength);
+        #endif
+                authAlgorithm->VerifySignature(tempBuffer.get(), actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH, ppkFile.c_str(),
+                    spksignature.get(), signatureLength, lmsOnly);
             }
             else
             {
@@ -2439,19 +2439,19 @@ void Versal_2ve_2vmAuthenticationContext::CreateSPKSignature(BootImage& bi)
         memset(spksignature.get(), 0, signatureLength);
         // Calulate the SPK hash with PKCS padding
         GenerateSPKHash(shaHashPadded.get());
-        authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
 
-        if (primaryKey->Loaded && primaryKey->isSecret)
+        if(bi.options.DoGenerateHashes())
         {
-            authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)primaryKey.get(), spksignature.get());
+            std::string hashfilename = bi.bifOptions->GetSPKFileName() + hash->GetHashFileExtension();
+            WritePaddedSHAFile(shaHashPadded.get(), hashfilename);
         }
         else
         {
-            if(bi.options.DoGenerateHashes())
+            authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
+
+            if (primaryKey->Loaded && primaryKey->isSecret)
             {
-                //std::string hashfilename = acSection->Name;
-                std::string hashfilename = bi.bifOptions->GetSPKFileName() + hash->GetHashFileExtension();
-                WritePaddedSHAFile(shaHashPadded.get(), hashfilename);
+                authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)primaryKey.get(), spksignature.get());
             }
             else
             {
@@ -2572,7 +2572,7 @@ void Versal_2ve_2vmAuthenticationContext::CreateAuthJtagImage(Options& options, 
 
             //SPK Sign
             //SPK Header Offset - 0x450, size to be signed - 20 +  
-            hash->CalculateVersalHash(true, (uint8_t*)authJtagImage + 0x450, 0x20 + VERSAL_ACKEY_STRUCT_SIZE + TELLURIDE_RSA_AC_PPK_SPK_ALIGNMENT, shaHash.get());
+            hash->CalculateHash(true, (uint8_t*)authJtagImage + 0x450, 0x20 + VERSAL_ACKEY_STRUCT_SIZE + TELLURIDE_RSA_AC_PPK_SPK_ALIGNMENT, shaHash.get());
             authAlgorithm->CreatePadding(shaHashPadded.get(), shaHash.get(), hashLength);
 
             if (primaryKey->isSecret)
@@ -2598,7 +2598,7 @@ void Versal_2ve_2vmAuthenticationContext::CreateAuthJtagImage(Options& options, 
                 }
             }
             //Auth Jtag Msg Sign
-            hash->CalculateVersalHash(true, (uint8_t*)authJtagImage, sizeof(AuthenticatedJtagRSAImageStructure) - signatureLength, shaHash.get());
+            hash->CalculateHash(true, (uint8_t*)authJtagImage, sizeof(AuthenticatedJtagRSAImageStructure) - signatureLength, shaHash.get());
             authAlgorithm->CreatePadding(shaHashPadded.get(), shaHash.get(), hashLength);
             
             if (secondaryKey->isSecret)
@@ -2686,7 +2686,7 @@ void Versal_2ve_2vmAuthenticationContext::CreateAuthJtagImage(Options& options, 
 
             //SPK Sign
             //SPK Header Offset - 0xA0, size to be signed - 20 +  
-            hash->CalculateVersalHash(true, (uint8_t*)authJtagImage + 0xA0, 0x20 + 2 * EC_P384_KEY_LENGTH, shaHash.get());
+            hash->CalculateHash(true, (uint8_t*)authJtagImage + 0xA0, 0x20 + 2 * EC_P384_KEY_LENGTH, shaHash.get());
             authAlgorithm->CreatePadding(shaHashPadded.get(), shaHash.get(), hashLength);
 
             if (primaryKey->isSecret)
@@ -2713,7 +2713,7 @@ void Versal_2ve_2vmAuthenticationContext::CreateAuthJtagImage(Options& options, 
             }
 
             //Auth Jtag Msg Sign
-            hash->CalculateVersalHash(false, (uint8_t*)authJtagImage, sizeof(AuthenticatedJtagECP384ImageStructure) - signatureLength, shaHash.get());
+            hash->CalculateHash(true, (uint8_t*)authJtagImage, sizeof(AuthenticatedJtagECP384ImageStructure) - signatureLength, shaHash.get());
             authAlgorithm->CreatePadding(shaHashPadded.get(), shaHash.get(), hashLength);
 
             if (secondaryKey->isSecret)
@@ -2762,7 +2762,7 @@ void Versal_2ve_2vmAuthenticationContext::CreateAuthJtagImage(Options& options, 
                 size_t spkHeaderOffset = AUTH_JTAG_LMS_FIXED_HEADER_SIZE + actualppkSize + PADDING_16B(actualppkSize);
                 size_t spkOffset = spkHeaderOffset + AUTH_JTAG_LMS_SPK_HEADER_LENGTH;
                 size_t spkSignOffset = spkOffset + actualspkSize + PADDING_16B(actualspkSize);
-                size_t authSignOffset = spkSignOffset + spkSignLength;
+                size_t authSignOffset = spkSignOffset + spkSignLength + PADDING_16B(spkSignLength);
                 
                 WriteLittleEndian32(authJtagImage + AUTH_JTAG_LMS_ID_WORD_OFFSET, AUTH_JTAG_IMAGE_IDENTIFICATION_WORD);
 
@@ -2808,13 +2808,15 @@ void Versal_2ve_2vmAuthenticationContext::CreateAuthJtagImage(Options& options, 
                 WriteLittleEndian32(tempBuffer + sizeof(uint32_t), actualspkSize);
                 WriteLittleEndian32(tempBuffer + (2 * sizeof(uint32_t)), spkSignLength + PADDING_16B(spkSignLength));
                 WriteLittleEndian32(tempBuffer + (3 * sizeof(uint32_t)), spkSignLength);
-                WriteLittleEndian32(tempBuffer + (4 * sizeof(uint32_t)), spkIdentification);
+                WriteLittleEndian32(tempBuffer + (4 * sizeof(uint32_t)), authJtagAttributes.spkRevokeId);
                 memcpy(tempBuffer + TELLURIDE_AC_SPK_HDR_LENGTH, authJtagImage + spkOffset, actualspkSize);
 
                 if (primaryKey->isSecret)
                 {
                     authAlgorithm->CreateSignature(tempBuffer, TELLURIDE_AC_SPK_HDR_LENGTH + actualspkSize, pskFile.c_str(),
                         authJtagImage + spkSignOffset, spkSignLength, lmsOnly, ppkFile.c_str());
+                    authAlgorithm->VerifySignature(tempBuffer, TELLURIDE_AC_SPK_HDR_LENGTH + actualspkSize, ppkFile.c_str(),
+                        authJtagImage + spkSignOffset, spkSignLength, lmsOnly);
                 }
                 else
                 {
@@ -2839,6 +2841,8 @@ void Versal_2ve_2vmAuthenticationContext::CreateAuthJtagImage(Options& options, 
                 {
                     authAlgorithm->CreateSignature(authJtagImage, (size_t)authSignOffset, sskFile.c_str(),
                         authJtagImage + authSignOffset, authJtagSignLength, lmsOnly, spkFile.c_str());
+                    authAlgorithm->VerifySignature(authJtagImage, (size_t)authSignOffset, spkFile.c_str(),
+                        authJtagImage + authSignOffset, authJtagSignLength, lmsOnly);
                 }
                 else
                 {

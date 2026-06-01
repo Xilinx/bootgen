@@ -4326,29 +4326,70 @@ void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size
                         info_display = false;
                     }
 
-                for (int i = 0; i < num_of_sync_points; i++)
+                    /* Closed-form mapping: plaintext sync offset -> encrypted-stream byte offset
+                       within the partition, then add the partition's data offset in the PDI.
+
+                       Encrypted layout produced by ChunkifyAndEncrypt is:
+                         [InitialSecHdr (SECURE_HDR_SZ + AES_GCM_TAG_SZ) bytes]
+                         [Block_0 (data_chunk plaintext) + (SECURE_HDR_SZ + AES_GCM_TAG_SZ)]
+                         [Block_1 (data_chunk plaintext) + (SECURE_HDR_SZ + AES_GCM_TAG_SZ)]
+                         ...
+                       For SHA3-checksummed/authenticated partitions, each block additionally
+                       carries SHA3_LENGTH_BYTES of per-block overhead, which is already
+                       accumulated into offset_shift above.
+
+                       For plaintext byte P with block index b = floor(P / data_chunk):
+                         enc_off = P + initial_sec_hdr + b * offset_shift
+                       where initial_sec_hdr is the front-loaded (SECURE_HDR_SZ + AES_GCM_TAG_SZ)
+                       only when the partition is encrypted.
+
+                       Using a closed form (instead of an accumulator loop) avoids the prior
+                       off-by-64 (missing initial secure header) and the latent
+                       compare-shifted-vs-original-threshold drift. */
+                    size_t initial_sec_hdr = 0;
+                    if (partitionhdr_offsets[3] != KeySource::None)
                     {
-                        size_t offset = syncpt_offsets[i];
-                        // Adjust offset for each chunk boundary crossed
-                        for (int j = 1; j <= num_secure_chunks; j++)
+                        initial_sec_hdr = SECURE_HDR_SZ + AES_GCM_TAG_SZ;
+                    }
+
+                    /* Recompute the plaintext block size used by the encryption
+                       pipeline for this partition. Cannot trust the upstream
+                       auto-detect (lines ~4244-4267) here because it treats
+                       encrBlocks[0] as KB and multiplies by 1024 — but for SLR
+                       config CDO partitions encrBlocks is populated in BYTES by
+                       the encryption setup, leading to an artificially huge
+                       data_chunk that makes block_idx always 0 and silently
+                       drops the per-block shift.
+
+                       For non-bootloader partitions the encryption pipeline
+                       uses GetSecureChunkSize() (= SECURE_32K_CHUNK by default)
+                       minus the per-block overhead. offset_shift already holds
+                       that overhead (SECURE_HDR_SZ+AES_GCM_TAG_SZ, plus
+                       SHA3_LENGTH_BYTES if authenticated/checksummed), so the
+                       correct plaintext block size is simply:
+                           SECURE_32K_CHUNK - offset_shift                     */
+                    size_t plaintext_block = (offset_shift < SECURE_32K_CHUNK)
+                                           ? (SECURE_32K_CHUNK - offset_shift)
+                                           : 0;
+
+                    for (int i = 0; i < num_of_sync_points; i++)
+                    {
+                        size_t plaintext_off = syncpt_offsets[i];
+                        if(plaintext_block == 0)
                         {
-                            // Check if sync point offset is beyond this chunk boundary
-                            if (offset >= (data_chunk * j))
-                            {
-                                // Add offset shift for secure headers/tags for this chunk
-                                offset += offset_shift;
-                            }
-                            else
-                            {
-                                break; // No more chunks to check
-                            }
+                            LOG_WARNING("Encrypted partition for slr_%d has offset_shift (0x%zx) >= SECURE_32K_CHUNK (0x%x). "
+                                        "Sync point offset adjustment will be skipped.", slr_info->index, offset_shift, SECURE_32K_CHUNK);
                         }
-                    
-                    offset += (partitionhdr_offsets[7] * 4);
-                    slr_info->sync_addresses.push_back(offset);
-                    LOG_TRACE("       offset = 0x%x", offset);
+                        size_t block_idx = (plaintext_block == 0) ? 0 : (plaintext_off / plaintext_block);
+                        size_t enc_off = plaintext_off
+                                       + initial_sec_hdr
+                                       + (block_idx * offset_shift);
+
+                        enc_off += (partitionhdr_offsets[7] * 4);
+                        slr_info->sync_addresses.push_back(enc_off);
+                        LOG_TRACE("       offset = 0x%zx", enc_off);
+                    }
                 }
-            }
         }
         if (partitionhdr_offsets.size() != 0)
         {

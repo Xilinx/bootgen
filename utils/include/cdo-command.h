@@ -53,12 +53,29 @@ struct CdoSequence {
 
 typedef struct UserKeys {
     uint32_t user_keys_array[8][8];
+    uint32_t loaded_mask;   /* bit j set when user_keyJ was parsed from BIF */
+    /* MUST be updated whenever user_keys_array[j] is written. */
 }UserKeys;
+
+#define EFUSE_USER_KEK_IV_BYTES   12
+#define USER_KEY_KEK_IV_WORDS    3
+
+typedef struct UserKeyKekIv {
+    uint32_t user_key_kek0_iv_array[USER_KEY_KEK_IV_WORDS];
+    uint32_t user_key_kek1_iv_array[USER_KEY_KEK_IV_WORDS];
+    int has_kek0_iv;
+    int has_kek1_iv;
+} UserKeyKekIv;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
     extern UserKeys user_keys;
+    extern UserKeyKekIv user_key_kek_iv;
+    void cdocmd_set_user_keys_versal_2ve_2vm(int enable);
+    void cdocmd_clear_user_keys(void);
+    void cdocmd_set_efuse_user_kek0_iv(const uint8_t * iv12);
+    void cdocmd_set_efuse_user_kek1_iv(const uint8_t * iv12);
 #ifdef __cplusplus
 }
 #endif

@@ -28,6 +28,7 @@
 #include "bifscanner.h"
 #include "encryptutils.h"
 #include "cdo-command.h"
+#include "fileutils.h"
 #include <map>
 
 /* Forward Class Declaration */
@@ -744,6 +745,17 @@ void BifOptions::SetEfuseUserKek0IVFileName(std::string filename)
     }
 
     efuseUserKek0IVFile = filename;
+    /* CDO build_block_write injection (F201 user KEK IV range) is Versal 2VE-2VM only */
+    if (arch == Arch::VERSALGEN2) {
+        uint8_t iv[EFUSE_USER_KEK_IV_BYTES];
+        FileImport fileReader;
+        if (!fileReader.LoadHexData(filename, iv, EFUSE_USER_KEK_IV_BYTES))
+        {
+            LOG_ERROR("Invalid data bytes for efuse user KEK0 IV.\n           Expected length is 12 bytes in %s",
+                filename.c_str());
+        }
+        cdocmd_set_efuse_user_kek0_iv(iv);
+    }
     LOG_TRACE("Setting Efuse User Kek0 IV file as %s", efuseUserKek0IVFile.c_str());
 }
 
@@ -762,6 +774,16 @@ void BifOptions::SetEfuseUserKek1IVFileName(std::string filename)
     }
 
     efuseUserKek1IVFile = filename;
+    if (arch == Arch::VERSALGEN2) {
+        uint8_t iv[EFUSE_USER_KEK_IV_BYTES];
+        FileImport fileReader;
+        if (!fileReader.LoadHexData(filename, iv, EFUSE_USER_KEK_IV_BYTES))
+        {
+            LOG_ERROR("Invalid data bytes for efuse user KEK1 IV.\n           Expected length is 12 bytes in %s",
+                filename.c_str());
+        }
+        cdocmd_set_efuse_user_kek1_iv(iv);
+    }
     LOG_TRACE("Setting Efuse User Kek1 IV file as %s", efuseUserKek1IVFile.c_str());
 }
 
@@ -818,7 +840,7 @@ void BifOptions::ParseUserKeyFile(std::string inputFileName)
         word.pop_back();
         if (word == "user_key")
         {
-            if (c > 7 && c < 0)
+            if (c < 0 || c > 7)
             {
                 LOG_ERROR("The AES user keys available are from 0 to 7. user_key%d is not supported", c);
             }
@@ -853,6 +875,7 @@ void BifOptions::ParseUserKeyFile(std::string inputFileName)
                 }
             }
             SetUserKey(hexData, (uint32_t*)&(user_keys.user_keys_array[c][0]));
+            user_keys.loaded_mask |= (1u << c);
         }
         else
         {

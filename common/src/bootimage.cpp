@@ -40,6 +40,7 @@
 #include "checksum.h"
 #include "logger.h"
 #include "bitutils.h"
+#include "cdo-command.h"
 
 /*
 ------------------------------------------------------------------------------
@@ -156,6 +157,18 @@ void BIF_File::Process(Options& options)
 
         if (currentbi != NULL)
         {
+            /* SSIT / multi-image BIF: ensure each image's CDO post-processing
+               sees only that image's user keys. The global user_keys is
+               populated by BIF parser via BifOptions::ParseUserKeyFile, but
+               in a single bootgen run that processes multiple images the
+               last-parsed userkeys file would otherwise leak into earlier
+               images at CDO assembly time. Reset and re-load per image. */
+            cdocmd_clear_user_keys();
+            if (!(*bifoptions)->GetUserKeysFileName().empty())
+            {
+                (*bifoptions)->ParseUserKeyFile((*bifoptions)->GetUserKeysFileName());
+            }
+
             currentbi->Add(*bifoptions);
             if (((*bifoptions)->pdiType != PartitionType::SLR_SLAVE_BOOT) && ((*bifoptions)->pdiType != PartitionType::SLR_SLAVE_CONFIG))
             {
@@ -380,6 +393,7 @@ BootImage::BootImage(Options& options, uint8_t index)
     checksumTable = std::make_unique<ChecksumTable>();
 
     SetDeviceArchitecture();
+    cdocmd_set_user_keys_versal_2ve_2vm(0);
 }
 
 /******************************************************************************/
