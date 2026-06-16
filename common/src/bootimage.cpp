@@ -179,6 +179,30 @@ void BIF_File::Process(Options& options)
                 currentbi->pmcDataAesFile = lastPmcDataAesFile;
             }
         }
+        else if (options.archType == Arch::VERSAL_2VP)
+        {
+            uint32_t idCode = (*bifoptions)->GetIdCode();
+            
+            if (IdCodeManager::IsL80IdCode(idCode))
+            {
+                LOG_INFO("L80 variant detected (idcode: 0x%08X).", idCode);
+                LOG_INFO("  - Switching to Versal PDI generation flow");
+                LOG_INFO("  - PLM max size: 640KB (0xA0000)");
+                LOG_INFO("  - PMC max size: 112KB (0x1C000)");
+                options.SetL80Variant(true);
+                currentbi = std::make_unique<VersalBootImage>(options, index);
+
+                currentbi->pmcDataAesFile = (*bifoptions)->GetPmcDataAesFile();
+                if ((itr + 1) == bifOptionList.size())
+                {
+                    currentbi->pmcDataAesFile = lastPmcDataAesFile;
+                }
+            }
+            else
+            {
+                LOG_ERROR("Invalid idcode: 0x%08X for Versal PDI generation flow.", idCode);
+            }
+        }
         else if (options.archType == Arch::SPARTANUP)
         {
             currentbi = std::make_unique<SpartanBootImage>(options, index);

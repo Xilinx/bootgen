@@ -41,6 +41,9 @@ class Options;
 #define DEFAULT_PMCDATA_LOADADDR    0xF2000000
 #define DEFAULT_ID_CODE_S80         0x04ca8093
 
+#define PLM_MAX_SIZE_L80            0xA0000
+#define PMCDATA_MAX_SIZE_L80        0x1C000
+
 
 typedef struct
 {

@@ -223,35 +223,35 @@ namespace CO {
 
     switch (yytype)
       {
-        case 91: /* IDENTIFIER */
+        case 92: /* IDENTIFIER */
 /* Line 455 of lalr1.cc  */
 #line 70 "../../parser/cmdoptions.y"
         { free(((*yyvaluep).cstring)); };
 /* Line 455 of lalr1.cc  */
 #line 232 "cmdoptions.tab.cpp"
         break;
-      case 92: /* FILENAME */
+      case 93: /* FILENAME */
 /* Line 455 of lalr1.cc  */
 #line 70 "../../parser/cmdoptions.y"
         { free(((*yyvaluep).cstring)); };
 /* Line 455 of lalr1.cc  */
 #line 239 "cmdoptions.tab.cpp"
         break;
-      case 93: /* QFILENAME */
+      case 94: /* QFILENAME */
 /* Line 455 of lalr1.cc  */
 #line 70 "../../parser/cmdoptions.y"
         { free(((*yyvaluep).cstring)); };
 /* Line 455 of lalr1.cc  */
 #line 246 "cmdoptions.tab.cpp"
         break;
-      case 94: /* HEXSTRING */
+      case 95: /* HEXSTRING */
 /* Line 455 of lalr1.cc  */
 #line 70 "../../parser/cmdoptions.y"
         { free(((*yyvaluep).cstring)); };
 /* Line 455 of lalr1.cc  */
 #line 253 "cmdoptions.tab.cpp"
         break;
-      case 205: /* filename */
+      case 206: /* filename */
 /* Line 455 of lalr1.cc  */
 #line 70 "../../parser/cmdoptions.y"
         { free(((*yyvaluep).cstring)); };
@@ -1480,247 +1480,253 @@ namespace CO {
     { options.SetArchType(Arch::SPARTANUPV2); }
     break;
 
-  case 203:
+  case 202:
 /* Line 670 of lalr1.cc  */
-#line 344 "../../parser/cmdoptions.y"
-    { options.SetGreyKeyGeneration(true); }
+#line 341 "../../parser/cmdoptions.y"
+    { options.SetArchType(Arch::VERSAL_2VP); }
     break;
 
   case 204:
 /* Line 670 of lalr1.cc  */
 #line 345 "../../parser/cmdoptions.y"
-    { options.SetMetalKeyGeneration(true); }
+    { options.SetGreyKeyGeneration(true); }
     break;
 
   case 205:
 /* Line 670 of lalr1.cc  */
 #line 346 "../../parser/cmdoptions.y"
-    { options.SetAuthKeyGeneration(GenAuthKeys::PEM); }
+    { options.SetMetalKeyGeneration(true); }
     break;
 
   case 206:
 /* Line 670 of lalr1.cc  */
 #line 347 "../../parser/cmdoptions.y"
-    { options.SetAuthKeyGeneration(GenAuthKeys::RSA); }
+    { options.SetAuthKeyGeneration(GenAuthKeys::PEM); }
     break;
 
   case 207:
 /* Line 670 of lalr1.cc  */
 #line 348 "../../parser/cmdoptions.y"
-    { options.SetAuthKeyGeneration(GenAuthKeys::ECDSA); }
+    { options.SetAuthKeyGeneration(GenAuthKeys::RSA); }
     break;
 
   case 208:
 /* Line 670 of lalr1.cc  */
 #line 349 "../../parser/cmdoptions.y"
-    { options.SetAuthKeyGeneration(GenAuthKeys::ECDSAP521); }
+    { options.SetAuthKeyGeneration(GenAuthKeys::ECDSA); }
     break;
 
   case 209:
 /* Line 670 of lalr1.cc  */
 #line 350 "../../parser/cmdoptions.y"
-    { options.SetAuthKeyGeneration(GenAuthKeys::LMS); }
+    { options.SetAuthKeyGeneration(GenAuthKeys::ECDSAP521); }
     break;
 
   case 210:
 /* Line 670 of lalr1.cc  */
-#line 353 "../../parser/cmdoptions.y"
-    { options.SetAuthKeyGeneration(GenAuthKeys::PEM); }
+#line 351 "../../parser/cmdoptions.y"
+    { options.SetAuthKeyGeneration(GenAuthKeys::LMS); }
     break;
 
   case 211:
 /* Line 670 of lalr1.cc  */
 #line 354 "../../parser/cmdoptions.y"
-    { options.SetAuthKeyGeneration(GenAuthKeys::RSA); }
+    { options.SetAuthKeyGeneration(GenAuthKeys::PEM); }
     break;
 
   case 212:
 /* Line 670 of lalr1.cc  */
-#line 357 "../../parser/cmdoptions.y"
-    { options.SetSecureDebugAuthType(Authentication::ECDSA);
-                                                      options.SetSecureDebugImageFile("secureDebugImage-ecdsa.bin"); }
+#line 355 "../../parser/cmdoptions.y"
+    { options.SetAuthKeyGeneration(GenAuthKeys::RSA); }
     break;
 
   case 213:
 /* Line 670 of lalr1.cc  */
-#line 359 "../../parser/cmdoptions.y"
-    { options.SetSecureDebugAuthType(Authentication::RSA);
-                                                      options.SetSecureDebugImageFile("secureDebugImage-rsa.bin"); }
+#line 358 "../../parser/cmdoptions.y"
+    { options.SetSecureDebugAuthType(Authentication::ECDSA);
+                                                      options.SetSecureDebugImageFile("secureDebugImage-ecdsa.bin"); }
     break;
 
   case 214:
 /* Line 670 of lalr1.cc  */
-#line 362 "../../parser/cmdoptions.y"
-    { options.SetSecureDebugImageFile((yysemantic_stack_[(2) - (2)].cstring)); }
+#line 360 "../../parser/cmdoptions.y"
+    { options.SetSecureDebugAuthType(Authentication::RSA);
+                                                      options.SetSecureDebugImageFile("secureDebugImage-rsa.bin"); }
     break;
 
-  case 216:
+  case 215:
 /* Line 670 of lalr1.cc  */
-#line 365 "../../parser/cmdoptions.y"
-    { options.SetSecureDebugAuthType(Authentication::ECDSA);
-                                                      options.SetSecureDebugImageFile("authenticatedJtagImage-ecdsa.bin"); }
+#line 363 "../../parser/cmdoptions.y"
+    { options.SetSecureDebugImageFile((yysemantic_stack_[(2) - (2)].cstring)); }
     break;
 
   case 217:
 /* Line 670 of lalr1.cc  */
-#line 367 "../../parser/cmdoptions.y"
-    { options.SetSecureDebugAuthType(Authentication::RSA);
-                                                      options.SetSecureDebugImageFile("authenticatedJtagImage-rsa.bin"); }
+#line 366 "../../parser/cmdoptions.y"
+    { options.SetSecureDebugAuthType(Authentication::ECDSA);
+                                                      options.SetSecureDebugImageFile("authenticatedJtagImage-ecdsa.bin"); }
     break;
 
   case 218:
 /* Line 670 of lalr1.cc  */
-#line 369 "../../parser/cmdoptions.y"
-    { options.SetSecureDebugAuthType(Authentication::LMS_SHA2_256);
-                                                      options.SetSecureDebugImageFile("authenticatedJtagImage-lms-sha256.bin"); }
+#line 368 "../../parser/cmdoptions.y"
+    { options.SetSecureDebugAuthType(Authentication::RSA);
+                                                      options.SetSecureDebugImageFile("authenticatedJtagImage-rsa.bin"); }
     break;
 
   case 219:
 /* Line 670 of lalr1.cc  */
-#line 371 "../../parser/cmdoptions.y"
-    { options.SetSecureDebugAuthType(Authentication::LMS_SHAKE256);
-                                                      options.SetSecureDebugImageFile("authenticatedJtagImage-lms-shake256.bin"); }
+#line 370 "../../parser/cmdoptions.y"
+    { options.SetSecureDebugAuthType(Authentication::LMS_SHA2_256);
+                                                      options.SetSecureDebugImageFile("authenticatedJtagImage-lms-sha256.bin"); }
     break;
 
   case 220:
 /* Line 670 of lalr1.cc  */
-#line 373 "../../parser/cmdoptions.y"
-    { options.SetSecureDebugAuthType(Authentication::HSS_SHA2_256);
-                                                      options.SetSecureDebugImageFile("authenticatedJtagImage-hss-sha256.bin"); }
+#line 372 "../../parser/cmdoptions.y"
+    { options.SetSecureDebugAuthType(Authentication::LMS_SHAKE256);
+                                                      options.SetSecureDebugImageFile("authenticatedJtagImage-lms-shake256.bin"); }
     break;
 
   case 221:
 /* Line 670 of lalr1.cc  */
-#line 375 "../../parser/cmdoptions.y"
-    { options.SetSecureDebugAuthType(Authentication::HSS_SHAKE256);
-                                                      options.SetSecureDebugImageFile("authenticatedJtagImage-hss-shake256.bin"); }
+#line 374 "../../parser/cmdoptions.y"
+    { options.SetSecureDebugAuthType(Authentication::HSS_SHA2_256);
+                                                      options.SetSecureDebugImageFile("authenticatedJtagImage-hss-sha256.bin"); }
     break;
 
   case 222:
 /* Line 670 of lalr1.cc  */
-#line 379 "../../parser/cmdoptions.y"
-    { options.SetReadImageFile((yysemantic_stack_[(1) - (1)].cstring));
-                                                      options.SetVerifyImageOption(true); }
+#line 376 "../../parser/cmdoptions.y"
+    { options.SetSecureDebugAuthType(Authentication::HSS_SHAKE256);
+                                                      options.SetSecureDebugImageFile("authenticatedJtagImage-hss-shake256.bin"); }
     break;
 
   case 223:
 /* Line 670 of lalr1.cc  */
-#line 382 "../../parser/cmdoptions.y"
+#line 380 "../../parser/cmdoptions.y"
     { options.SetReadImageFile((yysemantic_stack_[(1) - (1)].cstring));
-                                                      options.SetReadImageOption(ReadImageOption::ALL); }
+                                                      options.SetVerifyImageOption(true); }
     break;
 
   case 224:
 /* Line 670 of lalr1.cc  */
-#line 384 "../../parser/cmdoptions.y"
-    { options.SetReadImageFile((yysemantic_stack_[(2) - (1)].cstring)); }
+#line 383 "../../parser/cmdoptions.y"
+    { options.SetReadImageFile((yysemantic_stack_[(1) - (1)].cstring));
+                                                      options.SetReadImageOption(ReadImageOption::ALL); }
     break;
 
   case 225:
 /* Line 670 of lalr1.cc  */
-#line 387 "../../parser/cmdoptions.y"
-    { options.SetReadImageOption(ReadImageOption::BH); }
+#line 385 "../../parser/cmdoptions.y"
+    { options.SetReadImageFile((yysemantic_stack_[(2) - (1)].cstring)); }
     break;
 
   case 226:
 /* Line 670 of lalr1.cc  */
 #line 388 "../../parser/cmdoptions.y"
-    { options.SetReadImageOption(ReadImageOption::IHT); }
+    { options.SetReadImageOption(ReadImageOption::BH); }
     break;
 
   case 227:
 /* Line 670 of lalr1.cc  */
 #line 389 "../../parser/cmdoptions.y"
-    { options.SetReadImageOption(ReadImageOption::IH); }
+    { options.SetReadImageOption(ReadImageOption::IHT); }
     break;
 
   case 228:
 /* Line 670 of lalr1.cc  */
 #line 390 "../../parser/cmdoptions.y"
-    { options.SetReadImageOption(ReadImageOption::PHT); }
+    { options.SetReadImageOption(ReadImageOption::IH); }
     break;
 
   case 229:
 /* Line 670 of lalr1.cc  */
 #line 391 "../../parser/cmdoptions.y"
-    { options.SetReadImageOption(ReadImageOption::AC); }
+    { options.SetReadImageOption(ReadImageOption::PHT); }
     break;
 
   case 230:
 /* Line 670 of lalr1.cc  */
-#line 394 "../../parser/cmdoptions.y"
-    { options.SetDumpOption(DumpOption::BH); }
+#line 392 "../../parser/cmdoptions.y"
+    { options.SetReadImageOption(ReadImageOption::AC); }
     break;
 
   case 231:
 /* Line 670 of lalr1.cc  */
 #line 395 "../../parser/cmdoptions.y"
-    { options.SetReadImageFile((yysemantic_stack_[(2) - (1)].cstring));
-                                                      options.SetDumpOption(DumpOption::BH); }
+    { options.SetDumpOption(DumpOption::BH); }
     break;
 
   case 232:
 /* Line 670 of lalr1.cc  */
-#line 397 "../../parser/cmdoptions.y"
-    { options.SetReadImageFile((yysemantic_stack_[(2) - (2)].cstring));
+#line 396 "../../parser/cmdoptions.y"
+    { options.SetReadImageFile((yysemantic_stack_[(2) - (1)].cstring));
                                                       options.SetDumpOption(DumpOption::BH); }
     break;
 
   case 233:
 /* Line 670 of lalr1.cc  */
-#line 399 "../../parser/cmdoptions.y"
-    { options.SetReadImageFile((yysemantic_stack_[(1) - (1)].cstring));
-                                                      options.SetDumpOption(DumpOption::PARTITIONS); }
+#line 398 "../../parser/cmdoptions.y"
+    { options.SetReadImageFile((yysemantic_stack_[(2) - (2)].cstring));
+                                                      options.SetDumpOption(DumpOption::BH); }
     break;
 
   case 234:
 /* Line 670 of lalr1.cc  */
-#line 401 "../../parser/cmdoptions.y"
-    { options.SetReadImageFile((yysemantic_stack_[(2) - (1)].cstring));
-                                                      options.SetDumpOption(DumpOption::PLM); }
+#line 400 "../../parser/cmdoptions.y"
+    { options.SetReadImageFile((yysemantic_stack_[(1) - (1)].cstring));
+                                                      options.SetDumpOption(DumpOption::PARTITIONS); }
     break;
 
   case 235:
 /* Line 670 of lalr1.cc  */
-#line 403 "../../parser/cmdoptions.y"
+#line 402 "../../parser/cmdoptions.y"
     { options.SetReadImageFile((yysemantic_stack_[(2) - (1)].cstring));
-                                                      options.SetDumpOption(DumpOption::PMC_CDO); }
+                                                      options.SetDumpOption(DumpOption::PLM); }
     break;
 
   case 236:
 /* Line 670 of lalr1.cc  */
-#line 405 "../../parser/cmdoptions.y"
+#line 404 "../../parser/cmdoptions.y"
     { options.SetReadImageFile((yysemantic_stack_[(2) - (1)].cstring));
-                                                      options.SetDumpOption(DumpOption::BOOT_FILES); }
+                                                      options.SetDumpOption(DumpOption::PMC_CDO); }
     break;
 
   case 237:
 /* Line 670 of lalr1.cc  */
-#line 407 "../../parser/cmdoptions.y"
-    { options.SetDumpOption(DumpOption::SLAVE_PDIS); }
+#line 406 "../../parser/cmdoptions.y"
+    { options.SetReadImageFile((yysemantic_stack_[(2) - (1)].cstring));
+                                                      options.SetDumpOption(DumpOption::BOOT_FILES); }
     break;
 
   case 238:
 /* Line 670 of lalr1.cc  */
 #line 408 "../../parser/cmdoptions.y"
-    { options.SetDumpOption(DumpOption::PUF_PDI); }
+    { options.SetDumpOption(DumpOption::SLAVE_PDIS); }
     break;
 
   case 239:
 /* Line 670 of lalr1.cc  */
-#line 411 "../../parser/cmdoptions.y"
-    { options.SetEncryptionDump(true,"aes_log.txt"); }
+#line 409 "../../parser/cmdoptions.y"
+    { options.SetDumpOption(DumpOption::PUF_PDI); }
     break;
 
   case 240:
 /* Line 670 of lalr1.cc  */
 #line 412 "../../parser/cmdoptions.y"
+    { options.SetEncryptionDump(true,"aes_log.txt"); }
+    break;
+
+  case 241:
+/* Line 670 of lalr1.cc  */
+#line 413 "../../parser/cmdoptions.y"
     { options.SetEncryptionDump(true,(yysemantic_stack_[(1) - (1)].cstring)); }
     break;
 
 
 /* Line 670 of lalr1.cc  */
-#line 1724 "cmdoptions.tab.cpp"
+#line 1730 "cmdoptions.tab.cpp"
       default:
         break;
       }
@@ -1932,38 +1938,38 @@ namespace CO {
 
   /* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
      STATE-NUM.  */
-  const signed char BisonParser::yypact_ninf_ = -90;
+  const signed char BisonParser::yypact_ninf_ = -83;
   const short int
   BisonParser::yypact_[] =
   {
-       -90,    16,   124,   -90,   -47,   -72,    31,   121,   -90,   -90,
-     -90,   -63,   -81,   -90,    24,   -19,     3,     9,   115,   -47,
-     -47,   -90,   216,   -90,    47,    72,    99,   -90,   -90,   -47,
-     -47,   -90,    61,   -47,   203,   -47,   -60,   -53,    82,   -58,
-     -47,   -47,   -47,   -90,   -47,   -90,   -90,   -90,   -90,   -90,
-     -90,   -90,   -90,   -90,   -47,   -90,   -90,   -90,   -90,   -90,
-     -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,
-     -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,
-     -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,
-     -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,
-     -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,
-     -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,
-     -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,
-     -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,
-     -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,
-     -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,
-     -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,
-     -90,   -90,   -90,   -90,   -90,   -47,   -20,   -90,   -90,   -90,
-     -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,
-     -90,   -90,   -90,   -89,   -90,   -90,   -79,   -90,   -90,   -90,
-     -90,   -90,   -90,   -90,    32,   -90,   -90,   -90,   -90,   102,
-     -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,
-     -90,   -90,   -90,   -90,   -90,   -90,   -47,   -90,   -90,     0,
-     -90,    58,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,
-     -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,
-     -90,   -90,   -90,   -90,   -90,    35,    54,   -90,   -90,   -90,
-     -90,   -90,   -90,    67,    70,    71,   -90,    74,    77,   -47,
-     -90,    79,   -90,   -90,   -90
+       -83,     4,   124,   -83,   -48,   -81,    31,   121,   -83,   -83,
+     -83,   -75,   -82,   -83,    24,   -20,     9,    73,   115,   -48,
+     -48,   -83,   217,   -83,    71,   101,   103,   -83,   -83,   -48,
+     -48,   -83,    64,   -48,   203,   -48,   -62,   -55,    85,   -67,
+     -48,   -48,   -48,   -83,   -48,   -83,   -83,   -83,   -83,   -83,
+     -83,   -83,   -83,   -83,   -48,   -83,   -83,   -83,   -83,   -83,
+     -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,
+     -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,
+     -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,
+     -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,
+     -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,
+     -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,
+     -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,
+     -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,
+     -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,
+     -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,
+     -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,
+     -83,   -83,   -83,   -83,   -83,   -48,   -21,   -83,   -83,   -83,
+     -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,
+     -83,   -83,   -83,   -83,   -80,   -83,   -83,   -69,   -83,   -83,
+     -83,   -83,   -83,   -83,   -83,     2,   -83,   -83,   -83,   -83,
+     104,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,
+     -83,   -83,   -83,   -83,   -83,   -83,   -83,   -48,   -83,   -83,
+     -70,   -83,    57,   -83,   -83,   -83,   -83,   -83,   -83,   -83,
+     -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,
+     -83,   -83,   -83,   -83,   -83,   -83,   -63,    23,   -83,   -83,
+     -83,   -83,   -83,   -83,    35,    56,    68,   -83,    66,    72,
+     -48,   -83,    75,   -83,   -83,   -83
   };
 
   /* YYDEFACT[S] -- default reduction number in state S.  Performed when
@@ -1976,7 +1982,7 @@ namespace CO {
       20,     0,    92,    49,   165,     0,     0,     0,    42,     0,
        0,   161,     0,    31,     0,     0,   162,    32,    36,     0,
        0,    19,    22,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,    46,   239,     4,     7,    51,    52,    53,
+       0,     0,     0,    46,   240,     4,     7,    51,    52,    53,
       50,     5,   181,    57,     0,     9,    61,    62,    64,    65,
       67,    68,    69,    70,    71,    72,    73,    74,    63,    75,
       76,    77,    78,    79,    80,    81,    82,    83,    84,    87,
@@ -1989,27 +1995,27 @@ namespace CO {
      144,   145,   146,   147,   148,   149,   150,   152,   153,   154,
      155,   151,   156,   157,   158,   159,   160,    14,   166,   167,
      168,   169,   170,    12,    54,    55,     6,   182,   183,    25,
-      58,    59,    48,   237,   238,   230,   233,    41,    43,    44,
+      58,    59,    48,   238,   239,   231,   234,    41,    43,    44,
       15,   192,   193,   194,   195,   196,   199,   197,   200,   201,
-     198,    30,   184,     0,    26,   186,     0,    27,   163,   164,
-      11,    47,    17,    24,     0,    28,   205,   206,   208,     0,
-     203,   204,   209,   207,    33,    18,   213,   212,    37,   217,
-     216,   218,   219,   220,   221,    38,   215,   171,   172,   173,
-      10,   223,    39,   222,    40,    45,   240,    35,     8,   232,
-     234,   235,   236,   231,   188,   189,   185,   190,   191,   187,
-      23,   210,   211,   202,   214,     0,   175,   225,   226,   227,
-     228,   229,   224,     0,     0,   177,   174,     0,     0,   179,
-     176,     0,   180,    16,   178
+     198,   202,    30,   184,     0,    26,   186,     0,    27,   163,
+     164,    11,    47,    17,    24,     0,    28,   206,   207,   209,
+       0,   204,   205,   210,   208,    33,    18,   214,   213,    37,
+     218,   217,   219,   220,   221,   222,    38,   216,   171,   172,
+     173,    10,   224,    39,   223,    40,    45,   241,    35,     8,
+     233,   235,   236,   237,   232,   188,   189,   185,   190,   191,
+     187,    23,   211,   212,   203,   215,     0,   175,   226,   227,
+     228,   229,   230,   225,     0,     0,   177,   174,     0,     0,
+     179,   176,     0,   180,    16,   178
   };
 
   /* YYPGOTO[NTERM-NUM].  */
   const signed char
   BisonParser::yypgoto_[] =
   {
-       -90,   -90,   -90,   -90,    -6,   -90,   -90,   -90,   -90,   -90,
-     -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,
-     -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,   -90,
-     -90,   -90,   -90,   -90,   -90
+       -83,   -83,   -83,   -83,    -6,   -83,   -83,   -83,   -83,   -83,
+     -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,
+     -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,   -83,
+     -83,   -83,   -83,   -83,   -83
   };
 
   /* YYDEFGOTO[NTERM-NUM].  */
@@ -2017,9 +2023,9 @@ namespace CO {
   BisonParser::yydefgoto_[] =
   {
         -1,     1,     2,    45,    51,   166,    46,   172,    87,   157,
-     180,   200,   163,   229,   256,   265,   269,   273,    53,   169,
-     194,   197,   246,   249,   191,   214,   253,   218,   225,   226,
-     234,   232,   262,   177,   237
+     180,   201,   163,   230,   257,   266,   270,   274,    53,   169,
+     195,   198,   247,   250,   192,   215,   254,   219,   226,   227,
+     235,   233,   263,   177,   238
   };
 
   /* YYTABLE[YYPACT[STATE-NUM]].  What to do in state STATE-NUM.  If
@@ -2029,70 +2035,70 @@ namespace CO {
   const unsigned short int
   BisonParser::yytable_[] =
   {
-        55,   244,   216,   164,   165,   245,   240,   241,   242,   219,
-     217,   247,   176,   178,   179,   248,     3,   220,    52,   221,
-     222,   223,   224,   201,   202,   167,   168,   205,    88,   215,
-      89,   170,   171,   230,   231,   233,   235,    54,   236,   158,
-     159,   160,   161,   162,    47,    48,    49,    50,   238,    90,
+        55,   217,   164,   165,     3,   241,   242,   243,   220,   218,
+      52,   245,   176,   178,   179,   246,   221,    88,   222,   223,
+     224,   225,   248,   202,   203,   231,   249,   206,   256,   216,
+      89,   167,   168,   264,   232,   234,   236,    54,   237,   158,
+     159,   160,   161,   162,    47,    48,    49,    50,   239,    90,
       91,    92,    93,    94,    95,    96,    97,    98,    99,   100,
-     101,   243,   102,   103,   104,   105,   106,   107,   108,   109,
+     101,   244,   102,   103,   104,   105,   106,   107,   108,   109,
      110,   111,   112,   113,   114,   115,   116,   117,   118,   119,
      120,   121,   122,   123,   124,   125,   126,   127,   128,   129,
-     130,   131,   132,   133,   134,   192,   193,   255,   135,   136,
+     130,   131,   132,   133,   134,   170,   171,   251,   135,   136,
      137,   138,   139,   140,   141,   142,   143,   144,   145,   146,
      147,   148,   149,   150,   151,   152,   153,   154,   155,   156,
-     195,   196,    47,    48,    49,    50,   250,     4,     5,     6,
-     263,     7,     8,     9,    10,    11,    12,    13,    14,   257,
-     258,   259,   260,   261,    15,    16,   173,   174,    17,    18,
-     198,   199,   264,    19,    20,   203,   204,    21,    22,   227,
-     228,   266,    23,   251,   252,   267,     0,   268,   270,   239,
-      24,    25,   271,   274,    26,     0,     0,    27,    28,    29,
-      30,    31,    32,    33,    34,     0,     0,     0,     0,     0,
-       0,     0,    35,    36,     0,    37,   175,     0,     0,     0,
-      38,     0,     0,    39,    40,     0,    47,    48,    49,    50,
-      41,    42,    43,    44,     0,     0,     0,     0,     0,     0,
-     254,    56,    57,    58,    59,    60,    61,    62,    63,    64,
-      65,    66,    67,    68,    69,    70,    71,    72,    73,    74,
-      75,    76,    77,    78,    79,    80,    81,    82,    83,    84,
-      85,   181,   182,   183,     0,   184,   185,   186,   187,   188,
-     189,   190,     0,   272,   206,   207,   208,   209,   210,   211,
-     212,     0,     0,   213,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,    86
+     193,   194,   265,    47,    48,    49,    50,     4,     5,     6,
+     267,     7,     8,     9,    10,    11,    12,    13,    14,   258,
+     259,   260,   261,   262,    15,    16,   173,   174,    17,    18,
+     196,   197,   268,    19,    20,   199,   200,    21,    22,   204,
+     205,   271,    23,   228,   229,   269,   252,   253,   272,   240,
+     275,    24,    25,     0,     0,    26,     0,     0,    27,    28,
+      29,    30,    31,    32,    33,    34,     0,     0,     0,     0,
+       0,     0,     0,    35,    36,     0,    37,   175,     0,     0,
+       0,    38,     0,     0,    39,    40,     0,    47,    48,    49,
+      50,    41,    42,    43,    44,     0,     0,     0,     0,     0,
+       0,   255,    56,    57,    58,    59,    60,    61,    62,    63,
+      64,    65,    66,    67,    68,    69,    70,    71,    72,    73,
+      74,    75,    76,    77,    78,    79,    80,    81,    82,    83,
+      84,    85,   181,   182,   183,     0,   184,   185,   186,   187,
+     188,   189,   190,   191,   273,   207,   208,   209,   210,   211,
+     212,   213,     0,     0,   214,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,    86
   };
 
   /* YYCHECK.  */
   const short int
   BisonParser::yycheck_[] =
   {
-         6,    90,    62,    22,    23,    94,    26,    27,    28,    62,
-      70,    90,    18,    19,    20,    94,     0,    70,    90,    72,
-      73,    74,    75,    29,    30,    22,    23,    33,    91,    35,
-     111,    22,    23,    91,    40,    41,    42,     6,    44,    15,
-      16,    17,    18,    19,    91,    92,    93,    94,    54,   130,
-     131,   132,   133,   134,   135,   136,   137,   138,   139,   140,
-     141,    81,   143,   144,   145,   146,   147,   148,   149,   150,
-     151,   152,   153,   154,   155,   156,   157,   158,   159,   160,
-     161,   162,   163,   164,   165,   166,   167,   168,   169,   170,
-     171,   172,   173,   174,   175,    48,    49,    97,   179,   180,
-     181,   182,   183,   184,   185,   186,   187,   188,   189,   190,
-     191,   192,   193,   194,   195,   196,   197,   198,   199,   200,
-      48,    49,    91,    92,    93,    94,    94,     3,     4,     5,
-      95,     7,     8,     9,    10,    11,    12,    13,    14,    81,
-      82,    83,    84,    85,    20,    21,    31,    32,    24,    25,
-      51,    52,    98,    29,    30,    94,    95,    33,    34,    77,
-      78,    94,    38,    61,    62,    95,    -1,    96,    94,   175,
-      46,    47,    95,    94,    50,    -1,    -1,    53,    54,    55,
-      56,    57,    58,    59,    60,    -1,    -1,    -1,    -1,    -1,
-      -1,    -1,    68,    69,    -1,    71,    81,    -1,    -1,    -1,
-      76,    -1,    -1,    79,    80,    -1,    91,    92,    93,    94,
-      86,    87,    88,    89,    -1,    -1,    -1,    -1,    -1,    -1,
-     226,   100,   101,   102,   103,   104,   105,   106,   107,   108,
+         6,    63,    22,    23,     0,    26,    27,    28,    63,    71,
+      91,    91,    18,    19,    20,    95,    71,    92,    73,    74,
+      75,    76,    91,    29,    30,    92,    95,    33,    98,    35,
+     112,    22,    23,    96,    40,    41,    42,     6,    44,    15,
+      16,    17,    18,    19,    92,    93,    94,    95,    54,   131,
+     132,   133,   134,   135,   136,   137,   138,   139,   140,   141,
+     142,    82,   144,   145,   146,   147,   148,   149,   150,   151,
+     152,   153,   154,   155,   156,   157,   158,   159,   160,   161,
+     162,   163,   164,   165,   166,   167,   168,   169,   170,   171,
+     172,   173,   174,   175,   176,    22,    23,    95,   180,   181,
+     182,   183,   184,   185,   186,   187,   188,   189,   190,   191,
+     192,   193,   194,   195,   196,   197,   198,   199,   200,   201,
+      49,    50,    99,    92,    93,    94,    95,     3,     4,     5,
+      95,     7,     8,     9,    10,    11,    12,    13,    14,    82,
+      83,    84,    85,    86,    20,    21,    31,    32,    24,    25,
+      49,    50,    96,    29,    30,    52,    53,    33,    34,    95,
+      96,    95,    38,    78,    79,    97,    62,    63,    96,   175,
+      95,    47,    48,    -1,    -1,    51,    -1,    -1,    54,    55,
+      56,    57,    58,    59,    60,    61,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    69,    70,    -1,    72,    82,    -1,    -1,
+      -1,    77,    -1,    -1,    80,    81,    -1,    92,    93,    94,
+      95,    87,    88,    89,    90,    -1,    -1,    -1,    -1,    -1,
+      -1,   227,   101,   102,   103,   104,   105,   106,   107,   108,
      109,   110,   111,   112,   113,   114,   115,   116,   117,   118,
      119,   120,   121,   122,   123,   124,   125,   126,   127,   128,
-     129,    35,    36,    37,    -1,    39,    40,    41,    42,    43,
-      44,    45,    -1,   269,    61,    62,    63,    64,    65,    66,
-      67,    -1,    -1,    70,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,   167
+     129,   130,    35,    36,    37,    -1,    39,    40,    41,    42,
+      43,    44,    45,    46,   270,    62,    63,    64,    65,    66,
+      67,    68,    -1,    -1,    71,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,   168
   };
 
   /* STOS_[STATE-NUM] -- The (internal number of the) accessing
@@ -2100,34 +2106,34 @@ namespace CO {
   const unsigned char
   BisonParser::yystos_[] =
   {
-         0,   202,   203,     0,     3,     4,     5,     7,     8,     9,
+         0,   203,   204,     0,     3,     4,     5,     7,     8,     9,
       10,    11,    12,    13,    14,    20,    21,    24,    25,    29,
-      30,    33,    34,    38,    46,    47,    50,    53,    54,    55,
-      56,    57,    58,    59,    60,    68,    69,    71,    76,    79,
-      80,    86,    87,    88,    89,   204,   207,    91,    92,    93,
-      94,   205,    90,   219,     6,   205,   100,   101,   102,   103,
-     104,   105,   106,   107,   108,   109,   110,   111,   112,   113,
-     114,   115,   116,   117,   118,   119,   120,   121,   122,   123,
-     124,   125,   126,   127,   128,   129,   167,   209,    91,   111,
-     130,   131,   132,   133,   134,   135,   136,   137,   138,   139,
-     140,   141,   143,   144,   145,   146,   147,   148,   149,   150,
-     151,   152,   153,   154,   155,   156,   157,   158,   159,   160,
-     161,   162,   163,   164,   165,   166,   167,   168,   169,   170,
-     171,   172,   173,   174,   175,   179,   180,   181,   182,   183,
-     184,   185,   186,   187,   188,   189,   190,   191,   192,   193,
-     194,   195,   196,   197,   198,   199,   200,   210,    15,    16,
-      17,    18,    19,   213,    22,    23,   206,    22,    23,   220,
-      22,    23,   208,    31,    32,    81,   205,   234,   205,   205,
-     211,    35,    36,    37,    39,    40,    41,    42,    43,    44,
-      45,   225,    48,    49,   221,    48,    49,   222,    51,    52,
-     212,   205,   205,    94,    95,   205,    61,    62,    63,    64,
-      65,    66,    67,    70,   226,   205,    62,    70,   228,    62,
-      70,    72,    73,    74,    75,   229,   230,    77,    78,   214,
-      91,   205,   232,   205,   231,   205,   205,   235,   205,   205,
-      26,    27,    28,    81,    90,    94,   223,    90,    94,   224,
-      94,    61,    62,   227,   205,    97,   215,    81,    82,    83,
-      84,    85,   233,    95,    98,   216,    94,    95,    96,   217,
-      94,    95,   205,   218,    94
+      30,    33,    34,    38,    47,    48,    51,    54,    55,    56,
+      57,    58,    59,    60,    61,    69,    70,    72,    77,    80,
+      81,    87,    88,    89,    90,   205,   208,    92,    93,    94,
+      95,   206,    91,   220,     6,   206,   101,   102,   103,   104,
+     105,   106,   107,   108,   109,   110,   111,   112,   113,   114,
+     115,   116,   117,   118,   119,   120,   121,   122,   123,   124,
+     125,   126,   127,   128,   129,   130,   168,   210,    92,   112,
+     131,   132,   133,   134,   135,   136,   137,   138,   139,   140,
+     141,   142,   144,   145,   146,   147,   148,   149,   150,   151,
+     152,   153,   154,   155,   156,   157,   158,   159,   160,   161,
+     162,   163,   164,   165,   166,   167,   168,   169,   170,   171,
+     172,   173,   174,   175,   176,   180,   181,   182,   183,   184,
+     185,   186,   187,   188,   189,   190,   191,   192,   193,   194,
+     195,   196,   197,   198,   199,   200,   201,   211,    15,    16,
+      17,    18,    19,   214,    22,    23,   207,    22,    23,   221,
+      22,    23,   209,    31,    32,    82,   206,   235,   206,   206,
+     212,    35,    36,    37,    39,    40,    41,    42,    43,    44,
+      45,    46,   226,    49,    50,   222,    49,    50,   223,    52,
+      53,   213,   206,   206,    95,    96,   206,    62,    63,    64,
+      65,    66,    67,    68,    71,   227,   206,    63,    71,   229,
+      63,    71,    73,    74,    75,    76,   230,   231,    78,    79,
+     215,    92,   206,   233,   206,   232,   206,   206,   236,   206,
+     206,    26,    27,    28,    82,    91,    95,   224,    91,    95,
+     225,    95,    62,    63,   228,   206,    98,   216,    82,    83,
+      84,    85,    86,   234,    96,    99,   217,    95,    96,    97,
+     218,    95,    96,   206,   219,    95
   };
 
 #if YYDEBUG
@@ -2156,7 +2162,7 @@ namespace CO {
      425,   426,   427,   428,   429,   430,   431,   432,   433,   434,
      435,   436,   437,   438,   439,   440,   441,   442,   443,   444,
      445,   446,   447,   448,   449,   450,   451,   452,   453,   454,
-     455
+     455,   456
   };
 #endif
 
@@ -2164,31 +2170,31 @@ namespace CO {
   const unsigned char
   BisonParser::yyr1_[] =
   {
-         0,   201,   202,   203,   203,   204,   204,   204,   204,   204,
-     204,   204,   204,   204,   204,   204,   204,   204,   204,   204,
-     204,   204,   204,   204,   204,   204,   204,   204,   204,   204,
-     204,   204,   204,   204,   204,   204,   204,   204,   204,   204,
-     204,   204,   204,   204,   204,   204,   204,   204,   204,   204,
-     205,   205,   205,   205,   206,   206,   207,   207,   208,   208,
-     209,   209,   209,   209,   209,   209,   209,   209,   209,   209,
-     209,   209,   209,   209,   209,   209,   209,   209,   209,   209,
-     209,   209,   209,   209,   209,   209,   209,   209,   209,   209,
-     209,   209,   210,   210,   210,   210,   210,   210,   210,   210,
+         0,   202,   203,   204,   204,   205,   205,   205,   205,   205,
+     205,   205,   205,   205,   205,   205,   205,   205,   205,   205,
+     205,   205,   205,   205,   205,   205,   205,   205,   205,   205,
+     205,   205,   205,   205,   205,   205,   205,   205,   205,   205,
+     205,   205,   205,   205,   205,   205,   205,   205,   205,   205,
+     206,   206,   206,   206,   207,   207,   208,   208,   209,   209,
      210,   210,   210,   210,   210,   210,   210,   210,   210,   210,
      210,   210,   210,   210,   210,   210,   210,   210,   210,   210,
      210,   210,   210,   210,   210,   210,   210,   210,   210,   210,
-     210,   210,   210,   210,   210,   210,   210,   210,   210,   210,
-     210,   210,   210,   210,   210,   210,   210,   210,   210,   210,
-     210,   210,   210,   210,   210,   210,   210,   210,   210,   210,
-     210,   211,   212,   212,   212,   213,   213,   213,   213,   213,
-     213,   214,   214,   215,   215,   216,   216,   217,   217,   218,
-     218,   219,   220,   220,   221,   221,   222,   222,   223,   223,
-     224,   224,   225,   225,   225,   225,   225,   225,   225,   225,
+     210,   210,   211,   211,   211,   211,   211,   211,   211,   211,
+     211,   211,   211,   211,   211,   211,   211,   211,   211,   211,
+     211,   211,   211,   211,   211,   211,   211,   211,   211,   211,
+     211,   211,   211,   211,   211,   211,   211,   211,   211,   211,
+     211,   211,   211,   211,   211,   211,   211,   211,   211,   211,
+     211,   211,   211,   211,   211,   211,   211,   211,   211,   211,
+     211,   211,   211,   211,   211,   211,   211,   211,   211,   211,
+     211,   212,   213,   213,   213,   214,   214,   214,   214,   214,
+     214,   215,   215,   216,   216,   217,   217,   218,   218,   219,
+     219,   220,   221,   221,   222,   222,   223,   223,   224,   224,
      225,   225,   226,   226,   226,   226,   226,   226,   226,   226,
-     227,   227,   228,   228,   229,   229,   230,   230,   230,   230,
-     230,   230,   231,   232,   232,   233,   233,   233,   233,   233,
-     234,   234,   234,   234,   234,   234,   234,   234,   234,   235,
-     235
+     226,   226,   226,   227,   227,   227,   227,   227,   227,   227,
+     227,   228,   228,   229,   229,   230,   230,   231,   231,   231,
+     231,   231,   231,   232,   233,   233,   234,   234,   234,   234,
+     234,   235,   235,   235,   235,   235,   235,   235,   235,   235,
+     236,   236
   };
 
   /* YYR2[YYN] -- Number of symbols composing right hand side of rule YYN.  */
@@ -2215,11 +2221,11 @@ namespace CO {
        1,     1,     1,     0,     3,     0,     3,     0,     3,     0,
        1,     1,     1,     1,     1,     2,     1,     2,     1,     1,
        1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
-       1,     1,     2,     1,     1,     1,     1,     1,     1,     1,
-       1,     1,     1,     1,     2,     1,     1,     1,     1,     1,
-       1,     1,     1,     1,     2,     1,     1,     1,     1,     1,
-       1,     2,     2,     1,     2,     2,     2,     1,     1,     0,
-       1
+       1,     1,     1,     2,     1,     1,     1,     1,     1,     1,
+       1,     1,     1,     1,     1,     2,     1,     1,     1,     1,
+       1,     1,     1,     1,     1,     2,     1,     1,     1,     1,
+       1,     1,     2,     2,     1,     2,     2,     2,     1,     1,
+       0,     1
   };
 
 #if YYDEBUG
@@ -2235,9 +2241,9 @@ namespace CO {
   "DUMP_PMC_CDO", "DUMP_BOOT_FILES", "_DUMP_DIR", "_PUF",
   "DUMP_SLAVE_PDIS", "DUMP_PUF_PDI", "_SYNCFLAG", "_ARCH", "ZYNQ",
   "ZYNQMP", "VERSAL", "_R", "FPGA", "VERSALNET", "TELLURIDE",
-  "VERSAL_2VE_2VM", "LASSEN", "LASSEN_DL9", "SPARTANUP", "_DUAL_QSPI_MODE",
-  "_DUAL_OSPI_MODE", "PARALLEL", "STACKED", "_W", "ON", "OFF",
-  "_NOAUTHBLOCKS", "_ZYNQMPES1", "_OVERLAYCDO", "_EFUSEPPKBITS",
+  "VERSAL_2VE_2VM", "LASSEN", "LASSEN_DL9", "SPARTANUP", "VERSAL_2VP",
+  "_DUAL_QSPI_MODE", "_DUAL_OSPI_MODE", "PARALLEL", "STACKED", "_W", "ON",
+  "OFF", "_NOAUTHBLOCKS", "_ZYNQMPES1", "_OVERLAYCDO", "_EFUSEPPKBITS",
   "_GENERATE_HASHES", "_PADIMAGEHEADER", "_SPKSIGNATURE", "_GENERATE_KEYS",
   "PEM", "RSA", "ECDSAP521", "AUTH", "GREY", "METAL", "LMS",
   "_EFUSEPUFBITS", "_SECUREDEBUG", "ECDSA", "_AUTHJTAG", "LMS_SHA256",
@@ -2282,59 +2288,59 @@ namespace CO {
   const BisonParser::rhs_number_type
   BisonParser::yyrhs_[] =
   {
-       202,     0,    -1,   203,    -1,    -1,   203,   204,    -1,     3,
-     205,    -1,    20,   206,    -1,   207,    -1,     5,     6,   205,
-      -1,     5,   205,    -1,    79,    91,    -1,    50,   212,    -1,
-      14,   213,    -1,     7,   209,    -1,    12,   210,    -1,    33,
-     211,    -1,    76,   214,   215,   216,   217,   218,    -1,    56,
-     205,    -1,    68,   205,    -1,    57,    -1,    10,    -1,     9,
-      -1,    58,    -1,    58,    95,    94,    -1,    58,    94,    -1,
-      21,   220,    -1,    46,   221,    -1,    47,   222,    -1,    59,
-     205,    -1,    11,    91,    -1,    34,   225,    -1,    38,    -1,
-      53,    -1,    60,   226,    -1,     8,    -1,    89,   235,    -1,
-      54,    -1,    69,   228,    -1,    71,   229,    -1,    80,   232,
-      -1,    86,   231,    -1,    25,   234,    -1,    25,    -1,    29,
-     205,    -1,    30,   205,    -1,    87,   205,    -1,    88,    -1,
-      55,   205,    -1,    24,   208,    -1,    13,    -1,    94,    -1,
-      91,    -1,    92,    -1,    93,    -1,    22,    -1,    23,    -1,
-       4,    -1,     4,   219,    -1,    22,    -1,    23,    -1,    -1,
-     100,    -1,   101,    -1,   112,    -1,   102,    -1,   103,    -1,
-     167,    -1,   104,    -1,   105,    -1,   106,    -1,   107,    -1,
-     108,    -1,   109,    -1,   110,    -1,   111,    -1,   113,    -1,
-     114,    -1,   115,    -1,   116,    -1,   117,    -1,   118,    -1,
-     119,    -1,   120,    -1,   121,    -1,   122,    -1,   125,    -1,
-     124,    -1,   123,    -1,   126,    -1,   127,    -1,   128,    -1,
-     129,    -1,    -1,   130,    -1,   131,    -1,   132,    -1,   133,
-      -1,   134,    -1,   135,    -1,   136,    -1,   137,    -1,   139,
-      -1,   140,    -1,   141,    -1,   144,    -1,   143,    -1,   145,
-      -1,   149,    -1,   150,    -1,   146,    -1,   151,    -1,   152,
-      -1,   153,    -1,   154,    -1,   155,    -1,   156,    -1,   157,
-      -1,   158,    -1,   160,    -1,   161,    -1,   162,    -1,   163,
-      -1,   164,    -1,   165,    -1,   166,    -1,   159,    -1,   168,
-      -1,   169,    -1,   170,    -1,   171,    -1,   173,    -1,   172,
-      -1,   147,    -1,   138,    -1,   148,    -1,   167,    -1,   111,
-      -1,   174,    -1,   175,    -1,   179,    -1,   180,    -1,   181,
-      -1,   182,    -1,   183,    -1,   184,    -1,   185,    -1,   186,
-      -1,   187,    -1,   188,    -1,   189,    -1,   190,    -1,   195,
-      -1,   191,    -1,   192,    -1,   193,    -1,   194,    -1,   196,
-      -1,   197,    -1,   198,    -1,   199,    -1,   200,    -1,    -1,
-      -1,    51,    -1,    52,    -1,    -1,    15,    -1,    16,    -1,
-      17,    -1,    18,    -1,    19,    -1,    77,    -1,    78,    -1,
-      -1,    97,    95,    94,    -1,    -1,    98,    95,    94,    -1,
-      -1,    96,    95,    94,    -1,    -1,   205,    -1,    90,    -1,
-      22,    -1,    23,    -1,    48,    -1,    49,   223,    -1,    48,
-      -1,    49,   224,    -1,    90,    -1,    94,    -1,    90,    -1,
-      94,    -1,    35,    -1,    36,    -1,    37,    -1,    39,    -1,
+       203,     0,    -1,   204,    -1,    -1,   204,   205,    -1,     3,
+     206,    -1,    20,   207,    -1,   208,    -1,     5,     6,   206,
+      -1,     5,   206,    -1,    80,    92,    -1,    51,   213,    -1,
+      14,   214,    -1,     7,   210,    -1,    12,   211,    -1,    33,
+     212,    -1,    77,   215,   216,   217,   218,   219,    -1,    57,
+     206,    -1,    69,   206,    -1,    58,    -1,    10,    -1,     9,
+      -1,    59,    -1,    59,    96,    95,    -1,    59,    95,    -1,
+      21,   221,    -1,    47,   222,    -1,    48,   223,    -1,    60,
+     206,    -1,    11,    92,    -1,    34,   226,    -1,    38,    -1,
+      54,    -1,    61,   227,    -1,     8,    -1,    90,   236,    -1,
+      55,    -1,    70,   229,    -1,    72,   230,    -1,    81,   233,
+      -1,    87,   232,    -1,    25,   235,    -1,    25,    -1,    29,
+     206,    -1,    30,   206,    -1,    88,   206,    -1,    89,    -1,
+      56,   206,    -1,    24,   209,    -1,    13,    -1,    95,    -1,
+      92,    -1,    93,    -1,    94,    -1,    22,    -1,    23,    -1,
+       4,    -1,     4,   220,    -1,    22,    -1,    23,    -1,    -1,
+     101,    -1,   102,    -1,   113,    -1,   103,    -1,   104,    -1,
+     168,    -1,   105,    -1,   106,    -1,   107,    -1,   108,    -1,
+     109,    -1,   110,    -1,   111,    -1,   112,    -1,   114,    -1,
+     115,    -1,   116,    -1,   117,    -1,   118,    -1,   119,    -1,
+     120,    -1,   121,    -1,   122,    -1,   123,    -1,   126,    -1,
+     125,    -1,   124,    -1,   127,    -1,   128,    -1,   129,    -1,
+     130,    -1,    -1,   131,    -1,   132,    -1,   133,    -1,   134,
+      -1,   135,    -1,   136,    -1,   137,    -1,   138,    -1,   140,
+      -1,   141,    -1,   142,    -1,   145,    -1,   144,    -1,   146,
+      -1,   150,    -1,   151,    -1,   147,    -1,   152,    -1,   153,
+      -1,   154,    -1,   155,    -1,   156,    -1,   157,    -1,   158,
+      -1,   159,    -1,   161,    -1,   162,    -1,   163,    -1,   164,
+      -1,   165,    -1,   166,    -1,   167,    -1,   160,    -1,   169,
+      -1,   170,    -1,   171,    -1,   172,    -1,   174,    -1,   173,
+      -1,   148,    -1,   139,    -1,   149,    -1,   168,    -1,   112,
+      -1,   175,    -1,   176,    -1,   180,    -1,   181,    -1,   182,
+      -1,   183,    -1,   184,    -1,   185,    -1,   186,    -1,   187,
+      -1,   188,    -1,   189,    -1,   190,    -1,   191,    -1,   196,
+      -1,   192,    -1,   193,    -1,   194,    -1,   195,    -1,   197,
+      -1,   198,    -1,   199,    -1,   200,    -1,   201,    -1,    -1,
+      -1,    52,    -1,    53,    -1,    -1,    15,    -1,    16,    -1,
+      17,    -1,    18,    -1,    19,    -1,    78,    -1,    79,    -1,
+      -1,    98,    96,    95,    -1,    -1,    99,    96,    95,    -1,
+      -1,    97,    96,    95,    -1,    -1,   206,    -1,    91,    -1,
+      22,    -1,    23,    -1,    49,    -1,    50,   224,    -1,    49,
+      -1,    50,   225,    -1,    91,    -1,    95,    -1,    91,    -1,
+      95,    -1,    35,    -1,    36,    -1,    37,    -1,    39,    -1,
       40,    -1,    42,    -1,    45,    -1,    41,    -1,    43,    -1,
-      44,    -1,    64,   227,    -1,    65,    -1,    66,    -1,    61,
-      -1,    62,    -1,    70,    -1,    63,    -1,    67,    -1,    61,
-      -1,    62,    -1,    70,    -1,    62,    -1,   230,   205,    -1,
-     230,    -1,    70,    -1,    62,    -1,    72,    -1,    73,    -1,
-      74,    -1,    75,    -1,   205,    -1,   205,    -1,   205,   233,
-      -1,    81,    -1,    82,    -1,    83,    -1,    84,    -1,    85,
-      -1,    81,    -1,   205,    81,    -1,    81,   205,    -1,   205,
-      -1,   205,    26,    -1,   205,    27,    -1,   205,    28,    -1,
-      31,    -1,    32,    -1,    -1,   205,    -1
+      44,    -1,    46,    -1,    65,   228,    -1,    66,    -1,    67,
+      -1,    62,    -1,    63,    -1,    71,    -1,    64,    -1,    68,
+      -1,    62,    -1,    63,    -1,    71,    -1,    63,    -1,   231,
+     206,    -1,   231,    -1,    71,    -1,    63,    -1,    73,    -1,
+      74,    -1,    75,    -1,    76,    -1,   206,    -1,   206,    -1,
+     206,   234,    -1,    82,    -1,    83,    -1,    84,    -1,    85,
+      -1,    86,    -1,    82,    -1,   206,    82,    -1,    82,   206,
+      -1,   206,    -1,   206,    26,    -1,   206,    27,    -1,   206,
+      28,    -1,    31,    -1,    32,    -1,    -1,   206,    -1
   };
 
   /* YYPRHS[YYN] -- Index of the first RHS symbol of rule number YYN in
@@ -2362,11 +2368,11 @@ namespace CO {
      374,   376,   378,   380,   381,   385,   386,   390,   391,   395,
      396,   398,   400,   402,   404,   406,   409,   411,   414,   416,
      418,   420,   422,   424,   426,   428,   430,   432,   434,   436,
-     438,   440,   442,   445,   447,   449,   451,   453,   455,   457,
-     459,   461,   463,   465,   467,   470,   472,   474,   476,   478,
-     480,   482,   484,   486,   488,   491,   493,   495,   497,   499,
-     501,   503,   506,   509,   511,   514,   517,   520,   522,   524,
-     525
+     438,   440,   442,   444,   447,   449,   451,   453,   455,   457,
+     459,   461,   463,   465,   467,   469,   472,   474,   476,   478,
+     480,   482,   484,   486,   488,   490,   493,   495,   497,   499,
+     501,   503,   505,   508,   511,   513,   516,   519,   522,   524,
+     526,   527
   };
 
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
@@ -2393,11 +2399,11 @@ namespace CO {
      295,   298,   299,   302,   302,   303,   303,   304,   304,   305,
      305,   307,   309,   310,   313,   314,   317,   318,   321,   322,
      325,   326,   329,   330,   331,   332,   333,   334,   335,   336,
-     338,   340,   343,   344,   345,   346,   347,   348,   349,   350,
-     353,   354,   357,   359,   362,   363,   365,   367,   369,   371,
-     373,   375,   379,   382,   384,   387,   388,   389,   390,   391,
-     394,   395,   397,   399,   401,   403,   405,   407,   408,   411,
-     412
+     338,   340,   341,   344,   345,   346,   347,   348,   349,   350,
+     351,   354,   355,   358,   360,   363,   364,   366,   368,   370,
+     372,   374,   376,   380,   383,   385,   388,   389,   390,   391,
+     392,   395,   396,   398,   400,   402,   404,   406,   408,   409,
+     412,   413
   };
 
   // Print the state stack on the debug stream.
@@ -2482,7 +2488,7 @@ namespace CO {
      165,   166,   167,   168,   169,   170,   171,   172,   173,   174,
      175,   176,   177,   178,   179,   180,   181,   182,   183,   184,
      185,   186,   187,   188,   189,   190,   191,   192,   193,   194,
-     195,   196,   197,   198,   199,   200
+     195,   196,   197,   198,   199,   200,   201
     };
     if ((unsigned int) t <= yyuser_token_number_max_)
       return translate_table[t];
@@ -2491,24 +2497,24 @@ namespace CO {
   }
 
   const int BisonParser::yyeof_ = 0;
-  const int BisonParser::yylast_ = 288;
+  const int BisonParser::yylast_ = 289;
   const int BisonParser::yynnts_ = 35;
   const int BisonParser::yyempty_ = -2;
   const int BisonParser::yyfinal_ = 3;
   const int BisonParser::yyterror_ = 1;
   const int BisonParser::yyerrcode_ = 256;
-  const int BisonParser::yyntokens_ = 201;
+  const int BisonParser::yyntokens_ = 202;
 
-  const unsigned int BisonParser::yyuser_token_number_max_ = 455;
+  const unsigned int BisonParser::yyuser_token_number_max_ = 456;
   const BisonParser::token_number_type BisonParser::yyundef_token_ = 2;
 
 /* Line 1141 of lalr1.cc  */
 #line 24 "../../parser/cmdoptions.y"
 } // CO
 /* Line 1141 of lalr1.cc  */
-#line 2510 "cmdoptions.tab.cpp"
+#line 2516 "cmdoptions.tab.cpp"
 /* Line 1142 of lalr1.cc  */
-#line 414 "../../parser/cmdoptions.y"
+#line 415 "../../parser/cmdoptions.y"
 
 
 

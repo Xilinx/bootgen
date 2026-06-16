@@ -1608,11 +1608,11 @@ void PartitionBifOptions::SetClusterNum(uint8_t id)
         }
         clusterNum = id;
     }
-    else if (arch == Arch :: VERSALGEN2)
+    else if (arch == Arch :: VERSALGEN2 || arch == Arch :: VERSAL_2VP)
     {
         if (id != 0 && id != 1 && id != 2 && id != 3 && id != 4)
         {
-            LOG_ERROR("cluster can only take values from 0 to 4 in versal_2ve_2vm.");
+            LOG_ERROR("cluster can only take values from 0 to 4 in versal_2ve_2vm & versal_2vp.");
         }
         clusterNum = id;
     }
@@ -1845,7 +1845,7 @@ void PartitionBifOptions::SetDelayAuth(bool flag)
 /******************************************************************************/
 void PartitionBifOptions::SetTcmBootFlag()
 {
-    if (((arch == Arch::VERSAL && versalNetSeries) || (arch == Arch::VERSALGEN2 )) && (destCPUType == DestinationCPU::R5_0 || destCPUType == DestinationCPU::R5_1 || destCPUType == DestinationCPU::R5_lockstep))
+    if (((arch == Arch::VERSAL && versalNetSeries) || (arch == Arch::VERSALGEN2 ) || (arch == Arch::VERSAL_2VP)) && (destCPUType == DestinationCPU::R5_0 || destCPUType == DestinationCPU::R5_1 || destCPUType == DestinationCPU::R5_lockstep))
     {
         tcmBoot = true;
     }
@@ -2170,7 +2170,7 @@ bool BifOptions::GetSpkIdGlobal()
 /******************************************************************************/
 bool BifOptions::GetHeaderAC()
 {
-    if (arch == Arch::VERSAL || arch == Arch::VERSALGEN2 || arch == Arch::SPARTANUP)
+    if (arch == Arch::VERSAL || arch == Arch::VERSALGEN2 || arch == Arch::SPARTANUP || arch == Arch::VERSAL_2VP)
     {
         createHeaderAC = false;
         if (metaHdrAttributes.authenticate != Authentication::None)
@@ -2182,7 +2182,7 @@ bool BifOptions::GetHeaderAC()
 /******************************************************************************/
 bool BifOptions::GetHeaderEncyption()
 {
-    if (arch == Arch::VERSAL || arch == Arch::VERSALGEN2 || arch == Arch::SPARTANUP)
+    if (arch == Arch::VERSAL || arch == Arch::VERSALGEN2 || arch == Arch::SPARTANUP || arch == Arch::VERSAL_2VP)
     {
         doHeaderEncryption = false;
         if (metaHdrAttributes.encrypt != Encryption::None)
@@ -2372,7 +2372,7 @@ void BifOptions::SetParentId(uint32_t id)
 /******************************************************************************/
 void BifOptions::SetBhRsa(BhRsa::Type value)
 {
-    if ((arch == Arch::VERSAL && versalNetSeries) || arch == Arch::VERSALGEN2 || arch == Arch::SPARTANUP)
+    if ((arch == Arch::VERSAL && versalNetSeries) || arch == Arch::VERSALGEN2 || arch == Arch::SPARTANUP || arch == Arch::VERSAL_2VP)
         LOG_ERROR("BIF attribute error !!! 'bh_auth_enable' is not supported with the mentioned '-arch'.\n\t   Bootheader or eFuse authentication will be chosen based on eFuse bits.");
     
     bhAuthEnable = value;

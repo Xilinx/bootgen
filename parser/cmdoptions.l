@@ -138,6 +138,7 @@
     lassen_dl9              return tok::LASSEN_DL9;
     spartanuplus            return tok::SPARTANUP;
     spartanup               return tok::SPARTANUP;
+    versal_2vp              return tok::VERSAL_2VP;
 
 \-r                         return tok::_R;
 

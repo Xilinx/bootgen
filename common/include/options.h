@@ -36,7 +36,12 @@
 /* Forward Class References */
 class BifOptions;
 
-
+/*
+-------------------------------------------------------------------------------
+*********************************************   P R E P R O C E S S O R S   ***
+-------------------------------------------------------------------------------
+*/
+#define IDCODE_L80                  0x4C74093
 
 /*
 -------------------------------------------------------------------------------
@@ -122,11 +127,12 @@ public:
         , deviceKeyStored(false)
         , versalNetSeries(false)
         , dl9Series(false)
+        , versal_2vp(false)
         , outType(File::Unknown)
         , syncFlag(false)
         , authOptimizationEnabled(false)
-        
         , generateTlBin(false)
+        , l80Variant(false)
     {
         cmdEncryptOptions = std::make_unique<CommndLineEncryptOptions>();
     };
@@ -251,6 +257,8 @@ public:
     bool IsSsitBif(void);
     bool IsVersalNetSeries(void) { return versalNetSeries; }
     bool IsDl9Series(void) { return dl9Series; }
+    bool IsL80Variant(void) { return l80Variant; }
+    void SetL80Variant(bool flag) { l80Variant = flag; }
 	File::Type GetOutType (void);
 
     uint32_t totalHeadersSize;
@@ -316,9 +324,12 @@ private:
     bool versalNetSeries;
     bool authOptimizationEnabled;
     bool dl9Series;
+    bool versal_2vp;
+    bool l80Variant;
 };
 
 #endif
+
 class IdCodeManager {
 public:
     IdCodeManager() : idCodes{0x04E81093, 0x04E82093, 0x04E80093} {}
@@ -326,6 +337,10 @@ public:
 
     bool findIdCode(int idCode) const {
         return std::find(idCodes.begin(), idCodes.end(), idCode) != idCodes.end();
+    }
+
+    static bool IsL80IdCode(uint32_t idCode) {
+        return (idCode == IDCODE_L80);
     }
 
 private:

@@ -28,6 +28,9 @@
 #define PMCDATA_MAX_SIZE_VERSAL    0x14000 //80KB
 #define PMCDATA_MAX_SIZE_VERSALNET 0x10000 //64KB
 
+#define PLM_MAX_SIZE_L80           0xA0000 //640KB
+#define PMCDATA_MAX_SIZE_L80       0x1C000 //112KB
+
 /*
 -------------------------------------------------------------------------------
 *****************************************************   F U N C T I O N S   ***
@@ -241,6 +244,20 @@ void VersalBootHeader::Link(BootImage& bi)
     }
 
     SetHeaderChecksum();
+    if (bi.options.IsL80Variant())
+    {
+        LOG_INFO("L80 variant: Using increased PLM/PMC size limits (PLM: 640KB, PMC: 112KB).");
+        if (bHTable->totalPlmLength > PLM_MAX_SIZE_L80)
+        {
+            LOG_ERROR("Total PLM size : %dKB > maximum allowable size for L80 (640KB)", bHTable->totalPlmLength / 1024);
+        }
+        if (bHTable->totalPmcCdoLength > PMCDATA_MAX_SIZE_L80)
+        {
+            LOG_ERROR("Total PMC DATA size : %dKB > maximum allowable size for L80 (112KB)", bHTable->totalPmcCdoLength / 1024);
+        }
+    }
+    else
+    {
     if (bHTable->totalPlmLength > PLM_MAX_SIZE && !bi.options.IsVersalNetSeries())
     {
         LOG_ERROR("Total PLM size : %dKB > maximum allowable size (384KB)", bHTable->totalPlmLength / 1024);
@@ -252,6 +269,7 @@ void VersalBootHeader::Link(BootImage& bi)
     if (bHTable->totalPmcCdoLength > PMCDATA_MAX_SIZE_VERSALNET && bi.options.IsVersalNetSeries())
     {
         LOG_ERROR("Total PMC DATA size : %dKB > maximum allowable size (64KB)", bHTable->totalPlmLength / 1024);
+    }
     }
 }
 

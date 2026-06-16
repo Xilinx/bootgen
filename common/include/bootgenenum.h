@@ -422,6 +422,7 @@ struct PartitionArch
         NON_FPGA,
         VERSAL,
         VERSAL_2VE_2VM,
+        VERSAL_2VP,
         SPARTANUP,     
     } Type;
 };

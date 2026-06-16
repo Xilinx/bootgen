@@ -73,7 +73,7 @@ void ShowCommonHelp(int,bool);
 %token _LOG ERROR WARNING INFO DEBUG TRACE
 %token _SPLIT _PROCESS_BITSTREAM MCS BIN _OUT_TYPE
 %token _DUMP DUMP_PLM DUMP_PMC_CDO DUMP_BOOT_FILES _DUMP_DIR _PUF DUMP_SLAVE_PDIS DUMP_PUF_PDI _SYNCFLAG
-%token _ARCH ZYNQ ZYNQMP VERSAL _R FPGA VERSALNET TELLURIDE VERSAL_2VE_2VM LASSEN LASSEN_DL9 SPARTANUP
+%token _ARCH ZYNQ ZYNQMP VERSAL _R FPGA VERSALNET TELLURIDE VERSAL_2VE_2VM LASSEN LASSEN_DL9 SPARTANUP VERSAL_2VP
 %token _DUAL_QSPI_MODE _DUAL_OSPI_MODE PARALLEL STACKED
 %token _W ON OFF
 %token _NOAUTHBLOCKS _ZYNQMPES1 _OVERLAYCDO
@@ -338,6 +338,7 @@ archOptions     : ZYNQ                              { options.SetArchType(Arch::
                 | LASSEN                            { LOG_WARNING("usage of '-arch lassen' will be deprecated, Please use '-arch spartanup' instead."); 
                                                       options.SetArchType(Arch::SPARTANUP); }
                 | LASSEN_DL9                        { options.SetArchType(Arch::SPARTANUPV2); }
+                | VERSAL_2VP                        { options.SetArchType(Arch::VERSAL_2VP); }
                 ;
 
 key_type        : AUTH  auth_key_options

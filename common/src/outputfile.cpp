@@ -132,6 +132,18 @@ void OutputFile::Output(Options& options, Binary& cache)
     {
         OutputVersal_2ve_2vm(options, cache);
     } 
+    else if (options.GetArchType() == Arch::VERSAL_2VP)
+    {
+        if (options.IsL80Variant())
+        {
+            LOG_INFO("L80 variant: Using Versal PDI output format.");
+            OutputVersal(options, cache);
+        }
+        else
+        {
+            LOG_ERROR("Invalid idcode: 0x%08X for Versal PDI generation flow.", options.bifOptions->GetIdCode());
+        }
+    }
     else
     {
         /* Get all modes */
