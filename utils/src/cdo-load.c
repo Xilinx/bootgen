@@ -137,7 +137,7 @@ CdoSequence * cdoseq_load_cdo_from_buffer(char * data, size_t size) {
     if (data == NULL) goto done;
     raw = cdoraw_decode(data, size);
     if (raw != NULL) {
-        data = raw->data;
+        data = (char *)raw->data;
         size = raw->size;
     }
     if (is_cdo_data(data, size)) {
