@@ -189,6 +189,9 @@ void ZynqMpReadImage::VerifyHeaderTableSignature()
 
     AuthCertificate4096Structure* auth_cert = (AuthCertificate4096Structure*)(aCs.front());
 
+    /* Verifying Header AC Boot Header Signature */
+    VerifyBootHeaderSignature(binFile, auth_cert);
+
     /* Verifying Header SPK Signature */
     VerifySPKSignature(auth_cert);
 
@@ -270,6 +273,45 @@ void ZynqMpReadImage::VerifySPKSignature(AuthCertificate4096Structure* auth_cert
 
 
 /*******************************************************************************/
+void ZynqMpReadImage::VerifyBootHeaderSignature(FILE* binFile, AuthCertificate4096Structure* auth_cert)
+{
+    size_t result;
+    uint32_t bHLength = sizeof(ZynqMpBootHeaderStructure) + sizeof(RegisterInitTable);
+    if (bH->fsblAttributes & 0xC0)
+    {
+        bHLength += PUF_DATA_LENGTH;
+    }
+
+    auto tempBHBuffer = std::make_unique<uint8_t[]>(bHLength);
+    if (!(fseek(binFile, 0, SEEK_SET)))
+    {
+        result = fread(tempBHBuffer.get(), 1, bHLength, binFile);
+        if (result != bHLength)
+        {
+            LOG_ERROR("Error reading boot header while verifying ");
+        }
+    }
+    else
+    {
+        LOG_ERROR("Error seeking to boot header while verifying");
+    }
+
+    bool signatureVerified = VerifySignature(false, tempBHBuffer.get(), bHLength, &auth_cert->acSpk, (unsigned char*)(&auth_cert->acBhSignature));
+    if (signatureVerified)
+    {
+        LOG_MSG("    BootHeader Signature Verified");
+    }
+    else
+    {
+        LOG_MSG("    BootHeader Signature Verification Failed");
+        authenticationVerified = false;
+        LOG_ERROR("Authentication verification failed on bootimage %s", binFilename.c_str());
+    }
+    // Cleanup handled by unique_ptr
+}
+
+
+/*******************************************************************************/
 void ZynqMpReadImage::VerifyPartitionSignature(void)
 {
     size_t result;
@@ -293,35 +335,10 @@ void ZynqMpReadImage::VerifyPartitionSignature(void)
 
             bool checkLoadAddrInBhAndPht = ((*partitionHdr)->destinationExecAddress == bH->fsblExecAddress);
             bool isItBootloader = (checkLoadAddrInBhAndPht && (bH->sourceOffset != 0));
-            
-            if (isItBootloader)
-            {
-                uint32_t bHLength = sizeof(ZynqMpBootHeaderStructure) + sizeof(RegisterInitTable);
-                if (bH->fsblAttributes & 0xC0)
-                {
-                    bHLength += PUF_DATA_LENGTH;
-                }
 
-                auto tempBHBuffer = std::make_unique<uint8_t[]>(bHLength);
-                size_t result = fread(tempBHBuffer.get(), 1, bHLength, binFile);
-                if (result != bHLength)
-                {
-                    LOG_ERROR("Error reading boot header while verifying ");
-                }
-
-                bool signatureVerified = VerifySignature(false, tempBHBuffer.get(), bHLength, &auth_cert->acSpk, (unsigned char*)(&auth_cert->acBhSignature));
-                if (signatureVerified)
-                {
-                    LOG_MSG("    BootHeader Signature Verified");
-                }
-                else
-                {
-                    LOG_MSG("    BootHeader Signature Verification Failed");
-                    authenticationVerified = false;
-                    LOG_ERROR("Authentication verification failed on bootimage %s", binFilename.c_str());
-                }
-                // tempBHBuffer is now unique_ptr, automatically deleted
-            }
+            /* Verifying each boot header with that AC's own secondary key.
+               For a multi-block partition only the first block's AC is checked. */
+            VerifyBootHeaderSignature(binFile, auth_cert);
 
             /* Verifying Partition SPK Signature */
             VerifySPKSignature(auth_cert);
