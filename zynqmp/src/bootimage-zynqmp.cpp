@@ -329,7 +329,7 @@ void ZynqMpBootImage::ParseBootImage(PartitionBifOptions* it)
         {
             PartitionHeader* ph = (*partHdr);
             uint32_t encrPartLen = ph->GetEncryptedPartitionLength();
-            size_t imageAuthBlock = image->GetAuthBlock();
+            size_t imageAuthBlock = newImage->GetAuthBlock();
             int acSize = 1;
             if (imageAuthBlock != 0)
             {
@@ -342,7 +342,7 @@ void ZynqMpBootImage::ParseBootImage(PartitionBifOptions* it)
             if (ph->IsAuthCertPresent())
             {
                 LOG_INFO("Loading AC context for section %s ", ph->section->Name.c_str());
-                image->SetAuthenticationType(Authentication::RSA);
+                newImage->SetAuthenticationType(Authentication::RSA);
                 options.bifOptions->SetHeaderAC(true);
                 /* load in previous certificate data */
                 for (int i = 0; i < acSize; i++)
@@ -360,7 +360,7 @@ void ZynqMpBootImage::ParseBootImage(PartitionBifOptions* it)
                 }
             }
         }
-        offset = image->GetNextImageHeaderOffset();
+        offset = newImage->GetNextImageHeaderOffset();
     } while (offset != 0);
 }
 
