@@ -47,6 +47,7 @@ extern "C" {
 /******************************************************************************/
 Versal_2ve_2vmBootImage::Versal_2ve_2vmBootImage(Options& options, uint8_t index) : BootImage(options, index)
 {
+    cdocmd_set_user_keys_versal_2ve_2vm(1);
     partitionHeaderList.clear();
     options.SetDefaultAlignment(16);
     bootHeader = std::make_unique<Versal_2ve_2vmBootHeader>(arch);

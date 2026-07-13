@@ -29,7 +29,7 @@
 #if ! defined(yyFlexLexerOnce)
 #undef yyFlexLexer
 #define yyFlexLexer bifFlexLexer
-#include "../win_include/FlexLexer.h"
+#include "../../win_include/FlexLexer.h"
 #endif
 
 // Override the interface for yylex since we namespaced it
