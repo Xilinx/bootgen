@@ -12,9 +12,7 @@ including BIN file construction and boot-time authentication and encryption base
 For more details about Bootgen usage, please refer to Xilinx UG1283.
 
 ## Obfuscated Key generation
-Bootgen also supports Obfuscated Key generation using a Xilinx proprietary software.
-If you are using this proprietary flow, please contact a Xilinx� representative at 'secure.solutions@xilinx.com'for details
-and to ensure export compliance.
+In general, Bootgen supports obfuscated key generation through a Xilinx proprietary software component. However, obfuscated key generation is not supported in the open-source Bootgen code available in this GitHub repository. Support for this functionality is provided only in the version of Bootgen that is included with the Vivado or Vitis installations. For more information about obfuscated key generation, please refer to UG1283.
 
 # Build instructions
 ## Platform Support
