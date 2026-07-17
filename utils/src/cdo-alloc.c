@@ -18,7 +18,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#ifndef __APPLE__
 #include <malloc.h>
+#endif
 #include <string.h>
 #include "cdo-alloc.h"
 

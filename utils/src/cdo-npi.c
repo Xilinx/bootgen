@@ -18,7 +18,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <errno.h>
+#ifndef __APPLE__
 #include <malloc.h>
+#endif
 #include <string.h>
 #include <assert.h>
 #include <inttypes.h>
