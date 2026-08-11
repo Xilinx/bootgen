@@ -381,7 +381,7 @@ partition_content       :   /* empty */
                         |   partition_content new_file_spec
                         ;
 
-other_spec              :   OBRACKET KEYSRC_ENCRYPTION EBRACKET key_src         { if(options.GetArchType() != Arch::ZYNQ || options.GetArchType() != Arch::ZYNQMP)
+other_spec              :   OBRACKET KEYSRC_ENCRYPTION EBRACKET key_src         { if(options.GetArchType() != Arch::ZYNQ && options.GetArchType() != Arch::ZYNQMP)
                                                                                     LOG_WARNING("BIF attribute error !!! [keysrc_encryption] not supported for the specified architecture.\n\t   Refer 'bootgen -bif_help' for more details");
                                                                                   currentBifOptions->SetEncryptionKeySource($4); options.SetEncryptedKeySource($4); }
                         |   OBRACKET FSBL_CONFIG                                { if(options.GetArchType() == Arch::ZYNQ)
