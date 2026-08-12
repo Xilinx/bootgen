@@ -47,7 +47,7 @@ EXEC = build/bin/bootgen
 OBJDIR = build/obj
 UNAME := $(shell uname)
 
-ifeq ($(UNAME), Linux)
+ifneq (,$(filter Linux Darwin,$(UNAME)))
 INCLUDE_SYS = -I bisonflex -I common/include -I spartanup/include -I versal/include -I versal_2ve_2vm/include -I zynq/include -I zynqmp/include -I utils/include -I lms-hash-sigs -I win_include 
 LIBS    = -lssl -lcrypto
 RTLIBS  =
@@ -83,10 +83,15 @@ ${OBJDIR}/%.${OBJ} : */src/%.c
 
 ${EXEC}: $(OBJECTS)
 	echo Building executable file: $@...
-	cd ${LMS_HASH_DIR} && $(MAKE) ${LMS_LIB}
+	cd ${LMS_HASH_DIR} && $(MAKE) ${LMS_LIB} CFLAGS="$(CFLAGS) $(INCLUDE)"
 	${CXX} $(CXXFLAGS) $(LDFLAGS) $(OPTIONS_USER) -o $@ $(OBJECTS) ${LMS_HASH_DIR}/${LMS_LIB}  $(OPTIONS)$(LIBS)
 
 execs: ${EXEC}
+
+.PHONY: macos
+macos:
+	cmake -S . -B build/macos -G Ninja $(CMAKE_ARGS)
+	cmake --build build/macos
 
 clean:
 	echo

@@ -1,0 +1,208 @@
+# Copyright 2015-2026 Advanced Micro Devices, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+cmake_minimum_required(VERSION 3.20)
+
+project(bootgen LANGUAGES C CXX)
+
+option(BOOTGEN_BUILD_TESTS "Build Bootgen smoke tests" ON)
+option(BOOTGEN_ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+find_package(OpenSSL REQUIRED COMPONENTS SSL Crypto)
+find_package(Threads REQUIRED)
+
+set(BOOTGEN_INCLUDE_DIRS
+    bisonflex
+    common/include
+    spartanup/include
+    versal/include
+    versal_2ve_2vm/include
+    zynq/include
+    zynqmp/include
+    utils/include
+    lms-hash-sigs
+    win_include)
+
+set(BOOTGEN_PARSER_SOURCES
+    bisonflex/bif.tab.cpp
+    bisonflex/bif.yy.cpp
+    bisonflex/reginit.tab.cpp
+    bisonflex/reginit.yy.cpp
+    bisonflex/cmdoptions.tab.cpp
+    bisonflex/cmdoptions.yy.cpp)
+
+set(BOOTGEN_SOURCES
+    common/src/Keccak-compact.cpp
+    common/src/authentication.cpp
+    common/src/authkeys.cpp
+    common/src/bifoptions.cpp
+    common/src/binary.cpp
+    common/src/binfile.cpp
+    common/src/bitutils.cpp
+    common/src/bootheader.cpp
+    common/src/bootimage.cpp
+    common/src/checksum.cpp
+    common/src/encryption.cpp
+    common/src/hash.cpp
+    common/src/imageheadertable.cpp
+    common/src/kdf.cpp
+    common/src/logger.cpp
+    common/src/main.cpp
+    common/src/mcsfile.cpp
+    common/src/options.cpp
+    common/src/outputfile.cpp
+    common/src/parsing.cpp
+    common/src/partition.cpp
+    common/src/partitionheadertable.cpp
+    common/src/postprocess.cpp
+    common/src/readimage.cpp
+    common/src/reginit.cpp
+    spartanup/src/Keccak-compact-spartanup.cpp
+    spartanup/src/authentication-spartanup.cpp
+    spartanup/src/authkeys-spartanup.cpp
+    spartanup/src/binary-spartanup.cpp
+    spartanup/src/bitutils-spartanup.cpp
+    spartanup/src/bootheader-spartanup.cpp
+    spartanup/src/bootimage-spartanup.cpp
+    spartanup/src/checksum-spartanup.cpp
+    spartanup/src/encryption-spartanup.cpp
+    spartanup/src/imageheadertable-spartanup.cpp
+    spartanup/src/outputfile-spartanup.cpp
+    spartanup/src/partition-spartanup.cpp
+    spartanup/src/partitionheadertable-spartanup.cpp
+    spartanup/src/readimage-spartanup.cpp
+    spartanup/src/verifyimage-spartanup.cpp
+    utils/src/cJSON.c
+    utils/src/cdo-alloc.c
+    utils/src/cdo-binary.c
+    utils/src/cdo-command.c
+    utils/src/cdo-load.c
+    utils/src/cdo-metadata.c
+    utils/src/cdo-npi.c
+    utils/src/cdo-overlay.c
+    utils/src/cdo-raw.c
+    utils/src/cdo-source.c
+    utils/src/elftools.cpp
+    utils/src/encryptutils.cpp
+    utils/src/fips202.c
+    versal/src/Keccak-compact-versal.cpp
+    versal/src/authentication-versal.cpp
+    versal/src/authkeys-versal.cpp
+    versal/src/binary-versal.cpp
+    versal/src/bitutils-versal.cpp
+    versal/src/bootheader-versal.cpp
+    versal/src/bootimage-versal.cpp
+    versal/src/checksum-versal.cpp
+    versal/src/encryption-versal.cpp
+    versal/src/encryption-versalnet.cpp
+    versal/src/imageheadertable-versal.cpp
+    versal/src/outputfile-versal.cpp
+    versal/src/partition-versal.cpp
+    versal/src/partitionheadertable-versal.cpp
+    versal/src/readimage-versal.cpp
+    versal/src/verifyimage-versal.cpp
+    versal_2ve_2vm/src/Keccak-compact-versal_2ve_2vm.cpp
+    versal_2ve_2vm/src/authentication-versal_2ve_2vm.cpp
+    versal_2ve_2vm/src/authkeys-versal_2ve_2vm.cpp
+    versal_2ve_2vm/src/binary-versal_2ve_2vm.cpp
+    versal_2ve_2vm/src/bitutils-versal_2ve_2vm.cpp
+    versal_2ve_2vm/src/bootheader-versal_2ve_2vm.cpp
+    versal_2ve_2vm/src/bootimage-versal_2ve_2vm.cpp
+    versal_2ve_2vm/src/checksum-versal_2ve_2vm.cpp
+    versal_2ve_2vm/src/encryption-versal_2ve_2vm.cpp
+    versal_2ve_2vm/src/imageheadertable-versal_2ve_2vm.cpp
+    versal_2ve_2vm/src/outputfile-versal_2ve_2vm.cpp
+    versal_2ve_2vm/src/partition-versal_2ve_2vm.cpp
+    versal_2ve_2vm/src/partitionheadertable-versal_2ve_2vm.cpp
+    versal_2ve_2vm/src/postprocess_versal_2ve_2vm.cpp
+    versal_2ve_2vm/src/readimage-versal_2ve_2vm.cpp
+    versal_2ve_2vm/src/tlbingeneration.cpp
+    versal_2ve_2vm/src/verifyimage-versal_2ve_2vm.cpp
+    zynq/src/authentication-zynq.cpp
+    zynq/src/bootheader-zynq.cpp
+    zynq/src/bootimage-zynq.cpp
+    zynq/src/encryption-zynq.cpp
+    zynq/src/imageheadertable-zynq.cpp
+    zynq/src/partitionheadertable-zynq.cpp
+    zynq/src/readimage-zynq.cpp
+    zynqmp/src/authentication-zynqmp.cpp
+    zynqmp/src/bootheader-zynqmp.cpp
+    zynqmp/src/bootimage-zynqmp.cpp
+    zynqmp/src/encryption-zynqmp.cpp
+    zynqmp/src/imageheadertable-zynqmp.cpp
+    zynqmp/src/partitionheadertable-zynqmp.cpp
+    zynqmp/src/readimage-zynqmp.cpp
+    zynqmp/src/verifyimage-zynqmp.cpp)
+
+set(LMS_HASH_SIGS_SOURCES
+    lms-hash-sigs/endian.c
+    lms-hash-sigs/fips202.c
+    lms-hash-sigs/hss.c
+    lms-hash-sigs/hss_alloc.c
+    lms-hash-sigs/hss_aux.c
+    lms-hash-sigs/hss_common.c
+    lms-hash-sigs/hss_compute.c
+    lms-hash-sigs/hss_derive.c
+    lms-hash-sigs/hss_generate.c
+    lms-hash-sigs/hss_keygen.c
+    lms-hash-sigs/hss_param.c
+    lms-hash-sigs/hss_reserve.c
+    lms-hash-sigs/hss_sign.c
+    lms-hash-sigs/hss_sign_inc.c
+    lms-hash-sigs/hss_thread_pthread.c
+    lms-hash-sigs/hss_verify.c
+    lms-hash-sigs/hss_verify_inc.c
+    lms-hash-sigs/hss_zeroize.c
+    lms-hash-sigs/lm_common.c
+    lms-hash-sigs/lm_ots_common.c
+    lms-hash-sigs/lm_ots_sign.c
+    lms-hash-sigs/lm_ots_verify.c
+    lms-hash-sigs/lm_verify.c
+    lms-hash-sigs/lms_hash.c
+    lms-hash-sigs/lms_keys.c
+    lms-hash-sigs/lms_sign.c
+    lms-hash-sigs/sha256.c)
+
+add_library(lms-hash-sigs STATIC ${LMS_HASH_SIGS_SOURCES})
+target_include_directories(lms-hash-sigs PRIVATE lms-hash-sigs)
+target_link_libraries(lms-hash-sigs PRIVATE OpenSSL::Crypto Threads::Threads)
+
+add_executable(bootgen ${BOOTGEN_PARSER_SOURCES} ${BOOTGEN_SOURCES})
+target_include_directories(bootgen PRIVATE ${BOOTGEN_INCLUDE_DIRS})
+target_link_libraries(bootgen PRIVATE
+    lms-hash-sigs
+    OpenSSL::SSL
+    OpenSSL::Crypto
+    Threads::Threads
+    ${CMAKE_DL_LIBS})
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    target_compile_options(bootgen PRIVATE -Wall -Wno-reorder -Wno-deprecated-declarations)
+    set_source_files_properties(${BOOTGEN_PARSER_SOURCES} PROPERTIES
+        COMPILE_OPTIONS "-Wno-deprecated-register")
+endif()
+
+if(BOOTGEN_ENABLE_SANITIZERS)
+    if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+        message(FATAL_ERROR "BOOTGEN_ENABLE_SANITIZERS requires Clang or GCC")
+    endif()
+    target_compile_options(lms-hash-sigs PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+    target_compile_options(bootgen PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+    target_link_options(bootgen PRIVATE -fsanitize=address,undefined)
+endif()
+
+include(GNUInstallDirs)
+install(TARGETS bootgen RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES LICENSE README.md INSTALL.txt BUILDING.md DESTINATION ${CMAKE_INSTALL_DOCDIR})
+
+if(BOOTGEN_BUILD_TESTS)
+    include(CTest)
+    if(BUILD_TESTING)
+        add_test(NAME bootgen.help COMMAND bootgen -help)
+        set_tests_properties(bootgen.help PROPERTIES PASS_REGULAR_EXPRESSION "Bootgen v")
+    endif()
+endif()

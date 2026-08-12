@@ -16,15 +16,21 @@ In general, Bootgen supports obfuscated key generation through a Xilinx propriet
 
 # Build instructions
 ## Platform Support
-Bootgen can be built for both Linux and Windows operating systems. It can be compiled natively for
-x86-based computers as well as cross-compiled for ARM-based platforms.
+Bootgen can be built on Linux, macOS, and Windows hosts. The CMake build is the
+portable build interface for Linux and macOS; the existing Makefile remains
+available for compatibility. It can be compiled natively for x86-based
+computers as well as cross-compiled for ARM-based platforms.
 
 The following 3rd party packages are required to build Bootgen:
 
-* OpenSSL v1.1.1b libraries
+* OpenSSL libraries
 
    * Windows libraries are available at http://slproweb.com/products/Win32OpenSSL.html
    * Linux libraries are part of libssl-dev package
+   * macOS builds are tested with Homebrew OpenSSL 3
+
+See [BUILDING.md](BUILDING.md) for CMake, macOS, installation, and sanitizer
+instructions.
 
 ## Linux Builds
 
@@ -112,4 +118,3 @@ Bootgen links with openssl libraries. Below is openssl copyright.
  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
-
