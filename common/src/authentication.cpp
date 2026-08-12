@@ -294,7 +294,6 @@ void AuthenticationContext::GetPresign(const std::string& presignFilename, uint8
     }
 
     LOG_TRACE("Reading presign file - %s", filename.c_str());
-    signature = new uint8_t[signatureLength];
     FILE* filePtr;
     filePtr = fopen(filename.c_str(),"rb");
     if (filePtr) 
