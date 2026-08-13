@@ -1,0 +1,86 @@
+name: Build and test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Ubuntu GCC
+            os: ubuntu-24.04
+            cc: gcc
+            cxx: g++
+            cmake_options: ''
+          - name: Ubuntu Clang
+            os: ubuntu-24.04
+            cc: clang
+            cxx: clang++
+            cmake_options: ''
+          - name: Ubuntu Clang sanitizers
+            os: ubuntu-24.04
+            cc: clang
+            cxx: clang++
+            cmake_options: -DBOOTGEN_ENABLE_SANITIZERS=ON
+          - name: macOS Apple Silicon
+            os: macos-15
+            cc: clang
+            cxx: clang++
+            cmake_options: ''
+
+    defaults:
+      run:
+        shell: bash
+
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+      CMAKE_OPTIONS: ${{ matrix.cmake_options }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ninja-build libssl-dev
+
+      - name: Install macOS dependencies
+        if: runner.os == 'macOS'
+        run: |
+          brew install ninja openssl@3
+          echo "OPENSSL_ROOT_DIR=$(brew --prefix openssl@3)" >> "$GITHUB_ENV"
+
+      - name: Configure
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            ${OPENSSL_ROOT_DIR:+-DOPENSSL_ROOT_DIR="$OPENSSL_ROOT_DIR"} \
+            ${CMAKE_OPTIONS:-}
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure --output-junit build/ctest.xml
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bootgen-${{ matrix.name }}
+          if-no-files-found: error
+          path: |
+            build/bootgen
+            build/ctest.xml
+            LICENSE
+            BUILDING.md
