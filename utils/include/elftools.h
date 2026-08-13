@@ -246,7 +246,7 @@ public:
     , xplm_modules_data_size(0)
     { };
 
-    ~ElfFormat() {};
+    virtual ~ElfFormat() {};
     static ElfFormat* GetElfFormat(ElfClass::Type elfClass, uint8_t* start, uint8_t* state, size_t fileSize = 0);
 
     virtual Program_p_flags GetProgramHeaderFlags(uint8_t index) = 0;

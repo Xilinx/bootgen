@@ -204,5 +204,18 @@ if(BOOTGEN_BUILD_TESTS)
     if(BUILD_TESTING)
         add_test(NAME bootgen.help COMMAND bootgen -help)
         set_tests_properties(bootgen.help PROPERTIES PASS_REGULAR_EXPRESSION "Bootgen v")
+        add_test(
+            NAME bootgen.zynq-smoke
+            COMMAND ${CMAKE_COMMAND}
+                -DBOOTGEN=$<TARGET_FILE:bootgen>
+                -DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures
+                -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/zynq-smoke
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/zynq_smoke.cmake)
+        add_test(
+            NAME bootgen.invalid-bif
+            COMMAND ${CMAKE_COMMAND}
+                -DBOOTGEN=$<TARGET_FILE:bootgen>
+                -DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/invalid_bif_test.cmake)
     endif()
 endif()

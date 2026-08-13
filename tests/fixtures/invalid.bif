@@ -1,0 +1,4 @@
+the_ROM_image:
+{
+    [bootloader zynq-smoke.elf
+}
