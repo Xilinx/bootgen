@@ -209,7 +209,7 @@ if(BOOTGEN_BUILD_TESTS)
             COMMAND ${CMAKE_COMMAND}
                 -DBOOTGEN=$<TARGET_FILE:bootgen>
                 -DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures
-                -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/zynq-smoke
+                -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/zynq smoke-ü
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/zynq_smoke.cmake)
         add_test(
             NAME bootgen.invalid-bif

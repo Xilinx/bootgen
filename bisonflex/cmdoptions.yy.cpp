@@ -2553,7 +2553,7 @@ yylval->cstring=strdup(yytext);         return tok::HEXSTRING;
 case 204:
 YY_RULE_SETUP
 #line 269 "parser/cmdoptions.l"
-yylval->cstring=strdup(yytext);  return tok::IDENTIFIER;
+yylval->cstring=strdup(ResolveCommandLineArgument(yytext).c_str());  return tok::IDENTIFIER;
 	YY_BREAK
 case 205:
 YY_RULE_SETUP
@@ -3655,4 +3655,3 @@ void CO::FlexScanner::comment()
         goto loop;
     }
 }
-

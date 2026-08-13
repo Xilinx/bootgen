@@ -266,7 +266,7 @@ imagestore                  return tok::HV_BIF_IMAGESTORE;
 
 
 [a-fA-F0-9]+        yylval->cstring=strdup(yytext);         return tok::HEXSTRING;
-[0-9]?[a-zA-Z0-9.,_-]+     yylval->cstring=strdup(yytext);  return tok::IDENTIFIER;
+[0-9]?[a-zA-Z0-9.,_-]+     yylval->cstring=strdup(ResolveCommandLineArgument(yytext).c_str());  return tok::IDENTIFIER;
 ([a-zA-Z]:[\/\\])?[a-zA-Z0-9\/\\\\(\)@!#$%^&+._-]+          yylval->cstring=strdup(yytext);    return tok::FILENAME;
 \"([a-zA-Z]:[\/\\])?[a-zA-Z0-9\/\\\\(\)@!#$%^&+._ -]+\"     yylval->cstring=strdup(yytext+1); yylval->cstring[strlen(yytext)-2]=0; return tok::QFILENAME;
 

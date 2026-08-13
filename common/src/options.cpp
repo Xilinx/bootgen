@@ -23,6 +23,7 @@
 #include <iostream>
 #include <sstream>
 #include <string> 
+#include <cctype>
 #include <sys/stat.h>
 #include "options.h"
 #include "cmdoptionsscanner.h"
@@ -42,6 +43,22 @@
 -------------------------------------------------------------------------------
 */
 /******************************************************************************/
+static bool RequiresCommandLinePlaceholder(const char* argument)
+{
+    for (const unsigned char* character = reinterpret_cast<const unsigned char*>(argument);
+         *character != '\0';
+         ++character)
+    {
+        if (std::isspace(*character) || *character >= 0x80)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/******************************************************************************/
 void Options::ParseArgs(int argc, const char * argv[])
 {
     CO::FlexScanner scanner;
@@ -54,7 +71,16 @@ void Options::ParseArgs(int argc, const char * argv[])
         {
             merged.append(" ");
         }
-        merged.append(argv[i]);
+        if (RequiresCommandLinePlaceholder(argv[i]))
+        {
+            std::string placeholder = "__bootgen_arg_" + std::to_string(i) + "__";
+            scanner.AddCommandLineArgument(placeholder, argv[i]);
+            merged.append(placeholder);
+        }
+        else
+        {
+            merged.append(argv[i]);
+        }
     }
     
     /* No arguments, assume "-h" */

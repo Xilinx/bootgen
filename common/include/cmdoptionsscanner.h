@@ -39,6 +39,8 @@
 
 // Include Bison for types / tokens
 #include "cmdoptions.tab.hpp"
+#include <map>
+#include <utility>
 #include "options.h"
 #include "parsing.h"
 
@@ -64,6 +66,15 @@ namespace CO
         }
     
         void comment();
+        void AddCommandLineArgument(std::string placeholder, std::string value)
+        {
+            commandLineArguments.emplace(std::move(placeholder), std::move(value));
+        }
+        std::string ResolveCommandLineArgument(const char* value) const
+        {
+            const auto argument = commandLineArguments.find(value);
+            return argument == commandLineArguments.end() ? value : argument->second;
+        }
         std::string commandline;
         void ReportError(const CO::BisonParser::location_type &loc, const std::string &msg) 
         {
@@ -79,6 +90,7 @@ namespace CO
         // point to yylval (provided by Bison in overloaded yylex)
         CO::BisonParser::semantic_type * yylval;
         CO::BisonParser::location_type * yylloc;
+        std::map<std::string, std::string> commandLineArguments;
     };
 }
 #endif
