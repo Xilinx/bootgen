@@ -1,0 +1,4 @@
+the_ROM_image:
+{
+    [bootloader, destination_cpu=a53-0] zynq-smoke.elf
+}

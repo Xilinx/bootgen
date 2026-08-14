@@ -244,6 +244,40 @@ if(BOOTGEN_BUILD_TESTS)
                 -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/zynq smoke-ü
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/zynq_smoke.cmake)
         add_test(
+            NAME bootgen.zynqmp-smoke
+            COMMAND ${CMAKE_COMMAND}
+                -DBOOTGEN=$<TARGET_FILE:bootgen>
+                -DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures
+                -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/zynqmp-smoke
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/zynqmp_smoke.cmake)
+        add_test(
+            NAME bootgen.versal-smoke
+            COMMAND ${CMAKE_COMMAND}
+                -DBOOTGEN=$<TARGET_FILE:bootgen>
+                -DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures
+                -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/versal-smoke
+                -DARCH=versal
+                -DEXPECTED_READ_OUTPUT=partition_type[elf]
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/versal_smoke.cmake)
+        add_test(
+            NAME bootgen.versal-2ve-2vm-smoke
+            COMMAND ${CMAKE_COMMAND}
+                -DBOOTGEN=$<TARGET_FILE:bootgen>
+                -DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures
+                -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/versal-2ve-2vm-smoke
+                -DARCH=versal_2ve_2vm
+                -DEXPECTED_READ_OUTPUT=partition_type[elf]
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/versal_smoke.cmake)
+        add_test(
+            NAME bootgen.spartanup-smoke
+            COMMAND ${CMAKE_COMMAND}
+                -DBOOTGEN=$<TARGET_FILE:bootgen>
+                -DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures
+                -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/spartanup-smoke
+                -DARCH=spartanup
+                -DEXPECTED_READ_OUTPUT=plm_length
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/versal_smoke.cmake)
+        add_test(
             NAME bootgen.invalid-bif
             COMMAND ${CMAKE_COMMAND}
                 -DBOOTGEN=$<TARGET_FILE:bootgen>
