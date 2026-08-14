@@ -467,7 +467,22 @@ lms_key_params      yylval->number = tok::LMS_KEY_PARAMS;           return tok::
 [ \t]+                  yylloc->step ();
 [\n]+                   yylloc->lines (yyleng); yylloc->step ();
 \r                     /* ignore (Linux only) */
-.                      LOG_ERROR("BIF parsing error : Invalid character (0x%02X) in BIF file",  (unsigned char)yytext[0]);
+.                      {
+                           // The legacy QFILENAME rule only accepts ASCII; consume a quoted UTF-8 path here.
+                           if (yytext[0] == '"') {
+                               std::string filename;
+                               int character;
+                               while ((character = yyinput()) != '"' && character != 0 && character != '\n' && character != '\r') {
+                                   filename += static_cast<char>(character);
+                               }
+                               if (character == '"') {
+                                   yylloc->columns(filename.length() + 1);
+                                   yylval->string = strdup(filename.c_str());
+                                   return tok::QFILENAME;
+                               }
+                           }
+                           LOG_ERROR("BIF parsing error : Invalid character (0x%02X) in BIF file",  (unsigned char)yytext[0]);
+                       }
 %%
 
 

@@ -3416,7 +3416,22 @@ YY_RULE_SETUP
 case 287:
 YY_RULE_SETUP
 #line 470 "parser/bif.l"
-LOG_ERROR("BIF parsing error : Invalid character (0x%02X) in BIF file",  (unsigned char)yytext[0]);
+{
+                           // The legacy QFILENAME rule only accepts ASCII; consume a quoted UTF-8 path here.
+                           if (yytext[0] == '"') {
+                               std::string filename;
+                               int character;
+                               while ((character = yyinput()) != '"' && character != 0 && character != '\n' && character != '\r') {
+                                   filename += static_cast<char>(character);
+                               }
+                               if (character == '"') {
+                                   yylloc->columns(filename.length() + 1);
+                                   yylval->string = strdup(filename.c_str());
+                                   return tok::QFILENAME;
+                               }
+                           }
+                           LOG_ERROR("BIF parsing error : Invalid character (0x%02X) in BIF file",  (unsigned char)yytext[0]);
+                       }
 	YY_BREAK
 case 288:
 YY_RULE_SETUP
@@ -4522,4 +4537,3 @@ void BIF::FlexScanner::cleanup_include_stacks()
         scanner_filename_stack.pop();
     }
 }
-
