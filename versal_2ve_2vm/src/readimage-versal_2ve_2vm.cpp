@@ -1047,6 +1047,12 @@ void Versal_2ve_2vmReadImage::DisplayAuthenicationCertificates(void)
                     
                    if(bH && hash_block_itr == Hashblock_record.begin())
                     {
+                        constexpr uint32_t hashSlotSize = 4 + 48;
+                        constexpr uint32_t minimumHashBlockSize = 4 * hashSlotSize;
+                        if (hash_block_itr->second < minimumHashBlockSize)
+                        {
+                            LOG_ERROR("Hash Block0 is too small: %u bytes", hash_block_itr->second);
+                        }
                         Separator();
                         std::cout << "   Hash Block0" << std::endl;
                         Separator();
@@ -1058,8 +1064,8 @@ void Versal_2ve_2vmReadImage::DisplayAuthenicationCertificates(void)
                         DisplayLongValues("PMC data index         : ", ((*hash_block_itr).first), 4);   ((*hash_block_itr).first) += 4;
                         DisplayLongValues("PMC data digest        : ", ((*hash_block_itr).first), 48);  ((*hash_block_itr).first) += 48;
                         DisplayLongValues("hash block1 index      : ", ((*hash_block_itr).first), 4);   ((*hash_block_itr).first) += 4;
-                        DisplayLongValues("hash block1 digest     : ", ((*hash_block_itr).first), 48);  ((*hash_block_itr).first) += 152;
-                        DisplayLongValues("padding      : ", ((*hash_block_itr).first), 16);   
+                        DisplayLongValues("hash block1 digest     : ", ((*hash_block_itr).first), 48);  ((*hash_block_itr).first) += 48;
+                        DisplayLongValues("padding      : ", ((*hash_block_itr).first), hash_block_itr->second - minimumHashBlockSize);
                         hash_block_itr++;
                         if(auth_type != Authentication::None)
                             DisplayLongValues("HASH Block0 signture   : ", ((*hash_block_itr).first), hash_block_itr->second); 
@@ -1680,5 +1686,4 @@ std::string Versal_2ve_2vmReadImage::GetPartitionType(uint32_t value)
     }
     return val;
 }
-
 

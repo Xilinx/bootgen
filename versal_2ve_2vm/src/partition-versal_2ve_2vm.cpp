@@ -1008,7 +1008,7 @@ void Versal_2ve_2vmPartition::Build(BootImage& bi, Binary& cache)
                         auto newDataPtr = std::make_unique<uint8_t[]>(newLength);
                         memset(newDataPtr.get(), 0, newLength);
 
-                        uint8_t* newDataPtrRaw = newDataPtr.get() + newLength;
+                        uint8_t* newDataPtrRaw = newDataPtr.get();
                         newDataPtrRaw += hashBlockLength;
                         if ((encryptCtx->Type() != Encryption::None) && currentAuthCtx->authAlgorithm->Type() == Authentication::None)
                         {
@@ -1318,4 +1318,3 @@ void Versal_2ve_2vmPartition::Link(BootImage &bi)
 #endif
     }
 }
-
