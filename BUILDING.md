@@ -61,6 +61,22 @@ cmake --build build/macos-asan --parallel
 ctest --test-dir build/macos-asan --output-on-failure
 ```
 
+## Parser regeneration (maintainers only)
+
+The `bisonflex` directory is checked in. Regenerate it only when changing a
+grammar or lexer, using Bison 2.7 or newer and Flex 2.5.35 or newer. This is an
+explicit opt-in target because generator upgrades can create large reviewable
+diffs.
+
+```sh
+cmake -S . -B build/parser-maintenance -DBOOTGEN_REGENERATE_PARSERS=ON
+cmake --build build/parser-maintenance --target regenerate-parsers
+```
+
+The target updates checked-in files in `bisonflex`; inspect those changes,
+rebuild, and run the complete test suite before committing them. Normal CMake
+and Make builds do not configure or invoke parser generators.
+
 Sanitizer coverage and the current smoke test do not establish boot-image
 compatibility. Golden-image, cryptographic, malformed-input, and hardware
 tests remain required before a release-quality macOS port can be claimed.

@@ -7,6 +7,7 @@ project(bootgen LANGUAGES C CXX)
 
 option(BOOTGEN_BUILD_TESTS "Build Bootgen smoke tests" ON)
 option(BOOTGEN_ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+option(BOOTGEN_REGENERATE_PARSERS "Enable the parser regeneration maintainer target" OFF)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -34,6 +35,37 @@ set(BOOTGEN_PARSER_SOURCES
     bisonflex/reginit.yy.cpp
     bisonflex/cmdoptions.tab.cpp
     bisonflex/cmdoptions.yy.cpp)
+
+if(BOOTGEN_REGENERATE_PARSERS)
+    find_package(BISON 2.7 REQUIRED)
+    find_package(FLEX 2.5.35 REQUIRED)
+
+    add_custom_target(regenerate-parsers
+        COMMAND ${BISON_EXECUTABLE} --verbose
+            --defines=${CMAKE_CURRENT_SOURCE_DIR}/bisonflex/bif.tab.hpp
+            --output=${CMAKE_CURRENT_SOURCE_DIR}/bisonflex/bif.tab.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/parser/bif.y
+        COMMAND ${FLEX_EXECUTABLE} --prefix=bif
+            --outfile=${CMAKE_CURRENT_SOURCE_DIR}/bisonflex/bif.yy.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/parser/bif.l
+        COMMAND ${BISON_EXECUTABLE} --verbose
+            --defines=${CMAKE_CURRENT_SOURCE_DIR}/bisonflex/reginit.tab.hpp
+            --output=${CMAKE_CURRENT_SOURCE_DIR}/bisonflex/reginit.tab.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/parser/reginit.y
+        COMMAND ${FLEX_EXECUTABLE} --prefix=reginit
+            --outfile=${CMAKE_CURRENT_SOURCE_DIR}/bisonflex/reginit.yy.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/parser/reginit.l
+        COMMAND ${BISON_EXECUTABLE} --verbose
+            --defines=${CMAKE_CURRENT_SOURCE_DIR}/bisonflex/cmdoptions.tab.hpp
+            --output=${CMAKE_CURRENT_SOURCE_DIR}/bisonflex/cmdoptions.tab.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/parser/cmdoptions.y
+        COMMAND ${FLEX_EXECUTABLE} --prefix=cmdoptions
+            --outfile=${CMAKE_CURRENT_SOURCE_DIR}/bisonflex/cmdoptions.yy.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/parser/cmdoptions.l
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Regenerating checked-in Bison and Flex parser sources"
+        VERBATIM)
+endif()
 
 set(BOOTGEN_SOURCES
     common/src/Keccak-compact.cpp
