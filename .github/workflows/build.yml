@@ -35,7 +35,12 @@ jobs:
             os: macos-15
             cc: clang
             cxx: clang++
-            cmake_options: ''
+            cmake_options: -DCMAKE_OSX_ARCHITECTURES=arm64
+          - name: macOS Intel
+            os: macos-15-intel
+            cc: clang
+            cxx: clang++
+            cmake_options: -DCMAKE_OSX_ARCHITECTURES=x86_64
 
     defaults:
       run:
@@ -72,6 +77,16 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build --output-on-failure --output-junit build/ctest.xml
+
+      - name: Confirm macOS binary architecture
+        if: runner.os == 'macOS'
+        run: |
+          file build/bootgen
+          if [[ "${{ matrix.name }}" == "macOS Apple Silicon" ]]; then
+            file build/bootgen | grep -q 'arm64'
+          else
+            file build/bootgen | grep -q 'x86_64'
+          fi
 
       - name: Upload artifacts
         if: always()
