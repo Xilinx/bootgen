@@ -264,6 +264,13 @@ if(BOOTGEN_BUILD_TESTS)
                 -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/zynqmp-smoke
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/zynqmp_smoke.cmake)
         add_test(
+            NAME bootgen.zynqmp-auth-smoke
+            COMMAND ${CMAKE_COMMAND}
+                -DBOOTGEN=$<TARGET_FILE:bootgen>
+                -DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures
+                -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/zynqmp-auth-smoke
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/zynqmp_auth_smoke.cmake)
+        add_test(
             NAME bootgen.versal-smoke
             COMMAND ${CMAKE_COMMAND}
                 -DBOOTGEN=$<TARGET_FILE:bootgen>
