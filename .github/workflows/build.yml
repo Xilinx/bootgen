@@ -88,6 +88,10 @@ jobs:
             file build/bootgen | grep -q 'x86_64'
           fi
 
+      - name: Package macOS tarball
+        if: runner.os == 'macOS'
+        run: cmake --build build --target package
+
       - name: Upload artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -97,5 +101,6 @@ jobs:
           path: |
             build/bootgen
             build/ctest.xml
+            build/*.tar.gz
             LICENSE
             BUILDING.md

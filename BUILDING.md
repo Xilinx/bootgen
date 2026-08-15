@@ -48,6 +48,31 @@ Install into a staging directory with:
 cmake --install build/macos-arm64 --prefix "$PWD/stage"
 ```
 
+## macOS packaging and runtime dependencies
+
+The CMake `package` target creates an architecture-specific tarball containing
+`bootgen`, its Apache-2.0 license, and build documentation:
+
+```sh
+cmake --build build/macos-arm64 --target package
+```
+
+Bootgen intentionally links to the caller-supplied OpenSSL installation; the
+tarball does not bundle or sign OpenSSL. Install the matching-architecture
+Homebrew `openssl@3` package before running it, then inspect the result:
+
+```sh
+file build/macos-arm64/bootgen
+otool -L build/macos-arm64/bootgen
+codesign --force --sign - build/macos-arm64/bootgen
+codesign --verify --deep --strict build/macos-arm64/bootgen
+```
+
+Ad-hoc signing is appropriate for local development. A released universal
+package requires compatible universal OpenSSL libraries (or separately tested
+architecture-specific OpenSSL dependencies); it must not merge executables
+against incompatible runtime libraries.
+
 The compatibility Makefile provides a `macos` target that delegates to CMake:
 
 ```sh
