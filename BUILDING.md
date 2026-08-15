@@ -32,6 +32,11 @@ cmake --build build/macos-arm64 --parallel
 ctest --test-dir build/macos-arm64 --output-on-failure
 ```
 
+CMake defaults macOS builds to deployment target 15.0, matching the native
+macOS CI runners. Override
+`CMAKE_OSX_DEPLOYMENT_TARGET` only when all dependencies, including OpenSSL,
+support the selected target.
+
 For an Intel build, run the same configuration on an Intel Mac and set
 `CMAKE_OSX_ARCHITECTURES=x86_64`. Test each architecture before any universal
 binary packaging. A merged executable requires OpenSSL runtime libraries that

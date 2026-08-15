@@ -3,6 +3,10 @@
 
 cmake_minimum_required(VERSION 3.20)
 
+if(APPLE AND NOT CMAKE_OSX_DEPLOYMENT_TARGET)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "15.0" CACHE STRING "Minimum supported macOS version" FORCE)
+endif()
+
 project(bootgen LANGUAGES C CXX)
 
 option(BOOTGEN_BUILD_TESTS "Build Bootgen smoke tests" ON)
