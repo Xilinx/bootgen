@@ -289,6 +289,12 @@ if(BOOTGEN_BUILD_TESTS)
                 -DEXPECTED_READ_OUTPUT=partition_type[elf]
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/versal_smoke.cmake)
         add_test(
+            NAME bootgen.versal-2ve-2vm-lms-keygen
+            COMMAND ${CMAKE_COMMAND}
+                -DBOOTGEN=$<TARGET_FILE:bootgen>
+                -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/versal-2ve-2vm-lms-keygen
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/lms_keygen_smoke.cmake)
+        add_test(
             NAME bootgen.spartanup-smoke
             COMMAND ${CMAKE_COMMAND}
                 -DBOOTGEN=$<TARGET_FILE:bootgen>

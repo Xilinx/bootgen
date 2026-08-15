@@ -24,8 +24,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <time.h>
+#include <limits.h>
 #include <ctype.h>
+#include <openssl/rand.h>
 #include "hss.h"
 #include "hss_verify_inc.h"
 #include "hss_sign_inc.h"
@@ -59,11 +60,7 @@ static const char *i_value = 0;
 static bool convert_specified_seed_i_value( void *, size_t );
 
 
-/*
- * This is a function that is supposed to generate truly random values.
- * This is a hideous version of this; this needs to be replaced by something
- * secure in a real product
- */
+/* Generate key material from the OpenSSL CSPRNG. */
 bool do_rand( void *output, size_t len ) {
     if (seedbits) {
         /* The seed was specified on the command line */
@@ -71,63 +68,7 @@ bool do_rand( void *output, size_t len ) {
         /* This is not something a real application should do */
         return convert_specified_seed_i_value( output, len );
     }
-    struct {
-        unsigned char dev_random_output[32];
-        int rand_output[16];
-        /* Potentially more random sources here */
-        unsigned count;
-    } buffer;
-    int i;
-
-    /* Try to grab a sammple of /dev/urandom output */
-    /* We use /dev/urandom because there's no point in blocking; this is a */
-    /* demo program */
-    FILE *f = fopen( "/dev/urandom", "r" );
-    if (f) {
-         (void)fread( buffer.dev_random_output, 1, 32, f );
-         fclose(f);
-    }
-
-    /* Also try to grab some output from rand */
-    /* It's not great, but if the /dev/urandom output fails, at least we */
-    /* have something */
-    /* In a real program, we'd want to fail if we don't have enough */
-    /* entropy, but hey, this is a demo */
-    static int set_seed = 0;
-    if (!set_seed) {
-        srand( time(0) );
-        set_seed = 1;
-    }
-    for (i = 0; i<16; i++) {
-        buffer.rand_output[i] = rand();
-    }
-
-
-    /* If we had more random sources, we'd sample them here */
-
-    unsigned output_buffer[32];
-    for (i=0; len>0; i++) {
-        buffer.count = i;
-
-        /* Ok, hash all our random samples together to generate the random */
-        /* string that was asked for */
-        hss_hash( output_buffer, HASH_SHA256, &buffer, sizeof buffer );
-
-        /* Copy that hash to the output buffer */
-        int this_len = 32;
-        if (this_len > len) this_len = len;
-        memcpy( output, output_buffer, this_len );
-
-        /* Advance pointers */
-        output = (unsigned char *)output + this_len; len -= this_len;
-    }
-
-    /* Clean up after ourselves.  Yes, this is a demo program; doesn't mean */
-    /* we get to be sloppy */
-    hss_zeroize( output_buffer, sizeof output_buffer );
-    hss_zeroize( &buffer, sizeof buffer );
-
-    return true;
+    return len <= INT_MAX && RAND_bytes(output, (int)len) == 1;
 }
 
 static int fromhex(char c) {

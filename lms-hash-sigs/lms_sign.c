@@ -25,6 +25,11 @@
 #include <stdlib.h>
 #include <time.h>
 #include <ctype.h>
+#if !defined(_WIN32)
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
 #include "hss.h"
 #include "hss_verify_inc.h"
 #include "hss_sign_inc.h"
@@ -83,15 +88,23 @@ void *read_file(const char *filename, size_t *len) {
 */
 bool update_private_key(unsigned char *private_key,
 	size_t len_private_key, void *filename) {
-	FILE *f = fopen(filename, "r+");
-	if (!f) {
-		/* Open failed, possibly because the file didn't exist */
-		f = fopen(filename, "w");
-		if (!f) {
-			/* Unable to open file */
-			return false;
-		}
+#if defined(_WIN32)
+	FILE *f = fopen(filename, "wb");
+	if (!f) return false;
+#else
+	int fd = open((const char *)filename, O_WRONLY | O_CREAT | O_TRUNC,
+		S_IRUSR | S_IWUSR);
+	if (fd < 0) return false;
+	if (fchmod(fd, S_IRUSR | S_IWUSR) != 0) {
+		close(fd);
+		return false;
 	}
+	FILE *f = fdopen(fd, "wb");
+	if (!f) {
+		close(fd);
+		return false;
+	}
+#endif
 	if (1 != fwrite(private_key, len_private_key, 1, f)) {
 		/* Write failed */
 		fclose(f);
