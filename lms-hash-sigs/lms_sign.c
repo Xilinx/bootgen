@@ -52,13 +52,16 @@
 * those in chunks within the sign()/verify() routines below.
 */
 void *read_file(const char *filename, size_t *len) {
-	FILE *f = fopen(filename, "r");
+	FILE *f = fopen(filename, "rb");
 	if (!f) return 0;
 
 #define FILE_INCREMENT 20000
 	unsigned alloc_len = FILE_INCREMENT;
 	unsigned char *p = malloc(FILE_INCREMENT);
-	if (!p) return 0;
+	if (!p) {
+		fclose(f);
+		return 0;
+	}
 
 	unsigned cur_len = 0;
 	for (;;) {
@@ -67,6 +70,7 @@ void *read_file(const char *filename, size_t *len) {
 			unsigned char *q = realloc(p, alloc_len + FILE_INCREMENT);
 			if (!q) {
 				free(p);
+				fclose(f);
 				return 0;
 			}
 			p = q;
@@ -78,6 +82,7 @@ void *read_file(const char *filename, size_t *len) {
 		cur_len += n;
 	}
 
+	fclose(f);
 	if (len) *len = cur_len;
 	return p;
 }
@@ -125,7 +130,7 @@ bool update_private_key(unsigned char *private_key,
 */
 static bool read_private_key(unsigned char *private_key,
 	size_t len_private_key, void *filename) {
-	FILE *f = fopen(filename, "r");
+	FILE *f = fopen(filename, "rb");
 	if (!f) {
 		return false;
 	}
@@ -140,30 +145,29 @@ static bool read_private_key(unsigned char *private_key,
 	return true;
 }
 
+static char *make_key_filename(const char *keyname, const char *suffix) {
+	size_t keyname_len = strlen(keyname);
+	size_t suffix_len = strlen(suffix);
+	if (keyname_len > (size_t)-1 - suffix_len - 1) return NULL;
+
+	char *filename = malloc(keyname_len + suffix_len + 1);
+	if (!filename) return NULL;
+
+	memcpy(filename, keyname, keyname_len);
+	memcpy(filename + keyname_len, suffix, suffix_len + 1);
+	return filename;
+}
+
 int LmsVerify(const char *keyname, const unsigned char *buffer, size_t buffer_len, unsigned char* sig, size_t sig_len) {
-    size_t public_key_filename_len = strlen(keyname) + 1;
-    char *public_key_filename = malloc(public_key_filename_len);
-    if (!public_key_filename) {
-        printf("Error: malloc failure\n");
-        return 0;
-    }
-    sprintf(public_key_filename, "%s", keyname);
-    unsigned char *pub = read_file(public_key_filename, 0);
+    unsigned char *pub = read_file(keyname, 0);
     if (!pub) {
         printf("Error: unable to read %s\n", keyname);
-        free(public_key_filename);
         return 0;
     }
 
     bool success = hss_validate_signature(pub, buffer, buffer_len, sig, sig_len, NULL);
-    if (success) {
-        //printf("Verifed");
-        return 1;
-    }
-    else {
-        //printf("Not Verifed");
-        return 0;
-    }
+    free(pub);
+    return success ? 1 : 0;
 }
 
 /*
@@ -172,24 +176,20 @@ int LmsVerify(const char *keyname, const unsigned char *buffer, size_t buffer_le
  writes the signature out to disk
  */
  int LmsSign(const char *keyname, const unsigned char *buffer, unsigned long int buffer_len, unsigned char* sig, size_t* sig_len, uint32_t* err) {
-	int private_key_filename_len = strlen(keyname) + 1;
-	char *private_key_filename = malloc(private_key_filename_len);
+	char *private_key_filename = make_key_filename(keyname, "");
 	if (!private_key_filename) {
 		printf("Malloc failure\n");
 		return 0;
 	}
-	sprintf(private_key_filename, "%s", keyname);
 	struct hss_extra_info info = { 0 };
 
 	/* Read in the auxilliary file */
-	size_t aux_filename_len = strlen(keyname) + sizeof(".aux") + 1;
-	char *aux_filename = malloc(aux_filename_len);
+	char *aux_filename = make_key_filename(keyname, ".aux");
 	if (!aux_filename) {
 		printf("Malloc failure\n");
 		free(private_key_filename);
 		return 0;
 	}
-	sprintf(aux_filename, "%s.aux", keyname);
 	size_t len_aux_data = 0;
 	void *aux_data = read_file(aux_filename, &len_aux_data);
 	if (aux_data != 0) {
@@ -254,6 +254,9 @@ int LmsVerify(const char *keyname, const unsigned char *buffer, size_t buffer_le
 	if (!success){
 		printf("Error signing");
 		*err = info.error_code;
+		hss_free_working_key(w);
+		free(aux_filename);
+		free(private_key_filename);
 		return 0;
 	}
 #if 0
@@ -281,18 +284,10 @@ int LmsVerify(const char *keyname, const unsigned char *buffer, size_t buffer_le
 
 int GetLmsSignLength(const char *keyname, bool lmsOnly)
 {
-	int private_key_filename_len = strlen(keyname) + 1;
-	char *private_key_filename = malloc(private_key_filename_len);
-	if (!private_key_filename) {
-		printf("Malloc failure\n");
-		return 0;
-	}
-	sprintf(private_key_filename, "%s", keyname);
-
 	unsigned levels;
 	param_set_t lm[MAX_HSS_LEVELS];
 	param_set_t ots[MAX_HSS_LEVELS];
-	if (!hss_get_parameter_set(&levels, lm, ots, read_private_key, private_key_filename, NULL)) {
+	if (!hss_get_parameter_set(&levels, lm, ots, read_private_key, (void *)keyname, NULL)) {
 		/* Can't read private key, or private key invalid */
 		return 0;
 	}

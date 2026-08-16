@@ -1,6 +1,10 @@
 #if !defined( LMS_UTILS_H_ )
 #define LMS_UTILS_H_
 
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
 extern int LmsSign(const char *keyname, const unsigned char *buffer, unsigned long int buffer_len, unsigned char* result0, size_t* sig_len, uint32_t* err);
 extern int LmsVerify(const char *keyname, const unsigned char *buffer, size_t buffer_len, unsigned char* sig, size_t sig_len);
 

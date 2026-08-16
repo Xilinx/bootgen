@@ -59,6 +59,18 @@ static const char *seedbits = 0;
 static const char *i_value = 0;
 static bool convert_specified_seed_i_value( void *, size_t );
 
+static char *make_key_filename(const char *keyname, const char *suffix) {
+    size_t keyname_len = strlen(keyname);
+    size_t suffix_len = strlen(suffix);
+    if (keyname_len > (size_t)-1 - suffix_len - 1) return NULL;
+
+    char *filename = malloc(keyname_len + suffix_len + 1);
+    if (!filename) return NULL;
+
+    memcpy(filename, keyname, keyname_len);
+    memcpy(filename + keyname_len, suffix, suffix_len + 1);
+    return filename;
+}
 
 /* Generate key material from the OpenSSL CSPRNG. */
 bool do_rand( void *output, size_t len ) {
@@ -218,10 +230,8 @@ int LmsKeyGeneration(const char *keyname, int* hash, int* h, int* w, int levels)
 	list_parameter_set(levels, lm_array, ots_array, aux_size, hash);
 
 	/* We'll place the private key here */
-	size_t private_key_filename_len = strlen(keyname) + sizeof(".prv") + 1;
-	char *private_key_filename = malloc(private_key_filename_len);
+	char *private_key_filename = make_key_filename(keyname, ".prv");
 	if (!private_key_filename) return 0;
-	sprintf(private_key_filename, "%s.prv", keyname);
 
 	/* We'll place the public key in this array */
 	unsigned len_public_key = hss_get_public_key_len(levels,
@@ -262,34 +272,35 @@ int LmsKeyGeneration(const char *keyname, int* hash, int* h, int* w, int levels)
 	}
 	free(private_key_filename); private_key_filename = 0;
 
-	size_t public_key_filename_len = strlen(keyname) + sizeof(".pub") + 1;
-	char *public_key_filename = malloc(public_key_filename_len);
+	char *public_key_filename = make_key_filename(keyname, ".pub");
 	if (!public_key_filename) {
 		free(aux);
 		return 0;
 	}
-	sprintf(public_key_filename, "%s.pub", keyname);
 
 	printf("[INFO]   : Generating public key %s\n", public_key_filename);
-	FILE *f = fopen(public_key_filename, "w");
-	free(public_key_filename); public_key_filename = 0;
+	FILE *f = fopen(public_key_filename, "wb");
 	if (!f) {
 		fprintf(stderr, "[ERROR]  : Unable to write public key - %s\n", public_key_filename);
+		free(public_key_filename);
 		free(aux);
 		return 0;
 	}
 	if (1 != fwrite(public_key, len_public_key, 1, f)) {
 		/* Write failed */
 		fclose(f);
+		free(public_key_filename);
 		free(aux);
 		return 0;
 	}
 	if (0 != fclose(f)) {
 		fprintf(stderr, "[ERROR]  : Unable to close public key file - %s\n", public_key_filename);
 		/* Close failed (possibly because pending write failed) */
+		free(public_key_filename);
 		free(aux);
 		return 0;
 	}
+	free(public_key_filename);
 
 	/* If the key was specified manually, put in our warning */
 	if (seedbits) {
@@ -299,22 +310,20 @@ int LmsKeyGeneration(const char *keyname, int* hash, int* h, int* w, int levels)
 	}
 
 	if (aux_size > 0) {
-		size_t aux_filename_len = strlen(keyname) + sizeof(".aux") + 1;
-		char *aux_filename = malloc(aux_filename_len);
+		char *aux_filename = make_key_filename(keyname, ".aux");
 		if (!aux_filename) {
-			fprintf(stderr, "[WARNING] : malloc failure writing to aux file - %s\n", aux_filename);
+			fprintf(stderr, "[WARNING] : malloc failure writing aux file\n");
 			free(aux);
 			return 1;
 		}
-		sprintf(aux_filename, "%s.aux", keyname);
 
 		/* Attempt to write the aux file.  Note that if we fail, we'll still */
 		/* claim to have succeeded (as the aux file is optional) */
 		printf("[INFO]   : Generating aux data %s\n", aux_filename);
-		f = fopen(aux_filename, "w");
-		free(aux_filename); aux_filename = 0;
+		f = fopen(aux_filename, "wb");
 		if (!f) {
 			fprintf(stderr, "[WARNING] : Unable to write aux file - %s\n", aux_filename);
+			free(aux_filename);
 			free(aux);
 			return 1;
 		}
@@ -322,15 +331,18 @@ int LmsKeyGeneration(const char *keyname, int* hash, int* h, int* w, int levels)
 			fprintf(stderr, "[WARNING] : Unable to write aux file - %s\n", aux_filename);
 			/* Write failed */
 			fclose(f);
+			free(aux_filename);
 			free(aux);
 			return 1;
 		}
 		if (0 != fclose(f)) {
 			fprintf(stderr, "[WARNING] : Close failed writing aux file - %s\n", aux_filename);
 			/* Close failed (possibly because pending write failed) */
+			free(aux_filename);
 			free(aux);
 			return 1;
 		}
+		free(aux_filename);
 	}
 	free(aux);
 

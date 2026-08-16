@@ -247,6 +247,15 @@ include(CPack)
 if(BOOTGEN_BUILD_TESTS)
     include(CTest)
     if(BUILD_TESTING)
+        add_executable(lms-sign-smoke tests/lms_sign_smoke.c)
+        target_include_directories(lms-sign-smoke PRIVATE lms-hash-sigs)
+        target_link_libraries(lms-sign-smoke PRIVATE lms-hash-sigs Threads::Threads)
+        if(BOOTGEN_ENABLE_SANITIZERS)
+            target_compile_options(lms-sign-smoke PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+            target_link_options(lms-sign-smoke PRIVATE -fsanitize=address,undefined)
+        endif()
+        file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/tests/lms-sign-smoke")
+
         add_test(NAME bootgen.help COMMAND bootgen -help)
         set_tests_properties(bootgen.help PROPERTIES PASS_REGULAR_EXPRESSION "Bootgen v")
         add_test(
@@ -294,6 +303,9 @@ if(BOOTGEN_BUILD_TESTS)
                 -DBOOTGEN=$<TARGET_FILE:bootgen>
                 -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/versal-2ve-2vm-lms-keygen
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/lms_keygen_smoke.cmake)
+        add_test(NAME bootgen.lms-sign-smoke COMMAND lms-sign-smoke)
+        set_tests_properties(bootgen.lms-sign-smoke PROPERTIES
+            WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/tests/lms-sign-smoke")
         add_test(
             NAME bootgen.spartanup-smoke
             COMMAND ${CMAKE_COMMAND}
