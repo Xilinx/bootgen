@@ -39,8 +39,25 @@ support the selected target.
 
 For an Intel build, run the same configuration on an Intel Mac and set
 `CMAKE_OSX_ARCHITECTURES=x86_64`. Test each architecture before any universal
-binary packaging. A merged executable requires OpenSSL runtime libraries that
-also support both architectures.
+binary packaging. Assemble separately tested slices with the checked
+compatibility workflow:
+
+```sh
+cmake \
+  -DSOURCE_DIR="$PWD" \
+  -DARM64_BINARY="$PWD/build/macos-arm64/bootgen" \
+  -DX86_64_BINARY="$PWD/build/macos-x86_64/bootgen" \
+  -DOUTPUT_DIR="$PWD/build/universal" \
+  -P cmake/package_universal_macos.cmake
+file build/universal/bootgen-universal/bin/bootgen
+codesign --force --sign - build/universal/bootgen-universal/bin/bootgen
+codesign --verify --deep --strict build/universal/bootgen-universal/bin/bootgen
+```
+
+The script verifies both executable slices, requires their `otool -L` runtime
+dependencies to match, and checks non-system absolute dependencies (including
+OpenSSL) are themselves universal. The resulting staging tree includes the
+binary, license, and build documentation.
 
 Install into a staging directory with:
 
@@ -69,9 +86,8 @@ codesign --verify --deep --strict build/macos-arm64/bootgen
 ```
 
 Ad-hoc signing is appropriate for local development. A released universal
-package requires compatible universal OpenSSL libraries (or separately tested
-architecture-specific OpenSSL dependencies); it must not merge executables
-against incompatible runtime libraries.
+package requires compatible universal OpenSSL libraries; it must not merge
+executables against incompatible runtime libraries.
 
 The compatibility Makefile provides a `macos` target that delegates to CMake:
 
