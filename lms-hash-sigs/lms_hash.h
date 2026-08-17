@@ -22,7 +22,7 @@ enum {
 };
 
 union hash_context {
-    SHA256_CTX sha256;
+    EVP_MD_CTX *sha256;
     keccak_state shake256;
     /* Any other hash contexts would go here */
 };

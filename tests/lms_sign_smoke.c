@@ -18,7 +18,7 @@ int main(void) {
     const char *private_key = "lms-smoke.prv";
     const char *public_key = "lms-smoke.pub";
     const unsigned char message[] = "Bootgen LMS signing smoke test";
-    int hash[] = { 2 };
+    int hash[] = { 1 };
     int height[] = { 5 };
     int width[] = { 2 };
     int result = EXIT_FAILURE;

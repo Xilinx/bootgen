@@ -26,6 +26,18 @@
 bool hss_verbose = false;
 #endif
 
+static bool sha256_digest(void *result, const void *message, size_t message_len) {
+    EVP_MD_CTX *context = EVP_MD_CTX_new();
+    unsigned int output_len = 0;
+    bool success = context
+        && EVP_DigestInit_ex(context, EVP_sha256(), NULL) == 1
+        && EVP_DigestUpdate(context, message, message_len) == 1
+        && EVP_DigestFinal_ex(context, result, &output_len) == 1
+        && output_len == SHA256_LEN;
+    EVP_MD_CTX_free(context);
+    return success;
+}
+
 /*
  * This will hash the message, given the hash type. It assumes that the result
  * buffer is large enough for the hash
@@ -41,17 +53,17 @@ void hss_hash_ctx(void *result, int hash_type, union hash_context *ctx,
     int output_len;
     switch (hash_type) {
     case HASH_SHA256: {
-        SHA256_Init(&ctx->sha256);
-        SHA256_Update(&ctx->sha256, message, message_len);
-        SHA256_Final(result, &ctx->sha256);
+	if (!sha256_digest(result, message, message_len)) {
+	    memset(result, 0, SHA256_LEN);
+	}
 	output_len = 32;
         break;
     }
     case HASH_SHA256_24: {
         unsigned char temp[SHA256_LEN];
-        SHA256_Init(&ctx->sha256);
-        SHA256_Update(&ctx->sha256, message, message_len);
-        SHA256_Final(temp, &ctx->sha256);
+	if (!sha256_digest(temp, message, message_len)) {
+	    memset(temp, 0, sizeof temp);
+	}
         memcpy(result, temp, 24 );
         hss_zeroize(temp, sizeof temp);
 	output_len = 24;
@@ -89,7 +101,11 @@ void hss_hash(void *result, int hash_type,
 void hss_init_hash_context(int h, union hash_context *ctx) {
     switch (h) {
     case HASH_SHA256: case HASH_SHA256_24:
-        SHA256_Init( &ctx->sha256 );
+	ctx->sha256 = EVP_MD_CTX_new();
+	if (!ctx->sha256 || EVP_DigestInit_ex(ctx->sha256, EVP_sha256(), NULL) != 1) {
+	    EVP_MD_CTX_free(ctx->sha256);
+	    ctx->sha256 = NULL;
+	}
         break;
     case HASH_SHAKE256: case HASH_SHAKE256_24:
         shake256_inc_init(ctx->shake256);
@@ -106,7 +122,9 @@ void hss_update_hash_context(int h, union hash_context *ctx,
 #endif
     switch (h) {
     case HASH_SHA256: case HASH_SHA256_24:
-        SHA256_Update(&ctx->sha256, msg, len_msg);
+	if (ctx->sha256) {
+	    (void)EVP_DigestUpdate(ctx->sha256, msg, len_msg);
+	}
         break;
     case HASH_SHAKE256: case HASH_SHAKE256_24:
         shake256_inc_absorb(ctx->shake256, msg, len_msg);
@@ -117,13 +135,24 @@ void hss_update_hash_context(int h, union hash_context *ctx,
 void hss_finalize_hash_context(int h, union hash_context *ctx, void *buffer) {
     int output_len;
     switch (h) {
-    case HASH_SHA256:
-        SHA256_Final(buffer, &ctx->sha256);
+    case HASH_SHA256: {
+	unsigned int digest_len = 0;
+	if (!ctx->sha256 || EVP_DigestFinal_ex(ctx->sha256, buffer, &digest_len) != 1 || digest_len != SHA256_LEN) {
+	    memset(buffer, 0, SHA256_LEN);
+	}
+	EVP_MD_CTX_free(ctx->sha256);
+	ctx->sha256 = NULL;
 	output_len = 32;
         break;
+    }
     case HASH_SHA256_24: {
         unsigned char temp[SHA256_LEN];
-        SHA256_Final(temp, &ctx->sha256);
+	unsigned int digest_len = 0;
+	if (!ctx->sha256 || EVP_DigestFinal_ex(ctx->sha256, temp, &digest_len) != 1 || digest_len != SHA256_LEN) {
+	    memset(temp, 0, sizeof temp);
+	}
+	EVP_MD_CTX_free(ctx->sha256);
+	ctx->sha256 = NULL;
         memcpy(buffer, temp, 24);
         hss_zeroize(temp, sizeof temp);
 	output_len = 24;
@@ -169,4 +198,3 @@ unsigned hss_hash_blocksize(int hash_type) {
     }
     return 0;
 }
-

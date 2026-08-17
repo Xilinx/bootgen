@@ -10,7 +10,7 @@
 
 #if USE_OPENSSL
 
-#include <openssl/sha.h>
+#include <openssl/evp.h>
 
 #else
 
@@ -34,4 +34,3 @@ void SHA256_Final(unsigned char *,
 #endif
 
 #endif /* ifdef(SHA256_H_) */
-
