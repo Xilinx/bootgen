@@ -281,6 +281,13 @@ if(BOOTGEN_BUILD_TESTS)
                 -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/zynq smoke-ü
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/zynq_smoke.cmake)
         add_test(
+            NAME bootgen.split-output-smoke
+            COMMAND ${CMAKE_COMMAND}
+                -DBOOTGEN=$<TARGET_FILE:bootgen>
+                -DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures
+                -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/split-output-smoke
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/split_output_smoke.cmake)
+        add_test(
             NAME bootgen.zynqmp-smoke
             COMMAND ${CMAKE_COMMAND}
                 -DBOOTGEN=$<TARGET_FILE:bootgen>
