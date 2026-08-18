@@ -18,6 +18,23 @@ if(NOT CREATE_RESULT EQUAL 0)
     message(FATAL_ERROR "ZynqMP smoke image creation failed (${CREATE_RESULT}):\n${CREATE_OUTPUT}\n${CREATE_ERROR}")
 endif()
 
+set(REPEAT_BOOT_IMAGE "${OUTPUT_DIR}/BOOT-repeat.BIN")
+execute_process(
+    COMMAND "${BOOTGEN}" -arch zynqmp -image "${TEST_FIXTURE_DIR}/zynqmp-smoke.bif" -o "${REPEAT_BOOT_IMAGE}" -w on
+    WORKING_DIRECTORY "${TEST_FIXTURE_DIR}"
+    RESULT_VARIABLE REPEAT_RESULT
+    OUTPUT_VARIABLE REPEAT_OUTPUT
+    ERROR_VARIABLE REPEAT_ERROR)
+if(NOT REPEAT_RESULT EQUAL 0)
+    message(FATAL_ERROR "Repeated ZynqMP smoke image creation failed (${REPEAT_RESULT}):\n${REPEAT_OUTPUT}\n${REPEAT_ERROR}")
+endif()
+execute_process(
+    COMMAND "${CMAKE_COMMAND}" -E compare_files "${BOOT_IMAGE}" "${REPEAT_BOOT_IMAGE}"
+    RESULT_VARIABLE COMPARE_RESULT)
+if(NOT COMPARE_RESULT EQUAL 0)
+    message(FATAL_ERROR "Repeated ZynqMP smoke images are not byte-identical")
+endif()
+
 file(SIZE "${BOOT_IMAGE}" BOOT_IMAGE_SIZE)
 if(BOOT_IMAGE_SIZE LESS 2048)
     message(FATAL_ERROR "ZynqMP smoke image is unexpectedly small: ${BOOT_IMAGE_SIZE} bytes")
