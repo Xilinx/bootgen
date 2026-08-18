@@ -256,11 +256,14 @@ if(BOOTGEN_BUILD_TESTS)
         add_executable(lms-hash-smoke tests/lms_hash_smoke.c)
         target_include_directories(lms-hash-smoke PRIVATE lms-hash-sigs)
         target_link_libraries(lms-hash-smoke PRIVATE lms-hash-sigs OpenSSL::Crypto Threads::Threads)
+        add_executable(tamper-file tests/tamper_file.c)
         if(BOOTGEN_ENABLE_SANITIZERS)
             target_compile_options(lms-sign-smoke PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
             target_link_options(lms-sign-smoke PRIVATE -fsanitize=address,undefined)
             target_compile_options(lms-hash-smoke PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
             target_link_options(lms-hash-smoke PRIVATE -fsanitize=address,undefined)
+            target_compile_options(tamper-file PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+            target_link_options(tamper-file PRIVATE -fsanitize=address,undefined)
         endif()
         file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/tests/lms-sign-smoke")
 
@@ -284,6 +287,7 @@ if(BOOTGEN_BUILD_TESTS)
             NAME bootgen.zynqmp-auth-smoke
             COMMAND ${CMAKE_COMMAND}
                 -DBOOTGEN=$<TARGET_FILE:bootgen>
+                -DTAMPER_FILE=$<TARGET_FILE:tamper-file>
                 -DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures
                 -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/zynqmp-auth-smoke
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/zynqmp_auth_smoke.cmake)
