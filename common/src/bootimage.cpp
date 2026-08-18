@@ -317,9 +317,9 @@ void BIF_File::Output(Options& options, uint8_t index)
             if (options.GetOutType() != File::Unknown)
             {
                 fName.clear();
-            }    
+            }
             fName = StringUtils::RemoveExtension(biffilename);
-            fName = fName.substr(fName.find_last_of("\\")+1, std::string::npos);
+            fName = StringUtils::BaseName(fName);
             if(splitFileType == File::Unknown)
             {
                 splitFileType = options.GetOutputFormat();

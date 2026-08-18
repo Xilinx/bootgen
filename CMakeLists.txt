@@ -257,6 +257,8 @@ if(BOOTGEN_BUILD_TESTS)
         target_include_directories(lms-hash-smoke PRIVATE lms-hash-sigs)
         target_link_libraries(lms-hash-smoke PRIVATE lms-hash-sigs OpenSSL::Crypto Threads::Threads)
         add_executable(tamper-file tests/tamper_file.c)
+        add_executable(stringutils-smoke tests/stringutils_smoke.cpp)
+        target_include_directories(stringutils-smoke PRIVATE utils/include)
         if(BOOTGEN_ENABLE_SANITIZERS)
             target_compile_options(lms-sign-smoke PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
             target_link_options(lms-sign-smoke PRIVATE -fsanitize=address,undefined)
@@ -264,6 +266,8 @@ if(BOOTGEN_BUILD_TESTS)
             target_link_options(lms-hash-smoke PRIVATE -fsanitize=address,undefined)
             target_compile_options(tamper-file PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
             target_link_options(tamper-file PRIVATE -fsanitize=address,undefined)
+            target_compile_options(stringutils-smoke PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+            target_link_options(stringutils-smoke PRIVATE -fsanitize=address,undefined)
         endif()
         file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/tests/lms-sign-smoke")
 
@@ -319,6 +323,7 @@ if(BOOTGEN_BUILD_TESTS)
         set_tests_properties(bootgen.lms-sign-smoke PROPERTIES
             WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/tests/lms-sign-smoke")
         add_test(NAME bootgen.lms-hash-smoke COMMAND lms-hash-smoke)
+        add_test(NAME bootgen.stringutils-smoke COMMAND stringutils-smoke)
         add_test(
             NAME bootgen.spartanup-smoke
             COMMAND ${CMAKE_COMMAND}

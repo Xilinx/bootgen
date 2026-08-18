@@ -83,22 +83,8 @@ public:
 
     static std::string BaseName(const std::string& fullpath)
     {
-        size_t i1 = fullpath.rfind("/");
-        size_t i2 = fullpath.rfind("\\");
-        std::string x;
-        if (i1 != std::string::npos)
-        {
-            x = fullpath.substr(i1+1);
-        }
-        else if (i2 != std::string::npos)
-        {
-            x = fullpath.substr(i2+1);
-        }
-        else
-        {
-            x = fullpath;
-        }
-        return x;
+        size_t separator = fullpath.find_last_of("/\\");
+        return separator == std::string::npos ? fullpath : fullpath.substr(separator + 1);
     }
 
     static std::string Format(const std::string fmt, ...)
@@ -153,22 +139,8 @@ public:
 
     static std::string FolderPath(const std::string& fullpath)
     {
-        size_t i1 = fullpath.rfind("/");
-        size_t i2 = fullpath.rfind("\\");
-        std::string x;
-        if (i1 != std::string::npos)
-        {
-            x = fullpath.substr(0, i1);
-        }
-        else if (i2 != std::string::npos)
-        {
-            x = fullpath.substr(0, i2);
-        }
-        else
-        {
-            x = "./";
-        }
-        return x;
+        size_t separator = fullpath.find_last_of("/\\");
+        return separator == std::string::npos ? "./" : fullpath.substr(0, separator);
     }
 };
 #endif
