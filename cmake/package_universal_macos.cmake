@@ -77,6 +77,8 @@ if(NOT CREATE_RESULT EQUAL 0)
 endif()
 require_architecture("${PACKAGE_ROOT}/bin/bootgen" arm64)
 require_architecture("${PACKAGE_ROOT}/bin/bootgen" x86_64)
-file(COPY "${SOURCE_DIR}/LICENSE" "${SOURCE_DIR}/README.md" "${SOURCE_DIR}/INSTALL.txt" "${SOURCE_DIR}/BUILDING.md"
+file(COPY "${SOURCE_DIR}/LICENSE" "${SOURCE_DIR}/README.md" "${SOURCE_DIR}/INSTALL.txt" "${SOURCE_DIR}/BUILDING.md" "${SOURCE_DIR}/THIRD_PARTY_NOTICES.md"
     DESTINATION "${PACKAGE_ROOT}/share/doc/bootgen")
+file(COPY "${SOURCE_DIR}/lms-hash-sigs/license.txt" DESTINATION "${PACKAGE_ROOT}/share/doc/bootgen")
+file(RENAME "${PACKAGE_ROOT}/share/doc/bootgen/license.txt" "${PACKAGE_ROOT}/share/doc/bootgen/LMS-HSS-LICENSE.txt")
 message(STATUS "Created universal macOS staging tree: ${PACKAGE_ROOT}")

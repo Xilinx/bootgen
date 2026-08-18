@@ -68,7 +68,7 @@ cmake --install build/macos-arm64 --prefix "$PWD/stage"
 ## macOS packaging and runtime dependencies
 
 The CMake `package` target creates an architecture-specific tarball containing
-`bootgen`, its Apache-2.0 license, and build documentation:
+`bootgen`, its license notices, and build documentation:
 
 ```sh
 cmake --build build/macos-arm64 --target package
@@ -84,6 +84,11 @@ otool -L build/macos-arm64/bootgen
 codesign --force --sign - build/macos-arm64/bootgen
 codesign --verify --deep --strict build/macos-arm64/bootgen
 ```
+
+See `THIRD_PARTY_NOTICES.md` for the source and binary distribution inventory.
+The package includes Bootgen's aggregate `LICENSE` and the separate Cisco
+BSD-3-Clause notice for the LMS/HSS implementation. OpenSSL remains a dynamic,
+caller-supplied dependency and is not redistributed in the package.
 
 Ad-hoc signing is appropriate for local development. A released universal
 package requires compatible universal OpenSSL libraries; it must not merge
