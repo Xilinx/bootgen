@@ -32,6 +32,20 @@ The following 3rd party packages are required to build Bootgen:
 See [BUILDING.md](BUILDING.md) for CMake, macOS, installation, and sanitizer
 instructions.
 
+## Continuous integration
+
+The GitHub Actions workflow in [`.github/workflows/build.yml`](.github/workflows/build.yml)
+configures, builds, tests, and packages Bootgen on Ubuntu with GCC and Clang
+(including an AddressSanitizer/UndefinedBehaviorSanitizer build), macOS Apple
+Silicon, and macOS Intel. macOS jobs install Homebrew `openssl@3` and verify
+that the resulting executable has the expected architecture.
+
+To run the workflow for a contribution, fork the repository, add the fork as
+your `origin` remote, push a branch to that fork, and open a pull request. The
+workflow is intentionally available on both pushes and pull requests; a
+universal macOS package must still be assembled from independently tested
+native `arm64` and `x86_64` builds as described in `BUILDING.md`.
+
 ## Linux Builds
 
 A Makefile is included along with the code to build Bootgen for Linux. This
