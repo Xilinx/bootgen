@@ -28,26 +28,6 @@
 
 
 /*******************************************************************************/
-static void RearrangeEndianess(uint8_t *array, uint32_t size)
-{
-    uint32_t lastIndex = size - 1;
-    char tempInt = 0;
-
-    // If array is NULL, return
-    if (!array)
-    {
-        return;
-    }
-
-    for (uint32_t loop = 0; loop <= (lastIndex / 2); loop++)
-    {
-        tempInt = array[loop];
-        array[loop] = array[lastIndex - loop];
-        array[lastIndex - loop] = tempInt;
-    }
-}
-
-/*******************************************************************************/
 void ZynqMpReadImage::VerifyAuthentication(bool verifyImageOption)
 {
     ReadHeaderTableDetails();
@@ -91,72 +71,36 @@ bool ZynqMpReadImage::VerifySignature(bool nist, uint8_t * data, size_t dataLeng
     LOG_TRACE("Hash from data");
     LOG_DUMP_BYTES(shaHash.get(), hashLength);
 
-    rsa = RSA_new();
+    RSA_Class rsaInstance;
+    rsaInstance.rsa = RSA_new();
+    if (rsaInstance.rsa == NULL)
+    {
+        LOG_ERROR("Failed to allocate RSA verification key");
+    }
 
-#ifdef _MSC_VER
-    /* On Windows/MSVC, use BN_bin2bn to construct BIGNUMs from raw key data
-       instead of directly assigning to internal struct fields (d, dmax, top). Direct struct
-       access causes Montgomery reduction failure due to GCC/MSVC struct layout mismatch. */
+    // ZynqMP authentication certificates serialize RSA components in big-endian
+    // order, unlike Bootgen's internal key buffers.
     BIGNUM* n = BN_bin2bn(acKey->N, RSA_4096_KEY_LENGTH, NULL);
     BIGNUM* e = BN_bin2bn(acKey->E, sizeof(uint32_t), NULL);
     if (n == NULL || e == NULL)
     {
+        BN_free(n);
+        BN_free(e);
         LOG_ERROR("Failed to create BIGNUMs from AC key data");
     }
-
-#if OPENSSL_VERSION_NUMBER > 0x10100000L
-    RSA_set0_key(rsa, n, e, NULL);
-#else
-    rsa->n = n;
-    rsa->e = e;
-#endif
-#else
-    BIGNUM* n = BN_new();
-    n->d = (BN_ULONG*)acKey->N;
-    n->dmax = RSA_4096_KEY_LENGTH / sizeof(BN_ULONG);
-    n->top = RSA_4096_KEY_LENGTH / sizeof(BN_ULONG);
-    n->flags = 0;
-    n->neg = 0;
-    
-    BIGNUM* e = BN_new();
-    e->d = (BN_ULONG*)acKey->E;
-    e->dmax = 1;
-    e->top = 1;
-    e->flags = 0;
-    e->neg = 0;
-    
-#if OPENSSL_VERSION_NUMBER > 0x10100000L
-    BIGNUM *d = NULL;
-    RSA_set0_key(rsa, n, e, d);
-    RearrangeEndianess((uint8_t*)RSA_get0_e(rsa)->d, sizeof(uint32_t));
-    RearrangeEndianess((uint8_t*)RSA_get0_n(rsa)->d, RSA_4096_KEY_LENGTH);
-#else
-    rsa->n = n;
-    rsa->e = e;
-    RearrangeEndianess((uint8_t*)rsa->e->d, sizeof(uint32_t));
-    RearrangeEndianess((uint8_t*)rsa->n->d, RSA_4096_KEY_LENGTH);
-#endif
-#endif
+    if (RSA_set0_key(rsaInstance.rsa, n, e, NULL) != 1)
+    {
+        BN_free(n);
+        BN_free(e);
+        LOG_ERROR("Failed to configure RSA verification key");
+    }
 
     auto opensslHashPadded = std::make_unique<uint8_t[]>(RSA_4096_KEY_LENGTH);
     
-    if (RSA_public_encrypt(RSA_4096_KEY_LENGTH, signature, (unsigned char*)opensslHashPadded.get(), rsa, RSA_NO_PADDING) < 0)
+    if (RSA_public_encrypt(RSA_4096_KEY_LENGTH, signature, (unsigned char*)opensslHashPadded.get(), rsaInstance.rsa, RSA_NO_PADDING) < 0)
     {
         LOG_ERROR("RSA_public_encrypt error");
     }
-
-    /* RearrangeEndianess is only needed for the GCC path where BIGNUMs were
-       constructed via direct struct access. On MSVC, BN_bin2bn handles
-       endianness correctly so no post-encrypt fixup is needed. */
-#ifndef _MSC_VER
-#if OPENSSL_VERSION_NUMBER > 0x10100000L
-    RearrangeEndianess((uint8_t*)RSA_get0_n(rsa)->d, RSA_4096_KEY_LENGTH);
-    RearrangeEndianess((uint8_t*)RSA_get0_e(rsa)->d, sizeof(uint32_t));
-#else
-    RearrangeEndianess((uint8_t*)rsa->n->d, RSA_4096_KEY_LENGTH);
-    RearrangeEndianess((uint8_t*)rsa->e->d, sizeof(uint32_t));
-#endif
-#endif
 
     auto opensslHash = std::make_unique<uint8_t[]>(hashLength);
     memcpy(opensslHash.get(),opensslHashPadded.get() + RSA_4096_KEY_LENGTH - hashLength, hashLength);
@@ -404,4 +348,3 @@ void ZynqMpReadImage::VerifyPartitionSignature(void)
     fclose(binFile);
     Separator();
 }
-

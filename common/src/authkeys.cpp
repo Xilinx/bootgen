@@ -232,38 +232,22 @@ uint8_t Key::ParseOpenSSLKey(FILE* f)
         {
             return 1;
         }
-#if OPENSSL_VERSION_NUMBER > 0x10100000L
         const BIGNUM* dCheck = RSA_get0_d(rsaInst.rsa);
         const BIGNUM* nCheck = RSA_get0_n(rsaInst.rsa);
-#else
-        const BIGNUM* dCheck = rsaInst.rsa->d;
-        const BIGNUM* nCheck = rsaInst.rsa->n;
-#endif
         if (dCheck == NULL || nCheck == NULL)
         {
             LOG_ERROR("Invalid secret key file - private RSA key not found");
         }
 
-#if OPENSSL_VERSION_NUMBER > 0x10100000L
         keySzRd = BN_num_bytes(RSA_get0_n(rsaInst.rsa));
-#else
-        keySzRd = BN_num_bytes(rsaInst.rsa->n);
-#endif
         if (keySzRd != keySize)
         {
             LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", keySzRd * 8, keySize * 8);
         }
-#if OPENSSL_VERSION_NUMBER > 0x10100000L
-#ifdef _MSC_VER
-        /* Use BN_bn2lebinpad for safe BIGNUM-to-buffer conversion on MSVC,
-           direct ->d access is unsafe due to BIGNUM struct layout mismatch */
-        BN_bn2lebinpad(RSA_get0_d(rsaInst.rsa), D.get(), keySize);
-#else
-        memcpy(D.get(), RSA_get0_d(rsaInst.rsa)->d, keySize);
-#endif
-#else
-        memcpy(D.get(), rsaInst.rsa->d->d, keySize);
-#endif
+        if (BN_bn2lebinpad(dCheck, D.get(), keySize) != keySize)
+        {
+            LOG_ERROR("Unable to export RSA private exponent");
+        }
     }
     else
     {
@@ -272,31 +256,20 @@ uint8_t Key::ParseOpenSSLKey(FILE* f)
         {
             return 1;
         }
-#if OPENSSL_VERSION_NUMBER > 0x10100000L
         keySzRd = BN_num_bytes(RSA_get0_n(rsaInst.rsa));
-#else
-        keySzRd = BN_num_bytes(rsaInst.rsa->n);
-#endif
         if (keySzRd != keySize)
         {
             LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", keySzRd * 8, keySize * 8);
         }
         memset(D.get(),0,keySize);
     }
-#if OPENSSL_VERSION_NUMBER > 0x10100000L
-#ifdef _MSC_VER
-    /* Use BN_bn2lebinpad for safe BIGNUM-to-buffer conversion on MSVC,
-       direct ->d access is unsafe due to BIGNUM struct layout mismatch */
-    BN_bn2lebinpad(RSA_get0_n(rsaInst.rsa), N.get(), keySize);
-    BN_bn2lebinpad(RSA_get0_e(rsaInst.rsa), E.get(), sizeof(uint32_t));
-#else
-    memcpy(N.get(), RSA_get0_n(rsaInst.rsa)->d, keySize);
-    memcpy(E.get(), RSA_get0_e(rsaInst.rsa)->d, sizeof(uint32_t));
-#endif
-#else
-    memcpy(N.get(), rsaInst.rsa->n->d, keySize);
-    memcpy(E.get(), rsaInst.rsa->e->d, sizeof(uint32_t));
-#endif
+    // Bootgen keeps RSA components in little-endian buffers until the family
+    // authentication code serializes them into an image.
+    if (BN_bn2lebinpad(RSA_get0_n(rsaInst.rsa), N.get(), keySize) != keySize
+        || BN_bn2lebinpad(RSA_get0_e(rsaInst.rsa), E.get(), sizeof(uint32_t)) != sizeof(uint32_t))
+    {
+        LOG_ERROR("Unable to export RSA public key");
+    }
     return 0;
 }
 
@@ -458,34 +431,38 @@ void Key::WriteRsaFile(std::string filename, const RSA* rsa, bool secret, uint16
     if (file)
     {
         auto temp = std::make_unique<uint8_t[]>(keyLength);
+        const BIGNUM* modulus = RSA_get0_n(rsa);
+        const BIGNUM* exponent = RSA_get0_e(rsa);
+        const BIGNUM* privateExponent = RSA_get0_d(rsa);
+        if (modulus == NULL || exponent == NULL || (secret && privateExponent == NULL))
+        {
+            LOG_ERROR("Invalid RSA key while writing authentication key file");
+        }
 
         file << "N = ";
-
-#if OPENSSL_VERSION_NUMBER > 0x10100000L
-        memcpy(temp.get(), RSA_get0_n(rsa)->d, keyLength);
-#else
-        memcpy(temp.get(), rsa->n->d, keyLength);
-#endif
+        if (BN_bn2lebinpad(modulus, temp.get(), keyLength) != keyLength)
+        {
+            LOG_ERROR("Unable to export RSA modulus");
+        }
         for (uint32_t index = keyLength; index != 0; index--)
         {
             file << std::uppercase << std::hex << std::setfill('0') << std::setw(2) << int(temp[index - 1]);
         }
 
         file << "\n\nE = ";
-#if OPENSSL_VERSION_NUMBER > 0x10100000L
-        uint32_t* temp_e = (uint32_t*)RSA_get0_e(rsa)->d;
-#else
-        uint32_t* temp_e = (uint32_t*)rsa->e->d;
-#endif    
-        file << std::uppercase << std::hex << std::setfill('0') << std::setw(8) << *temp_e;
+        if (BN_num_bits(exponent) > 32)
+        {
+            LOG_ERROR("RSA public exponent does not fit in the Bootgen key format");
+        }
+        file << std::uppercase << std::hex << std::setfill('0') << std::setw(8)
+             << static_cast<uint32_t>(BN_get_word(exponent));
         if (secret)
         {
             file << "\n\nD = ";
-#if OPENSSL_VERSION_NUMBER > 0x10100000L
-            memcpy(temp.get(), RSA_get0_d(rsa)->d, keyLength);
-#else
-            memcpy(temp.get(), rsa->d->d, keyLength);
-#endif        
+            if (BN_bn2lebinpad(privateExponent, temp.get(), keyLength) != keyLength)
+            {
+                LOG_ERROR("Unable to export RSA private exponent");
+            }
             for (uint32_t index = keyLength; index != 0; index--)
             {
                 file << std::uppercase << std::hex << std::setfill('0') << std::setw(2) << int(temp[index - 1]);
