@@ -1173,23 +1173,13 @@ void ECDSAAuthenticationAlgorithm::ECDSASignature(const uint8_t *base, EC_KEY *e
 
     if (signature != NULL)
     {
-#if OPENSSL_VERSION_NUMBER > 0x10100000L
         const BIGNUM *sig_r = NULL, *sig_s = NULL;
         ECDSA_SIG_get0(signature, &sig_r, &sig_s);
-
-        memcpy(result0, sig_r->d, EC_P384_KEY_LENGTH);
-        RearrangeEndianess(result0, EC_P384_KEY_LENGTH);
-
-        memcpy(result0 + EC_P384_KEY_LENGTH, sig_s->d, EC_P384_KEY_LENGTH);
-        RearrangeEndianess(result0 + EC_P384_KEY_LENGTH, EC_P384_KEY_LENGTH);
-#else
-
-        memcpy(result0, signature->r->d, EC_P384_KEY_LENGTH);
-        RearrangeEndianess(result0, EC_P384_KEY_LENGTH);
-
-        memcpy(result0 + EC_P384_KEY_LENGTH, signature->s->d, EC_P384_KEY_LENGTH);
-        RearrangeEndianess(result0 + EC_P384_KEY_LENGTH, EC_P384_KEY_LENGTH);
-#endif
+        if (BN_bn2binpad(sig_r, result0, EC_P384_KEY_LENGTH) != EC_P384_KEY_LENGTH
+            || BN_bn2binpad(sig_s, result0 + EC_P384_KEY_LENGTH, EC_P384_KEY_LENGTH) != EC_P384_KEY_LENGTH)
+        {
+            LOG_ERROR("Failed to export ECDSA signature");
+        }
     }
 
     EC_GROUP_free(ecgroup);
@@ -1234,7 +1224,6 @@ void ECDSAP521AuthenticationAlgorithm::ECDSASignature(const uint8_t *base, EC_KE
         uint32_t signSzR;
         uint32_t signSzS;
 
-#if OPENSSL_VERSION_NUMBER > 0x10100000L
         const BIGNUM *sig_r = NULL, *sig_s = NULL;
         ECDSA_SIG_get0(signature, &sig_r, &sig_s);
 
@@ -1243,55 +1232,35 @@ void ECDSAP521AuthenticationAlgorithm::ECDSASignature(const uint8_t *base, EC_KE
 
         if (signSzR == EC_P521_KEY_LENGTH1)
         {
-            memcpy(x1.get() + 1, sig_r->d, signSzR);
-            RearrangeEndianess(x1.get() + 1, signSzR);
+            if (BN_bn2binpad(sig_r, x1.get() + 1, signSzR) != signSzR)
+            {
+                LOG_ERROR("Failed to export ECDSAp521 signature R component");
+            }
         }
         else
         {
-            memcpy(x1.get(), sig_r->d, signSzR);
-            RearrangeEndianess(x1.get(), signSzR);
+            if (BN_bn2binpad(sig_r, x1.get(), signSzR) != signSzR)
+            {
+                LOG_ERROR("Failed to export ECDSAp521 signature R component");
+            }
         }
         if (signSzS == EC_P521_KEY_LENGTH1)
         {
-            memcpy(y1.get() + 1, sig_s->d, signSzS);
-            RearrangeEndianess(y1.get() + 1, signSzS);
+            if (BN_bn2binpad(sig_s, y1.get() + 1, signSzS) != signSzS)
+            {
+                LOG_ERROR("Failed to export ECDSAp521 signature S component");
+            }
         }
         else
         {
-            memcpy(y1.get(), sig_s->d, signSzS);
-            RearrangeEndianess(y1.get(), signSzS);
+            if (BN_bn2binpad(sig_s, y1.get(), signSzS) != signSzS)
+            {
+                LOG_ERROR("Failed to export ECDSAp521 signature S component");
+            }
         }
 
         memcpy(result0, x1.get(), EC_P521_KEY_LENGTH2);
         memcpy(result0 + EC_P521_KEY_LENGTH2, y1.get(), EC_P521_KEY_LENGTH2);
-#else
-        signSzR = BN_num_bytes(signature->r);
-        signSzS = BN_num_bytes(signature->s);
-
-        if (signSzR == EC_P521_KEY_LENGTH1)
-        {
-            memcpy(x1.get() + 1, signature->r->d, signSzR);
-            RearrangeEndianess(x1.get() + 1, signSzR);
-        }
-        else
-        {
-            memcpy(x1.get(), signature->r->d, signSzR);
-            RearrangeEndianess(x1.get(), signSzR);
-        }
-        if (signSzS == EC_P521_KEY_LENGTH1)
-        {
-            memcpy(y1.get() + 1, signature->s->d, signSzS);
-            RearrangeEndianess(y1.get() + 1, signSzS);
-        }
-        else
-        {
-            memcpy(y1.get(), signature->s->d, signSzS);
-            RearrangeEndianess(y1.get(), signSzS);
-        }
-
-        memcpy(result0, x1.get(), EC_P521_KEY_LENGTH2);
-        memcpy(result0 + EC_P521_KEY_LENGTH2, y1.get(), EC_P521_KEY_LENGTH2);
-#endif
     }
 
     EC_GROUP_free(ecgroup);

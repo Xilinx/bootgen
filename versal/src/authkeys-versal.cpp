@@ -213,39 +213,13 @@ void KeyECDSAp521_versal::Import(const void * acKey, const std::string & name0)
 }
 
 /******************************************************************************/
-static void RearrangeEndianess(uint8_t *array, uint32_t size)
-{
-    uint32_t lastIndex = size - 1;
-    char tempInt = 0;
-
-    // If array is NULL, return
-    if (!array)
-    {
-        return;
-    }
-
-    for (uint32_t loop = 0; loop <= (lastIndex / 2); loop++)
-    {
-        tempInt = array[loop];
-        array[loop] = array[lastIndex - loop];
-        array[lastIndex - loop] = tempInt;
-    }
-}
-
-/******************************************************************************/
 /* BN_num_bytes may return fewer bytes than the curve's key size when
    coordinates have leading zeros - use upper-bound check (>) not equality */
 uint8_t VersalKey::ParseECDSAOpenSSLKey(const std::string& filename)
 {
     OpenSSL_add_all_algorithms();
     BIGNUM *X = BN_new();
-    X->flags = 0;
-    X->neg = 0;
-    X->top = 0;
     BIGNUM *Y = BN_new();
-    Y->flags = 0;
-    Y->neg = 0;
-    Y->top = 0;
     uint32_t keySzRdX;
     uint32_t keySzRdY;
     EC_GROUP *ecgroup = NULL;  // Track EC_GROUP to free it at the end
@@ -272,10 +246,6 @@ uint8_t VersalKey::ParseECDSAOpenSSLKey(const std::string& filename)
                 y = std::make_unique<uint8_t[]>(keySize);
                 memset(x.get(), 0, keySize);
                 memset(y.get(), 0, keySize);
-                X->d = (BN_ULONG*)x.get();
-                Y->d = (BN_ULONG*)y.get();
-                X->dmax = keySize / sizeof(BN_ULONG);
-                Y->dmax = keySize / sizeof(BN_ULONG);
                 ecgroup = EC_GROUP_new_by_curve_name(NID_secp384r1);
                 const EC_POINT *pub = EC_KEY_get0_public_key(eckey);
                 if (EC_POINT_get_affine_coordinates_GFp(ecgroup, pub, X, Y, NULL))
@@ -290,8 +260,11 @@ uint8_t VersalKey::ParseECDSAOpenSSLKey(const std::string& filename)
                     {
                         LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", BN_num_bits(Y), keySize * 8);
                     }
-                    RearrangeEndianess(x.get(), keySize);
-                    RearrangeEndianess(y.get(), keySize);
+                    if (BN_bn2binpad(X, x.get(), keySize) != keySize
+                        || BN_bn2binpad(Y, y.get(), keySize) != keySize)
+                    {
+                        LOG_ERROR("Failed to export ECDSAp384 public key");
+                    }
                 }
                 else
                 {
@@ -319,11 +292,11 @@ uint8_t VersalKey::ParseECDSAOpenSSLKey(const std::string& filename)
                     y = std::make_unique<uint8_t[]>(keySizeY);
                     memset(x.get(), 0, keySizeX);
                     memset(y.get(), 0, keySizeY);
-                    memcpy(x.get(), X->d, keySizeX);
-                    memcpy(y.get(), Y->d, keySizeY);
-
-                    RearrangeEndianess(x.get(), keySizeX);
-                    RearrangeEndianess(y.get(), keySizeY);
+                    if (BN_bn2binpad(X, x.get(), keySizeX) != keySizeX
+                        || BN_bn2binpad(Y, y.get(), keySizeY) != keySizeY)
+                    {
+                        LOG_ERROR("Failed to export ECDSAp521 public key");
+                    }
                 }
                 else
                 {
@@ -347,10 +320,6 @@ uint8_t VersalKey::ParseECDSAOpenSSLKey(const std::string& filename)
                 y = std::make_unique<uint8_t[]>(keySize);
                 memset(x.get(), 0, keySize);
                 memset(y.get(), 0, keySize);
-                X->d = (BN_ULONG*)x.get();
-                Y->d = (BN_ULONG*)y.get();
-                X->dmax = keySize / sizeof(BN_ULONG);
-                Y->dmax = keySize / sizeof(BN_ULONG);
                 ecgroup = EC_GROUP_new_by_curve_name(NID_secp384r1);
                 const EC_POINT *pub = EC_KEY_get0_public_key(eckey);
                 if (EC_POINT_get_affine_coordinates_GFp(ecgroup, pub, X, Y, NULL))
@@ -365,8 +334,11 @@ uint8_t VersalKey::ParseECDSAOpenSSLKey(const std::string& filename)
                     {
                         LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", BN_num_bits(Y), keySize * 8);
                     }
-                    RearrangeEndianess(x.get(), keySize);
-                    RearrangeEndianess(y.get(), keySize);
+                    if (BN_bn2binpad(X, x.get(), keySize) != keySize
+                        || BN_bn2binpad(Y, y.get(), keySize) != keySize)
+                    {
+                        LOG_ERROR("Failed to export ECDSAp384 public key");
+                    }
                 }
                 else
                 {
@@ -394,11 +366,11 @@ uint8_t VersalKey::ParseECDSAOpenSSLKey(const std::string& filename)
                     y = std::make_unique<uint8_t[]>(keySizeY);
                     memset(x.get(), 0, keySizeX);
                     memset(y.get(), 0, keySizeY);
-                    memcpy(x.get(), X->d, keySizeX);
-                    memcpy(y.get(), Y->d, keySizeY);
-
-                    RearrangeEndianess(x.get(), keySizeX);
-                    RearrangeEndianess(y.get(), keySizeY);
+                    if (BN_bn2binpad(X, x.get(), keySizeX) != keySizeX
+                        || BN_bn2binpad(Y, y.get(), keySizeY) != keySizeY)
+                    {
+                        LOG_ERROR("Failed to export ECDSAp521 public key");
+                    }
                 }
                 else
                 {
@@ -409,28 +381,9 @@ uint8_t VersalKey::ParseECDSAOpenSSLKey(const std::string& filename)
     }
     fclose(file);
     
-    // Free BIGNUM structures
-    // For P384: X->d and Y->d point to our memory (x.get(), y.get()), so clear before freeing
-    // For P521: X->d and Y->d still have OpenSSL memory, so BN_free will free them normally
-    if (X) {
-        if (keySize == EC_P384_KEY_LENGTH) {
-            X->d = NULL;  // Prevent OpenSSL from freeing our memory (x smart pointer owns it)
-            X->dmax = 0;
-        }
-        BN_free(X);
-    }
-    if (Y) {
-        if (keySize == EC_P384_KEY_LENGTH) {
-            Y->d = NULL;  // Prevent OpenSSL from freeing our memory (y smart pointer owns it)
-            Y->dmax = 0;
-        }
-        BN_free(Y);
-    }
-    
-    // Free EC_GROUP object
-    if (ecgroup) {
-        EC_GROUP_free(ecgroup);
-    }
+    BN_free(X);
+    BN_free(Y);
+    EC_GROUP_free(ecgroup);
     
     return 0;
 }
