@@ -348,6 +348,13 @@ if(BOOTGEN_BUILD_TESTS)
                 -DEXPECTED_READ_OUTPUT=plm_length
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/versal_smoke.cmake)
         add_test(
+            NAME bootgen.spartanup-auth-smoke
+            COMMAND ${CMAKE_COMMAND}
+                -DBOOTGEN=$<TARGET_FILE:bootgen>
+                -DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures
+                -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/spartanup-auth-smoke
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/spartanup_auth_smoke.cmake)
+        add_test(
             NAME bootgen.invalid-bif
             COMMAND ${CMAKE_COMMAND}
                 -DBOOTGEN=$<TARGET_FILE:bootgen>
