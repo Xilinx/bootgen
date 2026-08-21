@@ -102,18 +102,6 @@ void Versal_2ve_2vmBootHeader::RefreshStructPointers()
     {
         bHTable = (Versal_2ve_2vmBootHeaderStructure*)section->Data.get();
         smapTable = (Versal_2ve_2vmSmapWidthTable*)bHTable->smapWords;
-        fprintf(stderr, "[BH-REFRESH] Updated bHTable=%p, smapTable=%p, section->Data=%p, section->Length=%lu\n",
-                (void*)bHTable, (void*)smapTable, (void*)section->Data.get(), section->Length);
-        fprintf(stderr, "[BH-REFRESH] smapWords[3] value=0x%08x, address=%p, offset from Data=0x%lx\n",
-                bHTable->smapWords[3], (void*)&bHTable->smapWords[3], 
-                (uint8_t*)&bHTable->smapWords[3] - section->Data.get());
-        if (section->Length > 0x113C) {
-            fprintf(stderr, "[BH-REFRESH] Bytes at 0x113C: ");
-            for (size_t i = 0x113C; i < 0x1144 && i < section->Length; i++) {
-                fprintf(stderr, "%02x", section->Data.get()[i]);
-            }
-            fprintf(stderr, "\n");
-        }
     }
 }
 

@@ -1657,23 +1657,13 @@ void Versal_2ve_2vmPartitionHeaderTable::Link(BootImage & bi)
 
         
         bi.hash->CalculateVersalHash(true, headers->Data.get(), size, sha_hash.get());
-        
-        fprintf(stderr, "[META-HASH-RESULT] Meta header SHA3 hash (THIS IS THE CRITICAL VALUE):\n");
-        for (size_t i = 0; i < bi.hash->GetHashLength(); i++) {
-            fprintf(stderr, "%02x", sha_hash.get()[i]);
-            if ((i+1) % 16 == 0) fprintf(stderr, "\n");
-        }
-        fprintf(stderr, "\n");
 
         // headers is now managed by sections container
 
         /* Copy Meta Header Hash into Hash Block 1 */
-        fprintf(stderr, "[LINK-IHT-HB] imageHeaderTable->hashBlockSection=%p\n", (void*)bi.imageHeaderTable->hashBlockSection);
         if (bi.imageHeaderTable->hashBlockSection) {
-            fprintf(stderr, "[LINK-IHT-HB] Zeroing and copying meta header hash, sectionLength=%u\n", bi.imageHeaderTable->hashBlockSectionLength);
             memset(bi.imageHeaderTable->hashBlockSection->Data.get(), 0, bi.imageHeaderTable->hashBlockSectionLength);
             memcpy(bi.imageHeaderTable->hashBlockSection->Data.get() + HASH_BLOCK_INDEX_BYTES, sha_hash.get(), bi.hash->GetHashLength());
-            fprintf(stderr, "[LINK-IHT-HB] Meta header hash copied to offset %u\n", HASH_BLOCK_INDEX_BYTES);
         }
 #ifdef DEBUG
         LOG_TRACE("Meta Header Length %d", bi.imageHeaderTable->metaHeaderLength);
