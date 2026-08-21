@@ -240,35 +240,15 @@ void KeyLMS_spartanup::Import(const void * acKey, const std::string & name0)
 }
 
 /******************************************************************************/
-static void RearrangeEndianess(uint8_t *array, uint32_t size)
-{
-    uint32_t lastIndex = size - 1;
-    char tempInt = 0;
-
-    // If array is NULL, return
-    if (!array)
-    {
-        return;
-    }
-
-    for (uint32_t loop = 0; loop <= (lastIndex / 2); loop++)
-    {
-        tempInt = array[loop];
-        array[loop] = array[lastIndex - loop];
-        array[lastIndex - loop] = tempInt;
-    }
-}
-
-/******************************************************************************/
 /* BN_num_bytes may return fewer bytes than the curve's key size when
    coordinates have leading zeros - use upper-bound check (>) not equality */
 uint8_t SpartanupKey::ParseECDSAOpenSSLKey(const std::string& filename)
 {
     OpenSSL_add_all_algorithms();
     
-    // Use smart pointers for exception-safe cleanup
-    auto X_deleter = [](BIGNUM* bn) { if (bn) { bn->d = NULL; bn->dmax = 0; BN_free(bn); } };
-    auto Y_deleter = [](BIGNUM* bn) { if (bn) { bn->d = NULL; bn->dmax = 0; BN_free(bn); } };
+    // Use smart pointers for exception-safe cleanup.
+    auto X_deleter = [](BIGNUM* bn) { BN_free(bn); };
+    auto Y_deleter = [](BIGNUM* bn) { BN_free(bn); };
     auto group_deleter = [](EC_GROUP* g) { if (g) EC_GROUP_free(g); };
     
     std::unique_ptr<BIGNUM, decltype(X_deleter)> X_ptr(BN_new(), X_deleter);
@@ -277,13 +257,6 @@ uint8_t SpartanupKey::ParseECDSAOpenSSLKey(const std::string& filename)
     
     BIGNUM* X = X_ptr.get();
     BIGNUM* Y = Y_ptr.get();
-    
-    X->flags = 0;
-    X->neg = 0;
-    X->top = 0;
-    Y->flags = 0;
-    Y->neg = 0;
-    Y->top = 0;
     
     uint32_t keySzRdX;
     uint32_t keySzRdY;
@@ -312,20 +285,6 @@ uint8_t SpartanupKey::ParseECDSAOpenSSLKey(const std::string& filename)
                 memset(x.get(), 0, keySize);
                 memset(y.get(), 0, keySize);
                 
-                // Free original d buffers allocated by BN_new() before replacing
-                if (X->d) {
-                    OPENSSL_free(X->d);
-                    X->d = NULL;
-                }
-                if (Y->d) {
-                    OPENSSL_free(Y->d);
-                    Y->d = NULL;
-                }
-                
-                X->d = (BN_ULONG*)x.get();
-                Y->d = (BN_ULONG*)y.get();
-                X->dmax = keySize / sizeof(BN_ULONG);
-                Y->dmax = keySize / sizeof(BN_ULONG);
                 ecgroup = EC_GROUP_new_by_curve_name(NID_secp384r1);
                 ecgroup_ptr.reset(ecgroup);  // Transfer ownership to smart pointer
                 const EC_POINT *pub = EC_KEY_get0_public_key(eckey);
@@ -341,8 +300,11 @@ uint8_t SpartanupKey::ParseECDSAOpenSSLKey(const std::string& filename)
                     {
                         LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", BN_num_bits(Y), keySize * 8);
                     }
-                    RearrangeEndianess(x.get(), keySize);
-                    RearrangeEndianess(y.get(), keySize);
+                    if (BN_bn2binpad(X, x.get(), keySize) != keySize
+                        || BN_bn2binpad(Y, y.get(), keySize) != keySize)
+                    {
+                        LOG_ERROR("Failed to export ECDSAp384 public key");
+                    }
                 }
                 else
                 {
@@ -371,11 +333,11 @@ uint8_t SpartanupKey::ParseECDSAOpenSSLKey(const std::string& filename)
                     y = std::make_unique<uint8_t[]>(keySizeY);
                     memset(x.get(), 0, keySizeX);
                     memset(y.get(), 0, keySizeY);
-                    memcpy(x.get(), X->d, keySizeX);
-                    memcpy(y.get(), Y->d, keySizeY);
-
-                    RearrangeEndianess(x.get(), keySizeX);
-                    RearrangeEndianess(y.get(), keySizeY);
+                    if (BN_bn2binpad(X, x.get(), keySizeX) != keySizeX
+                        || BN_bn2binpad(Y, y.get(), keySizeY) != keySizeY)
+                    {
+                        LOG_ERROR("Failed to export ECDSAp521 public key");
+                    }
                 }
                 else
                 {
@@ -400,20 +362,6 @@ uint8_t SpartanupKey::ParseECDSAOpenSSLKey(const std::string& filename)
                 memset(x.get(), 0, keySize);
                 memset(y.get(), 0, keySize);
                 
-                // Free original d buffers allocated by BN_new() before replacing
-                if (X->d) {
-                    OPENSSL_free(X->d);
-                    X->d = NULL;
-                }
-                if (Y->d) {
-                    OPENSSL_free(Y->d);
-                    Y->d = NULL;
-                }
-                
-                X->d = (BN_ULONG*)x.get();
-                Y->d = (BN_ULONG*)y.get();
-                X->dmax = keySize / sizeof(BN_ULONG);
-                Y->dmax = keySize / sizeof(BN_ULONG);
                 ecgroup = EC_GROUP_new_by_curve_name(NID_secp384r1);
                 ecgroup_ptr.reset(ecgroup);  // Transfer ownership to smart pointer
                 const EC_POINT *pub = EC_KEY_get0_public_key(eckey);
@@ -429,8 +377,11 @@ uint8_t SpartanupKey::ParseECDSAOpenSSLKey(const std::string& filename)
                     {
                         LOG_ERROR("Incorrect Key Size !!!\n\t   Key Size is %d bits. Expected key size is %d bits", BN_num_bits(Y), keySize * 8);
                     }
-                    RearrangeEndianess(x.get(), keySize);
-                    RearrangeEndianess(y.get(), keySize);
+                    if (BN_bn2binpad(X, x.get(), keySize) != keySize
+                        || BN_bn2binpad(Y, y.get(), keySize) != keySize)
+                    {
+                        LOG_ERROR("Failed to export ECDSAp384 public key");
+                    }
                 }
                 else
                 {
@@ -459,11 +410,11 @@ uint8_t SpartanupKey::ParseECDSAOpenSSLKey(const std::string& filename)
                     y = std::make_unique<uint8_t[]>(keySizeY);
                     memset(x.get(), 0, keySizeX);
                     memset(y.get(), 0, keySizeY);
-                    memcpy(x.get(), X->d, keySizeX);
-                    memcpy(y.get(), Y->d, keySizeY);
-
-                    RearrangeEndianess(x.get(), keySizeX);
-                    RearrangeEndianess(y.get(), keySizeY);
+                    if (BN_bn2binpad(X, x.get(), keySizeX) != keySizeX
+                        || BN_bn2binpad(Y, y.get(), keySizeY) != keySizeY)
+                    {
+                        LOG_ERROR("Failed to export ECDSAp521 public key");
+                    }
                 }
                 else
                 {
@@ -473,10 +424,6 @@ uint8_t SpartanupKey::ParseECDSAOpenSSLKey(const std::string& filename)
         }
     }
     fclose(file);
-    
-    // Smart pointers X_ptr, Y_ptr, and ecgroup_ptr will automatically clean up
-    // Their custom deleters set d=NULL and dmax=0 before calling BN_free to prevent
-    // freeing our memory buffers (x.get(), y.get()) which are managed by unique_ptr
     
     return 0;
 }
