@@ -15,9 +15,6 @@
 * limitations under the License.
 ******************************************************************************/
 
-#pragma GCC diagnostic pop
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wclass-memaccess"
 /*
 -------------------------------------------------------------------------------
 ***********************************************   H E A D E R   F I L E S   ***
@@ -73,10 +70,6 @@ VersalKey::VersalKey(const Key& otherKey)
         eckey = EC_KEY_new_by_curve_name(NID_secp521r1);
     }
 
-    // Note: memcpy on object with unique_ptr members is a design limitation
-    // This shallow copy is intentional for the legacy Key class design
-
-    memcpy(this, &otherKey, sizeof(Key));
 }
 
 /******************************************************************************/
