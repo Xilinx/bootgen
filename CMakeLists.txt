@@ -333,6 +333,13 @@ if(BOOTGEN_BUILD_TESTS)
                 -DBOOTGEN=$<TARGET_FILE:bootgen>
                 -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/versal-2ve-2vm-lms-keygen
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/lms_keygen_smoke.cmake)
+        add_test(
+            NAME bootgen.versal-2ve-2vm-auth-smoke
+            COMMAND ${CMAKE_COMMAND}
+                -DBOOTGEN=$<TARGET_FILE:bootgen>
+                -DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures
+                -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/versal-2ve-2vm-auth-smoke
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/versal_2ve_2vm_auth_smoke.cmake)
         add_test(NAME bootgen.lms-sign-smoke COMMAND lms-sign-smoke)
         set_tests_properties(bootgen.lms-sign-smoke PROPERTIES
             WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/tests/lms-sign-smoke")
