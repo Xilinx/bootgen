@@ -190,13 +190,12 @@ bool VersalReadImage::VerifySignature(bool nist, uint8_t * data, size_t dataLeng
     BIGNUM *n = BN_bin2bn(acKey->N, sizeof(acKey->N), NULL);
     BIGNUM *e = BN_bin2bn(acKey->E, sizeof(acKey->E), NULL);
 
-#if OPENSSL_VERSION_NUMBER > 0x10100000L
-    BIGNUM *d = NULL;
-    RSA_set0_key(rsa, n, e, d);
-#else
-    rsa->n = n;
-    rsa->e = e;
-#endif
+    if (RSA_set0_key(rsa, n, e, NULL) != 1)
+    {
+        BN_free(n);
+        BN_free(e);
+        LOG_ERROR("Failed to configure RSA verification key");
+    }
 
     /* Find SHA-384 hash from signature */
     uint8_t opensslHashPadded[SIGN_LENGTH_VERSAL] = { 0 };
@@ -756,4 +755,3 @@ void VersalReadImage::VerifyPartitionSignature(void)
   fclose(binFile);
   Separator();
 }
-

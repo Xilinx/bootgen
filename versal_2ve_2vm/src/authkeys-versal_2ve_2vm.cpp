@@ -523,22 +523,7 @@ void Versal_2ve_2vmKey::Parse(const std::string& filename, bool isSecret0)
                         LOG_ERROR("RSA authentication key parsing failed - %s", basefile.c_str());
                     }
 
-                    /* Calculate the modulus extension, i.e. Montgomery Reduction term RR
-                    and some sanity check for the keys passed */
-                    {
-                        BIGNUM m; // modulus
-                        m.d = (BN_ULONG*)N.get();
-                        m.dmax = keySize / sizeof(BN_ULONG);
-                        m.top = keySize / sizeof(BN_ULONG);
-                        m.flags = 0;
-                        m.neg = 0;
-
-                        BN_CTX_Class ctxInst;
-                        BN_MONT_CTX_Class montClass(ctxInst);
-
-                        montClass.Set(m);
-                        montClass.GetModulusExtension(N_ext.get(), m, keySize);
-                    }
+                    Key::ComputeModulusExtension(N.get(), N_ext.get(), keySize);
                     Loaded = true;
                 }
 
@@ -646,22 +631,7 @@ void Versal_2ve_2vmKey::Parse(const std::string& filename, bool isSecret0)
                         LOG_ERROR("RSA authentication key parsing failed - %s", basefile.c_str());
                     }
 
-                    /* Calculate the modulus extension, i.e. Montgomery Reduction term RR
-                    and some sanity check for the keys passed */
-                    {
-                        BIGNUM m; // modulus
-                        m.d = (BN_ULONG*)N.get();
-                        m.dmax = keySize / sizeof(BN_ULONG);
-                        m.top = keySize / sizeof(BN_ULONG);
-                        m.flags = 0;
-                        m.neg = 0;
-
-                        BN_CTX_Class ctxInst;
-                        BN_MONT_CTX_Class montClass(ctxInst);
-
-                        montClass.Set(m);
-                        montClass.GetModulusExtension(N_ext.get(), m, keySize);
-                    }
+                    Key::ComputeModulusExtension(N.get(), N_ext.get(), keySize);
                     Loaded = true;
                 }
 

@@ -150,24 +150,7 @@ void Key::Parse(const std::string& filename, bool isSecret0)
         /* Calculate the modulus extension, i.e. Montgomery Reduction term RR 
            and some sanity check for the keys passed */
         {
-#ifdef _MSC_VER
-            /* On Windows/MSVC, direct BIGNUM struct field access (d, dmax, top)
-               causes BN_MONT_CTX_set to fail due to struct layout differences
-               between GCC and MSVC OpenSSL builds. Use public API instead. */
             ComputeModulusExtension(N.get(), N_ext.get(), keySize);
-#else
-            BIGNUM m;
-            m.d = (BN_ULONG*)N.get();
-            m.dmax = keySize / sizeof(BN_ULONG);
-            m.top = keySize / sizeof(BN_ULONG);
-            m.flags = 0;
-            m.neg = 0;
-
-            BN_CTX_Class ctxInst;
-            BN_MONT_CTX_Class montClass(ctxInst);
-            montClass.Set(m);
-            montClass.GetModulusExtension(N_ext.get(), m, keySize);
-#endif
         }
         Loaded = true;
     }
@@ -208,8 +191,8 @@ void Key::ComputeModulusExtension(const uint8_t* modulus, uint8_t* extension, si
         LOG_ERROR("Failed to allocate BIGNUMs for modulus extension");
     }
 
-    int bits = BN_num_bits(m);
-    BN_set_bit(R, bits);
+    const int rBits = keyLen == RSA_4096_KEY_LENGTH ? 4160 : static_cast<int>(keyLen * 8);
+    BN_set_bit(R, rBits);
     BN_mod_mul(RR, R, R, m, ctx);
     BN_bn2lebinpad(RR, extension, (int)keyLen);
 

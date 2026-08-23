@@ -46,10 +46,6 @@
 #include "hash.h"
 #include "systemutils.h"
 
-#if OPENSSL_VERSION_NUMBER > 0x10100000L
-#include "xil-bignum.h"
-#endif
-
 /* Forward class references */
 class BaseThing;
 class Section;
@@ -218,31 +214,26 @@ public:
 
     void GetModulusExtension(uint8_t* ptr, BIGNUM& m, size_t len) 
     {
-        if(len == RSA_2048_KEY_LENGTH)
+        BIGNUM *r = BN_new();
+        BIGNUM *rr = BN_new();
+        if (r == NULL || rr == NULL)
         {
-            if (len != mont->RR.top * sizeof(BN_ULONG)) 
-            {
-                LOG_ERROR("Sanity check in GetModulusExtension Failed");
-            }
-            memcpy(ptr,mont->RR.d,len);
-        }
-        else
-        {
-            BIGNUM *r = BN_new(); 
-            BIGNUM *res = BN_new();
-            BIGNUM *m_x = BN_new();
-            if( r == NULL || res == NULL || m_x == NULL)
-            {
-                LOG_ERROR("Failed to allocate BN_new");
-            }
-            BN_one(r);
-            BN_lshift(res, r, 4160);
-            BN_mod_mul(m_x, res, res, &m, ctx);
-            memcpy(ptr, m_x->d, RSA_4096_KEY_LENGTH);
             BN_free(r);
-            BN_free(res);
-            BN_free(m_x);
+            BN_free(rr);
+            LOG_ERROR("Failed to allocate BIGNUMs for modulus extension");
         }
+        const int rBits = len == RSA_4096_KEY_LENGTH ? 4160 : static_cast<int>(len * 8);
+        if (BN_one(r) != 1
+            || BN_lshift(r, r, rBits) != 1
+            || BN_mod_sqr(rr, r, &m, ctx) != 1
+            || BN_bn2lebinpad(rr, ptr, static_cast<int>(len)) != static_cast<int>(len))
+        {
+            BN_free(r);
+            BN_free(rr);
+            LOG_ERROR("Failed to compute modulus extension");
+        }
+        BN_free(r);
+        BN_free(rr);
     }
 
     BN_CTX* ctx;

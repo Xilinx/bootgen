@@ -34,10 +34,6 @@
 #include "logger.h"
 #include <vector>
 //#include "bifoptions.h"
-#if OPENSSL_VERSION_NUMBER > 0x10100000L
-#include "xil-bignum.h"
-#endif
-
 /*
 -------------------------------------------------------------------------------
 *********************************************   P R E P R O C E S S O R S   ***
