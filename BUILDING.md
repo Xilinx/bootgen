@@ -112,6 +112,25 @@ cmake --build build/macos-asan --parallel
 ctest --test-dir build/macos-asan --output-on-failure
 ```
 
+## Release validation matrix
+
+A successful local build proves only the host and dependency architecture used
+for that build. Before publishing a macOS binary or proposing these changes
+upstream, run and retain the results of the following checks:
+
+| Gate | Required evidence |
+| --- | --- |
+| Apple Silicon | Native `arm64` release and sanitizer builds with the complete CTest suite. |
+| Intel macOS | Native `x86_64` release and sanitizer builds with the complete CTest suite and Intel Homebrew OpenSSL. |
+| Universal package | Independently tested arm64 and x86_64 binaries, universal compatible OpenSSL dependencies, and a successful `package_universal_macos.cmake` run. |
+| Linux compatibility | GCC, Clang, and sanitizer builds using the project workflow or an equivalent native Linux environment. |
+| Image compatibility | Comparisons with a pinned upstream reference for deterministic images; structural and signature verification for randomized authenticated images. |
+| Hosted CI | A clean GitHub Actions run from the contributor fork for every matrix job. |
+
+The current GitHub workflow covers the Linux compiler/sanitizer and native macOS
+architecture jobs after the branch is pushed to a fork. It intentionally does
+not synthesize a universal package from untested slices.
+
 ## Parser regeneration (maintainers only)
 
 The `bisonflex` directory is checked in. Regenerate it only when changing a
