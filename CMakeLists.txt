@@ -319,6 +319,13 @@ if(BOOTGEN_BUILD_TESTS)
                 -DEXPECTED_READ_OUTPUT=partition_type[elf]
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/versal_smoke.cmake)
         add_test(
+            NAME bootgen.versal-cdo-smoke
+            COMMAND ${CMAKE_COMMAND}
+                -DBOOTGEN=$<TARGET_FILE:bootgen>
+                -DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures
+                -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/versal-cdo-smoke
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/versal_cdo_smoke.cmake)
+        add_test(
             NAME bootgen.versal-2ve-2vm-smoke
             COMMAND ${CMAKE_COMMAND}
                 -DBOOTGEN=$<TARGET_FILE:bootgen>
