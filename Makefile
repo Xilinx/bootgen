@@ -54,6 +54,16 @@ RTLIBS  =
 OPTIONS_USER =
 endif
 
+ifeq ($(UNAME), Darwin)
+OPENSSL_PREFIX := $(shell brew --prefix openssl)
+INCLUDE_SYS = -I bisonflex -I common/include -I spartanup/include -I versal/include -I versal_2ve_2vm/include -I zynq/include -I zynqmp/include -I utils/include -I lms-hash-sigs -I win_include 
+LIBS    = -L $(OPENSSL_PREFIX)/lib -lssl -lcrypto
+RTLIBS  =
+OPTIONS_USER =
+INCLUDE_USER ?= -I $(OPENSSL_PREFIX)/include
+endif
+
+
 INCLUDE = $(INCLUDE_USER) $(INCLUDE_SYS)
 
 OPTIONS = $(OPTIONS_USER) -lpthread 
@@ -83,7 +93,7 @@ ${OBJDIR}/%.${OBJ} : */src/%.c
 
 ${EXEC}: $(OBJECTS)
 	echo Building executable file: $@...
-	cd ${LMS_HASH_DIR} && $(MAKE) ${LMS_LIB}
+	cd ${LMS_HASH_DIR} && $(MAKE) ${LMS_LIB} CFLAGS="$(INCLUDE)"
 	${CXX} $(CXXFLAGS) $(LDFLAGS) $(OPTIONS_USER) -o $@ $(OBJECTS) ${LMS_HASH_DIR}/${LMS_LIB}  $(OPTIONS)$(LIBS)
 
 execs: ${EXEC}
