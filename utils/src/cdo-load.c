@@ -130,7 +130,7 @@ CdoSequence * cdoseq_load_cdo_from_buffer(char * data, size_t size) {
     return sequence;
     #endif
 
-    #if defined(__linux__)
+    #if !defined(_WIN64) && !defined(_WIN32)
     CdoSequence * seq = NULL;
     CdoRawInfo * raw = NULL;
 
@@ -146,11 +146,18 @@ CdoSequence * cdoseq_load_cdo_from_buffer(char * data, size_t size) {
             fprintf(stderr, "cannot decode binary cdo buffer\n");
             goto done;
         }
-        cdometa_add_markers(&raw->meta, seq);
+        if (raw != NULL) {
+            cdometa_add_markers(&raw->meta, seq);
+        }
     } else {
-        FILE *memfile = fmemopen(data, size, "r");
+        FILE *memfile = tmpfile();
         if (memfile == NULL) {
-            fprintf(stderr, "fmemopen failed\n");
+            fprintf(stderr, "tmpfile failed\n");
+            goto done;
+        }
+        if (fwrite(data, 1, size, memfile) != size || fseek(memfile, 0, SEEK_SET) != 0) {
+            fprintf(stderr, "cannot prepare CDO buffer stream\n");
+            fclose(memfile);
             goto done;
         }
         seq = cdoseq_from_source(memfile);
