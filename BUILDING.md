@@ -8,7 +8,7 @@ build.
 
 - A C++14 compiler
 - CMake 3.20 or newer
-- OpenSSL development headers and libraries
+- OpenSSL 1.1.1 or newer development headers and libraries (OpenSSL 3 on macOS)
 - A threading implementation supported by CMake
 
 On macOS, install the build prerequisites with Homebrew:
