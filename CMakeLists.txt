@@ -367,5 +367,11 @@ if(BOOTGEN_BUILD_TESTS)
                 -DBOOTGEN=$<TARGET_FILE:bootgen>
                 -DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/invalid_bif_test.cmake)
+        add_test(
+            NAME bootgen.malformed-image-read
+            COMMAND ${CMAKE_COMMAND}
+                -DBOOTGEN=$<TARGET_FILE:bootgen>
+                -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/malformed-image-read
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/malformed_image_read_test.cmake)
     endif()
 endif()
