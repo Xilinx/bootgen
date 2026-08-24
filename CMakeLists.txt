@@ -324,6 +324,9 @@ if(BOOTGEN_BUILD_TESTS)
                 -DBOOTGEN=$<TARGET_FILE:bootgen>
                 -DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures
                 -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/versal-cdo-smoke
+                -DARCH=versal
+                -DEXPECT_READ_CDO_PARTITION=ON
+                -DEXPECT_LEGACY_FAILURE=ON
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/versal_cdo_smoke.cmake)
         add_test(
             NAME bootgen.versal-2ve-2vm-smoke
@@ -334,6 +337,15 @@ if(BOOTGEN_BUILD_TESTS)
                 -DARCH=versal_2ve_2vm
                 -DEXPECTED_READ_OUTPUT=partition_type[elf]
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/versal_smoke.cmake)
+        add_test(
+            NAME bootgen.versal-2ve-2vm-cdo-smoke
+            COMMAND ${CMAKE_COMMAND}
+                -DBOOTGEN=$<TARGET_FILE:bootgen>
+                -DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures
+                -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/versal-2ve-2vm-cdo-smoke
+                -DARCH=versal_2ve_2vm
+                -DEXPECT_READ_CDO_PARTITION=ON
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/versal_cdo_smoke.cmake)
         add_test(
             NAME bootgen.versal-2ve-2vm-lms-keygen
             COMMAND ${CMAKE_COMMAND}
@@ -361,6 +373,14 @@ if(BOOTGEN_BUILD_TESTS)
                 -DARCH=spartanup
                 -DEXPECTED_READ_OUTPUT=plm_length
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/versal_smoke.cmake)
+        add_test(
+            NAME bootgen.spartanup-cdo-smoke
+            COMMAND ${CMAKE_COMMAND}
+                -DBOOTGEN=$<TARGET_FILE:bootgen>
+                -DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures
+                -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/spartanup-cdo-smoke
+                -DARCH=spartanup
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/versal_cdo_smoke.cmake)
         add_test(
             NAME bootgen.spartanup-auth-smoke
             COMMAND ${CMAKE_COMMAND}

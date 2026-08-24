@@ -826,6 +826,10 @@ void SpartanupPartition::Build(BootImage& bi, Binary& cache)
 
         CdoSequence * cdo_seq;
         cdo_seq = decode_cdo_binary(header->partition->section->Data.get(), header->partition->section->Length);
+        if (cdo_seq == NULL)
+        {
+            LOG_ERROR("Unable to decode CDO partition '%s'", header->partition->section->Name.c_str());
+        }
 
         /* Enable the search for sync points - only needs to be done for SSIT devices */
         search_for_sync_points();
@@ -1124,4 +1128,3 @@ void SpartanupPartition::Link(BootImage &bi)
         }
     }
 }
-
