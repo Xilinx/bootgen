@@ -14,7 +14,7 @@ foreach(ARCHITECTURE zynq zynqmp versal versal_2ve_2vm spartanup)
         RESULT_VARIABLE READ_RESULT
         OUTPUT_VARIABLE READ_OUTPUT
         ERROR_VARIABLE READ_ERROR)
-    if(READ_RESULT EQUAL 0)
-        message(FATAL_ERROR "${ARCHITECTURE} accepted a truncated boot image:\n${READ_OUTPUT}\n${READ_ERROR}")
+    if(READ_RESULT EQUAL 0 OR NOT READ_RESULT MATCHES "^[1-9][0-9]*$")
+        message(FATAL_ERROR "${ARCHITECTURE} did not cleanly reject a truncated boot image (result: ${READ_RESULT}):\n${READ_OUTPUT}\n${READ_ERROR}")
     endif()
 endforeach()
