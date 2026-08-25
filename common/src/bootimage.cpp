@@ -29,6 +29,10 @@
 #include "bootimage-zynqmp.h"
 #include "bootimage-versal.h"
 #include "bootimage-versal_2ve_2vm.h"
+#ifndef SKIP_VERSAL_2VP_NATIVE
+#include "bootimage-versal_2vp.h"
+#include "bifoptions-versal_2vp.h"
+#endif
 #include "bootimage-spartanup.h"
 #include "bifscanner.h"
 #include "bootheader.h"
@@ -57,6 +61,13 @@ void BIF_File::Process(Options& options)
 
     bifOptionList = options.bifOptionsList;
 
+    // Auto-detect keys and apply global->partition key inheritance.
+    // This versal_2vp native multi-SPK key plumbing lives in the device-specific
+    // layer; it is a no-op for other architectures (they use no .kmd files).
+#ifndef SKIP_VERSAL_2VP_NATIVE
+    BifOptionsVersal2VP::AutoDetectAndInheritKeys(bifOptionList);
+#endif
+
     /* Parse the include bif file */
     if (options.includeBifOptionsList.size() > 1)
     {
@@ -69,6 +80,12 @@ void BIF_File::Process(Options& options)
         ParseBifFile(options);
 
         includeBifOptionList = options.bifOptionsList;
+        
+        // Auto-detect keys and apply key inheritance for the included BIF.
+#ifndef SKIP_VERSAL_2VP_NATIVE
+        BifOptionsVersal2VP::AutoDetectAndInheritKeys(includeBifOptionList);
+#endif
+
 
         if (includeBifOptionList.size() < bifOptionList.size()) {
             bifOptionList.erase(bifOptionList.begin(), bifOptionList.begin() + includeBifOptionList.size());
@@ -183,24 +200,40 @@ void BIF_File::Process(Options& options)
         {
             uint32_t idCode = (*bifoptions)->GetIdCode();
             
-            if (IdCodeManager::IsL80IdCode(idCode))
+            if (IdCodeManager::IsVersalFmtIdCode(idCode))
             {
-                LOG_INFO("L80 variant detected (idcode: 0x%08X).", idCode);
+                LOG_INFO("Versal-format variant detected (idcode: 0x%08X).", idCode);
                 LOG_INFO("  - Switching to Versal PDI generation flow");
                 LOG_INFO("  - PLM max size: 640KB (0xA0000)");
                 LOG_INFO("  - PMC max size: 112KB (0x1C000)");
-                options.SetL80Variant(true);
+                options.SetVersalFmtVariant(true);
                 currentbi = std::make_unique<VersalBootImage>(options, index);
-
-                currentbi->pmcDataAesFile = (*bifoptions)->GetPmcDataAesFile();
-                if ((itr + 1) == bifOptionList.size())
-                {
-                    currentbi->pmcDataAesFile = lastPmcDataAesFile;
-                }
             }
             else
             {
-                LOG_ERROR("Invalid idcode: 0x%08X for Versal PDI generation flow.", idCode);
+            #ifndef SKIP_VERSAL_2VP_NATIVE    
+                options.SetVersalFmtVariant(false);
+                if (IdCodeManager::IsVersal2vpNativeIdCode(idCode))
+                {
+                    LOG_INFO("versal_2vp native variant detected (idcode: 0x%08X). Using versal_2vp native PDI generation.", idCode);
+                }
+                else if (idCode == 0)
+                {
+                    LOG_WARNING("No idcode specified for versal_2vp arch. Defaulting to versal_2vp native (idcode: 0x%08X).", IDCODE_VERSAL_2VP_NATIVE);
+                    (*bifoptions)->SetIdCode(IDCODE_VERSAL_2VP_NATIVE);
+                }
+                else
+                {
+                    LOG_WARNING("Unknown idcode (0x%08X) for versal_2vp arch. Defaulting to versal_2vp native PDI generation.", idCode);
+                }
+                currentbi = std::make_unique<Versal_2vpBootImage>(options, index);
+            #endif    
+            }
+
+            currentbi->pmcDataAesFile = (*bifoptions)->GetPmcDataAesFile();
+            if ((itr + 1) == bifOptionList.size())
+            {
+                currentbi->pmcDataAesFile = lastPmcDataAesFile;
             }
         }
         else if (options.archType == Arch::SPARTANUP)
@@ -505,11 +538,40 @@ BootImage::~BootImage()
 }
 
 /******************************************************************************/
+/******************************************************************************/
 void BootImage::OutputOptionalEfuseHash()
 {
     std::string hashFile = options.GetEfuseHashFileName();
-    if (hashFile != "")
+    if (hashFile == "")
     {
+        return; // No efuse PPK hash file specified
+    }
+
+    // Determine method based on metadata availability
+    if (bifOptions->GetPrimaryMetadata().isValid)
+    {
+        // NEW APPROACH: .kmd metadata-driven (simplified syntax)
+        // Validate primary key exists
+        bool hasPrimaryKey = (bifOptions->GetPPKFileName() != "" || bifOptions->GetPKFileName() != "");
+        if (!hasPrimaryKey)
+        {
+            LOG_ERROR("Cannot read PPK. PPK is mandatory to generate PPK hash bits, using '-efuseppkbits'.");
+        }
+
+        if (!currentAuthCtx)
+        {
+            LOG_ERROR("Authentication context not initialized");
+        }
+
+        // Uses virtual method so devices can override if needed
+        GeneratePPKHashWithKmdMetadata(hashFile);
+    }
+    else
+    {
+        // LEGACY APPROACH: Original implementation for Zynq/ZynqMP and explicit syntax
+        // This handles:
+        //   1. Zynq/ZynqMP devices (no .kmd support, no override)
+        //   2. Devices with override will handle their own logic (Versal/Gen2/SpartanUP/Versal2VP)
         if (bifOptions->GetPPKFileName() != "" || bifOptions->GetPSKFileName() != "")
         {
             if (currentAuthCtx)
@@ -521,6 +583,41 @@ void BootImage::OutputOptionalEfuseHash()
         {
             LOG_ERROR("Cannot read PPK/PSK. PPK/PSK is mandatory to generate PPK hash bits, using '-efuseppkbits'.");
         }
+    }
+}
+
+/******************************************************************************/
+void BootImage::GeneratePPKHashWithKmdMetadata(const std::string& hashFile)
+{
+    // BASE CLASS IMPLEMENTATION (.kmd metadata-driven PPK hash generation)
+    // This works for all devices that have GeneratePPKHashWithMetadata() in their auth context
+    // Devices can override this method if they need custom behavior
+    
+    if (!currentAuthCtx)
+    {
+        LOG_ERROR("Authentication context not initialized. Cannot generate PPK hash.");
+    }
+    
+    // Primary algorithm PPK hash generation
+    LOG_INFO("Generating PPK hash using .kmd metadata (Primary Algorithm)");
+    
+    std::string primaryKeyFile = !bifOptions->GetPKFileName().empty() ? 
+                                  bifOptions->GetPKFileName() : bifOptions->GetPPKFileName();
+    
+    currentAuthCtx->ppkFile = primaryKeyFile;
+    currentAuthCtx->GeneratePPKHashWithMetadata(hashFile, bifOptions->GetPrimaryMetadata());
+    
+    // HYBRID AUTHENTICATION: Check for secondary algorithm
+    bool hasSecondaryKey = (bifOptions->GetPPKFileName1() != "" || bifOptions->GetPKFileName1() != "");
+    if (hasSecondaryKey && bifOptions->GetPrimaryMetadata1().isValid)
+    {
+        LOG_INFO("Generating PPK hash using .kmd metadata (Secondary Algorithm - Hybrid)");
+        
+        std::string secondaryKeyFile = !bifOptions->GetPKFileName1().empty() ? 
+                                        bifOptions->GetPKFileName1() : bifOptions->GetPPKFileName1();
+        
+        // Secondary hash appends to the same file
+        currentAuthCtx->GeneratePPKHashWithMetadata(hashFile, bifOptions->GetPrimaryMetadata1(), secondaryKeyFile);
     }
 }
 
@@ -736,6 +833,12 @@ void BootImage::GenerateAuthenticationKeys(void)
             }
             Key::GenerateLmsKeys(keygen.get(), bifOptions->GetPrimaryLmsParams(), bifOptions->GetSecondaryLmsParams());
         }
+#ifndef SKIP_VERSAL_2VP_NATIVE
+        else if (keygen->format == GenAuthKeys::MLDSA)
+        {
+            Key::GenerateMldsaKeys(keygen.get());
+        }
+#endif
     }
 }
 

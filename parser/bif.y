@@ -61,6 +61,9 @@
 #include "imageheadertable-versal.h"
 #include "imageheadertable-spartanup.h"
 #include "imageheadertable-versal_2ve_2vm.h"
+#ifndef SKIP_VERSAL_2VP_NATIVE
+#include "imageheadertable-versal_2vp.h"
+#endif
 
 // Parser uses raw pointers for compatibility with Bison semantics
 // These are transferred to options lists which take ownership
@@ -143,9 +146,11 @@ LmsKeyTypeParam lmsParams;
 %token <number>         BH_KEK_IV BBRAM_KEK_IV EFUSE_KEK_IV EFUSE_USER_KEK0_IV EFUSE_USER_KEK1_IV USER_KEYS
 %token <number>         PMCDATA BOOTIMAGE UDF_BH INIT PMUFW_IMAGE
 %token <number>         AES_KEY_FILE FAMILY_KEY
-%token <number>         PPK_FILE PSK_FILE SPK_FILE SSK_FILE 
+%token <number>         PPK_FILE PSK_FILE SPK_FILE SSK_FILE PPK_FILE1 PSK_FILE1 SPK_FILE1 SSK_FILE1
+%token <number>         PK_FILE SK_FILE PK_FILE1 SK_FILE1
 %token <number>         SPK_SIGNATURE_FILE BH_SIGNATURE_FILE HEADER_SIGNATURE_FILE
 %token <authvalue_t>    AUTHVALUE
+%token <string>         HYBRID_AUTHVALUE
 %token <encrvalue_t>    ENCRVALUE
 %token <checksumvalue_t> CHECKSUMVALUE
 %token <powner_t>       POWNERVALUE
@@ -250,6 +255,14 @@ metahdr_attr            :   /* empty */
                         |   PSK_FILE EQUAL filename                             { currentBifOptions->metaHdrAttributes.psk = $3; }
                         |   SPK_FILE EQUAL filename                             { currentBifOptions->metaHdrAttributes.spk = $3; }
                         |   SSK_FILE EQUAL filename                             { currentBifOptions->metaHdrAttributes.ssk = $3; }
+                        |   PPK_FILE1 EQUAL filename                            { currentBifOptions->SetPPKFileName1($3); }
+                        |   PSK_FILE1 EQUAL filename                            { currentBifOptions->SetPSKFileName1($3); }
+                        |   SPK_FILE1 EQUAL filename                            { currentBifOptions->SetSPKFileName1($3); }
+                        |   SSK_FILE1 EQUAL filename                            { currentBifOptions->SetSSKFileName1($3); }
+                        |   PK_FILE EQUAL filename                              { currentBifOptions->SetPKFileName($3); }
+                        |   SK_FILE EQUAL filename                              { currentBifOptions->SetSKFileName($3); }
+                        |   PK_FILE1 EQUAL filename                             { currentBifOptions->SetPKFileName1($3); }
+                        |   SK_FILE1 EQUAL filename                             { currentBifOptions->SetSKFileName1($3); }
                         |   SPK_SIGNATURE_FILE EQUAL filename                   { currentBifOptions->metaHdrAttributes.spkSignature = $3; }
                         |   PRESIGN EQUAL filename                              { currentBifOptions->metaHdrAttributes.presign = $3; }
                         |   REVOKE_ID EQUAL expression                          { currentBifOptions->metaHdrAttributes.partitionRevokeId = $3;}
@@ -291,6 +304,14 @@ new_pdi_spec            :   ID EQUAL expression                                 
                         |   ID_CODE EQUAL expression                            { currentBifOptions->SetIdCode($3); 
                                                                                   options.SetDl9Series($3); }
                         |   EXT_ID_CODE EQUAL expression                        { currentBifOptions->SetExtendedIdCode($3); }
+                        |   PK_FILE EQUAL filename                              { currentBifOptions->SetPKFileName($3); 
+                                                                                  currentBifOptions->AddFiles(BIF::BisonParser::token::PK_FILE, $3); }
+                        |   SK_FILE EQUAL filename                              { currentBifOptions->SetSKFileName($3); 
+                                                                                  currentBifOptions->AddFiles(BIF::BisonParser::token::SK_FILE, $3); }
+                        |   PK_FILE1 EQUAL filename                             { currentBifOptions->SetPKFileName1($3); 
+                                                                                  currentBifOptions->AddFiles(BIF::BisonParser::token::PK_FILE1, $3); }
+                        |   SK_FILE1 EQUAL filename                             { currentBifOptions->SetSKFileName1($3); 
+                                                                                  currentBifOptions->AddFiles(BIF::BisonParser::token::SK_FILE1, $3); }
                         |   other_file_attr EQUAL filename                      { currentBifOptions->AddFiles($1, $3); }
                         |   KEYSRC_ENCRYPTION EQUAL key_src                     { currentBifOptions->SetEncryptionKeySource($3); }
                         |   PARTITION_TYPE EQUAL ptypevalue                     { currentBifOptions->SetPdiType($3); }
@@ -360,12 +381,16 @@ image_attributes        :   ID EQUAL expression                                 
                                                                                   {
                                                                                     currentImageBifOptions->SetPcrNumber($3, options.IsVersalNetSeries());
                                                                                   }
+                                                                                  else if(options.GetArchType() == Arch::VERSAL_2VP)
+                                                                                  {
+                                                                                    currentImageBifOptions->SetPcrNumber($3, false);
+                                                                                  }
                                                                                 }
                         |   PCR_MEASUREMENT_INDEX EQUAL expression              { if (options.GetArchType() == Arch::ZYNQ || options.GetArchType() == Arch::ZYNQMP)
                                                                                   {
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t  'pcr measurement index' is not supported for the specified architecture");
                                                                                   }
-                                                                                  else if(options.GetArchType() == Arch::VERSAL || options.GetArchType() == Arch::VERSALGEN2)
+                                                                                  else if(options.GetArchType() == Arch::VERSAL || options.GetArchType() == Arch::VERSALGEN2 || options.GetArchType() == Arch::VERSAL_2VP)
                                                                                   {
                                                                                     currentImageBifOptions->SetPcrMeasurementIndex($3);
                                                                                   }
@@ -574,6 +599,14 @@ optattr                 :   AUTHENTICATION EQUAL authvalue                      
                         |   PSK_FILE EQUAL filename                             { currentPartitionBifOptions->pskFile = ($3); }
                         |   SPK_FILE EQUAL filename                             { currentPartitionBifOptions->spkFile = ($3); }
                         |   SSK_FILE EQUAL filename                             { currentPartitionBifOptions->sskFile = ($3); }
+                        |   PPK_FILE1 EQUAL filename                            { currentPartitionBifOptions->ppkFile1 = ($3); }
+                        |   PSK_FILE1 EQUAL filename                            { currentPartitionBifOptions->pskFile1 = ($3); }
+                        |   SPK_FILE1 EQUAL filename                            { currentPartitionBifOptions->spkFile1 = ($3); }
+                        |   SSK_FILE1 EQUAL filename                            { currentPartitionBifOptions->sskFile1 = ($3); }
+                        |   PK_FILE EQUAL filename                              { currentPartitionBifOptions->pkFile = ($3); }
+                        |   SK_FILE EQUAL filename                              { currentPartitionBifOptions->skFile = ($3); }
+                        |   PK_FILE1 EQUAL filename                             { currentPartitionBifOptions->pkFile1 = ($3); }
+                        |   SK_FILE1 EQUAL filename                             { currentPartitionBifOptions->skFile1 = ($3); }
                         |   SPK_SELECT EQUAL spkselect                          { currentPartitionBifOptions->spkSelect =($3); currentPartitionBifOptions->spkSelLocal = true; }
                         |   SPK_ID EQUAL expression                             { currentPartitionBifOptions->SetSpkId($3); }
                         |   SPK_SIGNATURE_FILE EQUAL filename                   { currentPartitionBifOptions->spkSignatureFile = ($3); }
@@ -603,6 +636,7 @@ other_file_attr         :   INIT
 
 authvalue               :   NONE                                                { $$ = ::Authentication::None;}
                         |   AUTHVALUE 
+                        |   HYBRID_AUTHVALUE                                   { currentPartitionBifOptions->SetHybridAuthType($1); $$ = ::Authentication::RSA; }
                         ;
 
 encrvalue               :   NONE                                                { $$ = ::Encryption::None;}
@@ -692,6 +726,14 @@ rsa_key_file            :   PPK_FILE
                         |   PSK_FILE
                         |   SPK_FILE
                         |   SSK_FILE
+                        |   PPK_FILE1
+                        |   PSK_FILE1
+                        |   SPK_FILE1
+                        |   SSK_FILE1  
+                        |   PK_FILE
+                        |   SK_FILE
+                        |   PK_FILE1
+                        |   SK_FILE1 
                         ;
 
 other_files             :   PMUFW_IMAGE 

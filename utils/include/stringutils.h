@@ -115,10 +115,13 @@ public:
     {
         int size = 300;
         std::string str;
-        while (1) 
+        while (1)
         {
             str.resize(size);
-            int n = vsnprintf((char *)str.c_str(), size,fmt.c_str(), ap);
+            va_list ap_copy;
+            va_copy(ap_copy, ap);
+            int n = vsnprintf((char *)str.c_str(), size, fmt.c_str(), ap_copy);
+            va_end(ap_copy);
             if (n > -1 && n < size)
             {
                 str.resize(n);

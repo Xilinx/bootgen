@@ -69,6 +69,44 @@ std::string HashSha2::GetHashFileExtension(void)
 }
 
 /******************************************************************************/
+uint8_t HashSha2_512::GetHashLength(void)
+{
+    return SHA2_512_LENGTH_BYTES;
+}
+
+/******************************************************************************/
+uint8_t HashSha2_512::UpdateHash(const void* data, size_t length)
+{
+    //uint8_t errorCode = SHA256_Update(&ctx, data, length);
+
+    /* Send the inverted error code, to be consistent with the SHA3 algo */
+    //return (!errorCode);
+    return 0;
+}
+
+//******************************************************************************/
+uint8_t HashSha2_512::FinalHash(uint8_t* hashout)
+{
+    //uint8_t errorCode = SHA256_Final(hashout, &ctx);
+
+    /* Send the inverted error code, to be consistent with the SHA3 algo */
+    //return (!errorCode);
+    return 0;
+}
+
+/******************************************************************************/
+void HashSha2_512::CalculateHash(bool flag, const uint8_t *data, size_t length, uint8_t* out)
+{
+    SHA512(data, length, out);
+}
+
+/******************************************************************************/
+std::string HashSha2_512::GetHashFileExtension(void)
+{
+    return ".sha512";
+}
+
+/******************************************************************************/
 uint8_t HashSha3::GetHashLength(void)
 {
     return SHA3_LENGTH_BYTES;

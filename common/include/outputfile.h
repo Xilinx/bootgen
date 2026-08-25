@@ -77,6 +77,9 @@ public:
     void OutputVersal(Options& options, Binary& binary);
     void OutputSpartanup(Options& options, Binary& binary);
     void OutputVersal_2ve_2vm(Options& options, Binary& binary);
+#ifndef SKIP_VERSAL_2VP_NATIVE
+    void OutputVersal_2vp(Options& options, Binary& binary);
+#endif
     void CreateOutputFiles(Options& options);
     void ProcessSplitMode(Section& section, Options& options);
     void ProcessSplitSlaveBootMode(Section& section, Options& options);

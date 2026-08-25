@@ -45,6 +45,9 @@
 #include "imageheadertable-versal.h"
 #include "imageheadertable-spartanup.h"
 #include "imageheadertable-versal_2ve_2vm.h"
+#ifndef SKIP_VERSAL_2VP_NATIVE
+#include "imageheadertable-versal_2vp.h"
+#endif
 
 // Parser uses raw pointers for compatibility with Bison semantics
 // These are transferred to options lists which take ownership
@@ -54,7 +57,7 @@ ImageBifOptions* currentImageBifOptions;
 LmsKeyTypeParam lmsParams;
 
 /* Line 279 of lalr1.cc  */
-#line 58 "bisonflex/bif.tab.cpp"
+#line 61 "bisonflex/bif.tab.cpp"
 
 
 #include "bif.tab.hpp"
@@ -62,7 +65,7 @@ LmsKeyTypeParam lmsParams;
 /* User implementation prologue.  */
 
 /* Line 285 of lalr1.cc  */
-#line 66 "bisonflex/bif.tab.cpp"
+#line 69 "bisonflex/bif.tab.cpp"
 /* Unqualified %code blocks.  */
 /* Line 286 of lalr1.cc  */
 #line 47 "parser/bif.y"
@@ -72,7 +75,7 @@ LmsKeyTypeParam lmsParams;
 
 
 /* Line 286 of lalr1.cc  */
-#line 76 "bisonflex/bif.tab.cpp"
+#line 79 "bisonflex/bif.tab.cpp"
 
 
 # ifndef YY_NULL
@@ -168,7 +171,7 @@ do {					\
 #line 24 "parser/bif.y"
 namespace BIF {
 /* Line 353 of lalr1.cc  */
-#line 172 "bisonflex/bif.tab.cpp"
+#line 175 "bisonflex/bif.tab.cpp"
 
   /// Build a parser object.
   BisonParser::BisonParser (BIF::FlexScanner& scanner_yyarg, Options& options_yyarg)
@@ -235,38 +238,45 @@ namespace BIF {
       {
         case 91: /* WORD */
 /* Line 455 of lalr1.cc  */
-#line 109 "parser/bif.y"
+#line 112 "parser/bif.y"
         { free(((*yyvaluep).string)); };
 /* Line 455 of lalr1.cc  */
-#line 242 "bisonflex/bif.tab.cpp"
+#line 245 "bisonflex/bif.tab.cpp"
         break;
       case 92: /* HEXWORD */
 /* Line 455 of lalr1.cc  */
-#line 109 "parser/bif.y"
+#line 112 "parser/bif.y"
         { free(((*yyvaluep).string)); };
 /* Line 455 of lalr1.cc  */
-#line 249 "bisonflex/bif.tab.cpp"
+#line 252 "bisonflex/bif.tab.cpp"
         break;
       case 93: /* FILENAME */
 /* Line 455 of lalr1.cc  */
-#line 109 "parser/bif.y"
+#line 112 "parser/bif.y"
         { free(((*yyvaluep).string)); };
 /* Line 455 of lalr1.cc  */
-#line 256 "bisonflex/bif.tab.cpp"
+#line 259 "bisonflex/bif.tab.cpp"
         break;
       case 94: /* QFILENAME */
 /* Line 455 of lalr1.cc  */
-#line 109 "parser/bif.y"
+#line 112 "parser/bif.y"
         { free(((*yyvaluep).string)); };
 /* Line 455 of lalr1.cc  */
-#line 263 "bisonflex/bif.tab.cpp"
+#line 266 "bisonflex/bif.tab.cpp"
         break;
-      case 259: /* filename */
+      case 148: /* HYBRID_AUTHVALUE */
 /* Line 455 of lalr1.cc  */
-#line 109 "parser/bif.y"
+#line 112 "parser/bif.y"
         { free(((*yyvaluep).string)); };
 /* Line 455 of lalr1.cc  */
-#line 270 "bisonflex/bif.tab.cpp"
+#line 273 "bisonflex/bif.tab.cpp"
+        break;
+      case 268: /* filename */
+/* Line 455 of lalr1.cc  */
+#line 112 "parser/bif.y"
+        { free(((*yyvaluep).string)); };
+/* Line 455 of lalr1.cc  */
+#line 280 "bisonflex/bif.tab.cpp"
         break;
 
 	default:
@@ -367,7 +377,7 @@ namespace BIF {
        yylloc.begin.filename = yylloc.end.filename = &scanner.filename;
 }
 /* Line 545 of lalr1.cc  */
-#line 371 "bisonflex/bif.tab.cpp"
+#line 381 "bisonflex/bif.tab.cpp"
 
     /* Initialize the stacks.  The initial state will be pushed in
        yynewstate, since the latter expects the semantical and the
@@ -487,99 +497,147 @@ namespace BIF {
       {
           case 5:
 /* Line 670 of lalr1.cc  */
-#line 217 "parser/bif.y"
+#line 222 "parser/bif.y"
     { options.includeBifOptionsList.push_back((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 6:
 /* Line 670 of lalr1.cc  */
-#line 218 "parser/bif.y"
+#line 223 "parser/bif.y"
     { currentBifOptions = new BifOptions(options.GetArchType(), options.IsVersalNetSeries(), options.IsDl9Series(), (yysemantic_stack_[(1) - (1)].string)); }
     break;
 
   case 7:
 /* Line 670 of lalr1.cc  */
-#line 220 "parser/bif.y"
+#line 225 "parser/bif.y"
     { options.bifOptions = currentBifOptions;
                                                                                   options.bifOptionsList.push_back(currentBifOptions); }
     break;
 
   case 16:
 /* Line 670 of lalr1.cc  */
-#line 234 "parser/bif.y"
+#line 239 "parser/bif.y"
     { currentPartitionBifOptions = new PartitionBifOptions();
                                                                                    currentPartitionBifOptions->SetArchType(options.GetArchType(), options.IsVersalNetSeries(), currentBifOptions->GetIdCode()); }
     break;
 
   case 22:
 /* Line 670 of lalr1.cc  */
-#line 245 "parser/bif.y"
+#line 250 "parser/bif.y"
     { currentBifOptions->SetMetaHeaderEncryptType((yysemantic_stack_[(3) - (3)].encrvalue_t)); }
     break;
 
   case 23:
 /* Line 670 of lalr1.cc  */
-#line 246 "parser/bif.y"
+#line 251 "parser/bif.y"
     { currentBifOptions->SetMetaHeaderEncryptionKeySource((yysemantic_stack_[(3) - (3)].encrkeysrc_t)); }
     break;
 
   case 24:
 /* Line 670 of lalr1.cc  */
-#line 247 "parser/bif.y"
+#line 252 "parser/bif.y"
     { currentBifOptions->SetMetaHeaderEncryptionKeyFile((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 25:
 /* Line 670 of lalr1.cc  */
-#line 248 "parser/bif.y"
+#line 253 "parser/bif.y"
     { currentBifOptions->SetMetaHeaderAuthType((yysemantic_stack_[(3) - (3)].authvalue_t)); }
     break;
 
   case 26:
 /* Line 670 of lalr1.cc  */
-#line 249 "parser/bif.y"
+#line 254 "parser/bif.y"
     { currentBifOptions->metaHdrAttributes.ppk = (yysemantic_stack_[(3) - (3)].string); }
     break;
 
   case 27:
 /* Line 670 of lalr1.cc  */
-#line 250 "parser/bif.y"
+#line 255 "parser/bif.y"
     { currentBifOptions->metaHdrAttributes.psk = (yysemantic_stack_[(3) - (3)].string); }
     break;
 
   case 28:
 /* Line 670 of lalr1.cc  */
-#line 251 "parser/bif.y"
+#line 256 "parser/bif.y"
     { currentBifOptions->metaHdrAttributes.spk = (yysemantic_stack_[(3) - (3)].string); }
     break;
 
   case 29:
 /* Line 670 of lalr1.cc  */
-#line 252 "parser/bif.y"
+#line 257 "parser/bif.y"
     { currentBifOptions->metaHdrAttributes.ssk = (yysemantic_stack_[(3) - (3)].string); }
     break;
 
   case 30:
 /* Line 670 of lalr1.cc  */
-#line 253 "parser/bif.y"
-    { currentBifOptions->metaHdrAttributes.spkSignature = (yysemantic_stack_[(3) - (3)].string); }
+#line 258 "parser/bif.y"
+    { currentBifOptions->SetPPKFileName1((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 31:
 /* Line 670 of lalr1.cc  */
-#line 254 "parser/bif.y"
-    { currentBifOptions->metaHdrAttributes.presign = (yysemantic_stack_[(3) - (3)].string); }
+#line 259 "parser/bif.y"
+    { currentBifOptions->SetPSKFileName1((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 32:
 /* Line 670 of lalr1.cc  */
-#line 255 "parser/bif.y"
-    { currentBifOptions->metaHdrAttributes.partitionRevokeId = (yysemantic_stack_[(3) - (3)].number);}
+#line 260 "parser/bif.y"
+    { currentBifOptions->SetSPKFileName1((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 33:
 /* Line 670 of lalr1.cc  */
-#line 256 "parser/bif.y"
+#line 261 "parser/bif.y"
+    { currentBifOptions->SetSSKFileName1((yysemantic_stack_[(3) - (3)].string)); }
+    break;
+
+  case 34:
+/* Line 670 of lalr1.cc  */
+#line 262 "parser/bif.y"
+    { currentBifOptions->SetPKFileName((yysemantic_stack_[(3) - (3)].string)); }
+    break;
+
+  case 35:
+/* Line 670 of lalr1.cc  */
+#line 263 "parser/bif.y"
+    { currentBifOptions->SetSKFileName((yysemantic_stack_[(3) - (3)].string)); }
+    break;
+
+  case 36:
+/* Line 670 of lalr1.cc  */
+#line 264 "parser/bif.y"
+    { currentBifOptions->SetPKFileName1((yysemantic_stack_[(3) - (3)].string)); }
+    break;
+
+  case 37:
+/* Line 670 of lalr1.cc  */
+#line 265 "parser/bif.y"
+    { currentBifOptions->SetSKFileName1((yysemantic_stack_[(3) - (3)].string)); }
+    break;
+
+  case 38:
+/* Line 670 of lalr1.cc  */
+#line 266 "parser/bif.y"
+    { currentBifOptions->metaHdrAttributes.spkSignature = (yysemantic_stack_[(3) - (3)].string); }
+    break;
+
+  case 39:
+/* Line 670 of lalr1.cc  */
+#line 267 "parser/bif.y"
+    { currentBifOptions->metaHdrAttributes.presign = (yysemantic_stack_[(3) - (3)].string); }
+    break;
+
+  case 40:
+/* Line 670 of lalr1.cc  */
+#line 268 "parser/bif.y"
+    { currentBifOptions->metaHdrAttributes.partitionRevokeId = (yysemantic_stack_[(3) - (3)].number);}
+    break;
+
+  case 41:
+/* Line 670 of lalr1.cc  */
+#line 269 "parser/bif.y"
     { currentBifOptions->metaHdrAttributes.spkRevokeId = (yysemantic_stack_[(3) - (3)].number); 
                                                                                 if(options.GetArchType() == Arch::VERSAL)
                                                                                 {
@@ -588,110 +646,138 @@ namespace BIF {
                                                                                 }
     break;
 
-  case 34:
+  case 42:
 /* Line 670 of lalr1.cc  */
-#line 263 "parser/bif.y"
+#line 276 "parser/bif.y"
     { currentBifOptions->metaHdrAttributes.checksum = (yysemantic_stack_[(3) - (3)].checksumvalue_t); }
     break;
 
-  case 35:
+  case 43:
 /* Line 670 of lalr1.cc  */
-#line 264 "parser/bif.y"
+#line 277 "parser/bif.y"
     { currentBifOptions->metaHdrAttributes.dpaCM = DpaCM::DpaCMEnable; }
-    break;
-
-  case 37:
-/* Line 670 of lalr1.cc  */
-#line 266 "parser/bif.y"
-    { currentBifOptions->metaHdrAttributes.pufHdLoc = PufHdLoc::PUFinBH; 
-                                                                                  currentBifOptions->SetPufHdinBHFlag();}
-    break;
-
-  case 40:
-/* Line 670 of lalr1.cc  */
-#line 274 "parser/bif.y"
-    { currentBifOptions->metaHdrAttributes.ihtOptionalDataInfo.push_back(std::pair<std::string, uint32_t>((yysemantic_stack_[(5) - (1)].string), (yysemantic_stack_[(5) - (5)].number))); }
-    break;
-
-  case 44:
-/* Line 670 of lalr1.cc  */
-#line 281 "parser/bif.y"
-    { currentPartitionBifOptions->SetEncryptionBlocks((yysemantic_stack_[(1) - (1)].number)); 
-                                                                                  currentBifOptions->metaHdrAttributes.encrBlocks = currentPartitionBifOptions->GetEncryptionBlocks(); }
     break;
 
   case 45:
 /* Line 670 of lalr1.cc  */
-#line 283 "parser/bif.y"
-    { currentPartitionBifOptions->SetEncryptionBlocks((yysemantic_stack_[(4) - (1)].number), (yysemantic_stack_[(4) - (3)].number)); 
-                                                                                  currentBifOptions->metaHdrAttributes.encrBlocks = currentPartitionBifOptions->GetEncryptionBlocks(); }
-    break;
-
-  case 46:
-/* Line 670 of lalr1.cc  */
-#line 285 "parser/bif.y"
-    { currentPartitionBifOptions->SetEncryptionBlocks((yysemantic_stack_[(4) - (1)].number), 0); 
-                                                                                  currentBifOptions->metaHdrAttributes.defEncrBlockSize = (yysemantic_stack_[(4) - (1)].number); }
-    break;
-
-  case 47:
-/* Line 670 of lalr1.cc  */
-#line 289 "parser/bif.y"
-    { currentBifOptions->SetPdiId((yysemantic_stack_[(3) - (3)].number)); }
+#line 279 "parser/bif.y"
+    { currentBifOptions->metaHdrAttributes.pufHdLoc = PufHdLoc::PUFinBH; 
+                                                                                  currentBifOptions->SetPufHdinBHFlag();}
     break;
 
   case 48:
 /* Line 670 of lalr1.cc  */
-#line 290 "parser/bif.y"
-    { currentBifOptions->SetParentId((yysemantic_stack_[(3) - (3)].number)); }
-    break;
-
-  case 49:
-/* Line 670 of lalr1.cc  */
-#line 291 "parser/bif.y"
-    { currentBifOptions->SetIdCode((yysemantic_stack_[(3) - (3)].number)); 
-                                                                                  options.SetDl9Series((yysemantic_stack_[(3) - (3)].number)); }
-    break;
-
-  case 50:
-/* Line 670 of lalr1.cc  */
-#line 293 "parser/bif.y"
-    { currentBifOptions->SetExtendedIdCode((yysemantic_stack_[(3) - (3)].number)); }
-    break;
-
-  case 51:
-/* Line 670 of lalr1.cc  */
-#line 294 "parser/bif.y"
-    { currentBifOptions->AddFiles((yysemantic_stack_[(3) - (1)].number), (yysemantic_stack_[(3) - (3)].string)); }
+#line 287 "parser/bif.y"
+    { currentBifOptions->metaHdrAttributes.ihtOptionalDataInfo.push_back(std::pair<std::string, uint32_t>((yysemantic_stack_[(5) - (1)].string), (yysemantic_stack_[(5) - (5)].number))); }
     break;
 
   case 52:
 /* Line 670 of lalr1.cc  */
-#line 295 "parser/bif.y"
-    { currentBifOptions->SetEncryptionKeySource((yysemantic_stack_[(3) - (3)].encrkeysrc_t)); }
+#line 294 "parser/bif.y"
+    { currentPartitionBifOptions->SetEncryptionBlocks((yysemantic_stack_[(1) - (1)].number)); 
+                                                                                  currentBifOptions->metaHdrAttributes.encrBlocks = currentPartitionBifOptions->GetEncryptionBlocks(); }
     break;
 
   case 53:
 /* Line 670 of lalr1.cc  */
 #line 296 "parser/bif.y"
-    { currentBifOptions->SetPdiType((yysemantic_stack_[(3) - (3)].ptype_t)); }
+    { currentPartitionBifOptions->SetEncryptionBlocks((yysemantic_stack_[(4) - (1)].number), (yysemantic_stack_[(4) - (3)].number)); 
+                                                                                  currentBifOptions->metaHdrAttributes.encrBlocks = currentPartitionBifOptions->GetEncryptionBlocks(); }
     break;
 
   case 54:
 /* Line 670 of lalr1.cc  */
-#line 297 "parser/bif.y"
-    { currentBifOptions->SetRevokeId((yysemantic_stack_[(3) - (3)].number));}
+#line 298 "parser/bif.y"
+    { currentPartitionBifOptions->SetEncryptionBlocks((yysemantic_stack_[(4) - (1)].number), 0); 
+                                                                                  currentBifOptions->metaHdrAttributes.defEncrBlockSize = (yysemantic_stack_[(4) - (1)].number); }
+    break;
+
+  case 55:
+/* Line 670 of lalr1.cc  */
+#line 302 "parser/bif.y"
+    { currentBifOptions->SetPdiId((yysemantic_stack_[(3) - (3)].number)); }
+    break;
+
+  case 56:
+/* Line 670 of lalr1.cc  */
+#line 303 "parser/bif.y"
+    { currentBifOptions->SetParentId((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 57:
 /* Line 670 of lalr1.cc  */
 #line 304 "parser/bif.y"
-    { currentImageBifOptions = new ImageBifOptions(); }
+    { currentBifOptions->SetIdCode((yysemantic_stack_[(3) - (3)].number)); 
+                                                                                  options.SetDl9Series((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 58:
 /* Line 670 of lalr1.cc  */
-#line 305 "parser/bif.y"
+#line 306 "parser/bif.y"
+    { currentBifOptions->SetExtendedIdCode((yysemantic_stack_[(3) - (3)].number)); }
+    break;
+
+  case 59:
+/* Line 670 of lalr1.cc  */
+#line 307 "parser/bif.y"
+    { currentBifOptions->SetPKFileName((yysemantic_stack_[(3) - (3)].string)); 
+                                                                                  currentBifOptions->AddFiles(BIF::BisonParser::token::PK_FILE, (yysemantic_stack_[(3) - (3)].string)); }
+    break;
+
+  case 60:
+/* Line 670 of lalr1.cc  */
+#line 309 "parser/bif.y"
+    { currentBifOptions->SetSKFileName((yysemantic_stack_[(3) - (3)].string)); 
+                                                                                  currentBifOptions->AddFiles(BIF::BisonParser::token::SK_FILE, (yysemantic_stack_[(3) - (3)].string)); }
+    break;
+
+  case 61:
+/* Line 670 of lalr1.cc  */
+#line 311 "parser/bif.y"
+    { currentBifOptions->SetPKFileName1((yysemantic_stack_[(3) - (3)].string)); 
+                                                                                  currentBifOptions->AddFiles(BIF::BisonParser::token::PK_FILE1, (yysemantic_stack_[(3) - (3)].string)); }
+    break;
+
+  case 62:
+/* Line 670 of lalr1.cc  */
+#line 313 "parser/bif.y"
+    { currentBifOptions->SetSKFileName1((yysemantic_stack_[(3) - (3)].string)); 
+                                                                                  currentBifOptions->AddFiles(BIF::BisonParser::token::SK_FILE1, (yysemantic_stack_[(3) - (3)].string)); }
+    break;
+
+  case 63:
+/* Line 670 of lalr1.cc  */
+#line 315 "parser/bif.y"
+    { currentBifOptions->AddFiles((yysemantic_stack_[(3) - (1)].number), (yysemantic_stack_[(3) - (3)].string)); }
+    break;
+
+  case 64:
+/* Line 670 of lalr1.cc  */
+#line 316 "parser/bif.y"
+    { currentBifOptions->SetEncryptionKeySource((yysemantic_stack_[(3) - (3)].encrkeysrc_t)); }
+    break;
+
+  case 65:
+/* Line 670 of lalr1.cc  */
+#line 317 "parser/bif.y"
+    { currentBifOptions->SetPdiType((yysemantic_stack_[(3) - (3)].ptype_t)); }
+    break;
+
+  case 66:
+/* Line 670 of lalr1.cc  */
+#line 318 "parser/bif.y"
+    { currentBifOptions->SetRevokeId((yysemantic_stack_[(3) - (3)].number));}
+    break;
+
+  case 69:
+/* Line 670 of lalr1.cc  */
+#line 325 "parser/bif.y"
+    { currentImageBifOptions = new ImageBifOptions(); }
+    break;
+
+  case 70:
+/* Line 670 of lalr1.cc  */
+#line 326 "parser/bif.y"
     { currentBifOptions->imageBifOptionList.push_back(currentImageBifOptions);
                                                                                   if((options.archType == Arch::SPARTANUP) && (currentBifOptions->imageBifOptionList.size() > 1))
                                                                                   {
@@ -700,52 +786,52 @@ namespace BIF {
                                                                                 }
     break;
 
-  case 66:
+  case 78:
 /* Line 670 of lalr1.cc  */
-#line 324 "parser/bif.y"
+#line 345 "parser/bif.y"
     { currentImageBifOptions->SetImageId((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
-  case 67:
+  case 79:
 /* Line 670 of lalr1.cc  */
-#line 325 "parser/bif.y"
+#line 346 "parser/bif.y"
     { currentImageBifOptions->SetImageName((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
-  case 68:
+  case 80:
 /* Line 670 of lalr1.cc  */
-#line 326 "parser/bif.y"
+#line 347 "parser/bif.y"
     { currentImageBifOptions->SetDelayHandoff(true); }
     break;
 
-  case 69:
+  case 81:
 /* Line 670 of lalr1.cc  */
-#line 327 "parser/bif.y"
+#line 348 "parser/bif.y"
     { currentImageBifOptions->SetDelayLoad(true); }
     break;
 
-  case 70:
+  case 82:
 /* Line 670 of lalr1.cc  */
-#line 328 "parser/bif.y"
+#line 349 "parser/bif.y"
     { LOG_ERROR("BIF attribute error !!!\n\t This usage of 'init' is not supported. See 'bootgen -bif_help init' for usage details."); }
     break;
 
-  case 71:
+  case 83:
 /* Line 670 of lalr1.cc  */
-#line 329 "parser/bif.y"
+#line 350 "parser/bif.y"
     { LOG_ERROR("Copy to Memory feature with the attribute 'copy' is no more supported.\n\t   This can be duplicated with the option 'imagestore'. Please refer UG1283 for more details.");
                                                                                   currentImageBifOptions->SetMemCopyAddress((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
-  case 72:
+  case 84:
 /* Line 670 of lalr1.cc  */
-#line 331 "parser/bif.y"
+#line 352 "parser/bif.y"
     { currentImageBifOptions->SetImageType((yysemantic_stack_[(3) - (3)].ptype_t)); }
     break;
 
-  case 73:
+  case 85:
 /* Line 670 of lalr1.cc  */
-#line 332 "parser/bif.y"
+#line 353 "parser/bif.y"
     { if ((yysemantic_stack_[(3) - (3)].number) == 0xFFFFFFFF)
                                                                                   {
                                                                                     LOG_WARNING("uid value 0xFFFFFFFF is reserved and not allowed, it will be treated as unset");
@@ -753,9 +839,9 @@ namespace BIF {
                                                                                   currentImageBifOptions->SetUniqueId((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
-  case 74:
+  case 86:
 /* Line 670 of lalr1.cc  */
-#line 337 "parser/bif.y"
+#line 358 "parser/bif.y"
     { if ((yysemantic_stack_[(3) - (3)].number) == 0xFFFFFFFF)
                                                                                   {
                                                                                     LOG_WARNING("parent_uid value 0xFFFFFFFF is reserved and not allowed, it will be treated as unset");
@@ -763,9 +849,9 @@ namespace BIF {
                                                                                   currentImageBifOptions->SetParentUniqueId((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
-  case 75:
+  case 87:
 /* Line 670 of lalr1.cc  */
-#line 342 "parser/bif.y"
+#line 363 "parser/bif.y"
     { if ((yysemantic_stack_[(3) - (3)].number) == 0xFFFFFFFF)
                                                                                   {
                                                                                     LOG_WARNING("function_id value 0xFFFFFFFF is reserved and not allowed, it will be treated as unset");
@@ -773,9 +859,9 @@ namespace BIF {
                                                                                   currentImageBifOptions->SetFunctionId((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
-  case 76:
+  case 88:
 /* Line 670 of lalr1.cc  */
-#line 347 "parser/bif.y"
+#line 368 "parser/bif.y"
     { if (options.GetArchType() == Arch::ZYNQ || options.GetArchType() == Arch::ZYNQMP)
                                                                                   {
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t  'pcr' is not supported for the specified architecture");
@@ -792,41 +878,45 @@ namespace BIF {
                                                                                   {
                                                                                     currentImageBifOptions->SetPcrNumber((yysemantic_stack_[(3) - (3)].number), options.IsVersalNetSeries());
                                                                                   }
+                                                                                  else if(options.GetArchType() == Arch::VERSAL_2VP)
+                                                                                  {
+                                                                                    currentImageBifOptions->SetPcrNumber((yysemantic_stack_[(3) - (3)].number), false);
+                                                                                  }
                                                                                 }
     break;
 
-  case 77:
+  case 89:
 /* Line 670 of lalr1.cc  */
-#line 364 "parser/bif.y"
+#line 389 "parser/bif.y"
     { if (options.GetArchType() == Arch::ZYNQ || options.GetArchType() == Arch::ZYNQMP)
                                                                                   {
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t  'pcr measurement index' is not supported for the specified architecture");
                                                                                   }
-                                                                                  else if(options.GetArchType() == Arch::VERSAL || options.GetArchType() == Arch::VERSALGEN2)
+                                                                                  else if(options.GetArchType() == Arch::VERSAL || options.GetArchType() == Arch::VERSALGEN2 || options.GetArchType() == Arch::VERSAL_2VP)
                                                                                   {
                                                                                     currentImageBifOptions->SetPcrMeasurementIndex((yysemantic_stack_[(3) - (3)].number));
                                                                                   }
                                                                                 }
     break;
 
-  case 83:
+  case 95:
 /* Line 670 of lalr1.cc  */
-#line 384 "parser/bif.y"
+#line 409 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQ || options.GetArchType() != Arch::ZYNQMP)
                                                                                     LOG_WARNING("BIF attribute error !!! [keysrc_encryption] not supported for the specified architecture.\n\t   Refer 'bootgen -bif_help' for more details");
                                                                                   currentBifOptions->SetEncryptionKeySource((yysemantic_stack_[(4) - (4)].encrkeysrc_t)); options.SetEncryptedKeySource((yysemantic_stack_[(4) - (4)].encrkeysrc_t)); }
     break;
 
-  case 84:
+  case 96:
 /* Line 670 of lalr1.cc  */
-#line 387 "parser/bif.y"
+#line 412 "parser/bif.y"
     { if(options.GetArchType() == Arch::ZYNQ)
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t\t[fsbl_config] not supported in ZYNQ architecture"); }
     break;
 
-  case 88:
+  case 100:
 /* Line 670 of lalr1.cc  */
-#line 392 "parser/bif.y"
+#line 417 "parser/bif.y"
     { if(options.GetArchType() == Arch::ZYNQ)
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t\t[bootdevice] not supported in ZYNQ architecture"); 
                                                                                   if(options.GetArchType() != Arch::ZYNQMP)
@@ -834,179 +924,179 @@ namespace BIF {
                                                                                   currentBifOptions->SetBootDevice((yysemantic_stack_[(4) - (4)].bootdevice_t)); }
     break;
 
-  case 89:
-/* Line 670 of lalr1.cc  */
-#line 397 "parser/bif.y"
-    { LOG_ERROR("This usage of boot_device is no more supported.\n\t   Refer 'bootgen -bif_help' for more details"); }
-    break;
-
-  case 100:
-/* Line 670 of lalr1.cc  */
-#line 412 "parser/bif.y"
-    { currentBifOptions->SetBootDevice((yysemantic_stack_[(1) - (1)].bootdevice_t)); }
-    break;
-
   case 101:
 /* Line 670 of lalr1.cc  */
-#line 413 "parser/bif.y"
-    { currentBifOptions->SetBootDevice(BootDevice::IMAGESTORE); }
-    break;
-
-  case 102:
-/* Line 670 of lalr1.cc  */
-#line 414 "parser/bif.y"
-    { currentBifOptions->SetBootDeviceAddress((yysemantic_stack_[(3) - (3)].number)); }
-    break;
-
-  case 109:
-/* Line 670 of lalr1.cc  */
-#line 427 "parser/bif.y"
-    { currentBifOptions->SetAuthJtagRevokeID((yysemantic_stack_[(3) - (3)].number)); }
-    break;
-
-  case 110:
-/* Line 670 of lalr1.cc  */
-#line 428 "parser/bif.y"
-    { currentBifOptions->SetAuthJtagSPKRevokeID((yysemantic_stack_[(3) - (3)].number)); }
-    break;
-
-  case 111:
-/* Line 670 of lalr1.cc  */
-#line 429 "parser/bif.y"
-    { currentBifOptions->SetAuthJtagDeviceDna((yysemantic_stack_[(3) - (3)].string)); }
+#line 422 "parser/bif.y"
+    { LOG_ERROR("This usage of boot_device is no more supported.\n\t   Refer 'bootgen -bif_help' for more details"); }
     break;
 
   case 112:
 /* Line 670 of lalr1.cc  */
-#line 430 "parser/bif.y"
-    { currentBifOptions->SetAuthJtagTimeOut((yysemantic_stack_[(3) - (3)].number)); }
+#line 437 "parser/bif.y"
+    { currentBifOptions->SetBootDevice((yysemantic_stack_[(1) - (1)].bootdevice_t)); }
     break;
 
   case 113:
 /* Line 670 of lalr1.cc  */
-#line 431 "parser/bif.y"
-    { currentBifOptions->SetAuthJtagSignatureFile((yysemantic_stack_[(3) - (3)].string)); }
+#line 438 "parser/bif.y"
+    { currentBifOptions->SetBootDevice(BootDevice::IMAGESTORE); }
     break;
 
   case 114:
 /* Line 670 of lalr1.cc  */
-#line 434 "parser/bif.y"
-    { currentBifOptions->SetCore((yysemantic_stack_[(1) - (1)].core_t));
-                                                                                  LOG_WARNING("[fsbl_config] a53_x64 | a53_x32 | r5_single | r5_dual is no more supported. Use 'destination_cpu' attribute for bootloader partition"); }
-    break;
-
-  case 115:
-/* Line 670 of lalr1.cc  */
-#line 437 "parser/bif.y"
-    { currentBifOptions->SetBhRsa((yysemantic_stack_[(1) - (1)].bhrsa_t)); }
-    break;
-
-  case 116:
-/* Line 670 of lalr1.cc  */
 #line 439 "parser/bif.y"
-    { LOG_ERROR("Authentication using SHA2 is no more supported."); }
-    break;
-
-  case 117:
-/* Line 670 of lalr1.cc  */
-#line 441 "parser/bif.y"
-    { LOG_ERROR("[fsbl_config] bi_integrity_sha3 is no more supported. Use 'checksum' attribute of bootloader partition"); }
-    break;
-
-  case 118:
-/* Line 670 of lalr1.cc  */
-#line 443 "parser/bif.y"
-    { currentBifOptions->SetPufHdLoc((yysemantic_stack_[(1) - (1)].pufhdloc_t)); }
-    break;
-
-  case 119:
-/* Line 670 of lalr1.cc  */
-#line 445 "parser/bif.y"
-    { currentBifOptions->SetAuthOnly((yysemantic_stack_[(1) - (1)].authonly_t)); }
-    break;
-
-  case 120:
-/* Line 670 of lalr1.cc  */
-#line 447 "parser/bif.y"
-    { currentBifOptions->SetOptKey((yysemantic_stack_[(1) - (1)].optkey_t)); }
+    { currentBifOptions->SetBootDeviceAddress((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 121:
 /* Line 670 of lalr1.cc  */
-#line 449 "parser/bif.y"
-    { currentBifOptions->SetPufMode(PufMode::PUF4K); }
+#line 452 "parser/bif.y"
+    { currentBifOptions->SetAuthJtagRevokeID((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 122:
 /* Line 670 of lalr1.cc  */
-#line 451 "parser/bif.y"
-    { currentBifOptions->SetShutterValue((yysemantic_stack_[(3) - (3)].number)); }
+#line 453 "parser/bif.y"
+    { currentBifOptions->SetAuthJtagSPKRevokeID((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 123:
 /* Line 670 of lalr1.cc  */
-#line 453 "parser/bif.y"
-    {  currentBifOptions->SetDpaCM((yysemantic_stack_[(1) - (1)].dpacm_t));}
+#line 454 "parser/bif.y"
+    { currentBifOptions->SetAuthJtagDeviceDna((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 124:
 /* Line 670 of lalr1.cc  */
 #line 455 "parser/bif.y"
+    { currentBifOptions->SetAuthJtagTimeOut((yysemantic_stack_[(3) - (3)].number)); }
+    break;
+
+  case 125:
+/* Line 670 of lalr1.cc  */
+#line 456 "parser/bif.y"
+    { currentBifOptions->SetAuthJtagSignatureFile((yysemantic_stack_[(3) - (3)].string)); }
+    break;
+
+  case 126:
+/* Line 670 of lalr1.cc  */
+#line 459 "parser/bif.y"
+    { currentBifOptions->SetCore((yysemantic_stack_[(1) - (1)].core_t));
+                                                                                  LOG_WARNING("[fsbl_config] a53_x64 | a53_x32 | r5_single | r5_dual is no more supported. Use 'destination_cpu' attribute for bootloader partition"); }
+    break;
+
+  case 127:
+/* Line 670 of lalr1.cc  */
+#line 462 "parser/bif.y"
+    { currentBifOptions->SetBhRsa((yysemantic_stack_[(1) - (1)].bhrsa_t)); }
+    break;
+
+  case 128:
+/* Line 670 of lalr1.cc  */
+#line 464 "parser/bif.y"
+    { LOG_ERROR("Authentication using SHA2 is no more supported."); }
+    break;
+
+  case 129:
+/* Line 670 of lalr1.cc  */
+#line 466 "parser/bif.y"
+    { LOG_ERROR("[fsbl_config] bi_integrity_sha3 is no more supported. Use 'checksum' attribute of bootloader partition"); }
+    break;
+
+  case 130:
+/* Line 670 of lalr1.cc  */
+#line 468 "parser/bif.y"
+    { currentBifOptions->SetPufHdLoc((yysemantic_stack_[(1) - (1)].pufhdloc_t)); }
+    break;
+
+  case 131:
+/* Line 670 of lalr1.cc  */
+#line 470 "parser/bif.y"
+    { currentBifOptions->SetAuthOnly((yysemantic_stack_[(1) - (1)].authonly_t)); }
+    break;
+
+  case 132:
+/* Line 670 of lalr1.cc  */
+#line 472 "parser/bif.y"
+    { currentBifOptions->SetOptKey((yysemantic_stack_[(1) - (1)].optkey_t)); }
+    break;
+
+  case 133:
+/* Line 670 of lalr1.cc  */
+#line 474 "parser/bif.y"
+    { currentBifOptions->SetPufMode(PufMode::PUF4K); }
+    break;
+
+  case 134:
+/* Line 670 of lalr1.cc  */
+#line 476 "parser/bif.y"
+    { currentBifOptions->SetShutterValue((yysemantic_stack_[(3) - (3)].number)); }
+    break;
+
+  case 135:
+/* Line 670 of lalr1.cc  */
+#line 478 "parser/bif.y"
+    {  currentBifOptions->SetDpaCM((yysemantic_stack_[(1) - (1)].dpacm_t));}
+    break;
+
+  case 136:
+/* Line 670 of lalr1.cc  */
+#line 480 "parser/bif.y"
     { if(((yysemantic_stack_[(3) - (3)].number) != 8) && ((yysemantic_stack_[(3) - (3)].number) !=16) && ((yysemantic_stack_[(3) - (3)].number) != 32) && ((yysemantic_stack_[(3) - (3)].number) != 0))
                                                                                         LOG_ERROR("Invalid smap_width value in BIF. Valid values are 8, 16 and 32");
                                                                                   currentBifOptions->SetSmapWidth((yysemantic_stack_[(3) - (3)].number));
                                                                                 }
     break;
 
-  case 125:
+  case 137:
 /* Line 670 of lalr1.cc  */
-#line 459 "parser/bif.y"
+#line 484 "parser/bif.y"
     { currentBifOptions->SetBypassIdcodeFlag(true); }
     break;
 
-  case 126:
+  case 138:
 /* Line 670 of lalr1.cc  */
-#line 460 "parser/bif.y"
+#line 485 "parser/bif.y"
     { currentBifOptions->SetAHwRoTFlag(true); }
     break;
 
-  case 127:
+  case 139:
 /* Line 670 of lalr1.cc  */
-#line 461 "parser/bif.y"
+#line 486 "parser/bif.y"
     { currentBifOptions->SetSHwRoTFlag(true); }
     break;
 
-  case 128:
+  case 140:
 /* Line 670 of lalr1.cc  */
-#line 462 "parser/bif.y"
+#line 487 "parser/bif.y"
     { currentBifOptions->SetPufRingOscilltorSwapConfigValue((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
-  case 129:
+  case 141:
 /* Line 670 of lalr1.cc  */
-#line 463 "parser/bif.y"
+#line 488 "parser/bif.y"
     { currentBifOptions->SetDiceEnable(); }
     break;
 
-  case 130:
+  case 142:
 /* Line 670 of lalr1.cc  */
-#line 466 "parser/bif.y"
+#line 491 "parser/bif.y"
     { currentPartitionBifOptions = new PartitionBifOptions();
                                                                                   currentPartitionBifOptions->SetArchType(options.GetArchType(),options.IsVersalNetSeries(),  currentBifOptions->GetIdCode()); }
     break;
 
-  case 131:
+  case 143:
 /* Line 670 of lalr1.cc  */
-#line 469 "parser/bif.y"
+#line 494 "parser/bif.y"
     { currentPartitionBifOptions->filename = (yysemantic_stack_[(5) - (5)].string);
                                                                                   currentPartitionBifOptions->filelist.push_back((yysemantic_stack_[(5) - (5)].string));
                                                                                   currentBifOptions->Add(currentPartitionBifOptions, currentImageBifOptions);
                                                                                 }
     break;
 
-  case 132:
+  case 144:
 /* Line 670 of lalr1.cc  */
-#line 473 "parser/bif.y"
+#line 498 "parser/bif.y"
     { currentPartitionBifOptions = new PartitionBifOptions();
                                                                                   currentPartitionBifOptions->SetArchType(options.GetArchType(), options.IsVersalNetSeries(),  currentBifOptions->GetIdCode());
                                                                                   currentPartitionBifOptions->filename = (yysemantic_stack_[(1) - (1)].string); 
@@ -1015,484 +1105,538 @@ namespace BIF {
                                                                                 }
     break;
 
-  case 133:
+  case 145:
 /* Line 670 of lalr1.cc  */
-#line 479 "parser/bif.y"
+#line 504 "parser/bif.y"
     { currentPartitionBifOptions = new PartitionBifOptions();
                                                                                   currentPartitionBifOptions->SetArchType(options.GetArchType(), options.IsVersalNetSeries(),  currentBifOptions->GetIdCode()); }
     break;
 
-  case 141:
+  case 153:
 /* Line 670 of lalr1.cc  */
-#line 493 "parser/bif.y"
+#line 518 "parser/bif.y"
     { currentPartitionBifOptions->filename = (yysemantic_stack_[(3) - (3)].string);
                                                                                   currentPartitionBifOptions->filelist.push_back((yysemantic_stack_[(3) - (3)].string));
                                                                                   currentBifOptions->Add(currentPartitionBifOptions, currentImageBifOptions); }
     break;
 
-  case 142:
+  case 154:
 /* Line 670 of lalr1.cc  */
-#line 496 "parser/bif.y"
+#line 521 "parser/bif.y"
     { currentPartitionBifOptions->partitionId = (yysemantic_stack_[(3) - (3)].number); }
     break;
 
-  case 143:
+  case 155:
 /* Line 670 of lalr1.cc  */
-#line 497 "parser/bif.y"
+#line 522 "parser/bif.y"
     { currentPartitionBifOptions->imageStoreId = (yysemantic_stack_[(3) - (3)].number);
                                                                                   currentPartitionBifOptions->SetPartitionType(PartitionType::IMAGE_STORE_PDI); }
     break;
 
-  case 145:
+  case 157:
 /* Line 670 of lalr1.cc  */
-#line 500 "parser/bif.y"
+#line 525 "parser/bif.y"
     { currentPartitionBifOptions->fileType = (yysemantic_stack_[(3) - (3)].number); }
     break;
 
-  case 146:
+  case 158:
 /* Line 670 of lalr1.cc  */
-#line 501 "parser/bif.y"
+#line 526 "parser/bif.y"
     { currentPartitionBifOptions->bifSection = (yysemantic_stack_[(3) - (3)].string);
                                                                                   currentPartitionBifOptions->filename = currentPartitionBifOptions->GetOutputFileFromBifSection(options.GetOutputFileNames().front(), (yysemantic_stack_[(3) - (3)].string), currentImageBifOptions->GetImageType());
                                                                                   currentPartitionBifOptions->filelist.push_back(currentPartitionBifOptions->filename);
                                                                                   currentBifOptions->Add(currentPartitionBifOptions, currentImageBifOptions); }
     break;
 
-  case 160:
+  case 172:
 /* Line 670 of lalr1.cc  */
-#line 530 "parser/bif.y"
+#line 555 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP) 
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t\t[bootvectors] is supported only for ZYNQMP architecture");
                                                                                   currentBifOptions->SetBootVectorArray((yysemantic_stack_[(1) - (1)].number)); }
     break;
 
-  case 161:
+  case 173:
 /* Line 670 of lalr1.cc  */
-#line 535 "parser/bif.y"
+#line 560 "parser/bif.y"
     { currentPartitionBifOptions->SetAuthBlockAttr((yysemantic_stack_[(1) - (1)].number)); }
     break;
 
-  case 162:
+  case 174:
 /* Line 670 of lalr1.cc  */
-#line 537 "parser/bif.y"
+#line 562 "parser/bif.y"
     { currentPartitionBifOptions->bootloader = true;}
     break;
 
-  case 163:
+  case 175:
 /* Line 670 of lalr1.cc  */
-#line 538 "parser/bif.y"
+#line 563 "parser/bif.y"
     { currentPartitionBifOptions->boot = true;}
     break;
 
-  case 164:
+  case 176:
 /* Line 670 of lalr1.cc  */
-#line 539 "parser/bif.y"
+#line 564 "parser/bif.y"
     { currentPartitionBifOptions->user = true;}
     break;
 
-  case 165:
+  case 177:
 /* Line 670 of lalr1.cc  */
-#line 540 "parser/bif.y"
+#line 565 "parser/bif.y"
     { currentPartitionBifOptions->Static = true;}
     break;
 
-  case 166:
+  case 178:
 /* Line 670 of lalr1.cc  */
-#line 541 "parser/bif.y"
+#line 566 "parser/bif.y"
     { currentPartitionBifOptions->noautostart = true;}
     break;
 
-  case 167:
+  case 179:
 /* Line 670 of lalr1.cc  */
-#line 542 "parser/bif.y"
+#line 567 "parser/bif.y"
     { currentPartitionBifOptions->multiboot = true;}
     break;
 
-  case 168:
+  case 180:
 /* Line 670 of lalr1.cc  */
-#line 543 "parser/bif.y"
+#line 568 "parser/bif.y"
     { currentPartitionBifOptions->Protected = true;}
     break;
 
-  case 169:
+  case 181:
 /* Line 670 of lalr1.cc  */
-#line 544 "parser/bif.y"
+#line 569 "parser/bif.y"
     { currentPartitionBifOptions->SetEarlyHandoff(true); }
     break;
 
-  case 170:
+  case 182:
 /* Line 670 of lalr1.cc  */
-#line 545 "parser/bif.y"
+#line 570 "parser/bif.y"
     { currentPartitionBifOptions->SetHivec(true); }
     break;
 
-  case 171:
+  case 183:
 /* Line 670 of lalr1.cc  */
-#line 546 "parser/bif.y"
+#line 571 "parser/bif.y"
     { if(currentPartitionBifOptions->bootloader!=true)
                                                                                         LOG_ERROR("XIP mode can be enabled only for bootloader"); 
                                                                                   currentBifOptions->SetXipMode(); }
     break;
 
-  case 172:
-/* Line 670 of lalr1.cc  */
-#line 549 "parser/bif.y"
-    { currentPartitionBifOptions->fileType = (yysemantic_stack_[(1) - (1)].number); }
-    break;
-
-  case 173:
-/* Line 670 of lalr1.cc  */
-#line 550 "parser/bif.y"
-    { currentPartitionBifOptions->bootImage = true; }
-    break;
-
-  case 174:
-/* Line 670 of lalr1.cc  */
-#line 551 "parser/bif.y"
-    { currentPartitionBifOptions->fileType = (yysemantic_stack_[(1) - (1)].number); }
-    break;
-
-  case 175:
-/* Line 670 of lalr1.cc  */
-#line 552 "parser/bif.y"
-    { currentPartitionBifOptions->fileType = (yysemantic_stack_[(1) - (1)].number); }
-    break;
-
-  case 176:
-/* Line 670 of lalr1.cc  */
-#line 553 "parser/bif.y"
-    { currentPartitionBifOptions->SetPartitionType((yysemantic_stack_[(1) - (1)].ptype_t)); }
-    break;
-
-  case 177:
-/* Line 670 of lalr1.cc  */
-#line 554 "parser/bif.y"
-    { currentPartitionBifOptions->SetLockStepFlag();}
-    break;
-
-  case 178:
-/* Line 670 of lalr1.cc  */
-#line 557 "parser/bif.y"
-    { currentPartitionBifOptions->SetTrustZone(::TrustZone::Secure); }
-    break;
-
-  case 179:
-/* Line 670 of lalr1.cc  */
-#line 558 "parser/bif.y"
-    { currentPartitionBifOptions->SetTrustZone((yysemantic_stack_[(3) - (3)].trustzone_t)); }
-    break;
-
-  case 180:
-/* Line 670 of lalr1.cc  */
-#line 561 "parser/bif.y"
-    { currentPartitionBifOptions->SetEncryptionBlocks((yysemantic_stack_[(1) - (1)].number)); }
-    break;
-
-  case 181:
-/* Line 670 of lalr1.cc  */
-#line 562 "parser/bif.y"
-    { currentPartitionBifOptions->SetEncryptionBlocks((yysemantic_stack_[(4) - (1)].number), (yysemantic_stack_[(4) - (3)].number)); }
-    break;
-
-  case 182:
-/* Line 670 of lalr1.cc  */
-#line 563 "parser/bif.y"
-    { currentPartitionBifOptions->SetEncryptionBlocks((yysemantic_stack_[(4) - (1)].number), 0); }
-    break;
-
-  case 183:
-/* Line 670 of lalr1.cc  */
-#line 565 "parser/bif.y"
-    { currentPartitionBifOptions->SetAuthType((yysemantic_stack_[(3) - (3)].authvalue_t)); }
-    break;
-
   case 184:
 /* Line 670 of lalr1.cc  */
-#line 566 "parser/bif.y"
-    { currentPartitionBifOptions->SetEncryptType((yysemantic_stack_[(3) - (3)].encrvalue_t)); }
+#line 574 "parser/bif.y"
+    { currentPartitionBifOptions->fileType = (yysemantic_stack_[(1) - (1)].number); }
     break;
 
   case 185:
 /* Line 670 of lalr1.cc  */
-#line 567 "parser/bif.y"
-    { currentPartitionBifOptions->SetChecksumType((yysemantic_stack_[(3) - (3)].checksumvalue_t)); }
+#line 575 "parser/bif.y"
+    { currentPartitionBifOptions->bootImage = true; }
     break;
 
   case 186:
 /* Line 670 of lalr1.cc  */
-#line 568 "parser/bif.y"
-    { currentPartitionBifOptions->SetOwnerType((yysemantic_stack_[(3) - (3)].powner_t)); }
+#line 576 "parser/bif.y"
+    { currentPartitionBifOptions->fileType = (yysemantic_stack_[(1) - (1)].number); }
     break;
 
   case 187:
 /* Line 670 of lalr1.cc  */
-#line 569 "parser/bif.y"
-    { currentPartitionBifOptions->SetDestCpu((yysemantic_stack_[(3) - (3)].destcpu_t)); }
+#line 577 "parser/bif.y"
+    { currentPartitionBifOptions->fileType = (yysemantic_stack_[(1) - (1)].number); }
     break;
 
   case 188:
 /* Line 670 of lalr1.cc  */
-#line 570 "parser/bif.y"
-    { currentPartitionBifOptions->SetDestDevice((yysemantic_stack_[(3) - (3)].destdevice_t));  }
+#line 578 "parser/bif.y"
+    { currentPartitionBifOptions->SetPartitionType((yysemantic_stack_[(1) - (1)].ptype_t)); }
     break;
 
   case 189:
 /* Line 670 of lalr1.cc  */
-#line 571 "parser/bif.y"
-    { currentPartitionBifOptions->SetExceptionLevel((yysemantic_stack_[(3) - (3)].el_t)); }
+#line 579 "parser/bif.y"
+    { currentPartitionBifOptions->SetLockStepFlag();}
     break;
 
   case 190:
 /* Line 670 of lalr1.cc  */
-#line 572 "parser/bif.y"
-    { currentPartitionBifOptions->SetAesKeyFile((yysemantic_stack_[(3) - (3)].string)); }
+#line 582 "parser/bif.y"
+    { currentPartitionBifOptions->SetTrustZone(::TrustZone::Secure); }
     break;
 
   case 191:
 /* Line 670 of lalr1.cc  */
-#line 573 "parser/bif.y"
-    { currentPartitionBifOptions->ppkFile = ((yysemantic_stack_[(3) - (3)].string)); }
+#line 583 "parser/bif.y"
+    { currentPartitionBifOptions->SetTrustZone((yysemantic_stack_[(3) - (3)].trustzone_t)); }
     break;
 
   case 192:
 /* Line 670 of lalr1.cc  */
-#line 574 "parser/bif.y"
-    { currentPartitionBifOptions->pskFile = ((yysemantic_stack_[(3) - (3)].string)); }
+#line 586 "parser/bif.y"
+    { currentPartitionBifOptions->SetEncryptionBlocks((yysemantic_stack_[(1) - (1)].number)); }
     break;
 
   case 193:
 /* Line 670 of lalr1.cc  */
-#line 575 "parser/bif.y"
-    { currentPartitionBifOptions->spkFile = ((yysemantic_stack_[(3) - (3)].string)); }
+#line 587 "parser/bif.y"
+    { currentPartitionBifOptions->SetEncryptionBlocks((yysemantic_stack_[(4) - (1)].number), (yysemantic_stack_[(4) - (3)].number)); }
     break;
 
   case 194:
 /* Line 670 of lalr1.cc  */
-#line 576 "parser/bif.y"
-    { currentPartitionBifOptions->sskFile = ((yysemantic_stack_[(3) - (3)].string)); }
+#line 588 "parser/bif.y"
+    { currentPartitionBifOptions->SetEncryptionBlocks((yysemantic_stack_[(4) - (1)].number), 0); }
     break;
 
   case 195:
 /* Line 670 of lalr1.cc  */
-#line 577 "parser/bif.y"
-    { currentPartitionBifOptions->spkSelect =((yysemantic_stack_[(3) - (3)].spkselect_t)); currentPartitionBifOptions->spkSelLocal = true; }
+#line 590 "parser/bif.y"
+    { currentPartitionBifOptions->SetAuthType((yysemantic_stack_[(3) - (3)].authvalue_t)); }
     break;
 
   case 196:
 /* Line 670 of lalr1.cc  */
-#line 578 "parser/bif.y"
-    { currentPartitionBifOptions->SetSpkId((yysemantic_stack_[(3) - (3)].number)); }
+#line 591 "parser/bif.y"
+    { currentPartitionBifOptions->SetEncryptType((yysemantic_stack_[(3) - (3)].encrvalue_t)); }
     break;
 
   case 197:
 /* Line 670 of lalr1.cc  */
-#line 579 "parser/bif.y"
-    { currentPartitionBifOptions->spkSignatureFile = ((yysemantic_stack_[(3) - (3)].string)); }
+#line 592 "parser/bif.y"
+    { currentPartitionBifOptions->SetChecksumType((yysemantic_stack_[(3) - (3)].checksumvalue_t)); }
+    break;
+
+  case 198:
+/* Line 670 of lalr1.cc  */
+#line 593 "parser/bif.y"
+    { currentPartitionBifOptions->SetOwnerType((yysemantic_stack_[(3) - (3)].powner_t)); }
     break;
 
   case 199:
 /* Line 670 of lalr1.cc  */
-#line 581 "parser/bif.y"
-    { currentPartitionBifOptions->SetPartitionType((yysemantic_stack_[(3) - (3)].ptype_t)); }
+#line 594 "parser/bif.y"
+    { currentPartitionBifOptions->SetDestCpu((yysemantic_stack_[(3) - (3)].destcpu_t)); }
     break;
 
   case 200:
 /* Line 670 of lalr1.cc  */
-#line 582 "parser/bif.y"
-    { currentPartitionBifOptions->SetEncryptionKeySource((yysemantic_stack_[(3) - (3)].encrkeysrc_t)); }
+#line 595 "parser/bif.y"
+    { currentPartitionBifOptions->SetDestDevice((yysemantic_stack_[(3) - (3)].destdevice_t));  }
     break;
 
   case 201:
 /* Line 670 of lalr1.cc  */
-#line 583 "parser/bif.y"
-    { currentPartitionBifOptions->SetPartitionRevokeId((yysemantic_stack_[(3) - (3)].number)); }
+#line 596 "parser/bif.y"
+    { currentPartitionBifOptions->SetExceptionLevel((yysemantic_stack_[(3) - (3)].el_t)); }
     break;
 
   case 202:
 /* Line 670 of lalr1.cc  */
-#line 584 "parser/bif.y"
-    { currentPartitionBifOptions->SetSPKRevokeId((yysemantic_stack_[(3) - (3)].number)); }
+#line 597 "parser/bif.y"
+    { currentPartitionBifOptions->SetAesKeyFile((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 203:
 /* Line 670 of lalr1.cc  */
-#line 585 "parser/bif.y"
-    { currentPartitionBifOptions->SetDpaCM(DpaCM::DpaCMEnable); }
+#line 598 "parser/bif.y"
+    { currentPartitionBifOptions->ppkFile = ((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 204:
 /* Line 670 of lalr1.cc  */
-#line 586 "parser/bif.y"
-    { currentPartitionBifOptions->SetSlrNum((yysemantic_stack_[(3) - (3)].number)); }
+#line 599 "parser/bif.y"
+    { currentPartitionBifOptions->pskFile = ((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 205:
 /* Line 670 of lalr1.cc  */
-#line 587 "parser/bif.y"
-    { currentPartitionBifOptions->SetClusterNum((yysemantic_stack_[(3) - (3)].number)); }
+#line 600 "parser/bif.y"
+    { currentPartitionBifOptions->spkFile = ((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 206:
 /* Line 670 of lalr1.cc  */
-#line 588 "parser/bif.y"
-    { currentPartitionBifOptions->SetPufHdLocation(PufHdLoc::PUFinBH); }
+#line 601 "parser/bif.y"
+    { currentPartitionBifOptions->sskFile = ((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 207:
 /* Line 670 of lalr1.cc  */
-#line 589 "parser/bif.y"
-    { currentPartitionBifOptions->SetDelayAuth(true); }
+#line 602 "parser/bif.y"
+    { currentPartitionBifOptions->ppkFile1 = ((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 208:
 /* Line 670 of lalr1.cc  */
-#line 590 "parser/bif.y"
-    { currentPartitionBifOptions->SetTcmBootFlag(); }
+#line 603 "parser/bif.y"
+    { currentPartitionBifOptions->pskFile1 = ((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
-  case 218:
+  case 209:
 /* Line 670 of lalr1.cc  */
 #line 604 "parser/bif.y"
-    { (yyval.authvalue_t) = ::Authentication::None;}
+    { currentPartitionBifOptions->spkFile1 = ((yysemantic_stack_[(3) - (3)].string)); }
+    break;
+
+  case 210:
+/* Line 670 of lalr1.cc  */
+#line 605 "parser/bif.y"
+    { currentPartitionBifOptions->sskFile1 = ((yysemantic_stack_[(3) - (3)].string)); }
+    break;
+
+  case 211:
+/* Line 670 of lalr1.cc  */
+#line 606 "parser/bif.y"
+    { currentPartitionBifOptions->pkFile = ((yysemantic_stack_[(3) - (3)].string)); }
+    break;
+
+  case 212:
+/* Line 670 of lalr1.cc  */
+#line 607 "parser/bif.y"
+    { currentPartitionBifOptions->skFile = ((yysemantic_stack_[(3) - (3)].string)); }
+    break;
+
+  case 213:
+/* Line 670 of lalr1.cc  */
+#line 608 "parser/bif.y"
+    { currentPartitionBifOptions->pkFile1 = ((yysemantic_stack_[(3) - (3)].string)); }
+    break;
+
+  case 214:
+/* Line 670 of lalr1.cc  */
+#line 609 "parser/bif.y"
+    { currentPartitionBifOptions->skFile1 = ((yysemantic_stack_[(3) - (3)].string)); }
+    break;
+
+  case 215:
+/* Line 670 of lalr1.cc  */
+#line 610 "parser/bif.y"
+    { currentPartitionBifOptions->spkSelect =((yysemantic_stack_[(3) - (3)].spkselect_t)); currentPartitionBifOptions->spkSelLocal = true; }
+    break;
+
+  case 216:
+/* Line 670 of lalr1.cc  */
+#line 611 "parser/bif.y"
+    { currentPartitionBifOptions->SetSpkId((yysemantic_stack_[(3) - (3)].number)); }
+    break;
+
+  case 217:
+/* Line 670 of lalr1.cc  */
+#line 612 "parser/bif.y"
+    { currentPartitionBifOptions->spkSignatureFile = ((yysemantic_stack_[(3) - (3)].string)); }
+    break;
+
+  case 219:
+/* Line 670 of lalr1.cc  */
+#line 614 "parser/bif.y"
+    { currentPartitionBifOptions->SetPartitionType((yysemantic_stack_[(3) - (3)].ptype_t)); }
     break;
 
   case 220:
 /* Line 670 of lalr1.cc  */
-#line 608 "parser/bif.y"
-    { (yyval.encrvalue_t) = ::Encryption::None;}
+#line 615 "parser/bif.y"
+    { currentPartitionBifOptions->SetEncryptionKeySource((yysemantic_stack_[(3) - (3)].encrkeysrc_t)); }
+    break;
+
+  case 221:
+/* Line 670 of lalr1.cc  */
+#line 616 "parser/bif.y"
+    { currentPartitionBifOptions->SetPartitionRevokeId((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
   case 222:
 /* Line 670 of lalr1.cc  */
-#line 612 "parser/bif.y"
-    { (yyval.checksumvalue_t) = ::Checksum::None;}
+#line 617 "parser/bif.y"
+    { currentPartitionBifOptions->SetSPKRevokeId((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
-  case 239:
+  case 223:
 /* Line 670 of lalr1.cc  */
-#line 661 "parser/bif.y"
-    { currentPartitionBifOptions->alignment = (yysemantic_stack_[(3) - (3)].number); }
+#line 618 "parser/bif.y"
+    { currentPartitionBifOptions->SetDpaCM(DpaCM::DpaCMEnable); }
+    break;
+
+  case 224:
+/* Line 670 of lalr1.cc  */
+#line 619 "parser/bif.y"
+    { currentPartitionBifOptions->SetSlrNum((yysemantic_stack_[(3) - (3)].number)); }
+    break;
+
+  case 225:
+/* Line 670 of lalr1.cc  */
+#line 620 "parser/bif.y"
+    { currentPartitionBifOptions->SetClusterNum((yysemantic_stack_[(3) - (3)].number)); }
+    break;
+
+  case 226:
+/* Line 670 of lalr1.cc  */
+#line 621 "parser/bif.y"
+    { currentPartitionBifOptions->SetPufHdLocation(PufHdLoc::PUFinBH); }
+    break;
+
+  case 227:
+/* Line 670 of lalr1.cc  */
+#line 622 "parser/bif.y"
+    { currentPartitionBifOptions->SetDelayAuth(true); }
+    break;
+
+  case 228:
+/* Line 670 of lalr1.cc  */
+#line 623 "parser/bif.y"
+    { currentPartitionBifOptions->SetTcmBootFlag(); }
+    break;
+
+  case 238:
+/* Line 670 of lalr1.cc  */
+#line 637 "parser/bif.y"
+    { (yyval.authvalue_t) = ::Authentication::None;}
     break;
 
   case 240:
 /* Line 670 of lalr1.cc  */
-#line 662 "parser/bif.y"
-    { currentPartitionBifOptions->offset = (yysemantic_stack_[(3) - (3)].number); }
+#line 639 "parser/bif.y"
+    { currentPartitionBifOptions->SetHybridAuthType((yysemantic_stack_[(1) - (1)].string)); (yyval.authvalue_t) = ::Authentication::RSA; }
     break;
 
   case 241:
 /* Line 670 of lalr1.cc  */
-#line 663 "parser/bif.y"
-    { currentPartitionBifOptions->SetReserveLength((yysemantic_stack_[(3) - (3)].number), false); }
-    break;
-
-  case 242:
-/* Line 670 of lalr1.cc  */
-#line 664 "parser/bif.y"
-    { currentPartitionBifOptions->SetReserveLength((yysemantic_stack_[(3) - (3)].number), true); }
+#line 642 "parser/bif.y"
+    { (yyval.encrvalue_t) = ::Encryption::None;}
     break;
 
   case 243:
 /* Line 670 of lalr1.cc  */
-#line 665 "parser/bif.y"
+#line 646 "parser/bif.y"
+    { (yyval.checksumvalue_t) = ::Checksum::None;}
+    break;
+
+  case 260:
+/* Line 670 of lalr1.cc  */
+#line 695 "parser/bif.y"
+    { currentPartitionBifOptions->alignment = (yysemantic_stack_[(3) - (3)].number); }
+    break;
+
+  case 261:
+/* Line 670 of lalr1.cc  */
+#line 696 "parser/bif.y"
+    { currentPartitionBifOptions->offset = (yysemantic_stack_[(3) - (3)].number); }
+    break;
+
+  case 262:
+/* Line 670 of lalr1.cc  */
+#line 697 "parser/bif.y"
+    { currentPartitionBifOptions->SetReserveLength((yysemantic_stack_[(3) - (3)].number), false); }
+    break;
+
+  case 263:
+/* Line 670 of lalr1.cc  */
+#line 698 "parser/bif.y"
+    { currentPartitionBifOptions->SetReserveLength((yysemantic_stack_[(3) - (3)].number), true); }
+    break;
+
+  case 264:
+/* Line 670 of lalr1.cc  */
+#line 699 "parser/bif.y"
     { currentPartitionBifOptions->load = (yysemantic_stack_[(3) - (3)].number); }
     break;
 
-  case 244:
+  case 265:
 /* Line 670 of lalr1.cc  */
-#line 666 "parser/bif.y"
+#line 700 "parser/bif.y"
     { currentPartitionBifOptions->startup = (yysemantic_stack_[(3) - (3)].number); }
     break;
 
-  case 245:
+  case 266:
 /* Line 670 of lalr1.cc  */
-#line 667 "parser/bif.y"
+#line 701 "parser/bif.y"
     { currentPartitionBifOptions->bigEndian = true; }
     break;
 
-  case 246:
+  case 267:
 /* Line 670 of lalr1.cc  */
-#line 668 "parser/bif.y"
+#line 702 "parser/bif.y"
     { currentPartitionBifOptions->a32Mode = true; }
     break;
 
-  case 247:
+  case 268:
 /* Line 670 of lalr1.cc  */
-#line 669 "parser/bif.y"
+#line 703 "parser/bif.y"
     { currentPartitionBifOptions->pid = (yysemantic_stack_[(3) - (3)].number); }
     break;
 
-  case 248:
+  case 269:
 /* Line 670 of lalr1.cc  */
-#line 670 "parser/bif.y"
+#line 704 "parser/bif.y"
     { currentPartitionBifOptions->SetTcmARegion((yysemantic_stack_[(3) - (3)].number)); }
-    break;
-
-  case 249:
-/* Line 670 of lalr1.cc  */
-#line 671 "parser/bif.y"
-    { currentPartitionBifOptions->SetTcmBRegion((yysemantic_stack_[(3) - (3)].number)); }
-    break;
-
-  case 250:
-/* Line 670 of lalr1.cc  */
-#line 672 "parser/bif.y"
-    { currentPartitionBifOptions->SetTcmCRegion((yysemantic_stack_[(3) - (3)].number)); }
-    break;
-
-  case 251:
-/* Line 670 of lalr1.cc  */
-#line 675 "parser/bif.y"
-    { currentPartitionBifOptions->presignFile = (yysemantic_stack_[(3) - (3)].string); }
-    break;
-
-  case 252:
-/* Line 670 of lalr1.cc  */
-#line 676 "parser/bif.y"
-    { currentPartitionBifOptions->acFile = (yysemantic_stack_[(3) - (3)].string); }
-    break;
-
-  case 253:
-/* Line 670 of lalr1.cc  */
-#line 677 "parser/bif.y"
-    { currentPartitionBifOptions->SetUdfDataFile((yysemantic_stack_[(3) - (3)].string)); }
     break;
 
   case 270:
 /* Line 670 of lalr1.cc  */
-#line 702 "parser/bif.y"
+#line 705 "parser/bif.y"
+    { currentPartitionBifOptions->SetTcmBRegion((yysemantic_stack_[(3) - (3)].number)); }
+    break;
+
+  case 271:
+/* Line 670 of lalr1.cc  */
+#line 706 "parser/bif.y"
+    { currentPartitionBifOptions->SetTcmCRegion((yysemantic_stack_[(3) - (3)].number)); }
+    break;
+
+  case 272:
+/* Line 670 of lalr1.cc  */
+#line 709 "parser/bif.y"
+    { currentPartitionBifOptions->presignFile = (yysemantic_stack_[(3) - (3)].string); }
+    break;
+
+  case 273:
+/* Line 670 of lalr1.cc  */
+#line 710 "parser/bif.y"
+    { currentPartitionBifOptions->acFile = (yysemantic_stack_[(3) - (3)].string); }
+    break;
+
+  case 274:
+/* Line 670 of lalr1.cc  */
+#line 711 "parser/bif.y"
+    { currentPartitionBifOptions->SetUdfDataFile((yysemantic_stack_[(3) - (3)].string)); }
+    break;
+
+  case 299:
+/* Line 670 of lalr1.cc  */
+#line 744 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP) 
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t\t[auth_params] is supported only in ZYNQMP architecture");
                                                                                   currentBifOptions->SetPPKSelection((yysemantic_stack_[(3) - (3)].number)); }
     break;
 
-  case 271:
+  case 300:
 /* Line 670 of lalr1.cc  */
-#line 705 "parser/bif.y"
+#line 747 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP) 
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t\t[auth_params] is supported only in ZYNQMP architecture");
                                                                                   currentBifOptions->SetSPKSelection((yysemantic_stack_[(3) - (3)].spkselect_t)); }
     break;
 
-  case 272:
+  case 301:
 /* Line 670 of lalr1.cc  */
-#line 708 "parser/bif.y"
+#line 750 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP) 
                                                                                     LOG_WARNING("BIF attribute error !!!\n\t\t[auth_params] is supported only in ZYNQMP architecture");
                                                                                   currentBifOptions->SetSpkId((yysemantic_stack_[(3) - (3)].number));  }
     break;
 
-  case 273:
+  case 302:
 /* Line 670 of lalr1.cc  */
-#line 711 "parser/bif.y"
+#line 753 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP) 
                                                                                     LOG_ERROR("BIF attribute error !!!\n\t\t[auth_params] is supported only in ZYNQMP architecture");
                                                                                   currentBifOptions->SetHeaderAuthentication(); }
     break;
 
-  case 282:
+  case 311:
 /* Line 670 of lalr1.cc  */
-#line 732 "parser/bif.y"
+#line 774 "parser/bif.y"
     { if(options.GetArchType() == Arch::ZYNQ || options.GetArchType() == Arch::ZYNQMP || options.GetArchType() == Arch::VERSAL)
                                                                    LOG_ERROR("BIF attribute error !!!\n\t\t'lms_key_params' is not supported with the mentioned -arch");
                                                                  lmsParams.lms_param = (yysemantic_stack_[(1) - (1)].string);
@@ -1500,117 +1644,117 @@ namespace BIF {
                                                                }
     break;
 
-  case 284:
+  case 313:
 /* Line 670 of lalr1.cc  */
-#line 739 "parser/bif.y"
+#line 781 "parser/bif.y"
     { lmsParams.type = (yysemantic_stack_[(2) - (1)].authkeylevel_t);}
     break;
 
-  case 287:
+  case 316:
 /* Line 670 of lalr1.cc  */
-#line 743 "parser/bif.y"
+#line 785 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP)
                                                                                       LOG_ERROR("BIF attribute error !!!\n\t\t[split] not supported with the mentioned -arch");
                                                                                   currentBifOptions->SetSplitMode((yysemantic_stack_[(3) - (3)].splitmode_t)); }
     break;
 
-  case 291:
+  case 320:
 /* Line 670 of lalr1.cc  */
-#line 753 "parser/bif.y"
+#line 795 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP)
                                                                                       LOG_ERROR("BIF attribute error !!!\n\t\t[split] not supported with the mentioned -arch");
                                                                                   currentBifOptions->SetSplitFmt(File::MCS); }
     break;
 
-  case 292:
+  case 321:
 /* Line 670 of lalr1.cc  */
-#line 756 "parser/bif.y"
+#line 798 "parser/bif.y"
     { if(options.GetArchType() != Arch::ZYNQMP)
                                                                                       LOG_ERROR("BIF attribute error !!!\n\t\t[split] not supported with the mentioned -arch");
                                                                                   currentBifOptions->SetSplitFmt(File::BIN); }
     break;
 
-  case 297:
+  case 326:
 /* Line 670 of lalr1.cc  */
-#line 768 "parser/bif.y"
+#line 810 "parser/bif.y"
     { (yyval.number) = (yysemantic_stack_[(3) - (2)].number); }
     break;
 
-  case 299:
+  case 328:
 /* Line 670 of lalr1.cc  */
-#line 775 "parser/bif.y"
+#line 817 "parser/bif.y"
     {(yyval.number) =  (yysemantic_stack_[(2) - (2)].number);     *options.debugstr << (yyval.number) << "    + " << (yysemantic_stack_[(2) - (2)].number) << std::endl;}
     break;
 
-  case 300:
+  case 329:
 /* Line 670 of lalr1.cc  */
-#line 776 "parser/bif.y"
+#line 818 "parser/bif.y"
     {(yyval.number) = ~(yysemantic_stack_[(2) - (2)].number);     *options.debugstr << (yyval.number) << "    ~ " << (yysemantic_stack_[(2) - (2)].number) << std::endl;}
     break;
 
-  case 302:
+  case 331:
 /* Line 670 of lalr1.cc  */
-#line 781 "parser/bif.y"
+#line 823 "parser/bif.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) *  (yysemantic_stack_[(3) - (3)].number); *options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " + " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
-  case 303:
+  case 332:
 /* Line 670 of lalr1.cc  */
-#line 782 "parser/bif.y"
+#line 824 "parser/bif.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) /  (yysemantic_stack_[(3) - (3)].number); *options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " / " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
-  case 304:
+  case 333:
 /* Line 670 of lalr1.cc  */
-#line 783 "parser/bif.y"
+#line 825 "parser/bif.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) %  (yysemantic_stack_[(3) - (3)].number); *options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " % " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
-  case 306:
+  case 335:
 /* Line 670 of lalr1.cc  */
-#line 787 "parser/bif.y"
+#line 829 "parser/bif.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) +  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " + " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
-  case 307:
+  case 336:
 /* Line 670 of lalr1.cc  */
-#line 788 "parser/bif.y"
+#line 830 "parser/bif.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) -  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " - " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
-  case 309:
+  case 338:
 /* Line 670 of lalr1.cc  */
-#line 792 "parser/bif.y"
+#line 834 "parser/bif.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) << (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " << " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
-  case 310:
+  case 339:
 /* Line 670 of lalr1.cc  */
-#line 793 "parser/bif.y"
+#line 835 "parser/bif.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) >> (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " >> " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
-  case 312:
+  case 341:
 /* Line 670 of lalr1.cc  */
-#line 797 "parser/bif.y"
+#line 839 "parser/bif.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) &  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " & " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
-  case 314:
+  case 343:
 /* Line 670 of lalr1.cc  */
-#line 801 "parser/bif.y"
+#line 843 "parser/bif.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) ^  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " ^ " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
-  case 316:
+  case 345:
 /* Line 670 of lalr1.cc  */
-#line 806 "parser/bif.y"
+#line 848 "parser/bif.y"
     {(yyval.number) = (yysemantic_stack_[(3) - (1)].number) |  (yysemantic_stack_[(3) - (3)].number);*options.debugstr << (yyval.number) << " = " << (yysemantic_stack_[(3) - (1)].number)  << " | " << (yysemantic_stack_[(3) - (3)].number) << std::endl;}
     break;
 
 
 /* Line 670 of lalr1.cc  */
-#line 1614 "bisonflex/bif.tab.cpp"
+#line 1758 "bisonflex/bif.tab.cpp"
       default:
         break;
       }
@@ -1822,69 +1966,76 @@ namespace BIF {
 
   /* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
      STATE-NUM.  */
-  const short int BisonParser::yypact_ninf_ = -463;
+  const short int BisonParser::yypact_ninf_ = -513;
   const short int
   BisonParser::yypact_[] =
   {
-      -463,    19,    12,  -463,    14,  -463,  -463,    18,    47,  -463,
-    -463,  -463,    79,  -463,   890,  -463,  -463,   246,    78,   101,
-      99,   103,   117,   144,   112,   149,  -463,   118,   157,   159,
-     160,   167,   206,  -463,  -463,  -463,  -463,  -463,  -463,  -463,
-    -463,  -463,  -463,  -463,  -463,  -463,  -463,  -463,  -463,  -463,
-    -463,  -463,  -463,  -463,    97,  -463,  -463,     8,  -463,  -463,
-    -463,   182,  -463,  -463,  -463,   645,   190,   212,   214,  -463,
-     230,   235,   792,   120,    24,   116,   169,   169,   169,   169,
-    -463,   169,     8,    18,  -463,   135,   923,    27,    67,  -463,
-    -463,  -463,  -463,    18,  -463,  -463,  -463,  -463,  -463,   282,
-     286,   288,   291,   307,   308,   310,   319,   324,   325,   326,
-     327,   329,   330,   333,   334,  -463,  -463,   341,   342,   344,
-     345,  -463,  -463,  -463,  -463,  -463,  -463,   346,   347,   348,
-     349,   350,   352,   355,   356,   358,   361,  -463,   362,  -463,
-     369,   370,   371,   372,  -463,  -463,  -463,  -463,  -463,  -463,
-     376,   377,   378,   379,   380,   381,  -463,  -463,  -463,   384,
-      10,   498,  -463,  -463,  -463,  -463,  -463,  -463,  -463,  -463,
-    -463,   116,   169,   135,   387,   192,    75,   386,   388,   354,
-    -463,   402,  -463,  -463,   405,   408,  -463,  -463,  -463,  -463,
-     169,   169,   169,  -463,  -463,    16,    49,    64,   250,   252,
-     256,   256,   256,   256,  -463,   256,   415,   411,   416,   185,
-    -463,  -463,  -463,  -463,  -463,  -463,  -463,   417,   418,   422,
-    -463,  -463,  -463,  -463,  -463,  -463,  -463,  -463,   430,   109,
-    -463,  -463,  -463,  -463,  -463,  -463,  -463,  -463,   429,   431,
-     432,   433,   434,   439,    83,  -463,   438,   442,   443,   419,
-     446,   444,   239,     3,  -463,   -48,   -23,   -62,   309,   357,
-     169,   299,   300,   306,   312,   169,   169,   169,   169,   169,
-     169,   169,   311,   169,   169,   169,   169,    18,    18,   373,
-      18,   169,   169,   169,   169,    18,   169,   169,   169,   135,
-      18,    18,    18,    18,    18,    18,  -463,   645,  -463,   645,
-    -463,  -463,  -463,   458,   256,  -463,   923,   460,   463,   465,
-    -463,   469,   474,   490,   492,   120,    18,   792,   169,  -463,
-      24,  -463,  -463,   -89,   169,   169,   169,   169,   169,   169,
-     169,   169,   169,   169,   353,  -463,    18,   425,   515,   518,
-     529,   532,   535,   536,   545,   550,   551,   554,   555,   556,
-     558,   559,  -463,  -463,   562,   115,   169,   169,   169,  -463,
-     923,  -463,   169,   169,   475,   169,    18,  -463,    27,  -463,
-     409,   169,   169,  -463,  -463,   194,  -463,   477,  -463,   410,
-    -463,  -463,  -463,  -463,  -463,  -463,  -463,  -463,  -463,  -463,
-    -463,  -463,  -463,  -463,   256,  -463,  -463,  -463,  -463,  -463,
-    -463,  -463,   256,   256,   256,   256,   256,   256,   256,  -463,
-    -463,   256,   256,  -463,   561,   -99,  -463,   256,  -463,  -463,
-    -463,  -463,   256,   256,   256,   256,  -463,   256,   256,   256,
-    -463,  -463,  -463,  -463,  -463,  -463,  -463,  -463,  -463,   169,
-    -463,   169,   169,   311,   192,   420,   226,    75,  -463,  -463,
-    -463,   256,  -463,  -463,  -463,  -463,  -463,    16,    16,    49,
-      49,    64,   250,   252,  -463,   566,   567,   569,   570,   572,
-     573,   575,   577,  -463,  -463,   578,  -463,  -463,   317,  -463,
-    -463,  -463,   583,   -48,   -23,   -62,   169,   169,   169,    18,
-     135,    18,    18,    18,    18,    18,    18,  -463,   185,  -463,
-     256,   256,   256,  -463,   256,   256,  -463,   256,  -463,  -463,
-    -463,  -463,   256,   256,   477,  -463,   585,   169,    65,  -463,
-     256,   256,  -463,   469,  -463,  -463,  -463,  -463,  -463,   492,
-     120,   169,   169,   169,   169,   169,   169,   500,   169,   198,
-    -463,   169,  -463,  -463,  -463,   256,   256,  -463,   584,   -86,
-    -463,  -463,  -463,  -463,  -463,  -463,  -463,  -463,  -463,   305,
-    -463,   421,   -84,  -463,   256,   256,   256,   256,   256,   256,
-    -463,   256,  -463,   256,   169,   304,  -463,  -463,  -463,  -463,
-     423,   -79,  -463,  -463
+      -513,    26,   -70,  -513,    33,  -513,  -513,     1,    53,  -513,
+    -513,  -513,    73,  -513,  1042,  -513,  -513,   148,    64,    84,
+      83,    94,    96,   116,    89,   118,  -513,   138,   165,   166,
+     173,   182,   196,  -513,  -513,  -513,  -513,  -513,  -513,  -513,
+    -513,  -513,  -513,  -513,  -513,  -513,  -513,  -513,  -513,  -513,
+    -513,  -513,  -513,   214,   219,   228,   232,  -513,  -513,  -513,
+    -513,  -513,   105,  -513,  -513,    15,  -513,  -513,  -513,   236,
+    -513,  -513,  -513,   730,   241,   250,   258,  -513,   261,   262,
+     886,   122,    31,   126,    86,    86,    86,    86,  -513,    86,
+      15,     1,  -513,   135,   389,   269,    32,     1,     1,     1,
+       1,  -513,  -513,  -513,  -513,     1,  -513,  -513,  -513,  -513,
+    -513,   271,   286,   287,   291,   297,   298,   300,   303,   309,
+     310,   311,   314,   318,   320,   323,   325,  -513,  -513,   326,
+     327,   328,   345,  -513,  -513,  -513,  -513,  -513,  -513,   346,
+     347,   352,   353,   354,   355,   356,   357,   358,   370,  -513,
+     372,  -513,   373,   374,   375,   376,  -513,  -513,  -513,  -513,
+    -513,  -513,   377,   378,   379,   380,   381,   388,   390,   391,
+     392,   393,   395,   396,   398,   399,  -513,  -513,  -513,   351,
+      17,   574,  -513,  -513,  -513,  -513,  -513,  -513,  -513,  -513,
+    -513,   126,    86,   135,   401,   151,    67,   400,   402,   404,
+    -513,   408,  -513,  -513,   411,   414,  -513,  -513,  -513,  -513,
+      86,    86,    86,  -513,  -513,   -44,   -41,    24,   252,   254,
+     257,   257,   257,   257,  -513,   257,   425,   421,   426,   936,
+    -513,  -513,  -513,  -513,  -513,  -513,  -513,   427,   428,   429,
+    -513,  -513,  -513,  -513,  -513,  -513,  -513,  -513,   432,   124,
+    -513,  -513,  -513,  -513,  -513,  -513,  -513,  -513,   431,   433,
+     434,   435,   436,   439,    75,  -513,   438,   440,   442,   446,
+     441,   423,   192,     4,  -513,  -513,  -513,  -513,  -513,   -34,
+     -68,   -75,   299,  1074,    86,   276,   289,   290,   288,    86,
+      86,    86,    86,    86,    86,    86,   293,    86,    86,    86,
+      86,     1,     1,   371,     1,    86,    86,    86,    86,     1,
+      86,    86,    86,   135,     1,     1,     1,     1,     1,     1,
+       1,     1,     1,     1,     1,     1,     1,     1,  -513,   730,
+    -513,   730,  -513,  -513,  -513,   458,   257,  -513,   389,   459,
+     460,   461,  -513,   455,   462,   463,   465,   122,     1,   886,
+      86,  -513,    31,  -513,  -513,   -92,    86,    86,    86,    86,
+      86,    86,    86,    86,    86,    86,   177,  -513,     1,   397,
+     468,   469,   470,   471,   472,   474,   490,   491,   492,   493,
+     497,   499,   500,   508,   511,   513,   515,   516,   517,   518,
+     519,   520,  -513,  -513,   467,   349,    86,    86,    86,  -513,
+     389,  -513,    86,    86,   437,    86,     1,  -513,   269,  -513,
+     359,    86,    86,  -513,  -513,   111,  -513,   443,  -513,   360,
+    -513,  -513,  -513,  -513,  -513,  -513,  -513,  -513,  -513,  -513,
+    -513,  -513,  -513,  -513,  -513,  -513,  -513,  -513,  -513,   257,
+    -513,  -513,  -513,  -513,  -513,  -513,  -513,   257,   257,   257,
+     257,   257,   257,   257,  -513,  -513,   257,   257,  -513,   522,
+    -158,  -513,   257,  -513,  -513,  -513,  -513,   257,   257,   257,
+     257,  -513,   257,   257,   257,  -513,  -513,  -513,  -513,  -513,
+    -513,  -513,  -513,  -513,  -513,  -513,  -513,  -513,  -513,  -513,
+    -513,  -513,    86,  -513,    86,    86,   293,   151,   361,   174,
+      67,  -513,  -513,  -513,   257,  -513,  -513,  -513,  -513,  -513,
+     -44,   -44,   -41,   -41,    24,   252,   254,  -513,   526,   527,
+     529,   530,   531,   532,   533,   534,  -513,  -513,   535,  -513,
+    -513,   344,  -513,  -513,  -513,   536,   -34,   -68,   -75,    86,
+      86,    86,     1,   135,     1,     1,     1,     1,     1,     1,
+       1,     1,     1,     1,     1,     1,     1,     1,  -513,   936,
+    -513,   257,   257,   257,  -513,   257,   257,  -513,   257,  -513,
+    -513,  -513,  -513,   257,   257,   443,  -513,   545,    86,   193,
+    -513,   257,   257,  -513,   455,  -513,  -513,  -513,  -513,  -513,
+     465,   122,    86,    86,    86,    86,    86,    86,   464,    86,
+     222,  -513,    86,  -513,  -513,  -513,   257,   257,  -513,   542,
+    -128,  -513,  -513,  -513,  -513,  -513,  -513,  -513,  -513,  -513,
+    -513,  -513,  -513,  -513,  -513,  -513,  -513,  -513,   240,  -513,
+     369,   -86,  -513,   257,   257,   257,   257,   257,   257,  -513,
+     257,  -513,   257,    86,   211,  -513,  -513,  -513,  -513,   417,
+     -85,  -513,  -513
   };
 
   /* YYDEFACT[S] -- default reduction number in state S.  Performed when
@@ -1893,97 +2044,104 @@ namespace BIF {
   const unsigned short int
   BisonParser::yydefact_[] =
   {
-         3,     0,     2,     1,     0,     6,     4,     0,     0,   293,
-     294,     5,     0,     8,     0,   133,     7,   130,     0,     0,
-       0,     0,     0,     0,     0,     0,    80,     0,     0,     0,
-       0,     0,     0,   260,   259,   212,   211,   213,   214,   215,
-     216,   217,   209,   254,   262,   263,   264,   265,   266,   256,
-     257,   258,    12,    13,    11,    55,    15,    79,    10,     9,
-      14,     0,   210,   255,   132,     0,     0,     0,     0,    84,
+         3,     0,     2,     1,     0,     6,     4,     0,     0,   322,
+     323,     5,     0,     8,     0,   145,     7,   142,     0,     0,
+       0,     0,     0,     0,     0,     0,    92,     0,     0,     0,
+       0,     0,     0,   281,   280,   232,   231,   233,   234,   235,
+     236,   237,   229,   275,   283,   284,   285,   286,   287,   288,
+     289,   290,   291,     0,     0,     0,     0,   277,   278,   279,
+      12,    13,    11,    67,    15,    91,    10,     9,    14,     0,
+     230,   276,   144,     0,     0,     0,     0,    96,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,    69,     0,
+      90,    49,    16,     0,     0,     0,     0,     0,     0,     0,
+       0,    68,   142,    93,    94,     0,   174,   183,   181,   182,
+     189,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+     190,     0,     0,     0,     0,     0,     0,   266,   267,     0,
+       0,     0,     0,   175,   176,   177,   178,   179,   180,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,   227,
+       0,   228,     0,     0,     0,     0,   282,   297,   185,   298,
+     184,   296,   275,   284,   285,   286,   287,   288,   289,   290,
+     291,   292,   293,   294,   295,   277,   246,   226,   223,     0,
+     148,   147,   165,   161,   218,   162,   188,   163,   164,   186,
+     187,     0,     0,     0,     0,     0,     0,     0,     0,   159,
+      65,     0,   113,   256,     0,   110,   112,   101,   325,   324,
+       0,     0,     0,   327,   330,   334,   337,   340,   342,   344,
+      66,    56,    57,    58,    71,    55,     0,    46,     0,    21,
+     247,    64,   141,   137,   138,   139,   133,     0,     0,     0,
+     248,   249,   251,   252,   253,   254,   255,   250,     0,   115,
+     126,   127,   135,   128,   129,   130,   132,   131,     0,     0,
+       0,     0,     0,     0,   118,   311,     0,     0,     0,     0,
+       0,   305,     0,     0,    59,    60,    61,    62,    63,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-      57,     0,    78,    41,    16,     0,     0,     0,     0,    56,
-     130,    81,    82,     0,   162,   171,   169,   170,   177,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,   178,     0,
-       0,     0,     0,     0,     0,   245,   246,     0,     0,     0,
-       0,   163,   164,   165,   166,   167,   168,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,   207,     0,   208,
-       0,     0,     0,     0,   261,   268,   173,   269,   172,   267,
-     254,   263,   264,   265,   266,   256,   225,   206,   203,     0,
-     136,   135,   153,   149,   198,   150,   176,   151,   152,   174,
-     175,     0,     0,     0,     0,     0,     0,     0,     0,   147,
-      53,     0,   101,   235,     0,    98,   100,    89,   296,   295,
-       0,     0,     0,   298,   301,   305,   308,   311,   313,   315,
-      54,    48,    49,    50,    59,    47,     0,    38,     0,    21,
-     226,    52,   129,   125,   126,   127,   121,     0,     0,     0,
-     227,   228,   230,   231,   232,   233,   234,   229,     0,   103,
-     114,   115,   123,   116,   117,   118,   120,   119,     0,     0,
-       0,     0,     0,     0,   106,   282,     0,     0,     0,     0,
-       0,   276,     0,     0,    51,     0,     0,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,   134,     0,   139,     0,
-     140,    88,    92,   158,   160,    83,     0,     0,     0,     0,
-     273,    90,     0,     0,    91,     0,     0,     0,     0,    87,
-       0,   299,   300,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,    80,    94,    41,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,   146,     0,
+     151,     0,   152,   100,   104,   170,   172,    95,     0,     0,
+       0,     0,   302,   102,     0,     0,   103,     0,     0,     0,
+       0,    99,     0,   328,   329,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,    92,   106,    49,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,    37,    35,     0,    18,     0,     0,     0,    86,
-       0,   105,     0,     0,     0,     0,     0,    93,     0,   108,
-       0,     0,     0,   284,    95,     0,    96,     0,    97,   286,
-     218,   219,   183,   220,   221,   184,   222,   223,   185,   224,
-     186,   145,   144,   176,   247,   237,   188,   236,   187,   238,
-     189,   179,   239,   240,   241,   242,   243,   244,   196,   275,
-     195,   201,   202,   154,   156,   180,   155,   161,   251,   252,
-     146,   253,   204,   205,   143,   142,   141,   248,   249,   250,
-     200,   190,   191,   192,   193,   194,   197,   137,   138,     0,
-      85,     0,     0,     0,     0,     0,     0,     0,   199,   131,
-     148,   102,    99,   297,   302,   303,   304,   306,   307,   309,
-     310,   312,   314,   316,    58,     0,     0,     0,     0,     0,
-       0,     0,     0,    68,    69,     0,    70,    60,    63,    62,
-      61,    39,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,    17,    21,    20,
-     128,   122,   124,   104,   109,   110,   111,   112,   113,   107,
-     281,   278,   280,   279,     0,   277,   283,     0,     0,   159,
-     270,   272,   271,   274,   290,   287,   291,   292,   288,   289,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-      65,     0,    25,    22,    34,    32,    33,    36,    42,    44,
-      31,    23,    24,    26,    27,    28,    29,    30,    19,     0,
-     157,     0,     0,    72,    76,    77,    73,    74,    75,    66,
-      67,    71,    64,    40,     0,     0,   285,   182,   181,    43,
-       0,     0,    46,    45
+       0,     0,    45,    43,     0,    18,     0,     0,     0,    98,
+       0,   117,     0,     0,     0,     0,     0,   105,     0,   120,
+       0,     0,     0,   313,   107,     0,   108,     0,   109,   315,
+     238,   239,   240,   195,   241,   242,   196,   243,   244,   197,
+     245,   198,   157,   292,   293,   294,   295,   156,   188,   268,
+     258,   200,   257,   199,   259,   201,   191,   260,   261,   262,
+     263,   264,   265,   216,   304,   215,   221,   222,   166,   168,
+     192,   167,   173,   272,   273,   158,   274,   224,   225,   155,
+     154,   153,   269,   270,   271,   220,   202,   203,   204,   205,
+     206,   207,   208,   209,   210,   211,   212,   213,   214,   217,
+     149,   150,     0,    97,     0,     0,     0,     0,     0,     0,
+       0,   219,   143,   160,   114,   111,   326,   331,   332,   333,
+     335,   336,   338,   339,   341,   343,   345,    70,     0,     0,
+       0,     0,     0,     0,     0,     0,    80,    81,     0,    82,
+      72,    75,    74,    73,    47,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,    17,    21,
+      20,   140,   134,   136,   116,   121,   122,   123,   124,   125,
+     119,   310,   307,   309,   308,     0,   306,   312,     0,     0,
+     171,   299,   301,   300,   303,   319,   316,   320,   321,   317,
+     318,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,    77,     0,    25,    22,    42,    40,    41,    44,    50,
+      52,    39,    23,    24,    26,    27,    28,    29,    30,    31,
+      32,    33,    34,    35,    36,    37,    38,    19,     0,   169,
+       0,     0,    84,    88,    89,    85,    86,    87,    78,    79,
+      83,    76,    48,     0,     0,   314,   194,   193,    51,     0,
+       0,    54,    53
   };
 
   /* YYPGOTO[NTERM-NUM].  */
   const short int
   BisonParser::yypgoto_[] =
   {
-      -463,  -463,  -463,  -463,  -463,  -463,  -463,  -463,  -346,  -463,
-     258,  -463,    25,  -463,  -463,  -463,   538,  -463,  -463,  -462,
-    -463,   264,   574,  -463,  -463,   281,  -463,  -193,  -191,  -463,
-    -463,   -10,  -463,   588,  -463,  -148,  -463,   287,   -64,  -463,
-      86,   166,  -463,  -463,   351,  -463,  -463,  -463,  -463,   123,
-     124,   122,  -463,   -63,  -167,  -463,  -463,  -463,  -463,  -463,
-    -463,  -463,  -463,   -61,  -463,  -463,  -463,  -463,  -463,   595,
-    -463,  -463,   168,   170,  -463,   236,  -463,  -360,   530,  -463,
-     172,  -463,  -463,    13,  -463,  -110,   -16,    -2,   289,   285,
-     313,   -76
+      -513,  -513,  -513,  -513,  -513,  -513,  -513,  -513,  -386,  -513,
+     185,  -513,   -89,  -513,  -513,  -513,   495,  -513,  -513,  -512,
+    -513,   195,   538,  -513,  -513,   206,  -513,  -235,  -241,  -513,
+    -513,   -10,  -513,   548,  -513,  -165,  -513,   231,   -74,  -513,
+       3,    90,  -513,  -513,   301,  -513,  -513,  -513,  -513,    47,
+      48,    59,  -513,   -71,  -186,  -513,  -513,  -513,  -513,  -513,
+    -513,  -513,  -513,   -66,  -513,  -513,  -513,  -513,  -513,   597,
+    -513,  -513,   117,   121,  -513,   203,  -513,  -405,   537,  -513,
+     127,  -513,  -513,    21,  -513,  -127,  -101,   -97,   273,   268,
+     272,   -84
   };
 
   /* YYDEFGOTO[NTERM-NUM].  */
   const short int
   BisonParser::yydefgoto_[] =
   {
-        -1,     1,     2,     6,     8,    14,    52,   209,   354,   355,
-     206,   207,   547,   548,    53,    54,    55,   204,   334,   477,
-     478,    56,    57,    58,   174,   184,   185,   228,   243,   244,
-     229,    91,    72,    92,    65,   159,   160,   178,   161,   162,
-     413,   302,   303,   416,   163,   164,   414,   165,    61,   382,
-     385,   388,   390,   166,   211,   230,   231,   232,   233,   234,
-     235,   236,   237,   186,   398,   396,   400,   167,   168,   169,
-      63,   170,   311,   410,   250,   251,   511,   252,   379,   514,
-     314,   525,   528,    64,   193,   194,   195,   196,   197,   198,
-     199,   304
+        -1,     1,     2,     6,     8,    14,    60,   229,   394,   395,
+     226,   227,   608,   609,    61,    62,    63,   224,   366,   530,
+     531,    64,    65,    66,   194,   204,   205,   248,   263,   264,
+     249,   103,    80,   104,    73,   179,   180,   198,   181,   182,
+     458,   334,   335,   461,   183,   184,   459,   185,    69,   423,
+     426,   429,   431,   186,   231,   250,   251,   252,   253,   254,
+     255,   256,   257,   206,   443,   441,   445,   187,   188,   189,
+      71,   190,   343,   455,   270,   271,   572,   272,   419,   575,
+     346,   586,   589,    72,   213,   214,   215,   216,   217,   218,
+     219,   336
   };
 
   /* YYTABLE[YYPACT[STATE-NUM]].  What to do in state STATE-NUM.  If
@@ -1993,230 +2151,258 @@ namespace BIF {
   const unsigned short int
   BisonParser::yytable_[] =
   {
-       200,   201,   202,   203,    59,   205,   305,   378,   179,   499,
-     180,    15,   298,   300,   187,   297,   540,   516,    90,     3,
-      11,     7,    94,    95,    96,    97,    98,    99,   100,   101,
-     102,   103,   104,   386,   105,   106,   361,   107,   108,   109,
-     110,   111,   112,   113,   114,   115,   116,   380,   117,   118,
-     181,   119,   120,   369,    12,   121,   122,   123,   124,   125,
-     126,   127,   128,   333,   129,   130,   131,   132,   238,   239,
-     133,   134,   383,   333,   518,   135,   333,   572,   333,   387,
-     321,   322,    13,   333,    73,   453,   136,   575,   368,   182,
-     578,   381,   137,     4,   138,   583,   208,   139,   140,   141,
-     142,     9,    10,     5,    74,    76,   254,    75,   143,    77,
-     301,     9,    10,   440,   360,    80,   323,   384,   312,   313,
-     498,    83,   430,    78,   238,   239,    33,    34,   144,   240,
-     241,   242,   338,   339,   340,   145,   146,   147,   148,   149,
-     150,    44,   151,   152,   153,   154,   155,    50,    51,   437,
-      79,   438,   558,   156,   559,    81,   341,   342,   245,   157,
-      84,   188,   189,    86,   249,    85,   343,   503,   158,   344,
-      87,   212,    24,   246,   247,   248,   183,   509,   213,   214,
-     215,   324,   325,   326,   394,   240,   241,   242,    93,   402,
-     403,   404,   405,   406,   407,   408,   393,   411,   412,   415,
-     417,   171,   338,   339,   340,   422,   423,   424,   425,    88,
-     427,   428,   429,   345,   454,   455,   456,   327,   328,   465,
-     216,   217,   218,   172,   219,   173,   341,   342,   249,   307,
-     308,   309,   310,   190,   329,   330,   343,   191,   192,   344,
-     561,   175,   451,   376,   377,   346,   176,   347,   348,   349,
-     350,   351,   448,   179,   220,   221,   222,   223,   224,   225,
-     226,   466,   467,   156,   352,   188,   189,   227,   183,    66,
-     468,   469,   470,   353,   471,   472,   473,   474,   475,   210,
-     500,   501,   502,   345,   526,   527,   504,   505,   255,   507,
-     418,   419,   256,   421,   257,   512,   513,   258,   426,    67,
-     246,   247,   248,   431,   432,   433,   434,   435,   436,   576,
-     377,   457,   458,   259,   260,   346,   261,   347,   348,   349,
-     350,   351,   539,   551,   480,   262,   476,   459,   460,   449,
-     263,   264,   265,   266,   352,   267,   268,   190,   465,   269,
-     270,   191,   192,   353,    68,    69,    70,   271,   272,   208,
-     273,   274,   275,   276,   277,   278,   279,   464,   280,   317,
-      71,   281,   282,    90,   283,   520,   521,   284,   285,    94,
-      95,    96,    97,    98,   465,   286,   287,   288,   289,   508,
-     466,   467,   290,   291,   292,   293,   294,   295,   296,   468,
-     469,   470,   315,   471,   472,   473,   474,   475,   306,   316,
-     188,   189,   121,   122,   123,   124,   125,   126,   318,   319,
-     545,   546,   549,   320,   331,   332,   466,   467,   333,   335,
-     336,   337,   373,   356,   357,   468,   469,   470,   358,   471,
-     472,   473,   474,   475,   359,   362,    26,   363,   364,   365,
-     366,   415,   562,   367,   370,   476,     9,    10,   371,   372,
-     374,   389,   395,   375,   397,   564,   565,   566,   567,   568,
-     569,   399,   571,   439,   420,   573,   441,   563,   401,   442,
-     409,   443,   190,    33,    34,   144,   191,   192,   444,   580,
-     445,   476,   391,   146,   147,   148,   149,    43,    44,    45,
-      46,    47,    48,    49,    50,    51,   446,   447,   549,   581,
-     156,   482,   550,   299,   552,   553,   554,   555,   556,   557,
-      94,    95,    96,    97,    98,    99,   100,   101,   102,   103,
-     104,   483,   105,   106,   484,   107,   108,   109,   110,   111,
-     112,   113,   114,   115,   116,   485,   117,   118,   486,   119,
-     120,   487,   488,   121,   122,   123,   124,   125,   126,   127,
-     128,   489,   129,   130,   131,   132,   490,   491,   133,   134,
-     492,   493,   494,   135,   495,   496,   497,   506,   245,   510,
-     517,   249,   530,   531,   136,   532,   533,   524,   534,   535,
-     137,   536,   138,   537,   538,   139,   140,   141,   142,   541,
-     377,   570,    89,   574,   481,   577,   143,   582,   479,   579,
-      82,   452,    60,   560,   450,   519,   542,   544,   543,    62,
-     392,   515,   523,   522,    33,    34,   144,   462,   253,   529,
-     461,     0,     0,   145,   146,   147,   148,   149,   150,    44,
-     151,   152,   153,   154,   155,    50,    51,     0,     0,     0,
-       0,   156,     0,     0,     0,     0,   463,   157,     0,     0,
-       0,     0,     0,     0,     0,     0,   158,    94,    95,    96,
-      97,    98,    99,   100,   101,   102,   103,   104,     0,   105,
-     106,     0,   107,   108,   109,   110,   111,   112,   113,   114,
-     115,   116,     0,   117,   118,     0,   119,   120,     0,     0,
-     121,   122,   123,   124,   125,   126,   127,   128,     0,   129,
-     130,   131,   132,     0,     0,   133,   134,     0,     0,     0,
-     135,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,   136,     0,     0,     0,     0,     0,   137,     0,   138,
-       0,     0,   139,   140,   141,   142,     0,     0,     0,     0,
-       0,     0,     0,   143,     0,     0,     0,     0,     0,     0,
+       220,   221,   222,   223,    67,   225,   199,   337,   418,   560,
+     200,     4,   577,   365,   401,   330,   332,   207,    15,   601,
+     427,     5,   329,   409,   579,   102,     3,   424,    11,   106,
+     107,   108,   109,   110,   111,   112,   113,   114,   115,   116,
+       7,   117,   118,   365,   119,   120,   121,   122,   123,   124,
+     125,   126,   127,   128,   644,   129,   130,   201,   131,   132,
+      12,   420,   133,   134,   135,   136,   137,   138,   139,   140,
+      81,   141,   142,   143,   144,   428,    13,   145,   146,   365,
+     408,   425,   147,   353,   354,   365,   365,    82,   641,    84,
+      83,   506,    88,   148,     9,    10,   202,   647,   652,   149,
+      85,   150,    86,   493,   151,   152,   153,   154,     9,    10,
+     344,   345,   228,   421,   422,   155,   258,   259,   274,   275,
+     276,   277,    87,   265,    89,   333,   278,   475,   355,   400,
+     356,   357,   358,    33,    34,   156,   359,   360,   266,   267,
+     268,    91,   157,   158,   159,   160,   161,   162,    44,   163,
+     164,   165,   166,   167,   168,   169,   170,   171,   172,   173,
+     174,   175,    58,    59,   490,   564,   491,   570,    92,   176,
+     628,    74,    93,   627,   269,   177,    94,   260,   261,   262,
+      24,   517,   208,   209,   178,    95,   232,   102,   339,   340,
+     341,   342,   203,   233,   234,   235,   416,   417,   518,    96,
+     439,    75,   269,   361,   362,   447,   448,   449,   450,   451,
+     452,   453,   438,   456,   457,   460,   462,   266,   267,   268,
+      97,   467,   468,   469,   470,    98,   472,   473,   474,   507,
+     508,   509,   587,   588,    99,   236,   237,   238,   100,   239,
+     519,   520,   105,   518,   645,   417,    76,    77,    78,   521,
+     522,   523,   191,   524,   525,   526,   527,   528,   510,   511,
+      26,   192,    79,   210,   512,   513,   504,   211,   212,   193,
+       9,    10,   195,   196,   176,   199,   501,   279,   240,   241,
+     242,   243,   244,   245,   246,   519,   520,   203,   230,   208,
+     209,   247,   280,   281,   521,   522,   523,   282,   524,   525,
+     526,   527,   528,   283,   284,   529,   285,   208,   209,   286,
+     258,   259,   561,   562,   563,   287,   288,   289,   565,   566,
+     290,   568,   463,   464,   291,   466,   292,   573,   574,   293,
+     471,   294,   295,   296,   297,   476,   477,   478,   479,   480,
+     481,   482,   483,   484,   485,   486,   487,   488,   489,   600,
+     529,   298,   299,   300,   559,   328,   533,   612,   301,   302,
+     303,   304,   305,   306,   307,   518,   370,   371,   372,   502,
+     210,   260,   261,   262,   211,   212,   308,   630,   309,   310,
+     311,   312,   313,   314,   315,   316,   317,   318,   210,   228,
+     373,   374,   211,   212,   319,   649,   320,   321,   322,   323,
+     375,   324,   325,   376,   326,   327,   347,   519,   520,   349,
+     581,   582,   338,   348,   350,   351,   521,   522,   523,   352,
+     524,   525,   526,   527,   528,   363,   364,   569,   365,   367,
+     368,   369,   415,   396,   397,   398,   399,   402,   440,   403,
+     404,   405,   406,   407,   410,   414,   411,   377,   412,   413,
+     430,   232,   442,   446,   444,   606,   607,   610,   233,   234,
+     235,   454,   465,   492,   497,   494,   495,   496,   498,   499,
+     500,   558,   529,   535,   536,   537,   538,   539,   540,   378,
+     541,   379,   380,   381,   382,   383,   384,   385,   386,   387,
+     388,   389,   390,   391,   460,   631,   542,   543,   544,   545,
+     236,   237,   238,   546,   239,   547,   548,   392,   633,   634,
+     635,   636,   637,   638,   549,   640,   393,   550,   642,   551,
+     632,   552,   553,   554,   555,   556,   557,   585,   571,   567,
+     269,   578,   591,   592,   265,   593,   594,   595,   596,   597,
+     598,   599,   602,   240,   241,   242,   243,   244,   245,   246,
+     417,   643,   646,   534,   648,   639,   247,   101,   505,   610,
+     650,   532,    68,   611,    90,   613,   614,   615,   616,   617,
+     618,   619,   620,   621,   622,   623,   624,   625,   626,   331,
+     503,   629,   580,   603,   437,   604,   106,   107,   108,   109,
+     110,   111,   112,   113,   114,   115,   116,   605,   117,   118,
+     651,   119,   120,   121,   122,   123,   124,   125,   126,   127,
+     128,    70,   129,   130,   584,   131,   132,   583,   576,   133,
+     134,   135,   136,   137,   138,   139,   140,   590,   141,   142,
+     143,   144,   515,   273,   145,   146,   514,   516,     0,   147,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,    33,    34,   144,     0,     0,     0,     0,     0,     0,
-     145,   146,   147,   148,   149,   150,    44,   151,   152,   153,
-     154,   155,    50,    51,     0,     0,     0,     0,   156,     0,
-       0,     0,     0,     0,   157,     0,     0,     0,     0,     0,
-       0,     0,     0,   158,    94,    95,    96,    97,    98,    99,
-     100,   101,   102,   177,   104,     0,   105,   106,     0,   107,
-     108,   109,   110,   111,   112,   113,   114,   115,   116,     0,
-     117,   118,     0,   119,   120,     0,     0,   121,   122,   123,
-     124,   125,   126,   127,   128,     0,   129,   130,     0,   132,
-       0,     0,   133,   134,     0,     0,     0,     0,     0,     0,
+     148,     0,     0,     0,     0,     0,   149,     0,   150,     0,
+       0,   151,   152,   153,   154,     0,     0,     0,     0,     0,
+       0,     0,   155,     0,     0,     0,     0,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,   137,     0,     0,     0,     0,   139,
-     140,   141,   142,     0,     0,     0,     0,     0,     0,     0,
-     143,     0,     0,    15,    16,     0,     0,     0,     0,     0,
-      17,     0,     0,     0,     0,     0,     0,     0,    33,    34,
-     144,    18,     0,    19,     0,     0,     0,   145,   146,   147,
-     148,   149,   150,    44,   151,   152,   153,   154,   155,    50,
-      51,    20,     0,     0,     0,   156,     0,     0,     0,     0,
-       0,   157,     0,     0,     0,     0,     0,     0,     0,     0,
-     158,     0,     0,     0,     0,     0,    21,    22,    23,     0,
-       0,     0,     0,     0,     0,    24,    25,     0,     0,     0,
-       0,     0,     0,    26,     0,    27,    28,     0,     0,     0,
-       0,     0,     0,     9,    10,   212,     0,     0,    29,    30,
-       0,    31,   213,   214,   215,    32,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,    33,    34,    35,    36,
-      37,    38,    39,    40,    41,     0,     0,     0,    42,     0,
-      43,    44,    45,    46,    47,    48,    49,    50,    51,     0,
-       0,     0,     0,     0,   216,   217,   218,     0,   219,     0,
+      33,    34,   156,     0,     0,     0,     0,     0,     0,   157,
+     158,   159,   160,   161,   162,    44,   163,   164,   165,   166,
+     167,   168,   169,   170,   171,   172,   173,   174,   175,    58,
+      59,     0,     0,     0,     0,     0,   176,     0,     0,     0,
+       0,     0,   177,     0,     0,     0,     0,     0,     0,     0,
+       0,   178,   106,   107,   108,   109,   110,   111,   112,   113,
+     114,   115,   116,     0,   117,   118,     0,   119,   120,   121,
+     122,   123,   124,   125,   126,   127,   128,     0,   129,   130,
+       0,   131,   132,     0,     0,   133,   134,   135,   136,   137,
+     138,   139,   140,     0,   141,   142,   143,   144,     0,     0,
+     145,   146,     0,     0,     0,   147,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,   148,     0,     0,     0,
+       0,     0,   149,     0,   150,     0,     0,   151,   152,   153,
+     154,     0,     0,     0,     0,     0,     0,     0,   155,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,   220,   221,
-     222,   223,   224,   225,   226,     0,     0,     0,     0,     0,
-       0,   227
+       0,     0,     0,     0,     0,     0,    33,    34,   156,     0,
+       0,     0,     0,     0,     0,   157,   158,   159,   160,   161,
+     162,    44,   163,   164,   165,   166,   167,   168,   169,   170,
+     171,   172,   173,   174,   175,    58,    59,     0,     0,     0,
+       0,     0,   176,     0,     0,     0,     0,     0,   177,     0,
+       0,     0,     0,     0,     0,     0,     0,   178,   106,   107,
+     108,   109,   110,   111,   112,   113,   114,   197,   116,     0,
+     117,   118,     0,   119,   120,   121,   122,   123,   124,   125,
+     126,   127,   128,     0,   129,   130,     0,   131,   132,     0,
+       0,   133,   134,   135,   136,   137,   138,   139,   140,     0,
+     141,   142,     0,   144,     0,     0,   145,   146,     0,     0,
+       0,     0,     0,   370,   371,   372,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,   149,     0,
+       0,     0,     0,   151,   152,   153,   154,   373,   374,     0,
+       0,     0,     0,     0,   155,     0,     0,   375,     0,     0,
+     376,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,    33,    34,   156,     0,     0,     0,     0,     0,
+       0,   157,   158,   159,   160,   161,   162,    44,   163,   164,
+     165,   166,   167,   168,   169,   170,   171,   172,   173,   174,
+     175,    58,    59,     0,   377,     0,     0,     0,   176,     0,
+       0,     0,     0,     0,   177,    15,    16,     0,     0,     0,
+       0,     0,    17,   178,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,    18,     0,    19,   378,     0,   379,   380,
+     381,   382,   383,   384,   385,   386,   387,   388,   389,   390,
+     391,     0,     0,    20,     0,     0,   106,   107,   108,   109,
+     110,     0,     0,     0,   392,     0,     0,     0,     0,     0,
+       0,     0,     0,   393,     0,     0,     0,     0,    21,    22,
+      23,     0,     0,     0,     0,     0,     0,    24,    25,   133,
+     134,   135,   136,   137,   138,    26,     0,    27,    28,     0,
+       0,     0,     0,     0,     0,     9,    10,     0,     0,     0,
+      29,    30,     0,    31,     0,     0,     0,    32,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,    33,    34,
+      35,    36,    37,    38,    39,    40,    41,     0,     0,     0,
+      42,     0,    43,    44,    45,    46,    47,    48,    49,    50,
+      51,    52,    53,    54,    55,    56,    57,    58,    59,     0,
+      33,    34,   156,     0,     0,     0,     0,     0,     0,   432,
+     158,   159,   160,   161,    43,    44,    45,    46,    47,    48,
+      49,    50,    51,    52,   433,   434,   435,   436,    57,    58,
+      59,     0,     0,     0,     0,     0,   176
   };
 
   /* YYCHECK.  */
   const short int
   BisonParser::yycheck_[] =
   {
-        76,    77,    78,    79,    14,    81,   173,     4,    72,   355,
-      73,     3,   160,   161,    75,     5,   478,   377,    10,     0,
-       7,     7,    12,    13,    14,    15,    16,    17,    18,    19,
-      20,    21,    22,    95,    24,    25,   229,    27,    28,    29,
-      30,    31,    32,    33,    34,    35,    36,    95,    38,    39,
-      26,    41,    42,   244,     7,    45,    46,    47,    48,    49,
-      50,    51,    52,   162,    54,    55,    56,    57,    41,    42,
-      60,    61,    95,   162,   173,    65,   162,   539,   162,   141,
-     190,   191,     3,   162,     6,   174,    76,   173,     5,    65,
-     174,   139,    82,    81,    84,   174,    83,    87,    88,    89,
-      90,    93,    94,    91,     3,     6,    93,     6,    98,     6,
-     171,    93,    94,   306,     5,     3,   192,   140,    43,    44,
-       5,     3,   289,     6,    41,    42,   116,   117,   118,   102,
-     103,   104,    17,    18,    19,   125,   126,   127,   128,   129,
-     130,   131,   132,   133,   134,   135,   136,   137,   138,   297,
-       6,   299,   498,   143,   514,     6,    41,    42,    91,   149,
-       3,    96,    97,     3,   161,     6,    51,   360,   158,    54,
-       3,    62,    75,   106,   107,   108,   152,   368,    69,    70,
-      71,   165,   166,   167,   260,   102,   103,   104,     6,   265,
-     266,   267,   268,   269,   270,   271,   259,   273,   274,   275,
-     276,    11,    17,    18,    19,   281,   282,   283,   284,     3,
-     286,   287,   288,    98,   324,   325,   326,   168,   169,    21,
-     111,   112,   113,    11,   115,    11,    41,    42,   161,    37,
-      38,    39,    40,   168,   170,   171,    51,   172,   173,    54,
-     175,    11,   318,     4,     5,   130,    11,   132,   133,   134,
-     135,   136,   315,   317,   145,   146,   147,   148,   149,   150,
-     151,    63,    64,   143,   149,    96,    97,   158,   152,    23,
-      72,    73,    74,   158,    76,    77,    78,    79,    80,   144,
-     356,   357,   358,    98,    58,    59,   362,   363,     6,   365,
-     277,   278,     6,   280,     6,   371,   372,     6,   285,    53,
-     106,   107,   108,   290,   291,   292,   293,   294,   295,     4,
-       5,   327,   328,     6,     6,   130,     6,   132,   133,   134,
-     135,   136,     5,   490,   334,     6,   128,   329,   330,   316,
-       6,     6,     6,     6,   149,     6,     6,   168,    21,     6,
-       6,   172,   173,   158,    98,    99,   100,     6,     6,   336,
-       6,     6,     6,     6,     6,     6,     6,     4,     6,     5,
-     114,     6,     6,    10,     6,   441,   442,     6,     6,    12,
-      13,    14,    15,    16,    21,     6,     6,     6,     6,   366,
-      63,    64,     6,     6,     6,     6,     6,     6,     4,    72,
-      73,    74,     6,    76,    77,    78,    79,    80,    11,    11,
-      96,    97,    45,    46,    47,    48,    49,    50,     6,     4,
-     486,   487,   488,     5,   164,   163,    63,    64,   162,     4,
-       9,     5,     3,     6,     6,    72,    73,    74,     6,    76,
-      77,    78,    79,    80,     4,     6,    83,     6,     6,     6,
-       6,   517,   518,     4,     6,   128,    93,    94,     6,     6,
-       4,   142,   153,     9,   154,   531,   532,   533,   534,   535,
-     536,   155,   538,     5,    91,   541,     6,   530,   156,     6,
-     159,     6,   168,   116,   117,   118,   172,   173,     9,   175,
-       6,   128,   125,   126,   127,   128,   129,   130,   131,   132,
-     133,   134,   135,   136,   137,   138,     6,     5,   574,   575,
-     143,    76,   489,     5,   491,   492,   493,   494,   495,   496,
-      12,    13,    14,    15,    16,    17,    18,    19,    20,    21,
-      22,     6,    24,    25,     6,    27,    28,    29,    30,    31,
-      32,    33,    34,    35,    36,     6,    38,    39,     6,    41,
-      42,     6,     6,    45,    46,    47,    48,    49,    50,    51,
-      52,     6,    54,    55,    56,    57,     6,     6,    60,    61,
-       6,     6,     6,    65,     6,     6,     4,    92,    91,   160,
-       9,   161,     6,     6,    76,     6,     6,   157,     6,     6,
-      82,     6,    84,     6,     6,    87,    88,    89,    90,     6,
-       5,    91,    54,     9,   336,   174,    98,   174,   334,   574,
-      26,   320,    14,   517,   317,   439,   483,   485,   484,    14,
-     259,   375,   444,   443,   116,   117,   118,   332,    88,   447,
-     331,    -1,    -1,   125,   126,   127,   128,   129,   130,   131,
-     132,   133,   134,   135,   136,   137,   138,    -1,    -1,    -1,
-      -1,   143,    -1,    -1,    -1,    -1,   333,   149,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    -1,   158,    12,    13,    14,
-      15,    16,    17,    18,    19,    20,    21,    22,    -1,    24,
-      25,    -1,    27,    28,    29,    30,    31,    32,    33,    34,
-      35,    36,    -1,    38,    39,    -1,    41,    42,    -1,    -1,
-      45,    46,    47,    48,    49,    50,    51,    52,    -1,    54,
-      55,    56,    57,    -1,    -1,    60,    61,    -1,    -1,    -1,
-      65,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    76,    -1,    -1,    -1,    -1,    -1,    82,    -1,    84,
-      -1,    -1,    87,    88,    89,    90,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    98,    -1,    -1,    -1,    -1,    -1,    -1,
+        84,    85,    86,    87,    14,    89,    80,   193,     4,   395,
+      81,    81,   417,   171,   249,   180,   181,    83,     3,   531,
+      95,    91,     5,   264,   182,    10,     0,    95,     7,    12,
+      13,    14,    15,    16,    17,    18,    19,    20,    21,    22,
+       7,    24,    25,   171,    27,    28,    29,    30,    31,    32,
+      33,    34,    35,    36,   182,    38,    39,    26,    41,    42,
+       7,    95,    45,    46,    47,    48,    49,    50,    51,    52,
+       6,    54,    55,    56,    57,   150,     3,    60,    61,   171,
+       5,   149,    65,   210,   211,   171,   171,     3,   600,     6,
+       6,   183,     3,    76,    93,    94,    65,   183,   183,    82,
+       6,    84,     6,   338,    87,    88,    89,    90,    93,    94,
+      43,    44,    91,   147,   148,    98,    41,    42,    97,    98,
+      99,   100,     6,    91,     6,   191,   105,   313,   212,     5,
+     174,   175,   176,   116,   117,   118,   177,   178,   106,   107,
+     108,     3,   125,   126,   127,   128,   129,   130,   131,   132,
+     133,   134,   135,   136,   137,   138,   139,   140,   141,   142,
+     143,   144,   145,   146,   329,   400,   331,   408,     3,   152,
+     575,    23,     6,   559,   170,   158,     3,   102,   103,   104,
+      75,     4,    96,    97,   167,     3,    62,    10,    37,    38,
+      39,    40,   161,    69,    70,    71,     4,     5,    21,     3,
+     284,    53,   170,   179,   180,   289,   290,   291,   292,   293,
+     294,   295,   283,   297,   298,   299,   300,   106,   107,   108,
+       6,   305,   306,   307,   308,     6,   310,   311,   312,   356,
+     357,   358,    58,    59,     6,   111,   112,   113,     6,   115,
+      63,    64,     6,    21,     4,     5,    98,    99,   100,    72,
+      73,    74,    11,    76,    77,    78,    79,    80,   359,   360,
+      83,    11,   114,   177,   361,   362,   350,   181,   182,    11,
+      93,    94,    11,    11,   152,   349,   347,     6,   154,   155,
+     156,   157,   158,   159,   160,    63,    64,   161,   153,    96,
+      97,   167,     6,     6,    72,    73,    74,     6,    76,    77,
+      78,    79,    80,     6,     6,   128,     6,    96,    97,     6,
+      41,    42,   396,   397,   398,     6,     6,     6,   402,   403,
+       6,   405,   301,   302,     6,   304,     6,   411,   412,     6,
+     309,     6,     6,     6,     6,   314,   315,   316,   317,   318,
+     319,   320,   321,   322,   323,   324,   325,   326,   327,     5,
+     128,     6,     6,     6,     5,     4,   366,   543,     6,     6,
+       6,     6,     6,     6,     6,    21,    17,    18,    19,   348,
+     177,   102,   103,   104,   181,   182,     6,   184,     6,     6,
+       6,     6,     6,     6,     6,     6,     6,     6,   177,   368,
+      41,    42,   181,   182,     6,   184,     6,     6,     6,     6,
+      51,     6,     6,    54,     6,     6,     6,    63,    64,     5,
+     494,   495,    11,    11,     6,     4,    72,    73,    74,     5,
+      76,    77,    78,    79,    80,   173,   172,   406,   171,     4,
+       9,     5,     9,     6,     6,     6,     4,     6,   162,     6,
+       6,     6,     6,     4,     6,     4,     6,    98,     6,     3,
+     151,    62,   163,   165,   164,   539,   540,   541,    69,    70,
+      71,   168,    91,     5,     9,     6,     6,     6,     6,     6,
+       5,     4,   128,    76,     6,     6,     6,     6,     6,   130,
+       6,   132,   133,   134,   135,   136,   137,   138,   139,   140,
+     141,   142,   143,   144,   578,   579,     6,     6,     6,     6,
+     111,   112,   113,     6,   115,     6,     6,   158,   592,   593,
+     594,   595,   596,   597,     6,   599,   167,     6,   602,     6,
+     591,     6,     6,     6,     6,     6,     6,   166,   169,    92,
+     170,     9,     6,     6,    91,     6,     6,     6,     6,     6,
+       6,     6,     6,   154,   155,   156,   157,   158,   159,   160,
+       5,     9,   183,   368,   643,    91,   167,    62,   352,   643,
+     644,   366,    14,   542,    26,   544,   545,   546,   547,   548,
+     549,   550,   551,   552,   553,   554,   555,   556,   557,     5,
+     349,   578,   492,   536,   283,   537,    12,    13,    14,    15,
+      16,    17,    18,    19,    20,    21,    22,   538,    24,    25,
+     183,    27,    28,    29,    30,    31,    32,    33,    34,    35,
+      36,    14,    38,    39,   497,    41,    42,   496,   415,    45,
+      46,    47,    48,    49,    50,    51,    52,   500,    54,    55,
+      56,    57,   364,    96,    60,    61,   363,   365,    -1,    65,
       -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,   116,   117,   118,    -1,    -1,    -1,    -1,    -1,    -1,
-     125,   126,   127,   128,   129,   130,   131,   132,   133,   134,
-     135,   136,   137,   138,    -1,    -1,    -1,    -1,   143,    -1,
-      -1,    -1,    -1,    -1,   149,    -1,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,   158,    12,    13,    14,    15,    16,    17,
-      18,    19,    20,    21,    22,    -1,    24,    25,    -1,    27,
-      28,    29,    30,    31,    32,    33,    34,    35,    36,    -1,
-      38,    39,    -1,    41,    42,    -1,    -1,    45,    46,    47,
-      48,    49,    50,    51,    52,    -1,    54,    55,    -1,    57,
-      -1,    -1,    60,    61,    -1,    -1,    -1,    -1,    -1,    -1,
+      76,    -1,    -1,    -1,    -1,    -1,    82,    -1,    84,    -1,
+      -1,    87,    88,    89,    90,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    98,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
       -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    82,    -1,    -1,    -1,    -1,    87,
-      88,    89,    90,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      98,    -1,    -1,     3,     4,    -1,    -1,    -1,    -1,    -1,
-      10,    -1,    -1,    -1,    -1,    -1,    -1,    -1,   116,   117,
-     118,    21,    -1,    23,    -1,    -1,    -1,   125,   126,   127,
-     128,   129,   130,   131,   132,   133,   134,   135,   136,   137,
-     138,    41,    -1,    -1,    -1,   143,    -1,    -1,    -1,    -1,
-      -1,   149,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-     158,    -1,    -1,    -1,    -1,    -1,    66,    67,    68,    -1,
-      -1,    -1,    -1,    -1,    -1,    75,    76,    -1,    -1,    -1,
-      -1,    -1,    -1,    83,    -1,    85,    86,    -1,    -1,    -1,
-      -1,    -1,    -1,    93,    94,    62,    -1,    -1,    98,    99,
-      -1,   101,    69,    70,    71,   105,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    -1,   116,   117,   118,   119,
-     120,   121,   122,   123,   124,    -1,    -1,    -1,   128,    -1,
-     130,   131,   132,   133,   134,   135,   136,   137,   138,    -1,
-      -1,    -1,    -1,    -1,   111,   112,   113,    -1,   115,    -1,
+     116,   117,   118,    -1,    -1,    -1,    -1,    -1,    -1,   125,
+     126,   127,   128,   129,   130,   131,   132,   133,   134,   135,
+     136,   137,   138,   139,   140,   141,   142,   143,   144,   145,
+     146,    -1,    -1,    -1,    -1,    -1,   152,    -1,    -1,    -1,
+      -1,    -1,   158,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,   167,    12,    13,    14,    15,    16,    17,    18,    19,
+      20,    21,    22,    -1,    24,    25,    -1,    27,    28,    29,
+      30,    31,    32,    33,    34,    35,    36,    -1,    38,    39,
+      -1,    41,    42,    -1,    -1,    45,    46,    47,    48,    49,
+      50,    51,    52,    -1,    54,    55,    56,    57,    -1,    -1,
+      60,    61,    -1,    -1,    -1,    65,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    76,    -1,    -1,    -1,
+      -1,    -1,    82,    -1,    84,    -1,    -1,    87,    88,    89,
+      90,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    98,    -1,
       -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,   145,   146,
-     147,   148,   149,   150,   151,    -1,    -1,    -1,    -1,    -1,
-      -1,   158
+      -1,    -1,    -1,    -1,    -1,    -1,   116,   117,   118,    -1,
+      -1,    -1,    -1,    -1,    -1,   125,   126,   127,   128,   129,
+     130,   131,   132,   133,   134,   135,   136,   137,   138,   139,
+     140,   141,   142,   143,   144,   145,   146,    -1,    -1,    -1,
+      -1,    -1,   152,    -1,    -1,    -1,    -1,    -1,   158,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,   167,    12,    13,
+      14,    15,    16,    17,    18,    19,    20,    21,    22,    -1,
+      24,    25,    -1,    27,    28,    29,    30,    31,    32,    33,
+      34,    35,    36,    -1,    38,    39,    -1,    41,    42,    -1,
+      -1,    45,    46,    47,    48,    49,    50,    51,    52,    -1,
+      54,    55,    -1,    57,    -1,    -1,    60,    61,    -1,    -1,
+      -1,    -1,    -1,    17,    18,    19,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    82,    -1,
+      -1,    -1,    -1,    87,    88,    89,    90,    41,    42,    -1,
+      -1,    -1,    -1,    -1,    98,    -1,    -1,    51,    -1,    -1,
+      54,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,   116,   117,   118,    -1,    -1,    -1,    -1,    -1,
+      -1,   125,   126,   127,   128,   129,   130,   131,   132,   133,
+     134,   135,   136,   137,   138,   139,   140,   141,   142,   143,
+     144,   145,   146,    -1,    98,    -1,    -1,    -1,   152,    -1,
+      -1,    -1,    -1,    -1,   158,     3,     4,    -1,    -1,    -1,
+      -1,    -1,    10,   167,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    21,    -1,    23,   130,    -1,   132,   133,
+     134,   135,   136,   137,   138,   139,   140,   141,   142,   143,
+     144,    -1,    -1,    41,    -1,    -1,    12,    13,    14,    15,
+      16,    -1,    -1,    -1,   158,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,   167,    -1,    -1,    -1,    -1,    66,    67,
+      68,    -1,    -1,    -1,    -1,    -1,    -1,    75,    76,    45,
+      46,    47,    48,    49,    50,    83,    -1,    85,    86,    -1,
+      -1,    -1,    -1,    -1,    -1,    93,    94,    -1,    -1,    -1,
+      98,    99,    -1,   101,    -1,    -1,    -1,   105,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,   116,   117,
+     118,   119,   120,   121,   122,   123,   124,    -1,    -1,    -1,
+     128,    -1,   130,   131,   132,   133,   134,   135,   136,   137,
+     138,   139,   140,   141,   142,   143,   144,   145,   146,    -1,
+     116,   117,   118,    -1,    -1,    -1,    -1,    -1,    -1,   125,
+     126,   127,   128,   129,   130,   131,   132,   133,   134,   135,
+     136,   137,   138,   139,   140,   141,   142,   143,   144,   145,
+     146,    -1,    -1,    -1,    -1,    -1,   152
   };
 
   /* STOS_[STATE-NUM] -- The (internal number of the) accessing
@@ -2224,65 +2410,72 @@ namespace BIF {
   const unsigned short int
   BisonParser::yystos_[] =
   {
-         0,   177,   178,     0,    81,    91,   179,     7,   180,    93,
-      94,   259,     7,     3,   181,     3,     4,    10,    21,    23,
+         0,   186,   187,     0,    81,    91,   188,     7,   189,    93,
+      94,   268,     7,     3,   190,     3,     4,    10,    21,    23,
       41,    66,    67,    68,    75,    76,    83,    85,    86,    98,
       99,   101,   105,   116,   117,   118,   119,   120,   121,   122,
      123,   124,   128,   130,   131,   132,   133,   134,   135,   136,
-     137,   138,   182,   190,   191,   192,   197,   198,   199,   207,
-     209,   224,   245,   246,   259,   210,    23,    53,    98,    99,
-     100,   114,   208,     6,     3,     6,     6,     6,     6,     6,
-       3,     6,   198,     3,     3,     6,     3,     3,     3,   192,
-      10,   207,   209,     6,    12,    13,    14,    15,    16,    17,
-      18,    19,    20,    21,    22,    24,    25,    27,    28,    29,
-      30,    31,    32,    33,    34,    35,    36,    38,    39,    41,
-      42,    45,    46,    47,    48,    49,    50,    51,    52,    54,
-      55,    56,    57,    60,    61,    65,    76,    82,    84,    87,
-      88,    89,    90,    98,   118,   125,   126,   127,   128,   129,
-     130,   132,   133,   134,   135,   136,   143,   149,   158,   211,
-     212,   214,   215,   220,   221,   223,   229,   243,   244,   245,
-     247,    11,    11,    11,   200,    11,    11,    21,   213,   214,
-     229,    26,    65,   152,   201,   202,   239,   239,    96,    97,
-     168,   172,   173,   260,   261,   262,   263,   264,   265,   266,
-     267,   267,   267,   267,   193,   267,   186,   187,   259,   183,
-     144,   230,    62,    69,    70,    71,   111,   112,   113,   115,
-     145,   146,   147,   148,   149,   150,   151,   158,   203,   206,
-     231,   232,   233,   234,   235,   236,   237,   238,    41,    42,
-     102,   103,   104,   204,   205,    91,   106,   107,   108,   161,
-     250,   251,   253,   254,   259,     6,     6,     6,     6,     6,
+     137,   138,   139,   140,   141,   142,   143,   144,   145,   146,
+     191,   199,   200,   201,   206,   207,   208,   216,   218,   233,
+     254,   255,   268,   219,    23,    53,    98,    99,   100,   114,
+     217,     6,     3,     6,     6,     6,     6,     6,     3,     6,
+     207,     3,     3,     6,     3,     3,     3,     6,     6,     6,
+       6,   201,    10,   216,   218,     6,    12,    13,    14,    15,
+      16,    17,    18,    19,    20,    21,    22,    24,    25,    27,
+      28,    29,    30,    31,    32,    33,    34,    35,    36,    38,
+      39,    41,    42,    45,    46,    47,    48,    49,    50,    51,
+      52,    54,    55,    56,    57,    60,    61,    65,    76,    82,
+      84,    87,    88,    89,    90,    98,   118,   125,   126,   127,
+     128,   129,   130,   132,   133,   134,   135,   136,   137,   138,
+     139,   140,   141,   142,   143,   144,   152,   158,   167,   220,
+     221,   223,   224,   229,   230,   232,   238,   252,   253,   254,
+     256,    11,    11,    11,   209,    11,    11,    21,   222,   223,
+     238,    26,    65,   161,   210,   211,   248,   248,    96,    97,
+     177,   181,   182,   269,   270,   271,   272,   273,   274,   275,
+     276,   276,   276,   276,   202,   276,   195,   196,   268,   192,
+     153,   239,    62,    69,    70,    71,   111,   112,   113,   115,
+     154,   155,   156,   157,   158,   159,   160,   167,   212,   215,
+     240,   241,   242,   243,   244,   245,   246,   247,    41,    42,
+     102,   103,   104,   213,   214,    91,   106,   107,   108,   170,
+     259,   260,   262,   263,   268,   268,   268,   268,   268,     6,
        6,     6,     6,     6,     6,     6,     6,     6,     6,     6,
        6,     6,     6,     6,     6,     6,     6,     6,     6,     6,
        6,     6,     6,     6,     6,     6,     6,     6,     6,     6,
-       6,     6,     6,     6,     6,     6,     4,     5,   211,     5,
-     211,   239,   217,   218,   267,   230,    11,    37,    38,    39,
-      40,   248,    43,    44,   256,     6,    11,     5,     6,     4,
-       5,   261,   261,   267,   165,   166,   167,   168,   169,   170,
-     171,   164,   163,   162,   194,     4,     9,     5,    17,    18,
-      19,    41,    42,    51,    54,    98,   130,   132,   133,   134,
-     135,   136,   149,   158,   184,   185,     6,     6,     6,     4,
-       5,   203,     6,     6,     6,     6,     6,     4,     5,   204,
-       6,     6,     6,     3,     4,     9,     4,     5,     4,   254,
-      95,   139,   225,    95,   140,   226,    95,   141,   227,   142,
-     228,   125,   220,   229,   267,   153,   241,   154,   240,   155,
-     242,   156,   267,   267,   267,   267,   267,   267,   267,   159,
-     249,   267,   267,   216,   222,   267,   219,   267,   259,   259,
-      91,   259,   267,   267,   267,   267,   259,   267,   267,   267,
-     230,   259,   259,   259,   259,   259,   259,   211,   211,     5,
-     203,     6,     6,     6,     9,     6,     6,     5,   229,   259,
-     213,   267,   201,   174,   261,   261,   261,   262,   262,   263,
-     263,   264,   265,   266,     4,    21,    63,    64,    72,    73,
-      74,    76,    77,    78,    79,    80,   128,   195,   196,   197,
-     207,   186,    76,     6,     6,     6,     6,     6,     6,     6,
-       6,     6,     6,     6,     6,     6,     6,     4,     5,   184,
-     267,   267,   267,   203,   267,   267,    92,   267,   259,   204,
-     160,   252,   267,   267,   255,   251,   253,     9,   173,   217,
-     267,   267,   249,   248,   157,   257,    58,    59,   258,   256,
-       6,     6,     6,     6,     6,     6,     6,     6,     6,     5,
-     195,     6,   225,   226,   227,   267,   267,   188,   189,   267,
-     259,   230,   259,   259,   259,   259,   259,   259,   184,   253,
-     216,   175,   267,   229,   267,   267,   267,   267,   267,   267,
-      91,   267,   195,   267,     9,   173,     4,   174,   174,   188,
-     175,   267,   174,   174
+       6,     6,     6,     6,     6,     6,     6,     6,     6,     6,
+       6,     6,     6,     6,     6,     6,     6,     6,     4,     5,
+     220,     5,   220,   248,   226,   227,   276,   239,    11,    37,
+      38,    39,    40,   257,    43,    44,   265,     6,    11,     5,
+       6,     4,     5,   270,   270,   276,   174,   175,   176,   177,
+     178,   179,   180,   173,   172,   171,   203,     4,     9,     5,
+      17,    18,    19,    41,    42,    51,    54,    98,   130,   132,
+     133,   134,   135,   136,   137,   138,   139,   140,   141,   142,
+     143,   144,   158,   167,   193,   194,     6,     6,     6,     4,
+       5,   212,     6,     6,     6,     6,     6,     4,     5,   213,
+       6,     6,     6,     3,     4,     9,     4,     5,     4,   263,
+      95,   147,   148,   234,    95,   149,   235,    95,   150,   236,
+     151,   237,   125,   140,   141,   142,   143,   229,   238,   276,
+     162,   250,   163,   249,   164,   251,   165,   276,   276,   276,
+     276,   276,   276,   276,   168,   258,   276,   276,   225,   231,
+     276,   228,   276,   268,   268,    91,   268,   276,   276,   276,
+     276,   268,   276,   276,   276,   239,   268,   268,   268,   268,
+     268,   268,   268,   268,   268,   268,   268,   268,   268,   268,
+     220,   220,     5,   212,     6,     6,     6,     9,     6,     6,
+       5,   238,   268,   222,   276,   210,   183,   270,   270,   270,
+     271,   271,   272,   272,   273,   274,   275,     4,    21,    63,
+      64,    72,    73,    74,    76,    77,    78,    79,    80,   128,
+     204,   205,   206,   216,   195,    76,     6,     6,     6,     6,
+       6,     6,     6,     6,     6,     6,     6,     6,     6,     6,
+       6,     6,     6,     6,     6,     6,     6,     6,     4,     5,
+     193,   276,   276,   276,   212,   276,   276,    92,   276,   268,
+     213,   169,   261,   276,   276,   264,   260,   262,     9,   182,
+     226,   276,   276,   258,   257,   166,   266,    58,    59,   267,
+     265,     6,     6,     6,     6,     6,     6,     6,     6,     6,
+       5,   204,     6,   234,   235,   236,   276,   276,   197,   198,
+     276,   268,   239,   268,   268,   268,   268,   268,   268,   268,
+     268,   268,   268,   268,   268,   268,   268,   193,   262,   225,
+     184,   276,   238,   276,   276,   276,   276,   276,   276,    91,
+     276,   204,   276,     9,   182,     4,   183,   183,   197,   184,
+     276,   183,   183
   };
 
 #if YYDEBUG
@@ -2308,7 +2501,8 @@ namespace BIF {
      395,   396,   397,   398,   399,   400,   401,   402,   403,   404,
      405,   406,   407,   408,   409,   410,   411,   412,   413,   414,
      415,   416,   417,   418,   419,   420,   421,   422,   423,   424,
-     425,   426,   427,   428,   429,   430
+     425,   426,   427,   428,   429,   430,   431,   432,   433,   434,
+     435,   436,   437,   438,   439
   };
 #endif
 
@@ -2316,38 +2510,41 @@ namespace BIF {
   const unsigned short int
   BisonParser::yyr1_[] =
   {
-         0,   176,   177,   178,   178,   179,   180,   179,   181,   181,
-     181,   181,   181,   181,   181,   181,   183,   182,   184,   184,
-     184,   185,   185,   185,   185,   185,   185,   185,   185,   185,
-     185,   185,   185,   185,   185,   185,   185,   185,   186,   186,
-     187,   187,   188,   188,   189,   189,   189,   190,   190,   190,
-     190,   190,   190,   190,   190,   191,   191,   193,   192,   194,
-     194,   194,   194,   195,   195,   195,   196,   196,   196,   196,
-     196,   196,   196,   196,   196,   196,   196,   196,   197,   197,
-     198,   198,   198,   199,   200,   199,   199,   199,   199,   199,
-     199,   199,   199,   199,   199,   199,   199,   199,   201,   201,
-     202,   202,   202,   203,   203,   203,   204,   204,   204,   205,
-     205,   205,   205,   205,   206,   206,   206,   206,   206,   206,
-     206,   206,   206,   206,   206,   206,   206,   206,   206,   206,
-     208,   207,   207,   210,   209,   211,   211,   211,   211,   211,
-     211,   212,   212,   212,   212,   212,   212,   213,   213,   214,
-     214,   214,   214,   214,   215,   215,   216,   216,   217,   217,
-     218,   219,   220,   220,   220,   220,   220,   220,   220,   220,
-     220,   220,   220,   220,   220,   220,   220,   220,   221,   221,
-     222,   222,   222,   223,   223,   223,   223,   223,   223,   223,
-     223,   223,   223,   223,   223,   223,   223,   223,   223,   223,
-     223,   223,   223,   223,   223,   223,   223,   223,   223,   224,
-     224,   224,   224,   224,   224,   224,   224,   224,   225,   225,
-     226,   226,   227,   227,   228,   229,   230,   231,   232,   233,
-     234,   235,   236,   237,   238,   239,   240,   241,   242,   243,
-     243,   243,   243,   243,   243,   243,   243,   243,   243,   243,
-     243,   244,   244,   244,   245,   245,   245,   245,   245,   245,
-     245,   245,   245,   246,   246,   246,   246,   247,   247,   247,
-     248,   248,   248,   248,   248,   249,   250,   250,   251,   251,
-     251,   252,   253,   253,   255,   254,   254,   256,   256,   256,
-     257,   258,   258,   259,   259,   260,   260,   260,   261,   261,
-     261,   262,   262,   262,   262,   263,   263,   263,   264,   264,
-     264,   265,   265,   266,   266,   267,   267
+         0,   185,   186,   187,   187,   188,   189,   188,   190,   190,
+     190,   190,   190,   190,   190,   190,   192,   191,   193,   193,
+     193,   194,   194,   194,   194,   194,   194,   194,   194,   194,
+     194,   194,   194,   194,   194,   194,   194,   194,   194,   194,
+     194,   194,   194,   194,   194,   194,   195,   195,   196,   196,
+     197,   197,   198,   198,   198,   199,   199,   199,   199,   199,
+     199,   199,   199,   199,   199,   199,   199,   200,   200,   202,
+     201,   203,   203,   203,   203,   204,   204,   204,   205,   205,
+     205,   205,   205,   205,   205,   205,   205,   205,   205,   205,
+     206,   206,   207,   207,   207,   208,   209,   208,   208,   208,
+     208,   208,   208,   208,   208,   208,   208,   208,   208,   208,
+     210,   210,   211,   211,   211,   212,   212,   212,   213,   213,
+     213,   214,   214,   214,   214,   214,   215,   215,   215,   215,
+     215,   215,   215,   215,   215,   215,   215,   215,   215,   215,
+     215,   215,   217,   216,   216,   219,   218,   220,   220,   220,
+     220,   220,   220,   221,   221,   221,   221,   221,   221,   222,
+     222,   223,   223,   223,   223,   223,   224,   224,   225,   225,
+     226,   226,   227,   228,   229,   229,   229,   229,   229,   229,
+     229,   229,   229,   229,   229,   229,   229,   229,   229,   229,
+     230,   230,   231,   231,   231,   232,   232,   232,   232,   232,
+     232,   232,   232,   232,   232,   232,   232,   232,   232,   232,
+     232,   232,   232,   232,   232,   232,   232,   232,   232,   232,
+     232,   232,   232,   232,   232,   232,   232,   232,   232,   233,
+     233,   233,   233,   233,   233,   233,   233,   233,   234,   234,
+     234,   235,   235,   236,   236,   237,   238,   239,   240,   241,
+     242,   243,   244,   245,   246,   247,   248,   249,   250,   251,
+     252,   252,   252,   252,   252,   252,   252,   252,   252,   252,
+     252,   252,   253,   253,   253,   254,   254,   254,   254,   254,
+     254,   254,   254,   254,   255,   255,   255,   255,   255,   255,
+     255,   255,   255,   255,   255,   255,   256,   256,   256,   257,
+     257,   257,   257,   257,   258,   259,   259,   260,   260,   260,
+     261,   262,   262,   264,   263,   263,   265,   265,   265,   266,
+     267,   267,   268,   268,   269,   269,   269,   270,   270,   270,
+     271,   271,   271,   271,   272,   272,   272,   273,   273,   273,
+     274,   274,   275,   275,   276,   276
   };
 
   /* YYR2[YYN] -- Number of symbols composing right hand side of rule YYN.  */
@@ -2357,35 +2554,38 @@ namespace BIF {
          0,     2,     1,     0,     2,     3,     0,     6,     0,     2,
        2,     2,     2,     2,     2,     2,     0,     5,     1,     3,
        2,     0,     3,     3,     3,     3,     3,     3,     3,     3,
-       3,     3,     3,     3,     3,     1,     3,     1,     1,     3,
-       5,     0,     1,     3,     1,     4,     4,     3,     3,     3,
-       3,     3,     3,     3,     3,     1,     2,     0,     5,     0,
-       2,     2,     2,     1,     3,     2,     3,     3,     1,     1,
-       1,     3,     3,     3,     3,     3,     3,     3,     2,     1,
-       0,     2,     2,     4,     0,     5,     4,     4,     4,     3,
-       4,     4,     4,     4,     4,     4,     4,     4,     1,     3,
-       1,     1,     3,     1,     3,     2,     1,     3,     2,     3,
-       3,     3,     3,     3,     1,     1,     1,     1,     1,     1,
-       1,     1,     3,     1,     3,     1,     1,     1,     3,     1,
-       0,     5,     1,     0,     4,     1,     1,     3,     3,     2,
-       2,     3,     3,     3,     3,     3,     3,     1,     3,     1,
-       1,     1,     1,     1,     3,     3,     1,     3,     1,     3,
+       3,     3,     3,     3,     3,     3,     3,     3,     3,     3,
+       3,     3,     3,     1,     3,     1,     1,     3,     5,     0,
+       1,     3,     1,     4,     4,     3,     3,     3,     3,     3,
+       3,     3,     3,     3,     3,     3,     3,     1,     2,     0,
+       5,     0,     2,     2,     2,     1,     3,     2,     3,     3,
+       1,     1,     1,     3,     3,     3,     3,     3,     3,     3,
+       2,     1,     0,     2,     2,     4,     0,     5,     4,     4,
+       4,     3,     4,     4,     4,     4,     4,     4,     4,     4,
+       1,     3,     1,     1,     3,     1,     3,     2,     1,     3,
+       2,     3,     3,     3,     3,     3,     1,     1,     1,     1,
+       1,     1,     1,     1,     3,     1,     3,     1,     1,     1,
+       3,     1,     0,     5,     1,     0,     4,     1,     1,     3,
+       3,     2,     2,     3,     3,     3,     3,     3,     3,     1,
+       3,     1,     1,     1,     1,     1,     3,     3,     1,     3,
+       1,     3,     1,     1,     1,     1,     1,     1,     1,     1,
        1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
-       1,     1,     1,     1,     1,     1,     1,     1,     1,     3,
-       1,     4,     4,     3,     3,     3,     3,     3,     3,     3,
+       1,     3,     1,     4,     4,     3,     3,     3,     3,     3,
+       3,     3,     3,     3,     3,     3,     3,     3,     3,     3,
        3,     3,     3,     3,     3,     3,     3,     3,     1,     3,
        3,     3,     3,     1,     3,     3,     1,     1,     1,     1,
        1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
        1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
-       1,     1,     1,     1,     1,     1,     1,     1,     1,     3,
-       3,     3,     3,     3,     3,     1,     1,     3,     3,     3,
-       3,     3,     3,     3,     1,     1,     1,     1,     1,     1,
        1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
-       3,     3,     3,     1,     3,     1,     1,     3,     3,     3,
-       3,     1,     1,     3,     0,     5,     2,     3,     3,     3,
-       1,     1,     1,     1,     1,     1,     1,     3,     1,     2,
-       2,     1,     3,     3,     3,     1,     3,     3,     1,     3,
-       3,     1,     3,     1,     3,     1,     3
+       3,     3,     3,     3,     3,     3,     1,     1,     3,     3,
+       3,     3,     3,     3,     3,     1,     1,     1,     1,     1,
+       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
+       1,     1,     1,     1,     1,     1,     1,     1,     1,     3,
+       3,     3,     1,     3,     1,     1,     3,     3,     3,     3,
+       1,     1,     3,     0,     5,     2,     3,     3,     3,     1,
+       1,     1,     1,     1,     1,     1,     3,     1,     2,     2,
+       1,     3,     3,     3,     1,     3,     3,     1,     3,     3,
+       1,     3,     1,     3,     1,     3
   };
 
 #if YYDEBUG
@@ -2421,13 +2621,15 @@ namespace BIF {
   "EFUSE_USER_KEK0_IV", "EFUSE_USER_KEK1_IV", "USER_KEYS", "PMCDATA",
   "BOOTIMAGE", "UDF_BH", "INIT", "PMUFW_IMAGE", "AES_KEY_FILE",
   "FAMILY_KEY", "PPK_FILE", "PSK_FILE", "SPK_FILE", "SSK_FILE",
-  "SPK_SIGNATURE_FILE", "BH_SIGNATURE_FILE", "HEADER_SIGNATURE_FILE",
-  "AUTHVALUE", "ENCRVALUE", "CHECKSUMVALUE", "POWNERVALUE", "PTYPEVALUE",
-  "KEY_SRC", "CORE", "BH_RSA", "AUTH_HASH", "INT_HASH", "PUFHD_LOC",
-  "OPT_KEY", "AUTH_ONLY", "BOOT_DEVICE_TYPE", "DEST_DEVICE_TYPE",
-  "DEST_CPU_TYPE", "EXCEPTION_LEVEL_TYPE", "TRUSTZONE_TYPE", "SPLITMODE",
-  "DPA_CM", "SPKSELECT", "HASH_FUNCTION", "AUTH_KEY_LEVEL", "OR", "XOR",
-  "AND", "MULT", "DIVIDE", "MODULO", "PLUS", "MINUS", "LSHIFT", "RSHIFT",
+  "PPK_FILE1", "PSK_FILE1", "SPK_FILE1", "SSK_FILE1", "PK_FILE", "SK_FILE",
+  "PK_FILE1", "SK_FILE1", "SPK_SIGNATURE_FILE", "BH_SIGNATURE_FILE",
+  "HEADER_SIGNATURE_FILE", "AUTHVALUE", "HYBRID_AUTHVALUE", "ENCRVALUE",
+  "CHECKSUMVALUE", "POWNERVALUE", "PTYPEVALUE", "KEY_SRC", "CORE",
+  "BH_RSA", "AUTH_HASH", "INT_HASH", "PUFHD_LOC", "OPT_KEY", "AUTH_ONLY",
+  "BOOT_DEVICE_TYPE", "DEST_DEVICE_TYPE", "DEST_CPU_TYPE",
+  "EXCEPTION_LEVEL_TYPE", "TRUSTZONE_TYPE", "SPLITMODE", "DPA_CM",
+  "SPKSELECT", "HASH_FUNCTION", "AUTH_KEY_LEVEL", "OR", "XOR", "AND",
+  "MULT", "DIVIDE", "MODULO", "PLUS", "MINUS", "LSHIFT", "RSHIFT",
   "NEGATION", "LPAREN", "RPAREN", "ASTERISK", "$accept", "bif",
   "group_list", "bifoptions", "$@1", "file_list", "metahdr_spec", "$@2",
   "metahdr_attr_list", "metahdr_attr", "optional_data",
@@ -2457,103 +2659,113 @@ namespace BIF {
   const BisonParser::rhs_number_type
   BisonParser::yyrhs_[] =
   {
-       177,     0,    -1,   178,    -1,    -1,   178,   179,    -1,    81,
-       7,   259,    -1,    -1,    91,   180,     7,     3,   181,     4,
-      -1,    -1,   181,   207,    -1,   181,   199,    -1,   181,   191,
-      -1,   181,   182,    -1,   181,   190,    -1,   181,   209,    -1,
-     181,   197,    -1,    -1,    86,     3,   183,   184,     4,    -1,
-     185,    -1,   185,     5,   184,    -1,   185,   184,    -1,    -1,
-      18,     6,   226,    -1,    98,     6,   230,    -1,   130,     6,
-     259,    -1,    17,     6,   225,    -1,   132,     6,   259,    -1,
-     133,     6,   259,    -1,   134,     6,   259,    -1,   135,     6,
-     259,    -1,   136,     6,   259,    -1,    54,     6,   259,    -1,
-      41,     6,   267,    -1,    42,     6,   267,    -1,    19,     6,
-     227,    -1,   158,    -1,    51,     6,   188,    -1,   149,    -1,
-     187,    -1,   187,     9,   186,    -1,   259,     5,    76,     6,
-     267,    -1,    -1,   189,    -1,   189,     9,   188,    -1,   267,
-      -1,   267,   173,   267,   174,    -1,   267,   173,   175,   174,
-      -1,    76,     6,   267,    -1,    66,     6,   267,    -1,    67,
-       6,   267,    -1,    68,     6,   267,    -1,   224,     6,   259,
-      -1,    98,     6,   230,    -1,    21,     6,   229,    -1,    41,
-       6,   267,    -1,   192,    -1,   191,   192,    -1,    -1,    75,
-       3,   193,   194,     4,    -1,    -1,   194,   195,    -1,   194,
-     207,    -1,   194,   197,    -1,   196,    -1,   196,     5,   195,
-      -1,   196,   195,    -1,    76,     6,   267,    -1,    77,     6,
-      91,    -1,    78,    -1,    79,    -1,   128,    -1,    80,     6,
-     267,    -1,    21,     6,   229,    -1,    72,     6,   267,    -1,
-      73,     6,   267,    -1,    74,     6,   267,    -1,    63,     6,
-     267,    -1,    64,     6,   267,    -1,    83,   198,    -1,   198,
-      -1,    -1,   198,   207,    -1,   198,   209,    -1,    10,    98,
-      11,   230,    -1,    -1,    10,    99,   200,    11,   203,    -1,
-      99,     3,   203,     4,    -1,    23,     3,   201,     4,    -1,
-      10,    23,    11,   239,    -1,    23,     6,   239,    -1,    10,
-     100,    11,   248,    -1,    10,   114,    11,   256,    -1,    10,
-      53,    11,   217,    -1,   101,     3,   204,     4,    -1,    85,
-       3,   186,     4,    -1,   105,     3,   250,     4,    -1,   105,
-       3,   253,     4,    -1,   105,     3,   254,     4,    -1,   202,
-      -1,   202,     5,   201,    -1,   239,    -1,    65,    -1,    26,
-       6,   267,    -1,   206,    -1,   206,     5,   203,    -1,   206,
-     203,    -1,   205,    -1,   205,     5,   204,    -1,   205,   204,
-      -1,    41,     6,   267,    -1,    42,     6,   267,    -1,   102,
-       6,    92,    -1,   103,     6,   267,    -1,   104,     6,   259,
-      -1,   231,    -1,   232,    -1,   234,    -1,   235,    -1,   236,
-      -1,   238,    -1,   237,    -1,   111,    -1,   113,     6,   267,
-      -1,   233,    -1,   115,     6,   267,    -1,    69,    -1,    70,
-      -1,    71,    -1,   112,     6,   267,    -1,    62,    -1,    -1,
-      10,   208,   213,    11,   259,    -1,   259,    -1,    -1,     3,
-     210,   211,     4,    -1,   214,    -1,   212,    -1,   212,     5,
-     211,    -1,   214,     5,   211,    -1,   212,   211,    -1,   214,
-     211,    -1,    84,     6,   259,    -1,    76,     6,   267,    -1,
-      65,     6,   267,    -1,    21,     6,   220,    -1,    21,     6,
-     125,    -1,    56,     6,    91,    -1,   214,    -1,   214,     5,
-     213,    -1,   220,    -1,   223,    -1,   243,    -1,   244,    -1,
-     215,    -1,    51,     6,   216,    -1,    52,     6,   219,    -1,
-     222,    -1,   222,     9,   216,    -1,   218,    -1,   218,     5,
-     217,    -1,   267,    -1,   267,    -1,    12,    -1,    45,    -1,
-      46,    -1,    47,    -1,    48,    -1,    49,    -1,    50,    -1,
-      14,    -1,    15,    -1,    13,    -1,   128,    -1,   126,    -1,
-     245,    -1,   247,    -1,   229,    -1,    16,    -1,    28,    -1,
-      28,     6,   156,    -1,   267,    -1,   267,   173,   267,   174,
-      -1,   267,   173,   175,   174,    -1,    17,     6,   225,    -1,
-      18,     6,   226,    -1,    19,     6,   227,    -1,    20,     6,
-     228,    -1,    25,     6,   240,    -1,    24,     6,   241,    -1,
-      27,     6,   242,    -1,   130,     6,   259,    -1,   132,     6,
-     259,    -1,   133,     6,   259,    -1,   134,     6,   259,    -1,
-     135,     6,   259,    -1,    39,     6,   249,    -1,    38,     6,
-     267,    -1,   136,     6,   259,    -1,   221,    -1,    21,     6,
-     229,    -1,    98,     6,   230,    -1,    41,     6,   267,    -1,
-      42,     6,   267,    -1,   158,    -1,    60,     6,   267,    -1,
-      61,     6,   267,    -1,   149,    -1,    82,    -1,    87,    -1,
-     128,    -1,   245,    -1,   119,    -1,   118,    -1,   120,    -1,
+       186,     0,    -1,   187,    -1,    -1,   187,   188,    -1,    81,
+       7,   268,    -1,    -1,    91,   189,     7,     3,   190,     4,
+      -1,    -1,   190,   216,    -1,   190,   208,    -1,   190,   200,
+      -1,   190,   191,    -1,   190,   199,    -1,   190,   218,    -1,
+     190,   206,    -1,    -1,    86,     3,   192,   193,     4,    -1,
+     194,    -1,   194,     5,   193,    -1,   194,   193,    -1,    -1,
+      18,     6,   235,    -1,    98,     6,   239,    -1,   130,     6,
+     268,    -1,    17,     6,   234,    -1,   132,     6,   268,    -1,
+     133,     6,   268,    -1,   134,     6,   268,    -1,   135,     6,
+     268,    -1,   136,     6,   268,    -1,   137,     6,   268,    -1,
+     138,     6,   268,    -1,   139,     6,   268,    -1,   140,     6,
+     268,    -1,   141,     6,   268,    -1,   142,     6,   268,    -1,
+     143,     6,   268,    -1,   144,     6,   268,    -1,    54,     6,
+     268,    -1,    41,     6,   276,    -1,    42,     6,   276,    -1,
+      19,     6,   236,    -1,   167,    -1,    51,     6,   197,    -1,
+     158,    -1,   196,    -1,   196,     9,   195,    -1,   268,     5,
+      76,     6,   276,    -1,    -1,   198,    -1,   198,     9,   197,
+      -1,   276,    -1,   276,   182,   276,   183,    -1,   276,   182,
+     184,   183,    -1,    76,     6,   276,    -1,    66,     6,   276,
+      -1,    67,     6,   276,    -1,    68,     6,   276,    -1,   140,
+       6,   268,    -1,   141,     6,   268,    -1,   142,     6,   268,
+      -1,   143,     6,   268,    -1,   233,     6,   268,    -1,    98,
+       6,   239,    -1,    21,     6,   238,    -1,    41,     6,   276,
+      -1,   201,    -1,   200,   201,    -1,    -1,    75,     3,   202,
+     203,     4,    -1,    -1,   203,   204,    -1,   203,   216,    -1,
+     203,   206,    -1,   205,    -1,   205,     5,   204,    -1,   205,
+     204,    -1,    76,     6,   276,    -1,    77,     6,    91,    -1,
+      78,    -1,    79,    -1,   128,    -1,    80,     6,   276,    -1,
+      21,     6,   238,    -1,    72,     6,   276,    -1,    73,     6,
+     276,    -1,    74,     6,   276,    -1,    63,     6,   276,    -1,
+      64,     6,   276,    -1,    83,   207,    -1,   207,    -1,    -1,
+     207,   216,    -1,   207,   218,    -1,    10,    98,    11,   239,
+      -1,    -1,    10,    99,   209,    11,   212,    -1,    99,     3,
+     212,     4,    -1,    23,     3,   210,     4,    -1,    10,    23,
+      11,   248,    -1,    23,     6,   248,    -1,    10,   100,    11,
+     257,    -1,    10,   114,    11,   265,    -1,    10,    53,    11,
+     226,    -1,   101,     3,   213,     4,    -1,    85,     3,   195,
+       4,    -1,   105,     3,   259,     4,    -1,   105,     3,   262,
+       4,    -1,   105,     3,   263,     4,    -1,   211,    -1,   211,
+       5,   210,    -1,   248,    -1,    65,    -1,    26,     6,   276,
+      -1,   215,    -1,   215,     5,   212,    -1,   215,   212,    -1,
+     214,    -1,   214,     5,   213,    -1,   214,   213,    -1,    41,
+       6,   276,    -1,    42,     6,   276,    -1,   102,     6,    92,
+      -1,   103,     6,   276,    -1,   104,     6,   268,    -1,   240,
+      -1,   241,    -1,   243,    -1,   244,    -1,   245,    -1,   247,
+      -1,   246,    -1,   111,    -1,   113,     6,   276,    -1,   242,
+      -1,   115,     6,   276,    -1,    69,    -1,    70,    -1,    71,
+      -1,   112,     6,   276,    -1,    62,    -1,    -1,    10,   217,
+     222,    11,   268,    -1,   268,    -1,    -1,     3,   219,   220,
+       4,    -1,   223,    -1,   221,    -1,   221,     5,   220,    -1,
+     223,     5,   220,    -1,   221,   220,    -1,   223,   220,    -1,
+      84,     6,   268,    -1,    76,     6,   276,    -1,    65,     6,
+     276,    -1,    21,     6,   229,    -1,    21,     6,   125,    -1,
+      56,     6,    91,    -1,   223,    -1,   223,     5,   222,    -1,
+     229,    -1,   232,    -1,   252,    -1,   253,    -1,   224,    -1,
+      51,     6,   225,    -1,    52,     6,   228,    -1,   231,    -1,
+     231,     9,   225,    -1,   227,    -1,   227,     5,   226,    -1,
+     276,    -1,   276,    -1,    12,    -1,    45,    -1,    46,    -1,
+      47,    -1,    48,    -1,    49,    -1,    50,    -1,    14,    -1,
+      15,    -1,    13,    -1,   128,    -1,   126,    -1,   254,    -1,
+     256,    -1,   238,    -1,    16,    -1,    28,    -1,    28,     6,
+     165,    -1,   276,    -1,   276,   182,   276,   183,    -1,   276,
+     182,   184,   183,    -1,    17,     6,   234,    -1,    18,     6,
+     235,    -1,    19,     6,   236,    -1,    20,     6,   237,    -1,
+      25,     6,   249,    -1,    24,     6,   250,    -1,    27,     6,
+     251,    -1,   130,     6,   268,    -1,   132,     6,   268,    -1,
+     133,     6,   268,    -1,   134,     6,   268,    -1,   135,     6,
+     268,    -1,   136,     6,   268,    -1,   137,     6,   268,    -1,
+     138,     6,   268,    -1,   139,     6,   268,    -1,   140,     6,
+     268,    -1,   141,     6,   268,    -1,   142,     6,   268,    -1,
+     143,     6,   268,    -1,    39,     6,   258,    -1,    38,     6,
+     276,    -1,   144,     6,   268,    -1,   230,    -1,    21,     6,
+     238,    -1,    98,     6,   239,    -1,    41,     6,   276,    -1,
+      42,     6,   276,    -1,   167,    -1,    60,     6,   276,    -1,
+      61,     6,   276,    -1,   158,    -1,    82,    -1,    87,    -1,
+     128,    -1,   254,    -1,   119,    -1,   118,    -1,   120,    -1,
      121,    -1,   122,    -1,   123,    -1,   124,    -1,    95,    -1,
-     139,    -1,    95,    -1,   140,    -1,    95,    -1,   141,    -1,
-     142,    -1,   143,    -1,   144,    -1,   145,    -1,   146,    -1,
-     158,    -1,   147,    -1,   148,    -1,   149,    -1,   150,    -1,
-     151,    -1,   152,    -1,   154,    -1,   153,    -1,   155,    -1,
-      29,     6,   267,    -1,    30,     6,   267,    -1,    31,     6,
-     267,    -1,    32,     6,   267,    -1,    33,     6,   267,    -1,
-      34,     6,   267,    -1,    35,    -1,    36,    -1,    22,     6,
-     267,    -1,    88,     6,   267,    -1,    89,     6,   267,    -1,
-      90,     6,   267,    -1,    54,     6,   259,    -1,    55,     6,
-     259,    -1,    57,     6,   259,    -1,   130,    -1,   246,    -1,
-     136,    -1,   137,    -1,   138,    -1,   117,    -1,   116,    -1,
-     118,    -1,   131,    -1,   132,    -1,   133,    -1,   134,    -1,
-     135,    -1,   129,    -1,   125,    -1,   127,    -1,    37,     6,
-     267,    -1,    39,     6,   249,    -1,    38,     6,   267,    -1,
-      40,    -1,   248,     9,   248,    -1,   159,    -1,   251,    -1,
-     251,     9,   251,    -1,   106,     6,   252,    -1,   108,     6,
-     267,    -1,   107,     6,   267,    -1,   160,    -1,    91,    -1,
-     253,     5,   253,    -1,    -1,   161,     3,   255,   253,     4,
-      -1,   254,   254,    -1,    43,     6,   257,    -1,    44,     6,
-     258,    -1,   256,     5,   256,    -1,   157,    -1,    58,    -1,
-      59,    -1,    93,    -1,    94,    -1,    97,    -1,    96,    -1,
-     173,   267,   174,    -1,   260,    -1,   168,   261,    -1,   172,
-     261,    -1,   261,    -1,   262,   165,   261,    -1,   262,   166,
-     261,    -1,   262,   167,   261,    -1,   262,    -1,   263,   168,
-     262,    -1,   263,   169,   262,    -1,   263,    -1,   264,   170,
-     263,    -1,   264,   171,   263,    -1,   264,    -1,   265,   164,
-     264,    -1,   265,    -1,   266,   163,   265,    -1,   266,    -1,
-     267,   162,   266,    -1
+     147,    -1,   148,    -1,    95,    -1,   149,    -1,    95,    -1,
+     150,    -1,   151,    -1,   152,    -1,   153,    -1,   154,    -1,
+     155,    -1,   167,    -1,   156,    -1,   157,    -1,   158,    -1,
+     159,    -1,   160,    -1,   161,    -1,   163,    -1,   162,    -1,
+     164,    -1,    29,     6,   276,    -1,    30,     6,   276,    -1,
+      31,     6,   276,    -1,    32,     6,   276,    -1,    33,     6,
+     276,    -1,    34,     6,   276,    -1,    35,    -1,    36,    -1,
+      22,     6,   276,    -1,    88,     6,   276,    -1,    89,     6,
+     276,    -1,    90,     6,   276,    -1,    54,     6,   268,    -1,
+      55,     6,   268,    -1,    57,     6,   268,    -1,   130,    -1,
+     255,    -1,   144,    -1,   145,    -1,   146,    -1,   117,    -1,
+     116,    -1,   118,    -1,   131,    -1,   132,    -1,   133,    -1,
+     134,    -1,   135,    -1,   136,    -1,   137,    -1,   138,    -1,
+     139,    -1,   140,    -1,   141,    -1,   142,    -1,   143,    -1,
+     129,    -1,   125,    -1,   127,    -1,    37,     6,   276,    -1,
+      39,     6,   258,    -1,    38,     6,   276,    -1,    40,    -1,
+     257,     9,   257,    -1,   168,    -1,   260,    -1,   260,     9,
+     260,    -1,   106,     6,   261,    -1,   108,     6,   276,    -1,
+     107,     6,   276,    -1,   169,    -1,    91,    -1,   262,     5,
+     262,    -1,    -1,   170,     3,   264,   262,     4,    -1,   263,
+     263,    -1,    43,     6,   266,    -1,    44,     6,   267,    -1,
+     265,     5,   265,    -1,   166,    -1,    58,    -1,    59,    -1,
+      93,    -1,    94,    -1,    97,    -1,    96,    -1,   182,   276,
+     183,    -1,   269,    -1,   177,   270,    -1,   181,   270,    -1,
+     270,    -1,   271,   174,   270,    -1,   271,   175,   270,    -1,
+     271,   176,   270,    -1,   271,    -1,   272,   177,   271,    -1,
+     272,   178,   271,    -1,   272,    -1,   273,   179,   272,    -1,
+     273,   180,   272,    -1,   273,    -1,   274,   173,   273,    -1,
+     274,    -1,   275,   172,   274,    -1,   275,    -1,   276,   171,
+     275,    -1
   };
 
   /* YYPRHS[YYN] -- Index of the first RHS symbol of rule number YYN in
@@ -2564,73 +2776,79 @@ namespace BIF {
          0,     0,     3,     5,     6,     9,    13,    14,    21,    22,
       25,    28,    31,    34,    37,    40,    43,    44,    50,    52,
       56,    59,    60,    64,    68,    72,    76,    80,    84,    88,
-      92,    96,   100,   104,   108,   112,   114,   118,   120,   122,
-     126,   132,   133,   135,   139,   141,   146,   151,   155,   159,
-     163,   167,   171,   175,   179,   183,   185,   188,   189,   195,
-     196,   199,   202,   205,   207,   211,   214,   218,   222,   224,
-     226,   228,   232,   236,   240,   244,   248,   252,   256,   259,
-     261,   262,   265,   268,   273,   274,   280,   285,   290,   295,
-     299,   304,   309,   314,   319,   324,   329,   334,   339,   341,
-     345,   347,   349,   353,   355,   359,   362,   364,   368,   371,
-     375,   379,   383,   387,   391,   393,   395,   397,   399,   401,
-     403,   405,   407,   411,   413,   417,   419,   421,   423,   427,
-     429,   430,   436,   438,   439,   444,   446,   448,   452,   456,
-     459,   462,   466,   470,   474,   478,   482,   486,   488,   492,
-     494,   496,   498,   500,   502,   506,   510,   512,   516,   518,
-     522,   524,   526,   528,   530,   532,   534,   536,   538,   540,
-     542,   544,   546,   548,   550,   552,   554,   556,   558,   560,
-     564,   566,   571,   576,   580,   584,   588,   592,   596,   600,
-     604,   608,   612,   616,   620,   624,   628,   632,   636,   638,
-     642,   646,   650,   654,   656,   660,   664,   666,   668,   670,
-     672,   674,   676,   678,   680,   682,   684,   686,   688,   690,
-     692,   694,   696,   698,   700,   702,   704,   706,   708,   710,
-     712,   714,   716,   718,   720,   722,   724,   726,   728,   730,
-     734,   738,   742,   746,   750,   754,   756,   758,   762,   766,
-     770,   774,   778,   782,   786,   788,   790,   792,   794,   796,
-     798,   800,   802,   804,   806,   808,   810,   812,   814,   816,
-     818,   822,   826,   830,   832,   836,   838,   840,   844,   848,
-     852,   856,   858,   860,   864,   865,   871,   874,   878,   882,
-     886,   888,   890,   892,   894,   896,   898,   900,   904,   906,
-     909,   912,   914,   918,   922,   926,   928,   932,   936,   938,
-     942,   946,   948,   952,   954,   958,   960
+      92,    96,   100,   104,   108,   112,   116,   120,   124,   128,
+     132,   136,   140,   144,   146,   150,   152,   154,   158,   164,
+     165,   167,   171,   173,   178,   183,   187,   191,   195,   199,
+     203,   207,   211,   215,   219,   223,   227,   231,   233,   236,
+     237,   243,   244,   247,   250,   253,   255,   259,   262,   266,
+     270,   272,   274,   276,   280,   284,   288,   292,   296,   300,
+     304,   307,   309,   310,   313,   316,   321,   322,   328,   333,
+     338,   343,   347,   352,   357,   362,   367,   372,   377,   382,
+     387,   389,   393,   395,   397,   401,   403,   407,   410,   412,
+     416,   419,   423,   427,   431,   435,   439,   441,   443,   445,
+     447,   449,   451,   453,   455,   459,   461,   465,   467,   469,
+     471,   475,   477,   478,   484,   486,   487,   492,   494,   496,
+     500,   504,   507,   510,   514,   518,   522,   526,   530,   534,
+     536,   540,   542,   544,   546,   548,   550,   554,   558,   560,
+     564,   566,   570,   572,   574,   576,   578,   580,   582,   584,
+     586,   588,   590,   592,   594,   596,   598,   600,   602,   604,
+     606,   608,   612,   614,   619,   624,   628,   632,   636,   640,
+     644,   648,   652,   656,   660,   664,   668,   672,   676,   680,
+     684,   688,   692,   696,   700,   704,   708,   712,   716,   718,
+     722,   726,   730,   734,   736,   740,   744,   746,   748,   750,
+     752,   754,   756,   758,   760,   762,   764,   766,   768,   770,
+     772,   774,   776,   778,   780,   782,   784,   786,   788,   790,
+     792,   794,   796,   798,   800,   802,   804,   806,   808,   810,
+     812,   816,   820,   824,   828,   832,   836,   838,   840,   844,
+     848,   852,   856,   860,   864,   868,   870,   872,   874,   876,
+     878,   880,   882,   884,   886,   888,   890,   892,   894,   896,
+     898,   900,   902,   904,   906,   908,   910,   912,   914,   916,
+     920,   924,   928,   930,   934,   936,   938,   942,   946,   950,
+     954,   956,   958,   962,   963,   969,   972,   976,   980,   984,
+     986,   988,   990,   992,   994,   996,   998,  1002,  1004,  1007,
+    1010,  1012,  1016,  1020,  1024,  1026,  1030,  1034,  1036,  1040,
+    1044,  1046,  1050,  1052,  1056,  1058
   };
 
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
   const unsigned short int
   BisonParser::yyrline_[] =
   {
-         0,   212,   212,   214,   215,   217,   218,   218,   224,   225,
-     226,   227,   228,   229,   230,   231,   234,   234,   239,   240,
-     241,   244,   245,   246,   247,   248,   249,   250,   251,   252,
-     253,   254,   255,   256,   263,   264,   265,   266,   270,   271,
-     274,   275,   277,   278,   281,   283,   285,   289,   290,   291,
-     293,   294,   295,   296,   297,   300,   301,   304,   304,   313,
-     314,   315,   316,   319,   320,   321,   324,   325,   326,   327,
-     328,   329,   331,   332,   337,   342,   347,   364,   375,   376,
-     379,   380,   381,   384,   387,   387,   390,   391,   392,   397,
-     398,   399,   400,   401,   402,   403,   404,   405,   408,   409,
-     412,   413,   414,   417,   418,   419,   422,   423,   424,   427,
-     428,   429,   430,   431,   434,   437,   439,   441,   443,   445,
-     447,   449,   451,   453,   455,   459,   460,   461,   462,   463,
-     466,   466,   473,   479,   479,   485,   486,   487,   488,   489,
-     490,   493,   496,   497,   499,   500,   501,   507,   508,   511,
-     512,   513,   514,   515,   518,   519,   522,   523,   526,   527,
-     530,   535,   537,   538,   539,   540,   541,   542,   543,   544,
-     545,   546,   549,   550,   551,   552,   553,   554,   557,   558,
-     561,   562,   563,   565,   566,   567,   568,   569,   570,   571,
-     572,   573,   574,   575,   576,   577,   578,   579,   580,   581,
-     582,   583,   584,   585,   586,   587,   588,   589,   590,   593,
-     594,   595,   596,   597,   598,   599,   600,   601,   604,   605,
-     608,   609,   612,   613,   616,   619,   622,   625,   628,   631,
-     634,   637,   640,   643,   646,   649,   652,   655,   658,   661,
-     662,   663,   664,   665,   666,   667,   668,   669,   670,   671,
-     672,   675,   676,   677,   680,   681,   682,   683,   684,   685,
-     686,   687,   688,   691,   692,   693,   694,   697,   698,   699,
-     702,   705,   708,   711,   714,   717,   721,   722,   724,   725,
-     726,   728,   732,   737,   739,   739,   741,   743,   746,   747,
-     750,   753,   756,   762,   763,   766,   767,   768,   774,   775,
-     776,   780,   781,   782,   783,   786,   787,   788,   791,   792,
-     793,   796,   797,   800,   801,   805,   806
+         0,   217,   217,   219,   220,   222,   223,   223,   229,   230,
+     231,   232,   233,   234,   235,   236,   239,   239,   244,   245,
+     246,   249,   250,   251,   252,   253,   254,   255,   256,   257,
+     258,   259,   260,   261,   262,   263,   264,   265,   266,   267,
+     268,   269,   276,   277,   278,   279,   283,   284,   287,   288,
+     290,   291,   294,   296,   298,   302,   303,   304,   306,   307,
+     309,   311,   313,   315,   316,   317,   318,   321,   322,   325,
+     325,   334,   335,   336,   337,   340,   341,   342,   345,   346,
+     347,   348,   349,   350,   352,   353,   358,   363,   368,   389,
+     400,   401,   404,   405,   406,   409,   412,   412,   415,   416,
+     417,   422,   423,   424,   425,   426,   427,   428,   429,   430,
+     433,   434,   437,   438,   439,   442,   443,   444,   447,   448,
+     449,   452,   453,   454,   455,   456,   459,   462,   464,   466,
+     468,   470,   472,   474,   476,   478,   480,   484,   485,   486,
+     487,   488,   491,   491,   498,   504,   504,   510,   511,   512,
+     513,   514,   515,   518,   521,   522,   524,   525,   526,   532,
+     533,   536,   537,   538,   539,   540,   543,   544,   547,   548,
+     551,   552,   555,   560,   562,   563,   564,   565,   566,   567,
+     568,   569,   570,   571,   574,   575,   576,   577,   578,   579,
+     582,   583,   586,   587,   588,   590,   591,   592,   593,   594,
+     595,   596,   597,   598,   599,   600,   601,   602,   603,   604,
+     605,   606,   607,   608,   609,   610,   611,   612,   613,   614,
+     615,   616,   617,   618,   619,   620,   621,   622,   623,   626,
+     627,   628,   629,   630,   631,   632,   633,   634,   637,   638,
+     639,   642,   643,   646,   647,   650,   653,   656,   659,   662,
+     665,   668,   671,   674,   677,   680,   683,   686,   689,   692,
+     695,   696,   697,   698,   699,   700,   701,   702,   703,   704,
+     705,   706,   709,   710,   711,   714,   715,   716,   717,   718,
+     719,   720,   721,   722,   725,   726,   727,   728,   729,   730,
+     731,   732,   733,   734,   735,   736,   739,   740,   741,   744,
+     747,   750,   753,   756,   759,   763,   764,   766,   767,   768,
+     770,   774,   779,   781,   781,   783,   785,   788,   789,   792,
+     795,   798,   804,   805,   808,   809,   810,   816,   817,   818,
+     822,   823,   824,   825,   828,   829,   830,   833,   834,   835,
+     838,   839,   842,   843,   847,   848
   };
 
   // Print the state stack on the debug stream.
@@ -2713,7 +2931,7 @@ namespace BIF {
      145,   146,   147,   148,   149,   150,   151,   152,   153,   154,
      155,   156,   157,   158,   159,   160,   161,   162,   163,   164,
      165,   166,   167,   168,   169,   170,   171,   172,   173,   174,
-     175
+     175,   176,   177,   178,   179,   180,   181,   182,   183,   184
     };
     if ((unsigned int) t <= yyuser_token_number_max_)
       return translate_table[t];
@@ -2722,24 +2940,24 @@ namespace BIF {
   }
 
   const int BisonParser::yyeof_ = 0;
-  const int BisonParser::yylast_ = 1081;
+  const int BisonParser::yylast_ = 1226;
   const int BisonParser::yynnts_ = 92;
   const int BisonParser::yyempty_ = -2;
   const int BisonParser::yyfinal_ = 3;
   const int BisonParser::yyterror_ = 1;
   const int BisonParser::yyerrcode_ = 256;
-  const int BisonParser::yyntokens_ = 176;
+  const int BisonParser::yyntokens_ = 185;
 
-  const unsigned int BisonParser::yyuser_token_number_max_ = 430;
+  const unsigned int BisonParser::yyuser_token_number_max_ = 439;
   const BisonParser::token_number_type BisonParser::yyundef_token_ = 2;
 
 /* Line 1141 of lalr1.cc  */
 #line 24 "parser/bif.y"
 } // BIF
 /* Line 1141 of lalr1.cc  */
-#line 2741 "bisonflex/bif.tab.cpp"
+#line 2959 "bisonflex/bif.tab.cpp"
 /* Line 1142 of lalr1.cc  */
-#line 811 "parser/bif.y"
+#line 853 "parser/bif.y"
 
 void BIF::BisonParser::error(const BIF::BisonParser::location_type &loc, const std::string &msg) {
         Parsing::Error(loc,msg);

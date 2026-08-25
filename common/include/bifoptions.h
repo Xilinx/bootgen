@@ -41,8 +41,8 @@ class Options;
 #define DEFAULT_PMCDATA_LOADADDR    0xF2000000
 #define DEFAULT_ID_CODE_S80         0x04ca8093
 
-#define PLM_MAX_SIZE_L80            0xA0000
-#define PMCDATA_MAX_SIZE_L80        0x1C000
+#define PLM_MAX_SIZE_VERSAL_FMT            0xA0000
+#define PMCDATA_MAX_SIZE_VERSAL_FMT        0x1C000
 
 
 typedef struct
@@ -78,6 +78,27 @@ typedef struct
     bool userDeviceDNA;
     std::string jtagSignatureFile;
 } AuthJtagInfo;
+
+// Key metadata structure - matches HeaderAuthCert_versal_2vp format
+// This structure is populated from .kmd files and can be directly mapped to PPK/SPK headers
+struct KeyMetadata
+{
+    uint32_t Algorithm;      // [0:7] Algorithm, [8:15] Reserved(Represent AH) - parsed from "algorithm" field in .kmd
+    uint32_t RevocationID;   // eFUSE bit for key revocation - parsed from "revoke_id" field in .kmd
+    uint32_t Hybrid;         // Bitmask for hybrid signing algorithms - parsed from "hybrid" field in .kmd
+    uint32_t Authority;      // Reserved for CA/PA, set to 0 - parsed from "authority" field in .kmd
+    uint32_t Permission;     // Key permission (SPK, BOOT, RMA, etc.) - parsed from "permission" field in .kmd
+    uint32_t Reserved[3];    // Reserved for future use (12 bytes) - set to 0
+    bool isValid;            // Flag to indicate if metadata was successfully parsed from .kmd file
+    
+    // Constructor to initialize with defaults (matching header format)
+    KeyMetadata() : Algorithm(0), RevocationID(0), Hybrid(0), Authority(0), Permission(0), isValid(false) 
+    {
+        Reserved[0] = 0;
+        Reserved[1] = 0;
+        Reserved[2] = 0;
+    }
+};
 
 /*
 -------------------------------------------------------------------------------
@@ -122,6 +143,8 @@ public:
     void SetTcmARegion(uint64_t tcm_a_region);
     void SetTcmBRegion(uint64_t tcm_b_region);
     void SetTcmCRegion(uint64_t tcm_c_region);
+    void SetHybridAuthType(std::string hybridSpec);
+    void AutoDetectAndPopulateKeys();  // Auto-detection for partition-level keys
 
     std::string GetUdfDataFile(void);
     std::vector<uint32_t>& GetEncryptionBlocks(void);
@@ -134,6 +157,8 @@ public:
     std::string GetOutputFileFromBifSection(std::string, std::string, PartitionType::Type);
     bool IsVersalNetSeries(void) { return versalNetSeries; }
     bool IsDl9Series(void) { return dl9Series; }
+    bool IsHybridAuthentication(void) { return hybridAuth; }
+    std::vector<Authentication::Type> GetHybridAlgorithms(void) { return hybridAlgorithms; }
 
     void Dump(void)
     {
@@ -162,6 +187,25 @@ public:
     std::string ppkFile;
     std::string pskFile;
     std::string spkSignatureFile;
+    
+    // Hybrid authentication - key files (using *file1 nomenclature)
+    std::string ppkFile1;  // RSA PPK file for hybrid auth
+    std::string pskFile1;  // RSA PSK file for hybrid auth  
+    std::string spkFile1;  // RSA SPK file for hybrid auth
+    std::string sskFile1;  // RSA SSK file for hybrid auth
+    
+    // Auto-detection base key files (simplified syntax)
+    std::string pkFile;    // Base public key file for auto-detection
+    std::string skFile;    // Base signing key file for auto-detection
+    std::string pkFile1;   // Base public key file 1 for hybrid auto-detection
+    std::string skFile1;   // Base signing key file 1 for hybrid auto-detection
+    
+    // Key metadata from .kmd files
+    KeyMetadata primaryMetadata;    // Metadata from primary.kmd (for PPK header)
+    KeyMetadata secondaryMetadata;  // Metadata from secondary.kmd (for SPK header)
+    KeyMetadata primaryMetadata1;   // Metadata from private_1.kmd (for PPK1 header, hybrid only)
+    KeyMetadata secondaryMetadata1; // Metadata from private_2.kmd (for SPK1 header, hybrid only)
+    
     bool bootImage;
     bool pmuFwImage;
     bool pmcData;
@@ -215,6 +259,10 @@ public:
     uint32_t spkRevokeId;
     uint32_t partitionRevokeId;
     bool lmsOnly;
+
+    // Hybrid authentication support
+    bool hybridAuth;
+    std::vector<Authentication::Type> hybridAlgorithms;
 
     //no default declared
     uint32_t blockSize;
@@ -493,6 +541,40 @@ public:
     std::string GetPSKFileName(void);
     std::string GetSPKFileName(void);
     std::string GetSSKFileName(void);
+    
+    // Global variant key file getters for hybrid authentication
+    std::string GetPPKFileName1(void);
+    std::string GetPSKFileName1(void);
+    std::string GetSPKFileName1(void);
+    std::string GetSSKFileName1(void);
+    
+    // Global variant key file setters for hybrid authentication
+    void SetPPKFileName1(std::string filename);
+    void SetPSKFileName1(std::string filename);
+    void SetSPKFileName1(std::string filename);
+    void SetSSKFileName1(std::string filename);
+    
+    // Auto-detection base key file setters
+    void SetPKFileName(std::string filename);
+    void SetSKFileName(std::string filename);
+    void SetPKFileName1(std::string filename);
+    void SetSKFileName1(std::string filename);
+    
+    // Auto-detection base key file getters
+    std::string GetPKFileName(void);
+    std::string GetSKFileName(void);
+    std::string GetPKFileName1(void);
+    std::string GetSKFileName1(void);
+    
+    // Key metadata getters (for PPK hash generation with .kmd files)
+    const KeyMetadata& GetPrimaryMetadata(void) const;
+    const KeyMetadata& GetSecondaryMetadata(void) const;
+    const KeyMetadata& GetPrimaryMetadata1(void) const;
+    const KeyMetadata& GetSecondaryMetadata1(void) const;
+    
+    // Auto-detection main function
+    void AutoDetectAndPopulateKeys();  // Auto-detection for global-level keys
+    
     uint32_t GetSpkId(void);
     bool GetHeaderAC(void);
     bool GetHeaderEncyption(void);
@@ -533,7 +615,13 @@ public:
     bool GetPufHdinBHFlag(void);
     std::vector<LmsKeyParam> GetPrimaryLmsParams(void);
     std::vector<LmsKeyParam> GetSecondaryLmsParams(void);
-
+    
+    // Helper to get key metadata structures (for accessing in authentication code)
+    KeyMetadata GetPrimaryMetadata(void) { return primaryMetadata; }
+    KeyMetadata GetSecondaryMetadata(void) { return secondaryMetadata; }
+    KeyMetadata GetPrimaryMetadata1(void) { return primaryMetadata1; }
+    KeyMetadata GetSecondaryMetadata1(void) { return secondaryMetadata1; }
+    
     std::string GetFamilyKeyFileName();
     std::list<std::string> aie_elfs;
     std::list<ImageBifOptions*> imageBifOptionList;
@@ -572,6 +660,25 @@ private:
     std::string pskFile;
     std::string spkFile;
     std::string sskFile;
+    
+    // Global variant key files for hybrid authentication
+    std::string ppkFile1;
+    std::string pskFile1;
+    std::string spkFile1;
+    std::string sskFile1;
+    
+    // Auto-detection base key files (simplified syntax) - global scope
+    std::string pkFile;
+    std::string skFile;
+    std::string pkFile1;
+    std::string skFile1;
+    
+    // Key metadata from .kmd files - global scope
+    KeyMetadata primaryMetadata;    // Metadata from primary.kmd (for PPK header)
+    KeyMetadata secondaryMetadata;  // Metadata from secondary.kmd (for SPK header)
+    KeyMetadata primaryMetadata1;   // Metadata from private_1.kmd (for PPK1 header, hybrid only)
+    KeyMetadata secondaryMetadata1; // Metadata from private_2.kmd (for SPK1 header, hybrid only)
+    
     std::string spkSignatureFile;
     std::string bhSignatureFile;
     std::string headerSignatureFile;

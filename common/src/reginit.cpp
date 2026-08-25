@@ -82,7 +82,7 @@ void RegisterTable::Add(Options& options, uint32_t address, uint32_t value)
         LOG_ERROR("Too many register init pairs in %s", filename.c_str());
     }
 
-    if((options.archType == Arch::VERSAL && !options.IsVersalNetSeries()) && (options.archType != Arch::VERSALGEN2) && (options.archType != Arch::SPARTANUP) && (options.archType != Arch::SPARTANUPV2))
+    if((options.archType == Arch::VERSAL && !options.IsVersalNetSeries()) && (options.archType != Arch::VERSALGEN2) && (options.archType != Arch::VERSAL_2VP) && (options.archType != Arch::SPARTANUP) && (options.archType != Arch::SPARTANUPV2))
     {
         if (fileParseEnd != true)
         {

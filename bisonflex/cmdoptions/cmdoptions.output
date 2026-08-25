@@ -244,46 +244,50 @@ Grammar
   207         | ECDSA
   208         | ECDSAP521
   209         | LMS
+  210         | MLDSA
 
-  210 auth_key_options: PEM
-  211                 | RSA
+  211 auth_key_options: PEM
+  212                 | RSA
 
-  212 auth_type: ECDSA
-  213          | RSA
+  213 auth_type: ECDSA
+  214          | RSA
 
-  214 authJtagOptions: authJtagType filename
-  215                | authJtagType
+  215 authJtagOptions: authJtagType filename
+  216                | authJtagType
 
-  216 authJtagType: ECDSA
-  217             | RSA
-  218             | LMS_SHA256
-  219             | LMS_SHAKE256
-  220             | HSS_SHA256
-  221             | HSS_SHAKE256
+  217 authJtagType: ECDSAP521
+  218             | ECDSA
+  219             | RSA
+  220             | LMS_SHA256
+  221             | LMS_SHAKE256
+  222             | HSS_SHA256
+  223             | HSS_SHAKE256
+  224             | MLDSA
+  225             | SLHDSA
 
-  222 verifyImageOptions: filename
+  226 verifyImageOptions: filename
 
-  223 readImageOptions: filename
-  224                 | filename readType
+  227 readImageOptions: filename
+  228                 | filename readType
 
-  225 readType: READ_BH
-  226         | READ_IHT
-  227         | READ_IH
-  228         | READ_PHT
-  229         | READ_AC
+  229 readType: READ_BH
+  230         | READ_IHT
+  231         | READ_IH
+  232         | READ_PHT
+  233         | READ_AC
 
-  230 dumpOptions: READ_BH
-  231            | filename READ_BH
-  232            | READ_BH filename
-  233            | filename
-  234            | filename DUMP_PLM
-  235            | filename DUMP_PMC_CDO
-  236            | filename DUMP_BOOT_FILES
-  237            | DUMP_SLAVE_PDIS
-  238            | DUMP_PUF_PDI
+  234 dumpOptions: READ_BH
+  235            | filename READ_BH
+  236            | READ_BH filename
+  237            | filename
+  238            | filename DUMP_PLM
+  239            | filename DUMP_PMC_CDO
+  240            | filename DUMP_BOOT_FILES
+  241            | DUMP_SLAVE_PDIS
+  242            | DUMP_PUF_PDI
 
-  239 encrDumpOptions: /* empty */
-  240                | filename
+  243 encrDumpOptions: /* empty */
+  244                | filename
 
 
 Terminals, with rules where they appear
@@ -313,13 +317,13 @@ MCS (277) 53 57 181
 BIN (278) 54 58 182
 _OUT_TYPE (279) 47
 _DUMP (280) 40 41
-DUMP_PLM (281) 234
-DUMP_PMC_CDO (282) 235
-DUMP_BOOT_FILES (283) 236
+DUMP_PLM (281) 238
+DUMP_PMC_CDO (282) 239
+DUMP_BOOT_FILES (283) 240
 _DUMP_DIR (284) 42
 _PUF (285) 43
-DUMP_SLAVE_PDIS (286) 237
-DUMP_PUF_PDI (287) 238
+DUMP_SLAVE_PDIS (286) 241
+DUMP_PUF_PDI (287) 242
 _SYNCFLAG (288) 14
 _ARCH (289) 29
 ZYNQ (290) 191
@@ -349,229 +353,231 @@ _GENERATE_HASHES (313) 18
 _PADIMAGEHEADER (314) 21 22 23
 _SPKSIGNATURE (315) 27
 _GENERATE_KEYS (316) 32
-PEM (317) 205 210
-RSA (318) 206 211 213 217
-ECDSAP521 (319) 208
+PEM (317) 205 211
+RSA (318) 206 212 214 219
+ECDSAP521 (319) 208 217
 AUTH (320) 202
 GREY (321) 203
 METAL (322) 204
 LMS (323) 209
-_EFUSEPUFBITS (324) 17
-_SECUREDEBUG (325) 36
-ECDSA (326) 207 212 216
-_AUTHJTAG (327) 37
-LMS_SHA256 (328) 218
-LMS_SHAKE256 (329) 219
-HSS_SHA256 (330) 220
-HSS_SHAKE256 (331) 221
-_ENCRYPT (332) 15
-BBRAM (333) 170
-EFUSE (334) 171
-_P_TOK (335) 9
-_READ (336) 38
-READ_BH (337) 225 230 231 232
-READ_IHT (338) 226
-READ_IH (339) 227
-READ_PHT (340) 228
-READ_AC (341) 229
-_VERIFY (342) 39
-_VERIFYKDF (343) 44
-_AUTH_OPTIMIZATION (344) 45
-_ZYNQMPENCRDUMP (345) 34
-HEXVALUE (346) 180 187 189
-IDENTIFIER (347) 9 28 50
-FILENAME (348) 51
-QFILENAME (349) 52
-HEXSTRING (350) 22 23 49 173 175 177 188 190
-EQUALS (351) 22 173 175 177
-HMAC (352) 177
-STARTCBC (353) 173
-KEY0 (354) 175
-COMMA (355)
-HBIFHELP (356) 60
-HARCH (357) 61
-HIMAGE (358) 63
-HFILL (359) 64
-HO (360) 66
-HP (361) 67
-HW (362) 68
-HEFUSEPPKBITS (363) 69
-HGENHASHES (364) 70
-HLEGACY (365) 71
-HPADHDR (366) 72
-H_SPKSIGN (367) 73 135
-HAUTHOPT (368) 62
-HPACKAGE (369) 74
-HENCRYPT (370) 75
-HGENKEYS (371) 76
-HDQSPI (372) 77
-HLOG (373) 78
-HZYNQMPES1 (374) 79
-HPROCESSBIT (375) 80
-HNONBOOTING (376) 81
-HENCRDUMP (377) 82
-HVERIFY (378) 83
-HSECUREDEBUG (379) 86
-HREAD (380) 85
-HVERIFYKDF (381) 84
-HDUMP (382) 87
-HDUMPDIR (383) 88
-HOVLCDO (384) 89
-HOUTTYPE (385) 90
-H_BIF_INIT (386) 92
-H_BIF_UDFBH (387) 93
-H_BIF_AES (388) 94
-H_BIF_PPK (389) 95
-H_BIF_PSK (390) 96
-H_BIF_SPK (391) 97
-H_BIF_SSK (392) 98
-H_BIF_SPKSIGN (393) 99
-H_BIF_HIVEC (394) 132
-H_BIF_HDRSIGN (395) 100
-H_BIF_BOOTIMAGE (396) 101
-H_BIF_BL (397) 102
-H_BIF_PLDATA (398)
-H_BIF_PID (399) 104
-H_BIF_ENCR (400) 103
-H_BIF_AUTH (401) 105
-H_BIF_CHKSM (402) 108
-H_BIF_ELYHNDOFF (403) 131
-H_BIF_BHSIGN (404) 133
-H_BIF_TCMBOOT (405) 106
-H_BIF_OPTIONALDATA (406) 107
-H_BIF_POWNER (407) 109
-H_BIF_PRESIGN (408) 110
-H_BIF_UDF (409) 111
-H_BIF_XIP (410) 112
-H_BIF_ALIGN (411) 113
-H_BIF_OFFSET (412) 114
-H_BIF_RES (413) 115
-H_BIF_LOAD (414) 116
-H_BIF_TZ (415) 124
-H_BIF_STARTUP (416) 117
-H_BIF_KEYSRC (417) 118
-H_BIF_FSBLCFG (418) 119
-H_BIF_BOOTDEV (419) 120
-H_BIF_DESTCPU (420) 121
-H_BIF_DESTDEV (421) 122
-H_BIF_EL (422) 123
-H_SPLIT (423) 65 134
-H_BIF_AUTHPARAM (424) 125
-H_BIF_BHKEY (425) 126
-H_BIF_PFW (426) 127
-H_BIF_BLOCKS (427) 128
-H_BIF_METAL (428) 130
-H_BIF_BHIV (429) 129
-H_BIF_BOOTVEC (430) 136
-H_BIF_PUFDATA (431) 137
-H_BIF_PTYPE (432)
-H_BIF_IMAGECFG (433)
-H_BIF_PMCCONFIG (434)
-H_BIF_AARCH32 (435) 138
-H_BIF_BIGENDIAN (436) 139
-H_BIF_BOOTCONFIG (437) 140
-H_BIF_COPY (438) 141
-H_BIF_CORE (439) 142
-H_BIF_DELAY_HANDOFF (440) 143
-H_BIF_DELAY_LOAD (441) 144
-H_BIF_FILE (442) 145
-H_BIF_ID (443) 146
-H_BIF_IMAGE (444) 147
-H_BIF_METAHDR (445) 148
-H_BIF_NAME (446) 149
-H_BIF_PARTITION (447) 151
-H_BIF_SLR (448) 152
-H_BIF_TYPE (449) 153
-H_BIF_KEYSRCENCR (450) 154
-H_BIF_PARENTID (451) 150
-H_DPACM_ENABLE (452) 155
-H_BIF_USERKEYS (453) 156
-HVN_BIF_PCR (454) 157
-HVN_BIF_PCR_MINDEX (455) 158
-HV_BIF_IMAGESTORE (456) 159
+MLDSA (324) 210 224
+_EFUSEPUFBITS (325) 17
+_SECUREDEBUG (326) 36
+ECDSA (327) 207 213 218
+_AUTHJTAG (328) 37
+LMS_SHA256 (329) 220
+LMS_SHAKE256 (330) 221
+HSS_SHA256 (331) 222
+HSS_SHAKE256 (332) 223
+SLHDSA (333) 225
+_ENCRYPT (334) 15
+BBRAM (335) 170
+EFUSE (336) 171
+_P_TOK (337) 9
+_READ (338) 38
+READ_BH (339) 229 234 235 236
+READ_IHT (340) 230
+READ_IH (341) 231
+READ_PHT (342) 232
+READ_AC (343) 233
+_VERIFY (344) 39
+_VERIFYKDF (345) 44
+_AUTH_OPTIMIZATION (346) 45
+_ZYNQMPENCRDUMP (347) 34
+HEXVALUE (348) 180 187 189
+IDENTIFIER (349) 9 28 50
+FILENAME (350) 51
+QFILENAME (351) 52
+HEXSTRING (352) 22 23 49 173 175 177 188 190
+EQUALS (353) 22 173 175 177
+HMAC (354) 177
+STARTCBC (355) 173
+KEY0 (356) 175
+COMMA (357)
+HBIFHELP (358) 60
+HARCH (359) 61
+HIMAGE (360) 63
+HFILL (361) 64
+HO (362) 66
+HP (363) 67
+HW (364) 68
+HEFUSEPPKBITS (365) 69
+HGENHASHES (366) 70
+HLEGACY (367) 71
+HPADHDR (368) 72
+H_SPKSIGN (369) 73 135
+HAUTHOPT (370) 62
+HPACKAGE (371) 74
+HENCRYPT (372) 75
+HGENKEYS (373) 76
+HDQSPI (374) 77
+HLOG (375) 78
+HZYNQMPES1 (376) 79
+HPROCESSBIT (377) 80
+HNONBOOTING (378) 81
+HENCRDUMP (379) 82
+HVERIFY (380) 83
+HSECUREDEBUG (381) 86
+HREAD (382) 85
+HVERIFYKDF (383) 84
+HDUMP (384) 87
+HDUMPDIR (385) 88
+HOVLCDO (386) 89
+HOUTTYPE (387) 90
+H_BIF_INIT (388) 92
+H_BIF_UDFBH (389) 93
+H_BIF_AES (390) 94
+H_BIF_PPK (391) 95
+H_BIF_PSK (392) 96
+H_BIF_SPK (393) 97
+H_BIF_SSK (394) 98
+H_BIF_SPKSIGN (395) 99
+H_BIF_HIVEC (396) 132
+H_BIF_HDRSIGN (397) 100
+H_BIF_BOOTIMAGE (398) 101
+H_BIF_BL (399) 102
+H_BIF_PLDATA (400)
+H_BIF_PID (401) 104
+H_BIF_ENCR (402) 103
+H_BIF_AUTH (403) 105
+H_BIF_CHKSM (404) 108
+H_BIF_ELYHNDOFF (405) 131
+H_BIF_BHSIGN (406) 133
+H_BIF_TCMBOOT (407) 106
+H_BIF_OPTIONALDATA (408) 107
+H_BIF_POWNER (409) 109
+H_BIF_PRESIGN (410) 110
+H_BIF_UDF (411) 111
+H_BIF_XIP (412) 112
+H_BIF_ALIGN (413) 113
+H_BIF_OFFSET (414) 114
+H_BIF_RES (415) 115
+H_BIF_LOAD (416) 116
+H_BIF_TZ (417) 124
+H_BIF_STARTUP (418) 117
+H_BIF_KEYSRC (419) 118
+H_BIF_FSBLCFG (420) 119
+H_BIF_BOOTDEV (421) 120
+H_BIF_DESTCPU (422) 121
+H_BIF_DESTDEV (423) 122
+H_BIF_EL (424) 123
+H_SPLIT (425) 65 134
+H_BIF_AUTHPARAM (426) 125
+H_BIF_BHKEY (427) 126
+H_BIF_PFW (428) 127
+H_BIF_BLOCKS (429) 128
+H_BIF_METAL (430) 130
+H_BIF_BHIV (431) 129
+H_BIF_BOOTVEC (432) 136
+H_BIF_PUFDATA (433) 137
+H_BIF_PTYPE (434)
+H_BIF_IMAGECFG (435)
+H_BIF_PMCCONFIG (436)
+H_BIF_AARCH32 (437) 138
+H_BIF_BIGENDIAN (438) 139
+H_BIF_BOOTCONFIG (439) 140
+H_BIF_COPY (440) 141
+H_BIF_CORE (441) 142
+H_BIF_DELAY_HANDOFF (442) 143
+H_BIF_DELAY_LOAD (443) 144
+H_BIF_FILE (444) 145
+H_BIF_ID (445) 146
+H_BIF_IMAGE (446) 147
+H_BIF_METAHDR (447) 148
+H_BIF_NAME (448) 149
+H_BIF_PARTITION (449) 151
+H_BIF_SLR (450) 152
+H_BIF_TYPE (451) 153
+H_BIF_KEYSRCENCR (452) 154
+H_BIF_PARENTID (453) 150
+H_DPACM_ENABLE (454) 155
+H_BIF_USERKEYS (455) 156
+HVN_BIF_PCR (456) 157
+HVN_BIF_PCR_MINDEX (457) 158
+HV_BIF_IMAGESTORE (458) 159
 
 
 Nonterminals, with rules where they appear
 
-$accept (202)
+$accept (204)
     on left: 0
-top (203)
+top (205)
     on left: 1, on right: 0
-option_list (204)
+option_list (206)
     on left: 2 3, on right: 1 3
-option (205)
+option (207)
     on left: 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23
     24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44
     45 46 47 48, on right: 3
-filename (206)
+filename (208)
     on left: 49 50 51 52, on right: 4 7 8 16 17 27 42 43 44 46 179
-    214 222 223 224 231 232 233 234 235 236 240
-memsplit (207)
+    215 226 227 228 235 236 237 238 239 240 244
+memsplit (209)
     on left: 53 54, on right: 5
-filloption (208)
+filloption (210)
     on left: 55 56, on right: 6
-outputType (209)
+outputType (211)
     on left: 57 58, on right: 47
-helpoption (210)
+helpoption (212)
     on left: 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76
     77 78 79 80 81 82 83 84 85 86 87 88 89 90, on right: 12
-bifhelpoption (211)
+bifhelpoption (213)
     on left: 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106
     107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122
     123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138
     139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154
     155 156 157 158 159, on right: 13
-setsyncflag (212)
+setsyncflag (214)
     on left: 160, on right: 14
-wopt (213)
+wopt (215)
     on left: 161 162 163, on right: 10
-loglevel (214)
+loglevel (216)
     on left: 164 165 166 167 168 169, on right: 11
-keysource (215)
+keysource (217)
     on left: 170 171, on right: 15
-startcbc (216)
+startcbc (218)
     on left: 172 173, on right: 15
-key0 (217)
+key0 (219)
     on left: 174 175, on right: 15
-hmac (218)
+hmac (220)
     on left: 176 177, on right: 15
-keyfile (219)
+keyfile (221)
     on left: 178 179, on right: 15
-number (220)
+number (222)
     on left: 180, on right: 56
-bitfile_type (221)
+bitfile_type (223)
     on left: 181 182, on right: 24
-qpsi_mode (222)
+qpsi_mode (224)
     on left: 183 184, on right: 25
-opsi_mode (223)
+opsi_mode (225)
     on left: 185 186, on right: 26
-qspi_size (224)
+qspi_size (226)
     on left: 187 188, on right: 184
-ospi_size (225)
+ospi_size (227)
     on left: 189 190, on right: 186
-archOptions (226)
+archOptions (228)
     on left: 191 192 193 194 195 196 197 198 199 200 201, on right:
     29
-key_type (227)
-    on left: 202 203 204 205 206 207 208 209, on right: 32
-auth_key_options (228)
-    on left: 210 211, on right: 202
-auth_type (229)
-    on left: 212 213, on right: 36
-authJtagOptions (230)
-    on left: 214 215, on right: 37
-authJtagType (231)
-    on left: 216 217 218 219 220 221, on right: 214 215
-verifyImageOptions (232)
-    on left: 222, on right: 39
-readImageOptions (233)
-    on left: 223 224, on right: 38
-readType (234)
-    on left: 225 226 227 228 229, on right: 224
-dumpOptions (235)
-    on left: 230 231 232 233 234 235 236 237 238, on right: 40
-encrDumpOptions (236)
-    on left: 239 240, on right: 34
+key_type (229)
+    on left: 202 203 204 205 206 207 208 209 210, on right: 32
+auth_key_options (230)
+    on left: 211 212, on right: 202
+auth_type (231)
+    on left: 213 214, on right: 36
+authJtagOptions (232)
+    on left: 215 216, on right: 37
+authJtagType (233)
+    on left: 217 218 219 220 221 222 223 224 225, on right: 215 216
+verifyImageOptions (234)
+    on left: 226, on right: 39
+readImageOptions (235)
+    on left: 227 228, on right: 38
+readType (236)
+    on left: 229 230 231 232 233, on right: 228
+dumpOptions (237)
+    on left: 234 235 236 237 238 239 240 241 242, on right: 40
+encrDumpOptions (238)
+    on left: 243 244, on right: 34
 
 
 State 0
@@ -1078,9 +1084,10 @@ State 34
     GREY       shift, and go to state 211
     METAL      shift, and go to state 212
     LMS        shift, and go to state 213
-    ECDSA      shift, and go to state 214
+    MLDSA      shift, and go to state 214
+    ECDSA      shift, and go to state 215
 
-    key_type  go to state 215
+    key_type  go to state 216
 
 
 State 35
@@ -1092,49 +1099,52 @@ State 35
     QFILENAME   shift, and go to state 49
     HEXSTRING   shift, and go to state 50
 
-    filename  go to state 216
+    filename  go to state 217
 
 
 State 36
 
    36 option: _SECUREDEBUG . auth_type
 
-    RSA    shift, and go to state 217
-    ECDSA  shift, and go to state 218
+    RSA    shift, and go to state 218
+    ECDSA  shift, and go to state 219
 
-    auth_type  go to state 219
+    auth_type  go to state 220
 
 
 State 37
 
    37 option: _AUTHJTAG . authJtagOptions
 
-    RSA           shift, and go to state 220
-    ECDSA         shift, and go to state 221
-    LMS_SHA256    shift, and go to state 222
-    LMS_SHAKE256  shift, and go to state 223
-    HSS_SHA256    shift, and go to state 224
-    HSS_SHAKE256  shift, and go to state 225
+    RSA           shift, and go to state 221
+    ECDSAP521     shift, and go to state 222
+    MLDSA         shift, and go to state 223
+    ECDSA         shift, and go to state 224
+    LMS_SHA256    shift, and go to state 225
+    LMS_SHAKE256  shift, and go to state 226
+    HSS_SHA256    shift, and go to state 227
+    HSS_SHAKE256  shift, and go to state 228
+    SLHDSA        shift, and go to state 229
 
-    authJtagOptions  go to state 226
-    authJtagType     go to state 227
+    authJtagOptions  go to state 230
+    authJtagType     go to state 231
 
 
 State 38
 
    15 option: _ENCRYPT . keysource startcbc key0 hmac keyfile
 
-    BBRAM  shift, and go to state 228
-    EFUSE  shift, and go to state 229
+    BBRAM  shift, and go to state 232
+    EFUSE  shift, and go to state 233
 
-    keysource  go to state 230
+    keysource  go to state 234
 
 
 State 39
 
     9 option: _P_TOK . IDENTIFIER
 
-    IDENTIFIER  shift, and go to state 231
+    IDENTIFIER  shift, and go to state 235
 
 
 State 40
@@ -1146,8 +1156,8 @@ State 40
     QFILENAME   shift, and go to state 49
     HEXSTRING   shift, and go to state 50
 
-    filename          go to state 232
-    readImageOptions  go to state 233
+    filename          go to state 236
+    readImageOptions  go to state 237
 
 
 State 41
@@ -1159,8 +1169,8 @@ State 41
     QFILENAME   shift, and go to state 49
     HEXSTRING   shift, and go to state 50
 
-    filename            go to state 234
-    verifyImageOptions  go to state 235
+    filename            go to state 238
+    verifyImageOptions  go to state 239
 
 
 State 42
@@ -1172,7 +1182,7 @@ State 42
     QFILENAME   shift, and go to state 49
     HEXSTRING   shift, and go to state 50
 
-    filename  go to state 236
+    filename  go to state 240
 
 
 State 43
@@ -1191,10 +1201,10 @@ State 44
     QFILENAME   shift, and go to state 49
     HEXSTRING   shift, and go to state 50
 
-    $default  reduce using rule 239 (encrDumpOptions)
+    $default  reduce using rule 243 (encrDumpOptions)
 
-    filename         go to state 237
-    encrDumpOptions  go to state 238
+    filename         go to state 241
+    encrDumpOptions  go to state 242
 
 
 State 45
@@ -1269,7 +1279,7 @@ State 54
     QFILENAME   shift, and go to state 49
     HEXSTRING   shift, and go to state 50
 
-    filename  go to state 239
+    filename  go to state 243
 
 
 State 55
@@ -2100,47 +2110,47 @@ State 172
 
 State 173
 
-  237 dumpOptions: DUMP_SLAVE_PDIS .
+  241 dumpOptions: DUMP_SLAVE_PDIS .
 
-    $default  reduce using rule 237 (dumpOptions)
+    $default  reduce using rule 241 (dumpOptions)
 
 
 State 174
 
-  238 dumpOptions: DUMP_PUF_PDI .
+  242 dumpOptions: DUMP_PUF_PDI .
 
-    $default  reduce using rule 238 (dumpOptions)
+    $default  reduce using rule 242 (dumpOptions)
 
 
 State 175
 
-  230 dumpOptions: READ_BH .
-  232            | READ_BH . filename
+  234 dumpOptions: READ_BH .
+  236            | READ_BH . filename
 
     IDENTIFIER  shift, and go to state 47
     FILENAME    shift, and go to state 48
     QFILENAME   shift, and go to state 49
     HEXSTRING   shift, and go to state 50
 
-    $default  reduce using rule 230 (dumpOptions)
+    $default  reduce using rule 234 (dumpOptions)
 
-    filename  go to state 240
+    filename  go to state 244
 
 
 State 176
 
-  231 dumpOptions: filename . READ_BH
-  233            | filename .
-  234            | filename . DUMP_PLM
-  235            | filename . DUMP_PMC_CDO
-  236            | filename . DUMP_BOOT_FILES
+  235 dumpOptions: filename . READ_BH
+  237            | filename .
+  238            | filename . DUMP_PLM
+  239            | filename . DUMP_PMC_CDO
+  240            | filename . DUMP_BOOT_FILES
 
-    DUMP_PLM         shift, and go to state 241
-    DUMP_PMC_CDO     shift, and go to state 242
-    DUMP_BOOT_FILES  shift, and go to state 243
-    READ_BH          shift, and go to state 244
+    DUMP_PLM         shift, and go to state 245
+    DUMP_PMC_CDO     shift, and go to state 246
+    DUMP_BOOT_FILES  shift, and go to state 247
+    READ_BH          shift, and go to state 248
 
-    $default  reduce using rule 233 (dumpOptions)
+    $default  reduce using rule 237 (dumpOptions)
 
 
 State 177
@@ -2266,10 +2276,10 @@ State 194
 
   184 qpsi_mode: STACKED . qspi_size
 
-    HEXVALUE   shift, and go to state 245
-    HEXSTRING  shift, and go to state 246
+    HEXVALUE   shift, and go to state 249
+    HEXSTRING  shift, and go to state 250
 
-    qspi_size  go to state 247
+    qspi_size  go to state 251
 
 
 State 195
@@ -2290,10 +2300,10 @@ State 197
 
   186 opsi_mode: STACKED . ospi_size
 
-    HEXVALUE   shift, and go to state 248
-    HEXSTRING  shift, and go to state 249
+    HEXVALUE   shift, and go to state 252
+    HEXSTRING  shift, and go to state 253
 
-    ospi_size  go to state 250
+    ospi_size  go to state 254
 
 
 State 198
@@ -2349,7 +2359,7 @@ State 205
 
    22 option: _PADIMAGEHEADER EQUALS . HEXSTRING
 
-    HEXSTRING  shift, and go to state 251
+    HEXSTRING  shift, and go to state 255
 
 
 State 206
@@ -2384,10 +2394,10 @@ State 210
 
   202 key_type: AUTH . auth_key_options
 
-    PEM  shift, and go to state 252
-    RSA  shift, and go to state 253
+    PEM  shift, and go to state 256
+    RSA  shift, and go to state 257
 
-    auth_key_options  go to state 254
+    auth_key_options  go to state 258
 
 
 State 211
@@ -2413,426 +2423,454 @@ State 213
 
 State 214
 
+  210 key_type: MLDSA .
+
+    $default  reduce using rule 210 (key_type)
+
+
+State 215
+
   207 key_type: ECDSA .
 
     $default  reduce using rule 207 (key_type)
 
 
-State 215
+State 216
 
    32 option: _GENERATE_KEYS key_type .
 
     $default  reduce using rule 32 (option)
 
 
-State 216
+State 217
 
    17 option: _EFUSEPUFBITS filename .
 
     $default  reduce using rule 17 (option)
 
 
-State 217
+State 218
 
-  213 auth_type: RSA .
+  214 auth_type: RSA .
+
+    $default  reduce using rule 214 (auth_type)
+
+
+State 219
+
+  213 auth_type: ECDSA .
 
     $default  reduce using rule 213 (auth_type)
 
 
-State 218
-
-  212 auth_type: ECDSA .
-
-    $default  reduce using rule 212 (auth_type)
-
-
-State 219
+State 220
 
    36 option: _SECUREDEBUG auth_type .
 
     $default  reduce using rule 36 (option)
 
 
-State 220
-
-  217 authJtagType: RSA .
-
-    $default  reduce using rule 217 (authJtagType)
-
-
 State 221
 
-  216 authJtagType: ECDSA .
-
-    $default  reduce using rule 216 (authJtagType)
-
-
-State 222
-
-  218 authJtagType: LMS_SHA256 .
-
-    $default  reduce using rule 218 (authJtagType)
-
-
-State 223
-
-  219 authJtagType: LMS_SHAKE256 .
+  219 authJtagType: RSA .
 
     $default  reduce using rule 219 (authJtagType)
 
 
+State 222
+
+  217 authJtagType: ECDSAP521 .
+
+    $default  reduce using rule 217 (authJtagType)
+
+
+State 223
+
+  224 authJtagType: MLDSA .
+
+    $default  reduce using rule 224 (authJtagType)
+
+
 State 224
 
-  220 authJtagType: HSS_SHA256 .
+  218 authJtagType: ECDSA .
 
-    $default  reduce using rule 220 (authJtagType)
+    $default  reduce using rule 218 (authJtagType)
 
 
 State 225
 
-  221 authJtagType: HSS_SHAKE256 .
+  220 authJtagType: LMS_SHA256 .
+
+    $default  reduce using rule 220 (authJtagType)
+
+
+State 226
+
+  221 authJtagType: LMS_SHAKE256 .
 
     $default  reduce using rule 221 (authJtagType)
 
 
-State 226
+State 227
+
+  222 authJtagType: HSS_SHA256 .
+
+    $default  reduce using rule 222 (authJtagType)
+
+
+State 228
+
+  223 authJtagType: HSS_SHAKE256 .
+
+    $default  reduce using rule 223 (authJtagType)
+
+
+State 229
+
+  225 authJtagType: SLHDSA .
+
+    $default  reduce using rule 225 (authJtagType)
+
+
+State 230
 
    37 option: _AUTHJTAG authJtagOptions .
 
     $default  reduce using rule 37 (option)
 
 
-State 227
+State 231
 
-  214 authJtagOptions: authJtagType . filename
-  215                | authJtagType .
+  215 authJtagOptions: authJtagType . filename
+  216                | authJtagType .
 
     IDENTIFIER  shift, and go to state 47
     FILENAME    shift, and go to state 48
     QFILENAME   shift, and go to state 49
     HEXSTRING   shift, and go to state 50
 
-    $default  reduce using rule 215 (authJtagOptions)
+    $default  reduce using rule 216 (authJtagOptions)
 
-    filename  go to state 255
+    filename  go to state 259
 
 
-State 228
+State 232
 
   170 keysource: BBRAM .
 
     $default  reduce using rule 170 (keysource)
 
 
-State 229
+State 233
 
   171 keysource: EFUSE .
 
     $default  reduce using rule 171 (keysource)
 
 
-State 230
+State 234
 
    15 option: _ENCRYPT keysource . startcbc key0 hmac keyfile
 
-    STARTCBC  shift, and go to state 256
+    STARTCBC  shift, and go to state 260
 
     $default  reduce using rule 172 (startcbc)
 
-    startcbc  go to state 257
+    startcbc  go to state 261
 
 
-State 231
+State 235
 
     9 option: _P_TOK IDENTIFIER .
 
     $default  reduce using rule 9 (option)
 
 
-State 232
+State 236
 
-  223 readImageOptions: filename .
-  224                 | filename . readType
+  227 readImageOptions: filename .
+  228                 | filename . readType
 
-    READ_BH   shift, and go to state 258
-    READ_IHT  shift, and go to state 259
-    READ_IH   shift, and go to state 260
-    READ_PHT  shift, and go to state 261
-    READ_AC   shift, and go to state 262
+    READ_BH   shift, and go to state 262
+    READ_IHT  shift, and go to state 263
+    READ_IH   shift, and go to state 264
+    READ_PHT  shift, and go to state 265
+    READ_AC   shift, and go to state 266
 
-    $default  reduce using rule 223 (readImageOptions)
+    $default  reduce using rule 227 (readImageOptions)
 
-    readType  go to state 263
+    readType  go to state 267
 
 
-State 233
+State 237
 
    38 option: _READ readImageOptions .
 
     $default  reduce using rule 38 (option)
 
 
-State 234
+State 238
 
-  222 verifyImageOptions: filename .
+  226 verifyImageOptions: filename .
 
-    $default  reduce using rule 222 (verifyImageOptions)
+    $default  reduce using rule 226 (verifyImageOptions)
 
 
-State 235
+State 239
 
    39 option: _VERIFY verifyImageOptions .
 
     $default  reduce using rule 39 (option)
 
 
-State 236
+State 240
 
    44 option: _VERIFYKDF filename .
 
     $default  reduce using rule 44 (option)
 
 
-State 237
+State 241
 
-  240 encrDumpOptions: filename .
+  244 encrDumpOptions: filename .
 
-    $default  reduce using rule 240 (encrDumpOptions)
+    $default  reduce using rule 244 (encrDumpOptions)
 
 
-State 238
+State 242
 
    34 option: _ZYNQMPENCRDUMP encrDumpOptions .
 
     $default  reduce using rule 34 (option)
 
 
-State 239
+State 243
 
     7 option: _O_TOK I filename .
 
     $default  reduce using rule 7 (option)
 
 
-State 240
+State 244
 
-  232 dumpOptions: READ_BH filename .
-
-    $default  reduce using rule 232 (dumpOptions)
-
-
-State 241
-
-  234 dumpOptions: filename DUMP_PLM .
-
-    $default  reduce using rule 234 (dumpOptions)
-
-
-State 242
-
-  235 dumpOptions: filename DUMP_PMC_CDO .
-
-    $default  reduce using rule 235 (dumpOptions)
-
-
-State 243
-
-  236 dumpOptions: filename DUMP_BOOT_FILES .
+  236 dumpOptions: READ_BH filename .
 
     $default  reduce using rule 236 (dumpOptions)
 
 
-State 244
-
-  231 dumpOptions: filename READ_BH .
-
-    $default  reduce using rule 231 (dumpOptions)
-
-
 State 245
+
+  238 dumpOptions: filename DUMP_PLM .
+
+    $default  reduce using rule 238 (dumpOptions)
+
+
+State 246
+
+  239 dumpOptions: filename DUMP_PMC_CDO .
+
+    $default  reduce using rule 239 (dumpOptions)
+
+
+State 247
+
+  240 dumpOptions: filename DUMP_BOOT_FILES .
+
+    $default  reduce using rule 240 (dumpOptions)
+
+
+State 248
+
+  235 dumpOptions: filename READ_BH .
+
+    $default  reduce using rule 235 (dumpOptions)
+
+
+State 249
 
   187 qspi_size: HEXVALUE .
 
     $default  reduce using rule 187 (qspi_size)
 
 
-State 246
+State 250
 
   188 qspi_size: HEXSTRING .
 
     $default  reduce using rule 188 (qspi_size)
 
 
-State 247
+State 251
 
   184 qpsi_mode: STACKED qspi_size .
 
     $default  reduce using rule 184 (qpsi_mode)
 
 
-State 248
+State 252
 
   189 ospi_size: HEXVALUE .
 
     $default  reduce using rule 189 (ospi_size)
 
 
-State 249
+State 253
 
   190 ospi_size: HEXSTRING .
 
     $default  reduce using rule 190 (ospi_size)
 
 
-State 250
+State 254
 
   186 opsi_mode: STACKED ospi_size .
 
     $default  reduce using rule 186 (opsi_mode)
 
 
-State 251
+State 255
 
    22 option: _PADIMAGEHEADER EQUALS HEXSTRING .
 
     $default  reduce using rule 22 (option)
 
 
-State 252
+State 256
 
-  210 auth_key_options: PEM .
-
-    $default  reduce using rule 210 (auth_key_options)
-
-
-State 253
-
-  211 auth_key_options: RSA .
+  211 auth_key_options: PEM .
 
     $default  reduce using rule 211 (auth_key_options)
 
 
-State 254
+State 257
+
+  212 auth_key_options: RSA .
+
+    $default  reduce using rule 212 (auth_key_options)
+
+
+State 258
 
   202 key_type: AUTH auth_key_options .
 
     $default  reduce using rule 202 (key_type)
 
 
-State 255
-
-  214 authJtagOptions: authJtagType filename .
-
-    $default  reduce using rule 214 (authJtagOptions)
-
-
-State 256
-
-  173 startcbc: STARTCBC . EQUALS HEXSTRING
-
-    EQUALS  shift, and go to state 264
-
-
-State 257
-
-   15 option: _ENCRYPT keysource startcbc . key0 hmac keyfile
-
-    KEY0  shift, and go to state 265
-
-    $default  reduce using rule 174 (key0)
-
-    key0  go to state 266
-
-
-State 258
-
-  225 readType: READ_BH .
-
-    $default  reduce using rule 225 (readType)
-
-
 State 259
 
-  226 readType: READ_IHT .
+  215 authJtagOptions: authJtagType filename .
 
-    $default  reduce using rule 226 (readType)
+    $default  reduce using rule 215 (authJtagOptions)
 
 
 State 260
 
-  227 readType: READ_IH .
+  173 startcbc: STARTCBC . EQUALS HEXSTRING
 
-    $default  reduce using rule 227 (readType)
+    EQUALS  shift, and go to state 268
 
 
 State 261
 
-  228 readType: READ_PHT .
+   15 option: _ENCRYPT keysource startcbc . key0 hmac keyfile
 
-    $default  reduce using rule 228 (readType)
+    KEY0  shift, and go to state 269
+
+    $default  reduce using rule 174 (key0)
+
+    key0  go to state 270
 
 
 State 262
 
-  229 readType: READ_AC .
+  229 readType: READ_BH .
 
     $default  reduce using rule 229 (readType)
 
 
 State 263
 
-  224 readImageOptions: filename readType .
+  230 readType: READ_IHT .
 
-    $default  reduce using rule 224 (readImageOptions)
+    $default  reduce using rule 230 (readType)
 
 
 State 264
 
-  173 startcbc: STARTCBC EQUALS . HEXSTRING
+  231 readType: READ_IH .
 
-    HEXSTRING  shift, and go to state 267
+    $default  reduce using rule 231 (readType)
 
 
 State 265
 
-  175 key0: KEY0 . EQUALS HEXSTRING
+  232 readType: READ_PHT .
 
-    EQUALS  shift, and go to state 268
+    $default  reduce using rule 232 (readType)
 
 
 State 266
 
-   15 option: _ENCRYPT keysource startcbc key0 . hmac keyfile
+  233 readType: READ_AC .
 
-    HMAC  shift, and go to state 269
-
-    $default  reduce using rule 176 (hmac)
-
-    hmac  go to state 270
+    $default  reduce using rule 233 (readType)
 
 
 State 267
 
-  173 startcbc: STARTCBC EQUALS HEXSTRING .
+  228 readImageOptions: filename readType .
 
-    $default  reduce using rule 173 (startcbc)
+    $default  reduce using rule 228 (readImageOptions)
 
 
 State 268
 
-  175 key0: KEY0 EQUALS . HEXSTRING
+  173 startcbc: STARTCBC EQUALS . HEXSTRING
 
     HEXSTRING  shift, and go to state 271
 
 
 State 269
 
-  177 hmac: HMAC . EQUALS HEXSTRING
+  175 key0: KEY0 . EQUALS HEXSTRING
 
     EQUALS  shift, and go to state 272
 
 
 State 270
+
+   15 option: _ENCRYPT keysource startcbc key0 . hmac keyfile
+
+    HMAC  shift, and go to state 273
+
+    $default  reduce using rule 176 (hmac)
+
+    hmac  go to state 274
+
+
+State 271
+
+  173 startcbc: STARTCBC EQUALS HEXSTRING .
+
+    $default  reduce using rule 173 (startcbc)
+
+
+State 272
+
+  175 key0: KEY0 EQUALS . HEXSTRING
+
+    HEXSTRING  shift, and go to state 275
+
+
+State 273
+
+  177 hmac: HMAC . EQUALS HEXSTRING
+
+    EQUALS  shift, and go to state 276
+
+
+State 274
 
    15 option: _ENCRYPT keysource startcbc key0 hmac . keyfile
 
@@ -2843,39 +2881,39 @@ State 270
 
     $default  reduce using rule 178 (keyfile)
 
-    filename  go to state 273
-    keyfile   go to state 274
+    filename  go to state 277
+    keyfile   go to state 278
 
 
-State 271
+State 275
 
   175 key0: KEY0 EQUALS HEXSTRING .
 
     $default  reduce using rule 175 (key0)
 
 
-State 272
+State 276
 
   177 hmac: HMAC EQUALS . HEXSTRING
 
-    HEXSTRING  shift, and go to state 275
+    HEXSTRING  shift, and go to state 279
 
 
-State 273
+State 277
 
   179 keyfile: filename .
 
     $default  reduce using rule 179 (keyfile)
 
 
-State 274
+State 278
 
    15 option: _ENCRYPT keysource startcbc key0 hmac keyfile .
 
     $default  reduce using rule 15 (option)
 
 
-State 275
+State 279
 
   177 hmac: HMAC EQUALS HEXSTRING .
 

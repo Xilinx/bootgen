@@ -59,6 +59,7 @@ class AuthenticationCertificate;
 class PartitionHeader;
 class Key;
 class VersalKey;
+struct KeyMetadata;
 
 
 /*
@@ -75,6 +76,16 @@ class VersalKey;
 #define EC_P384_KEY_LENGTH      48
 #define EC_P521_KEY_LENGTH1     65 /* 520/8 = 65 */
 #define EC_P521_KEY_LENGTH2     66 /* 521/8 = 65 + 1bit */
+
+#define MLDSA_PUB_KEY_LENGTH    2592
+#define MLDSA_SEC_KEY_LENGTH    4896
+#define MLDSA_ACTUAL_SIGN_LEN   4627
+#define MLDSA_TOTAL_SIGN_LEN    4640
+
+#define SLHDSA_PUB_KEY_LENGTH       64
+#define SLHDSA_PRI_KEY_LENGTH       128
+#define SLHDSA_ACTUAL_SIGN_LENGTH   29792
+#define SLHDSA_TOTAL_SIGN_LENGTH    29792
 
 #define SIGN_LENGTH_VERSAL      512 /* for ecdsa: r(48b)+ s(48b)+ pad(416b) */
 #define RSA_SIGN_LENGTH_ZYNQ    256
@@ -130,6 +141,16 @@ class VersalKey;
 #define TELLURIDE_LMS_AC_SPK_ALIGN_OFFSET(lmsOnly)              TELLURIDE_LMS_AC_SPK_OFFSET(lmsOnly) + GetLmsPublicKeyLength(ppkFile.c_str(), lmsOnly)                      // 0x9c
 #define TELLURIDE_LMS_AC_SPK_SIGN_OFFSET(lmsOnly)               TELLURIDE_LMS_AC_SPK_ALIGN_OFFSET(lmsOnly) + PADDING_16B(GetLmsPublicKeyLength(spkFile.c_str(),lmsOnly))    // 0xa0
 //#define TELLURIDE_LMS_AC_SPK_SIGN_ALIGN_OFFSET          TELLURIDE_LMS_AC_SPK_SIGN_OFFSET + sizeof(HssSignature)             // 0x2774
+
+#define TELLURIDE_MLDSA_AC_PPK_OFFSET                  (0x00)
+#define TELLURIDE_MLDSA_AC_TOTAL_SPK_SIZE_OFFSET       (0xA20)
+#define TELLURIDE_MLDSA_AC_ACTUAL_SPK_SIZE_OFFSET      (0xA24)
+#define TELLURIDE_MLDSA_AC_TOTAL_SPK_SIGN_SIZE_OFFSET  (0xA28)
+#define TELLURIDE_MLDSA_AC_ACTUAL_SPK_SIGN_SIZE_OFFSET (0xA2C)
+#define TELLURIDE_MLDSA_AC_SPK_ID_OFFSET               (0xA30)
+#define TELLURIDE_MLDSA_AC_SPK_HDR_ALIGNMENT_OFFSET    (0xA34)
+#define TELLURIDE_MLDSA_AC_SPK_OFFSET                  (0xA40)
+#define TELLURIDE_MLDSA_AC_SPK_SIGN_OFFSET             (0x1460)
 
 /*
 -------------------------------------------------------------------------------
@@ -258,12 +279,24 @@ public:
 
     virtual Authentication::Type Type() = 0;
     virtual void CreateSignature(const uint8_t *base, uint8_t* primaryKey, uint8_t *result0) {};
+    virtual void VerifySignature(const uint8_t* base, uint8_t* primaryKey, uint8_t* sign) {};
+
+    //LMS or HSS
     virtual void CreateSignature(const uint8_t *buffer, size_t buffer_len, const char* keyfile, 
         uint8_t *result0, size_t result0_len, bool lmsOnly, const char* publicKeyfile) {};
     virtual void VerifySignature(const uint8_t *buffer, size_t buf_len, const char* keyfile, 
         uint8_t *result0, size_t result0_len, bool lmsOnly) {};
 
+    //MLDSA
+    virtual void CreateSignature(const uint8_t* base, uint8_t* primaryKey, uint8_t* result0, bool isSign) {};
+    virtual void VerifySignature(const uint8_t* base, uint8_t* primaryKey, uint8_t* sign, bool isSign) {};
+
+    //SLHDSA
+    virtual void CreateSignature(const uint8_t* buffer, size_t buf_len, const char* keyFile, uint8_t* result, size_t& result_len) {};
+    virtual void VerifySignature(const uint8_t* msg, size_t msg_len, const uint8_t* sig, const char* keyFile) {};
+
     void RSA_Exponentiation(const uint8_t *base, const uint8_t* modular, const uint8_t *modular_ext, const uint8_t *exponent, uint8_t *result0);
+    void MLDSA_ProcessData(uint8_t* data, uint8_t* block, size_t length);
     virtual void RearrangeEndianess(uint8_t *array, uint32_t size) {};
     virtual void CreatePadding(uint8_t* signature, uint8_t* hash, uint8_t hashLength) {};
     virtual uint32_t GetAuthHeader(void) { return AUTH_HEADER; }
@@ -277,7 +310,7 @@ class RSAAuthenticationAlgorithm : public AuthenticationAlgorithm
 {
 public:
     RSAAuthenticationAlgorithm() { };
-    ~RSAAuthenticationAlgorithm() { };
+    virtual ~RSAAuthenticationAlgorithm() { };
 
     Authentication::Type Type()
     {
@@ -291,7 +324,7 @@ class NoneAuthenticationAlgorithm : public AuthenticationAlgorithm
 {
 public:
     NoneAuthenticationAlgorithm() { };
-    ~NoneAuthenticationAlgorithm() { };
+    virtual ~NoneAuthenticationAlgorithm() { };
 
     Authentication::Type Type()
     {
@@ -362,6 +395,7 @@ public:
     virtual void Link(BootImage& bi, std::list<Section*> sections, AuthenticationCertificate* cert) {  }
     virtual void Link(BootImage& bi, void* partition, AuthenticationCertificate* cert) {  }
     virtual void GeneratePPKHash(const std::string& filename) {}
+    virtual void GeneratePPKHashWithMetadata(const std::string& filename, const KeyMetadata& metadata, const std::string& keyFile = "") {}
     virtual void GenerateSPKHash(uint8_t* sha256_hash_padded) {}
     virtual void GenerateSPKHashFile(const std::string& filename, Hash* hashObj);
     virtual void GenerateSPKSignature(const std::string& filename);

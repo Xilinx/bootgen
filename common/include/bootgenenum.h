@@ -105,7 +105,9 @@ struct Authentication
         LMS_SHA2_256,
         LMS_SHAKE256,
         HSS_SHA2_256,
-        HSS_SHAKE256
+        HSS_SHAKE256,
+        MLDSA,
+        SLH_SHAKE256
     } Type;
 };
 
@@ -292,7 +294,8 @@ struct AuthHash
         Sha3 = 0, //Sha3-384
         Sha2 = 3, //Sha2-256
         Shake256 = 4,
-        Sha3_256 = 5
+        Sha3_256 = 5,
+        Sha2_512
     }Type;
 };
 
@@ -346,7 +349,9 @@ struct GenAuthKeys
         RSA,
         ECDSA,
         ECDSAP521,
-        LMS
+        LMS,
+        MLDSA,
+        SLH_SHAKE256
     }Type;
 };
 

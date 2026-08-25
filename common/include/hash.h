@@ -38,6 +38,7 @@
 */
 #define SHA2_LENGTH_BYTES           32 // ~ SHA_256_LENGTH_BYTES
 #define SHA3_LENGTH_BYTES           48 // ~ SHA_384_LENGTH_BYTES
+#define SHA2_512_LENGTH_BYTES       64 // ~ SHA2_512_LENGTH_BYTES
 
 //#define SHAKE256_LENGTH_BYTES   32
 //#define SHA3_256_LENGTH_BYTES   32
@@ -131,6 +132,31 @@ public:
 
 private:
     SHA256_CTX ctx;
+};
+
+/******************************************************************************/
+class HashSha2_512 : public Hash
+{
+public:
+    HashSha2_512()
+    {
+        //ctx.md_len = 0;
+        //ctx.num = 0;
+        //ctx.Nl = 0;
+        //ctx.Nh = 0;
+    }
+
+    ~HashSha2_512() {}
+
+    uint8_t GetHashLength(void);
+    void InitHash(void) { /*SHA256_Init(&ctx);*/ }
+    uint8_t UpdateHash(const void*, size_t);
+    uint8_t FinalHash(uint8_t*);
+    void CalculateHash(bool flag, const uint8_t*, size_t, uint8_t*);
+    std::string GetHashFileExtension(void);
+
+//private:
+    //SHA512_CTX ctx;
 };
 
 /******************************************************************************/

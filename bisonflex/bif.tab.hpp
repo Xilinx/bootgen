@@ -82,7 +82,7 @@ namespace BIF {
     union semantic_type
     {
 /* Line 33 of lalr1.cc  */
-#line 78 "parser/bif.y"
+#line 81 "parser/bif.y"
 
     uint32_t token;
     uint64_t number;
@@ -259,46 +259,55 @@ namespace BIF {
      PSK_FILE = 388,
      SPK_FILE = 389,
      SSK_FILE = 390,
-     SPK_SIGNATURE_FILE = 391,
-     BH_SIGNATURE_FILE = 392,
-     HEADER_SIGNATURE_FILE = 393,
-     AUTHVALUE = 394,
-     ENCRVALUE = 395,
-     CHECKSUMVALUE = 396,
-     POWNERVALUE = 397,
-     PTYPEVALUE = 398,
-     KEY_SRC = 399,
-     CORE = 400,
-     BH_RSA = 401,
-     AUTH_HASH = 402,
-     INT_HASH = 403,
-     PUFHD_LOC = 404,
-     OPT_KEY = 405,
-     AUTH_ONLY = 406,
-     BOOT_DEVICE_TYPE = 407,
-     DEST_DEVICE_TYPE = 408,
-     DEST_CPU_TYPE = 409,
-     EXCEPTION_LEVEL_TYPE = 410,
-     TRUSTZONE_TYPE = 411,
-     SPLITMODE = 412,
-     DPA_CM = 413,
-     SPKSELECT = 414,
-     HASH_FUNCTION = 415,
-     AUTH_KEY_LEVEL = 416,
-     OR = 417,
-     XOR = 418,
-     AND = 419,
-     MULT = 420,
-     DIVIDE = 421,
-     MODULO = 422,
-     PLUS = 423,
-     MINUS = 424,
-     LSHIFT = 425,
-     RSHIFT = 426,
-     NEGATION = 427,
-     LPAREN = 428,
-     RPAREN = 429,
-     ASTERISK = 430
+     PPK_FILE1 = 391,
+     PSK_FILE1 = 392,
+     SPK_FILE1 = 393,
+     SSK_FILE1 = 394,
+     PK_FILE = 395,
+     SK_FILE = 396,
+     PK_FILE1 = 397,
+     SK_FILE1 = 398,
+     SPK_SIGNATURE_FILE = 399,
+     BH_SIGNATURE_FILE = 400,
+     HEADER_SIGNATURE_FILE = 401,
+     AUTHVALUE = 402,
+     HYBRID_AUTHVALUE = 403,
+     ENCRVALUE = 404,
+     CHECKSUMVALUE = 405,
+     POWNERVALUE = 406,
+     PTYPEVALUE = 407,
+     KEY_SRC = 408,
+     CORE = 409,
+     BH_RSA = 410,
+     AUTH_HASH = 411,
+     INT_HASH = 412,
+     PUFHD_LOC = 413,
+     OPT_KEY = 414,
+     AUTH_ONLY = 415,
+     BOOT_DEVICE_TYPE = 416,
+     DEST_DEVICE_TYPE = 417,
+     DEST_CPU_TYPE = 418,
+     EXCEPTION_LEVEL_TYPE = 419,
+     TRUSTZONE_TYPE = 420,
+     SPLITMODE = 421,
+     DPA_CM = 422,
+     SPKSELECT = 423,
+     HASH_FUNCTION = 424,
+     AUTH_KEY_LEVEL = 425,
+     OR = 426,
+     XOR = 427,
+     AND = 428,
+     MULT = 429,
+     DIVIDE = 430,
+     MODULO = 431,
+     PLUS = 432,
+     MINUS = 433,
+     LSHIFT = 434,
+     RSHIFT = 435,
+     NEGATION = 436,
+     LPAREN = 437,
+     RPAREN = 438,
+     ASTERISK = 439
    };
 
     };
@@ -475,7 +484,7 @@ namespace BIF {
 #line 24 "parser/bif.y"
 } // BIF
 /* Line 33 of lalr1.cc  */
-#line 479 "bisonflex/bif.tab.hpp"
+#line 488 "bisonflex/bif.tab.hpp"
 
 
 

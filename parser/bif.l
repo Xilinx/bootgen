@@ -202,6 +202,17 @@ ppkfile             yylval->number = tok::PPK_FILE;                 return tok::
 pskfile             yylval->number = tok::PSK_FILE;                 return tok::PSK_FILE;
 spkfile             yylval->number = tok::SPK_FILE;                 return tok::SPK_FILE;
 sskfile             yylval->number = tok::SSK_FILE;                 return tok::SSK_FILE;
+
+ppkfile1             yylval->number = tok::PPK_FILE1;                 return tok::PPK_FILE1;
+pskfile1             yylval->number = tok::PSK_FILE1;                 return tok::PSK_FILE1;
+spkfile1             yylval->number = tok::SPK_FILE1;                 return tok::SPK_FILE1;
+sskfile1             yylval->number = tok::SSK_FILE1;                 return tok::SSK_FILE1;
+
+pkfile              yylval->number = tok::PK_FILE;                  return tok::PK_FILE;
+skfile              yylval->number = tok::SK_FILE;                  return tok::SK_FILE;
+pkfile1             yylval->number = tok::PK_FILE1;                 return tok::PK_FILE1;
+skfile1             yylval->number = tok::SK_FILE1;                 return tok::SK_FILE1;
+
 spksignature        yylval->number = tok::SPK_SIGNATURE_FILE;       return tok::SPK_SIGNATURE_FILE;
 bhsignature         yylval->number = tok::BH_SIGNATURE_FILE;        return tok::BH_SIGNATURE_FILE;
 headersignature     yylval->number = tok::HEADER_SIGNATURE_FILE;    return tok::HEADER_SIGNATURE_FILE;
@@ -243,6 +254,7 @@ encryption                                                          return tok::
     aes             yylval->number = Encryption::AES;               return tok::ENCRVALUE;
 
 authentication                                                      return tok::AUTHENTICATION;
+(rsa|ecdsa|ecdsa-p384|ecdsa-p521|lms-sha256|lms-shake256|hss-sha256|hss-shake256|mldsa|slh-shake256),(rsa|ecdsa|ecdsa-p384|ecdsa-p521|lms-sha256|lms-shake256|hss-sha256|hss-shake256|mldsa|slh-shake256)  yylval->string = strdup(yytext); return tok::HYBRID_AUTHVALUE;
     rsa             yylval->number = Authentication::RSA;           return tok::AUTHVALUE;
     ecdsa           yylval->number = Authentication::ECDSA;         return tok::AUTHVALUE;
     ecdsa-p384      yylval->number = Authentication::ECDSA;         return tok::AUTHVALUE;
@@ -251,6 +263,9 @@ authentication                                                      return tok::
     lms-shake256    yylval->number = Authentication::LMS_SHAKE256;  return tok::AUTHVALUE;
     hss-sha256      yylval->number = Authentication::HSS_SHA2_256;  return tok::AUTHVALUE;
     hss-shake256    yylval->number = Authentication::HSS_SHAKE256;  return tok::AUTHVALUE;
+    mldsa           yylval->number = Authentication::MLDSA;         return tok::AUTHVALUE;
+    slh-shake256    yylval->number = Authentication::SLH_SHAKE256;  return tok::AUTHVALUE;
+    hybrid          yylval->string = strdup(yytext);                return tok::HYBRID_AUTHVALUE;
 
 checksum                                                            return tok::CHECKSUM;
     md5             yylval->number = Checksum::MD5;                 return tok::CHECKSUMVALUE;

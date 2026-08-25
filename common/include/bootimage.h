@@ -39,6 +39,9 @@
 #include "imageheadertable-versal.h"
 #include "imageheadertable-spartanup.h"
 #include "imageheadertable-versal_2ve_2vm.h"
+#ifndef SKIP_VERSAL_2VP_NATIVE
+#include "imageheadertable-versal_2vp.h"
+#endif
 #include "bifoptions.h"
 
 #define R5_TCM_START_ADDRESS      0x0000
@@ -100,6 +103,7 @@ public:
     virtual void ParseBootImage(PartitionBifOptions * it) = 0;
     virtual void ConfigureProcessingStages(ImageHeader* image, PartitionBifOptions* partitionbifoptions) = 0;
     virtual void OutputOptionalEfuseHash();
+    virtual void GeneratePPKHashWithKmdMetadata(const std::string& hashFile);
     virtual void OutputOptionalEfusePufHash() {};
     virtual void OutputOptionalPufPDI() {};
     virtual void BuildAndLink(Binary* cache);

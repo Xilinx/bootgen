@@ -95,6 +95,7 @@ public:
     void Separator();
     bool versalNetSeries;
     bool dl9Series;  
+    bool versal_2vp;
 protected:
     std::string binFilename;
     std::list<std::string> iHNames;

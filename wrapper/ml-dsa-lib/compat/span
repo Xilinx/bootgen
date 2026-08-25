@@ -1,0 +1,96 @@
+#pragma once
+/******************************************************************************
+* std::span Compatibility Header (C++14)
+* 
+* Provides a minimal std::span implementation for C++14 compatibility.
+* Only implements the subset needed for ml-dsa usage.
+******************************************************************************/
+
+#include <cstddef>
+#include <array>
+#include <type_traits>
+
+namespace std {
+
+// Dynamic extent constant
+static constexpr size_t dynamic_extent = static_cast<size_t>(-1);
+
+// Minimal span implementation for C++14
+template<typename T, size_t Extent = dynamic_extent>
+class span {
+public:
+    using element_type = T;
+    using value_type = typename std::remove_cv<T>::type;
+    using size_type = size_t;
+    using pointer = T*;
+    using const_pointer = const T*;
+    using reference = T&;
+    using const_reference = const T&;
+    using iterator = pointer;
+    using const_iterator = const_pointer;
+
+    // Default constructor (for empty span)
+    constexpr span() : data_(nullptr), size_(0) {}
+    
+    // Constructor from pointer and size
+    constexpr span(pointer ptr, size_type count) : data_(ptr), size_(count) {}
+    
+    // Constructor from pointer range
+    constexpr span(pointer first, pointer last) : data_(first), size_(last - first) {}
+    
+    // Constructor from array
+    template<size_t N>
+    constexpr span(element_type (&arr)[N]) : data_(arr), size_(N) {}
+    
+    // Constructor from std::array
+    template<size_t N>
+    constexpr span(std::array<value_type, N>& arr) : data_(arr.data()), size_(N) {}
+    
+    template<size_t N>
+    constexpr span(const std::array<value_type, N>& arr) : data_(const_cast<pointer>(arr.data())), size_(N) {}
+
+    // Copy constructor
+    constexpr span(const span& other) = default;
+    
+    // Assignment
+    constexpr span& operator=(const span& other) = default;
+
+    // Element access
+    constexpr pointer data() const { return data_; }
+    constexpr reference operator[](size_type idx) const { return data_[idx]; }
+    constexpr reference front() const { return data_[0]; }
+    constexpr reference back() const { return data_[size_ - 1]; }
+
+    // Observers
+    constexpr size_type size() const { return size_; }
+    constexpr size_type size_bytes() const { return size_ * sizeof(element_type); }
+    constexpr bool empty() const { return size_ == 0; }
+
+    // Iterators
+    constexpr iterator begin() const { return data_; }
+    constexpr iterator end() const { return data_ + size_; }
+    constexpr const_iterator cbegin() const { return data_; }
+    constexpr const_iterator cend() const { return data_ + size_; }
+
+    // Subviews
+    constexpr span<element_type, dynamic_extent> first(size_type count) const {
+        return span<element_type, dynamic_extent>(data_, count);
+    }
+    
+    constexpr span<element_type, dynamic_extent> last(size_type count) const {
+        return span<element_type, dynamic_extent>(data_ + (size_ - count), count);
+    }
+    
+    constexpr span<element_type, dynamic_extent> subspan(size_type offset, size_type count = dynamic_extent) const {
+        return span<element_type, dynamic_extent>(
+            data_ + offset,
+            count == dynamic_extent ? size_ - offset : count
+        );
+    }
+
+private:
+    pointer data_;
+    size_type size_;
+};
+
+} // namespace std

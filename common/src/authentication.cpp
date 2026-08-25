@@ -837,3 +837,11 @@ NoneAuthenticationContext::NoneAuthenticationContext()
 {
     authAlgorithm = std::make_unique<NoneAuthenticationAlgorithm>();
 }
+
+/******************************************************************************/
+void AuthenticationAlgorithm::MLDSA_ProcessData(uint8_t* data, uint8_t* block, size_t length)
+{
+    data[0] = 0;
+    data[1] = 0;
+    memcpy(data + 2, (uint8_t*)block, length);
+}

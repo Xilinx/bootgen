@@ -27,6 +27,10 @@
 #include "authentication.h"
 #include "options.h"
 #include "bifoptions.h"
+#ifndef SKIP_VERSAL_2VP_NATIVE
+#include "ml_dsa/ml_dsa_87.hpp"
+#include "randomshake/randomshake.hpp"
+#endif
 extern "C" {
 #include "lms-utils.h"
 };
@@ -565,6 +569,34 @@ void Key::WritePemFile(std::string filename, RSA * rsa, EC_KEY* eckey, bool secr
 }
 
 /******************************************************************************/
+/*
+void Key::WriteMldsaFile(std::string filename, std::array<uint8_t> key, uint16_t keyLength)
+{
+    std::ofstream file(filename.c_str());
+    bool fileWritten = false;
+
+    if (file)
+    {
+        for (uint32_t index = 0; index < keyLength; index++)
+        {
+            file << std::uppercase << std::hex << std::setfill('0') << std::setw(2) << key[index];
+        }
+
+        fileWritten = !file.bad();
+        file.close();
+    }
+
+    if (!fileWritten)
+    {
+        LOG_ERROR("Failure writing authentication key file : %s", filename.c_str());
+    }
+    else
+    {
+        LOG_INFO("%s key file generation in ML-DSA format successful", filename.c_str());
+    }
+}
+*/
+/******************************************************************************/
 void Key::GenerateRsaKeys(KeyGenerationStruct* keygen)
 {
     RSA *rsa = NULL;
@@ -792,7 +824,7 @@ void Key::GenerateLmsKeys(KeyGenerationStruct* keygen, std::vector<LmsKeyParam> 
         if (keygen->format == GenAuthKeys::LMS)
         {
             if (!LmsKeyGeneration(keygen->psk_file.c_str(), hash, h, w, primaryParams.size()))
-            {
+        {
                 LOG_ERROR("Error generating LMS primary keys");
             }
         }
@@ -809,7 +841,7 @@ void Key::GenerateLmsKeys(KeyGenerationStruct* keygen, std::vector<LmsKeyParam> 
     {
         LOG_INFO("Generating Secondary keys");
         if (keygen->format == GenAuthKeys::LMS)
-        {
+            {
             if (!LmsKeyGeneration(keygen->ssk_file.c_str(), hash, h, w, secondaryParams.size()))
             {
                 LOG_ERROR("Error generating LMS secondary keys");
@@ -818,6 +850,76 @@ void Key::GenerateLmsKeys(KeyGenerationStruct* keygen, std::vector<LmsKeyParam> 
     }
     LOG_WARNING("Be careful when version controlling, backing up, and restoring LMS private keys. The private key file contains state. Re-using private key state leads to loss of authenticity. For more information, see NIST SP800-208 Sec. 9.1 https://csrc.nist.gov/pubs/sp/800/208/final.");
 }
+
+/******************************************************************************/
+#ifndef SKIP_VERSAL_2VP_NATIVE
+void Key::GenerateMldsaKeys(KeyGenerationStruct* keygen)
+{
+    if (!(keygen->ppk_file != "" || keygen->psk_file != "" || keygen->spk_file != "" || keygen->ssk_file != ""))
+    {
+        LOG_ERROR("Failed to generate authentication keys. Please specify the key paths in BIF file");
+    }
+
+    std::array<uint8_t, ml_dsa_87::KeygenSeedByteLen> seed{};
+    std::array<uint8_t, ml_dsa_87::PubKeyByteLen> pubkey{};
+    std::array<uint8_t, ml_dsa_87::SecKeyByteLen> seckey{};
+    randomshake::randomshake_t<128> csprng;
+    
+    if (keygen->ppk_file != "" || keygen->psk_file != "")
+    {
+        csprng.generate(seed);
+        ml_dsa_87::keygen(seed, pubkey, seckey);
+        if (keygen->ppk_file != "")
+        {
+            //WriteMldsaFile(keygen->ppk_file, pubkey, ml_dsa_87::PubKeyByteLen);
+            std::string filename = keygen->ppk_file;
+            std::ofstream file(filename.c_str());
+            bool fileWritten = false;
+
+            if (file)
+            {
+                for (uint32_t index = 0; index < ml_dsa_87::PubKeyByteLen; index++)
+                {
+                    file << std::uppercase << std::hex << std::setfill('0') << std::setw(2) << int(pubkey[index]);
+                }
+
+                fileWritten = !file.bad();
+                file.close();
+            }
+
+            if (!fileWritten)
+            {
+                LOG_ERROR("Failure writing authentication key file : %s", filename.c_str());
+            }
+            else
+            {
+                LOG_INFO("%s key file generation in ML-DSA format successful", filename.c_str());
+            }
+        }
+
+        if (keygen->psk_file != "")
+        {
+            //WriteMldsaFile(keygen->psk_file, seckey, ml_dsa_87::SecKeyByteLen);
+        }
+    }
+    
+    if (keygen->spk_file != "" || keygen->ssk_file != "")
+    {
+        csprng.generate(seed);
+        ml_dsa_87::keygen(seed, pubkey, seckey);
+        if (keygen->spk_file != "")
+        {
+            //WriteMldsaFile(keygen->spk_file, pubkey, ml_dsa_87::PubKeyByteLen);
+        }
+
+        if (keygen->ssk_file != "")
+        {
+            //WriteMldsaFile(keygen->ssk_file, seckey, ml_dsa_87::SecKeyByteLen);
+        }
+    }
+
+}
+#endif
 
 /******************************************************************************/
 void Key2048::Export(void* acKey) 

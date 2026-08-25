@@ -41,7 +41,8 @@ class BifOptions;
 *********************************************   P R E P R O C E S S O R S   ***
 -------------------------------------------------------------------------------
 */
-#define IDCODE_L80                  0x4C74093
+#define IDCODE_VERSAL_2VP_NATIVE        0x4C68093
+#define IDCODE_VERSAL_2VP_VERSAL_FMT    0x4C74093
 
 /*
 -------------------------------------------------------------------------------
@@ -62,6 +63,21 @@ struct Arch
         SPARTANUPV2, //DL9
         VERSAL_2VP,
     } Type;
+
+    static const char* ToString(Type type) {
+        switch (type) {
+            case ZYNQ:       return "zynq";
+            case ZYNQMP:     return "zynqmp";
+            case FPGA:       return "fpga";
+            case VERSAL:     return "versal";
+            case VERSALNET:  return "versalnet";
+            case VERSALGEN2: return "versal_2ve_2vm";
+            case SPARTANUP:  return "spartanup";
+            case SPARTANUPV2:return "spartanup_v2";
+            case VERSAL_2VP: return "versal_2vp";
+            default:         return "unknown";
+        }
+    }
 };
 
 typedef struct
@@ -132,7 +148,7 @@ public:
         , syncFlag(false)
         , authOptimizationEnabled(false)
         , generateTlBin(false)
-        , l80Variant(false)
+        , versalFmtVariant(false)
     {
         cmdEncryptOptions = std::make_unique<CommndLineEncryptOptions>();
     };
@@ -257,8 +273,8 @@ public:
     bool IsSsitBif(void);
     bool IsVersalNetSeries(void) { return versalNetSeries; }
     bool IsDl9Series(void) { return dl9Series; }
-    bool IsL80Variant(void) { return l80Variant; }
-    void SetL80Variant(bool flag) { l80Variant = flag; }
+    bool IsVersalFmtVariant(void) { return versalFmtVariant; }
+    void SetVersalFmtVariant(bool flag) { versalFmtVariant = flag; }
 	File::Type GetOutType (void);
 
     uint32_t totalHeadersSize;
@@ -325,7 +341,7 @@ private:
     bool authOptimizationEnabled;
     bool dl9Series;
     bool versal_2vp;
-    bool l80Variant;
+    bool versalFmtVariant;
 };
 
 #endif
@@ -339,8 +355,12 @@ public:
         return std::find(idCodes.begin(), idCodes.end(), idCode) != idCodes.end();
     }
 
-    static bool IsL80IdCode(uint32_t idCode) {
-        return (idCode == IDCODE_L80);
+    static bool IsVersal2vpNativeIdCode(uint32_t idCode) {
+        return (idCode == IDCODE_VERSAL_2VP_NATIVE);
+    }
+
+    static bool IsVersalFmtIdCode(uint32_t idCode) {
+        return (idCode == IDCODE_VERSAL_2VP_VERSAL_FMT);
     }
 
 private:

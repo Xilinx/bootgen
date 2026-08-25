@@ -117,6 +117,8 @@
     ecdsa-p384              return tok::ECDSA;
     ecdsa-p521              return tok::ECDSAP521;
     lms                     return tok::LMS;
+    mldsa                   return tok::MLDSA;
+    slhdsa                  return tok::SLHDSA;
     lms-sha256              return tok::LMS_SHA256;
     lms-shake256            return tok::LMS_SHAKE256;
     hss-sha256              return tok::HSS_SHA256;

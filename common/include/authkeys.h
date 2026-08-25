@@ -48,6 +48,10 @@
 #define EC_P384_KEY_LENGTH      48
 #define EC_P521_KEY_LENGTH1     65 /* 520/8 = 65 */
 #define EC_P521_KEY_LENGTH2     66 /* 521/8 = 65 + 1bit */
+#define MLDSA_PUB_KEY_LENGTH    2592
+#define MLDSA_SEC_KEY_LENGTH    4896
+#define MLDSA_ACTUAL_SIGN_LEN   4627
+#define MLDSA_TOTAL_SIGN_LEN    4640
 
 #define SIGN_LENGTH_VERSAL      512 /* for ecdsa: r(48b)+ s(48b)+ pad(416b) */
 #define RSA_SIGN_LENGTH_ZYNQ    256
@@ -337,6 +341,9 @@ public:
     static void GenerateRsaKeys(KeyGenerationStruct*);
     static void GenerateEcdsaKeys(KeyGenerationStruct*);
     static void GenerateLmsKeys(KeyGenerationStruct* keygen, std::vector<LmsKeyParam>, std::vector<LmsKeyParam>);
+#ifndef SKIP_VERSAL_2VP_NATIVE
+    static void GenerateMldsaKeys(KeyGenerationStruct*);
+#endif
 
     bool Loaded;
     bool isSecret;
@@ -348,6 +355,11 @@ public:
     bool lmsOnly;
     /* Compute R^2 mod N using public OpenSSL API for MSVC compatibility */
     static void ComputeModulusExtension(const uint8_t* modulus, uint8_t* extension, size_t keyLen);
+
+    uint8_t *mldsa_public_key;
+    uint8_t *mldsa_private_key;
+    uint8_t *slhdsa_public_key;
+    uint8_t *slhdsa_private_key;
 protected:
     void Multiply_p_q(uint8_t p[], uint8_t q[], uint8_t n[]);
     void Hex2Byte(FILE* f, uint8_t* data, int count);
