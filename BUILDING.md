@@ -93,7 +93,6 @@ codesign --verify --deep --strict "$PACKAGE_DIR"/bootgen-*/bin/bootgen
 Bootgen intentionally links to the caller-supplied OpenSSL installation; the
 tarball does not bundle or sign OpenSSL. Install the matching-architecture
 Homebrew `openssl@3` package before running it.
-```
 
 See `THIRD_PARTY_NOTICES.md` for the source and binary distribution inventory.
 The package includes Bootgen's aggregate `LICENSE` and the separate Cisco
