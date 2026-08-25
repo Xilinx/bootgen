@@ -68,21 +68,31 @@ cmake --install build/macos-arm64 --prefix "$PWD/stage"
 ## macOS packaging and runtime dependencies
 
 The CMake `package` target creates an architecture-specific tarball containing
-`bootgen`, its license notices, and build documentation:
-
-```sh
-cmake --build build/macos-arm64 --target package
-```
-
-Bootgen intentionally links to the caller-supplied OpenSSL installation; the
-tarball does not bundle or sign OpenSSL. Install the matching-architecture
-Homebrew `openssl@3` package before running it, then inspect the result:
+`bootgen`, its license notices, and build documentation. Sign the executable
+before invoking CPack so the signed Mach-O is the one installed into the
+tarball:
 
 ```sh
 file build/macos-arm64/bootgen
 otool -L build/macos-arm64/bootgen
 codesign --force --sign - build/macos-arm64/bootgen
 codesign --verify --deep --strict build/macos-arm64/bootgen
+cmake --build build/macos-arm64 --target package
+```
+
+For a release, replace `-` with the intended Developer ID identity. Verify the
+artifact itself after extracting it; a signature applied after packaging does
+not modify an existing tarball:
+
+```sh
+PACKAGE_DIR="$(mktemp -d)"
+tar -xzf build/macos-arm64/bootgen-*-Darwin-arm64.tar.gz -C "$PACKAGE_DIR"
+codesign --verify --deep --strict "$PACKAGE_DIR"/bootgen-*/bin/bootgen
+```
+
+Bootgen intentionally links to the caller-supplied OpenSSL installation; the
+tarball does not bundle or sign OpenSSL. Install the matching-architecture
+Homebrew `openssl@3` package before running it.
 ```
 
 See `THIRD_PARTY_NOTICES.md` for the source and binary distribution inventory.
