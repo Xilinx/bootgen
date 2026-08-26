@@ -113,6 +113,9 @@ ZynqMpImageHeader::ZynqMpImageHeader(std::ifstream& ifs)
         hdr->ReadHeader(ifs);
         hdr->ReadData(ifs);
 
+        /* Ownership transfers to partitionHeaderList; keep a non-owning pointer
+           to read the header fields below, since release() nulls the unique_ptr */
+        ZynqMpPartitionHeader* hdrPtr = hdr.get();
         partitionHeaderList.push_back(hdr.release());
 
         Bootloader = false;
@@ -120,14 +123,14 @@ ZynqMpImageHeader::ZynqMpImageHeader(std::ifstream& ifs)
         Offset = 0;
         Reserve = 0;
 
-        destCpu = (DestinationCPU::Type)hdr->GetDestinationCpu();
-        exceptionLevel = (ExceptionLevel::Type)hdr->GetExceptionLevel();
-        trustzone = (TrustZone::Type)hdr->GetTrustZone();
-        early_handoff = hdr->GetEarlyHandoff();
-        hivec = hdr->GetHivec();
-        authBlock = hdr->GetAuthblock();
+        destCpu = (DestinationCPU::Type)hdrPtr->GetDestinationCpu();
+        exceptionLevel = (ExceptionLevel::Type)hdrPtr->GetExceptionLevel();
+        trustzone = (TrustZone::Type)hdrPtr->GetTrustZone();
+        early_handoff = hdrPtr->GetEarlyHandoff();
+        hivec = hdrPtr->GetHivec();
+        authBlock = hdrPtr->GetAuthblock();
 
-        switch (hdr->GetDestinationDevice())
+        switch (hdrPtr->GetDestinationDevice())
         {
             case DestinationDevice::DEST_DEV_PS:
                 SetDomain(Domain::PS);
@@ -145,10 +148,10 @@ ZynqMpImageHeader::ZynqMpImageHeader(std::ifstream& ifs)
                 break;
 
             case DestinationDevice::DEST_DEV_NONE:
-                LOG_DEBUG(DEBUG_STAMP, "Bad destination field in imported partition header - %s", hdr->section->Name.c_str());
+                LOG_DEBUG(DEBUG_STAMP, "Bad destination field in imported partition header - %s", hdrPtr->section->Name.c_str());
                 LOG_ERROR("Failure parsing imported bootimage");
         }
-        offset += hdr->GetPartitionHeaderSize();
+        offset += hdrPtr->GetPartitionHeaderSize();
     }
 }
 
