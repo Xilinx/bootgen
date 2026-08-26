@@ -1,0 +1,21 @@
+name: bootgen
+base: core18
+version: git
+summary: Xilinx Bootgen
+description: |
+  Bootgen is a Xilinx tool that lets you stitch binary files together
+  and generate device boot images. Bootgen defines multiple properties,
+  attributes and parameters that are input while creating bootimages for
+  use in a Xilinx device.
+grade: stable
+confinement: classic
+
+parts:
+  bootgen:
+    source: .
+    plugin: make
+    build-packages: [g++, libssl-dev]
+
+apps:
+  bootgen:
+    command: usr/local/bin/bootgen
