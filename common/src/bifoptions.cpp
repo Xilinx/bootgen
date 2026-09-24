@@ -152,6 +152,7 @@ BifOptions::BifOptions(Arch::Type architecture, bool versalNet, bool dl9, const 
     , isSpkIdGlobal(false)
     , slrBootCnt(0)
     , slrConfigCnt(0)
+    , lastPartitionBifOption(NULL)
     , aHwrot(false)
     , sHwrot(false)
     , pmcdataBlocks(0)
@@ -173,6 +174,7 @@ BifOptions::BifOptions(Arch::Type architecture, bool versalNet, bool dl9, const 
     metaHdrAttributes.ppk = metaHdrAttributes.spk = metaHdrAttributes.psk = metaHdrAttributes.ssk = "";
     metaHdrAttributes.presign = metaHdrAttributes.spkSignature = "";
     metaHdrAttributes.spkRevokeId = 0;
+    metaHdrAttributes.partitionRevokeId = 0;
     metaHdrAttributes.checksum = Checksum::None;
     metaHdrAttributes.dpaCM = DpaCM::DpaCMDisable;
     metaHdrAttributes.pufHdLoc = PufHdLoc::PUFinEFuse;
