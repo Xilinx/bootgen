@@ -21,7 +21,10 @@ x86-based computers as well as cross-compiled for ARM-based platforms.
 
 The following 3rd party packages are required to build Bootgen:
 
-* OpenSSL v1.1.1b libraries
+* OpenSSL v3.5 or newer libraries
+
+   ML-DSA and SLH-DSA authentication use the post-quantum providers introduced
+   in OpenSSL 3.5, so older releases cannot build Bootgen.
 
    * Windows libraries are available at http://slproweb.com/products/Win32OpenSSL.html
    * Linux libraries are part of libssl-dev package
@@ -47,7 +50,7 @@ Makefile creates an executable named bootgen, when run.
 
 ## Windows Builds
 
-1. Download and install "Win64 OpenSSL v1.1.1b", from http://slproweb.com/products/Win32OpenSSL.html.
+1. Download and install "Win64 OpenSSL v3.5" or newer, from http://slproweb.com/products/Win32OpenSSL.html.
 
 2. Use Microsoft Visual Studio 2015 to build Bootgen source code and link it
 .   with OpenSSL libraries downloaded in previous step.

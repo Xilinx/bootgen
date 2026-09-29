@@ -3,7 +3,7 @@
 * ML-DSA-87 Compatibility Header (C++14)
 * 
 * Provides the same API as the original C++20 ml_dsa_87 namespace.
-* Internally calls the pre-built libmldsa.a C functions.
+* Internally calls the OpenSSL-backed C functions in wrapper/pqc-openssl.
 ******************************************************************************/
 
 #include <array>

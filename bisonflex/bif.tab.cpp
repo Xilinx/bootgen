@@ -45,9 +45,7 @@
 #include "imageheadertable-versal.h"
 #include "imageheadertable-spartanup.h"
 #include "imageheadertable-versal_2ve_2vm.h"
-#ifndef SKIP_VERSAL_2VP_NATIVE
 #include "imageheadertable-versal_2vp.h"
-#endif
 
 // Parser uses raw pointers for compatibility with Bison semantics
 // These are transferred to options lists which take ownership

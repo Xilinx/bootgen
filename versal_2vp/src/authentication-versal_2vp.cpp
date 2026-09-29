@@ -46,7 +46,6 @@ extern "C" {
 };
 
 #include "ml_dsa/ml_dsa_87.hpp"
-#include "randomshake/randomshake.hpp"
 #include <span>  // For variable-length ML-DSA message signing
 
 #include "slh_dsa.h"
@@ -2248,8 +2247,6 @@ void MLDSAAuthenticationAlgorithm_versal_2vp::CreateSignature(const uint8_t* bas
     }
 
     std::array<uint8_t, ml_dsa_87::SigningSeedByteLen> rnd{};
-    //randomshake::randomshake_t<128> csprng;
-    //csprng.generate(rnd);
     for(int i=0; i<ml_dsa_87::SigningSeedByteLen; i++)
         rnd[i] = 0;
 
@@ -2420,7 +2417,7 @@ void SLHAuthenticationAlgorithm_versal_2vp::VerifySignature(const uint8_t* msg, 
 {
     //LOG_TRACE("INSIDE SLH verifysignature ");
     const slh_param_t *slh_params = &slh_dsa_shake_256s;
-    size_t pk_sz = SLHDSA_PUB_KEY_LENGTH;
+    const size_t pk_sz = SLHDSA_PUB_KEY_LENGTH;
     uint8_t pk[pk_sz];
     KeySLH_versal_2vp tempKey("temp");
     tempKey.LoadKey(keyFile, pk, pk_sz);

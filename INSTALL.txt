@@ -1,6 +1,9 @@
 Required 3rd Party Packages
          
-* OpenSSL v1.1.1b libraries
+* OpenSSL v3.5 or newer libraries
+   ML-DSA and SLH-DSA authentication use the post-quantum providers introduced
+   in OpenSSL 3.5, so older releases cannot build Bootgen.
+
    Windows : http://slproweb.com/products/Win32OpenSSL.html
    Linux   : libssl-dev package
 
@@ -26,7 +29,7 @@ Windows Builds
 
 1. Install OpenSSL libraries from http://slproweb.com/products/Win32OpenSSL.html
 
-   Download and install "Win64 OpenSSL v1.1.1b"
+   Download and install "Win64 OpenSSL v3.5" or newer
   
 2. Use Microsoft Visual Studio 2015 to build Bootgen source code and link it with OpenSSL libraries downloaded in previous step
 

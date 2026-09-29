@@ -30,9 +30,7 @@
 #include "readimage-zynq.h"
 #include "readimage-zynqmp.h"
 #include "readimage-versal_2ve_2vm.h"
-#ifndef SKIP_VERSAL_2VP_NATIVE
 #include "readimage-versal_2vp.h"
-#endif
 #include "readimage-spartanup.h"
 #include "readimage-versal.h"
 #include "logger.h"
@@ -138,12 +136,10 @@ void Options::ProcessReadImage()
             readImage = std::make_unique<Versal_2ve_2vmReadImage>(readFile);
             readImage->versalNetSeries = versalNetSeries;
         }
-#ifndef SKIP_VERSAL_2VP_NATIVE
-         else if (archType == Arch::VERSAL_2VP)
+        else if (archType == Arch::VERSAL_2VP)
         {
             readImage = std::make_unique<Versal_2vpReadImage>(readFile);
-        }       
-#endif
+        }
         else if (archType == Arch::SPARTANUP)
         {
             readImage = std::make_unique<SpartanupReadImage>(readFile);

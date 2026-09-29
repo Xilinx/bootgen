@@ -22,17 +22,20 @@
 */
 #include <iomanip>
 #include <iostream>
+#include <fstream>
+#include <climits>
+#include <array>
+#include <vector>
+#include <openssl/rand.h>
 
 #include "authkeys.h"
 #include "authentication.h"
 #include "options.h"
 #include "bifoptions.h"
-#ifndef SKIP_VERSAL_2VP_NATIVE
 #include "ml_dsa/ml_dsa_87.hpp"
-#include "randomshake/randomshake.hpp"
-#endif
 extern "C" {
 #include "lms-utils.h"
+#include "slh_dsa.h"
 };
 
 /*
@@ -569,20 +572,15 @@ void Key::WritePemFile(std::string filename, RSA * rsa, EC_KEY* eckey, bool secr
 }
 
 /******************************************************************************/
-/*
-void Key::WriteMldsaFile(std::string filename, std::array<uint8_t> key, uint16_t keyLength)
+void Key::WriteMldsaFile(const std::string& filename, const uint8_t* key, size_t keyLength)
 {
-    std::ofstream file(filename.c_str());
+    std::ofstream file(filename.c_str(), std::ios::binary);
     bool fileWritten = false;
 
-    if (file)
+    if (file && key != nullptr)
     {
-        for (uint32_t index = 0; index < keyLength; index++)
-        {
-            file << std::uppercase << std::hex << std::setfill('0') << std::setw(2) << key[index];
-        }
-
-        fileWritten = !file.bad();
+        file.write(reinterpret_cast<const char*>(key), static_cast<std::streamsize>(keyLength));
+        fileWritten = file.good();
         file.close();
     }
 
@@ -595,7 +593,30 @@ void Key::WriteMldsaFile(std::string filename, std::array<uint8_t> key, uint16_t
         LOG_INFO("%s key file generation in ML-DSA format successful", filename.c_str());
     }
 }
-*/
+
+/******************************************************************************/
+void Key::WriteSlhdsaFile(const std::string& filename, const uint8_t* key, size_t keyLength)
+{
+    std::ofstream file(filename.c_str(), std::ios::binary);
+    bool fileWritten = false;
+
+    if (file && key != nullptr)
+    {
+        file.write(reinterpret_cast<const char*>(key), static_cast<std::streamsize>(keyLength));
+        fileWritten = file.good();
+        file.close();
+    }
+
+    if (!fileWritten)
+    {
+        LOG_ERROR("Failure writing authentication key file : %s", filename.c_str());
+    }
+    else
+    {
+        LOG_INFO("%s key file generation in SLH-DSA format successful", filename.c_str());
+    }
+}
+
 /******************************************************************************/
 void Key::GenerateRsaKeys(KeyGenerationStruct* keygen)
 {
@@ -852,7 +873,6 @@ void Key::GenerateLmsKeys(KeyGenerationStruct* keygen, std::vector<LmsKeyParam> 
 }
 
 /******************************************************************************/
-#ifndef SKIP_VERSAL_2VP_NATIVE
 void Key::GenerateMldsaKeys(KeyGenerationStruct* keygen)
 {
     if (!(keygen->ppk_file != "" || keygen->psk_file != "" || keygen->spk_file != "" || keygen->ssk_file != ""))
@@ -863,63 +883,102 @@ void Key::GenerateMldsaKeys(KeyGenerationStruct* keygen)
     std::array<uint8_t, ml_dsa_87::KeygenSeedByteLen> seed{};
     std::array<uint8_t, ml_dsa_87::PubKeyByteLen> pubkey{};
     std::array<uint8_t, ml_dsa_87::SecKeyByteLen> seckey{};
-    randomshake::randomshake_t<128> csprng;
-    
+
     if (keygen->ppk_file != "" || keygen->psk_file != "")
     {
-        csprng.generate(seed);
+        mldsa_random_bytes(seed.data(), seed.size());
         ml_dsa_87::keygen(seed, pubkey, seckey);
         if (keygen->ppk_file != "")
         {
-            //WriteMldsaFile(keygen->ppk_file, pubkey, ml_dsa_87::PubKeyByteLen);
-            std::string filename = keygen->ppk_file;
-            std::ofstream file(filename.c_str());
-            bool fileWritten = false;
-
-            if (file)
-            {
-                for (uint32_t index = 0; index < ml_dsa_87::PubKeyByteLen; index++)
-                {
-                    file << std::uppercase << std::hex << std::setfill('0') << std::setw(2) << int(pubkey[index]);
-                }
-
-                fileWritten = !file.bad();
-                file.close();
-            }
-
-            if (!fileWritten)
-            {
-                LOG_ERROR("Failure writing authentication key file : %s", filename.c_str());
-            }
-            else
-            {
-                LOG_INFO("%s key file generation in ML-DSA format successful", filename.c_str());
-            }
+            WriteMldsaFile(keygen->ppk_file, pubkey.data(), pubkey.size());
         }
 
         if (keygen->psk_file != "")
         {
-            //WriteMldsaFile(keygen->psk_file, seckey, ml_dsa_87::SecKeyByteLen);
+            WriteMldsaFile(keygen->psk_file, seckey.data(), seckey.size());
         }
     }
-    
+
     if (keygen->spk_file != "" || keygen->ssk_file != "")
     {
-        csprng.generate(seed);
+        mldsa_random_bytes(seed.data(), seed.size());
         ml_dsa_87::keygen(seed, pubkey, seckey);
         if (keygen->spk_file != "")
         {
-            //WriteMldsaFile(keygen->spk_file, pubkey, ml_dsa_87::PubKeyByteLen);
+            WriteMldsaFile(keygen->spk_file, pubkey.data(), pubkey.size());
         }
 
         if (keygen->ssk_file != "")
         {
-            //WriteMldsaFile(keygen->ssk_file, seckey, ml_dsa_87::SecKeyByteLen);
+            WriteMldsaFile(keygen->ssk_file, seckey.data(), seckey.size());
+        }
+    }
+}
+
+/******************************************************************************/
+static int SlhRandomBytes(uint8_t* x, size_t xlen)
+{
+    while (x != nullptr && xlen != 0)
+    {
+        const size_t chunk = (xlen > static_cast<size_t>(INT_MAX)) ? static_cast<size_t>(INT_MAX) : xlen;
+        if (RAND_bytes(x, static_cast<int>(chunk)) != 1)
+        {
+            return -1;
+        }
+        x += chunk;
+        xlen -= chunk;
+    }
+    return 0;
+}
+
+/******************************************************************************/
+void Key::GenerateSlhdsaKeys(KeyGenerationStruct* keygen)
+{
+    if (!(keygen->ppk_file != "" || keygen->psk_file != "" || keygen->spk_file != "" || keygen->ssk_file != ""))
+    {
+        LOG_ERROR("Failed to generate authentication keys. Please specify the key paths in BIF file");
+    }
+
+    const slh_param_t* prm = &slh_dsa_shake_256s;
+    const size_t pk_sz = slh_pk_sz(prm);
+    const size_t sk_sz = slh_sk_sz(prm);
+    std::vector<uint8_t> pubkey(pk_sz);
+    std::vector<uint8_t> seckey(sk_sz);
+
+    if (keygen->ppk_file != "" || keygen->psk_file != "")
+    {
+        if (slh_keygen(pubkey.data(), seckey.data(), SlhRandomBytes, prm) != 0)
+        {
+            LOG_ERROR("Failure creating SLH-DSA authentication keys");
+        }
+        if (keygen->ppk_file != "")
+        {
+            WriteSlhdsaFile(keygen->ppk_file, pubkey.data(), pk_sz);
+        }
+        if (keygen->psk_file != "")
+        {
+            WriteSlhdsaFile(keygen->psk_file, seckey.data(), sk_sz);
         }
     }
 
+    if (keygen->spk_file != "" || keygen->ssk_file != "")
+    {
+        if (slh_keygen(pubkey.data(), seckey.data(), SlhRandomBytes, prm) != 0)
+        {
+            LOG_ERROR("Failure creating SLH-DSA authentication keys");
+        }
+        if (keygen->spk_file != "")
+        {
+            WriteSlhdsaFile(keygen->spk_file, pubkey.data(), pk_sz);
+        }
+        if (keygen->ssk_file != "")
+        {
+            WriteSlhdsaFile(keygen->ssk_file, seckey.data(), sk_sz);
+        }
+    }
 }
-#endif
+
+/******************************************************************************/
 
 /******************************************************************************/
 void Key2048::Export(void* acKey) 

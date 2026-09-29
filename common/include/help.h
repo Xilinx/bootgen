@@ -366,6 +366,7 @@ generate_keys
  DESCRIPTION | This option generates keys.                                    |\n\
              | . Generates authentication keys in rsa/pem format.             |\n\
              | . Generate Obfuscated Key for encryption.                      |\n\
+             | . mldsa and slhdsa require OpenSSL 3.5 or newer.               |\n\
              | BIF File should have the paths of all the keys.                |\n\
 -------------+----------------------------------------------------------------+\n\
  SYNOPSIS    | For authentication :                                           |\n\
@@ -379,7 +380,8 @@ generate_keys
              |   ecdsa-p384   : ECDSA P-384 keys                              |\n\
              |   ecdsa-p521   : ECDSA P-521 keys                              |\n\
              |   lms          : LMS keys (parameters from BIF)                |\n\
-             |   mldsa        : ML-DSA keys                                   |\n\
+             |   mldsa        : ML-DSA keys (OpenSSL 3.5+)                    |\n\
+             |   slhdsa       : SLH-DSA SHAKE-256s keys (OpenSSL 3.5+)        |\n\
 -------------+----------------------------------------------------------------+\n\
  USAGE       | For authentication :                                           |\n\
              |         bootgen -image test.bif -generate_keys rsa             |\n\
@@ -387,6 +389,7 @@ generate_keys
              |         bootgen -image test.bif -generate_keys ecdsa-p521      |\n\
              |         bootgen -image test.bif -generate_keys lms             |\n\
              |         bootgen -image test.bif -generate_keys mldsa           |\n\
+             |         bootgen -image test.bif -generate_keys slhdsa          |\n\
              | For encryption :                                               |\n\
              |          bootgen -image test.bif -generate_keys obfuscatedkey  |\n\
 -------------+----------------------------------------------------------------+\n\

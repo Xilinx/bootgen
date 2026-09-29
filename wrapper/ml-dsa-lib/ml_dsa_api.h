@@ -1,9 +1,9 @@
 /******************************************************************************
 * ML-DSA-87 C API
 * 
-* C-compatible interface to the ML-DSA cryptographic library.
-* This library is compiled with C++20 and linked as a static library,
-* allowing it to be used from C++14 code (like gradle builds).
+* C-compatible interface to the ML-DSA cryptographic primitives.
+* Implemented in wrapper/pqc-openssl over the OpenSSL 3.5 EVP providers,
+* so C++14 callers need no post-quantum code of their own.
 *
 * Pattern follows LMS library (lms-hash-sigs/hss.h)
 ******************************************************************************/
@@ -72,7 +72,7 @@ int mldsa87_verify(
 );
 
 /**
- * Generate random bytes (uses RandomShake CSPRNG)
+ * Generate random bytes (uses the OpenSSL RAND_bytes CSPRNG)
  * 
  * @param out       Output buffer
  * @param len       Number of bytes to generate

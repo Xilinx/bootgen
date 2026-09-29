@@ -29,10 +29,8 @@
 #include "bootimage-zynqmp.h"
 #include "bootimage-versal.h"
 #include "bootimage-versal_2ve_2vm.h"
-#ifndef SKIP_VERSAL_2VP_NATIVE
 #include "bootimage-versal_2vp.h"
 #include "bifoptions-versal_2vp.h"
-#endif
 #include "bootimage-spartanup.h"
 #include "bifscanner.h"
 #include "bootheader.h"
@@ -64,9 +62,7 @@ void BIF_File::Process(Options& options)
     // Auto-detect keys and apply global->partition key inheritance.
     // This versal_2vp native multi-SPK key plumbing lives in the device-specific
     // layer; it is a no-op for other architectures (they use no .kmd files).
-#ifndef SKIP_VERSAL_2VP_NATIVE
     BifOptionsVersal2VP::AutoDetectAndInheritKeys(bifOptionList);
-#endif
 
     /* Parse the include bif file */
     if (options.includeBifOptionsList.size() > 1)
@@ -82,9 +78,7 @@ void BIF_File::Process(Options& options)
         includeBifOptionList = options.bifOptionsList;
         
         // Auto-detect keys and apply key inheritance for the included BIF.
-#ifndef SKIP_VERSAL_2VP_NATIVE
         BifOptionsVersal2VP::AutoDetectAndInheritKeys(includeBifOptionList);
-#endif
 
 
         if (includeBifOptionList.size() < bifOptionList.size()) {
@@ -211,7 +205,6 @@ void BIF_File::Process(Options& options)
             }
             else
             {
-            #ifndef SKIP_VERSAL_2VP_NATIVE    
                 options.SetVersalFmtVariant(false);
                 if (IdCodeManager::IsVersal2vpNativeIdCode(idCode))
                 {
@@ -227,7 +220,6 @@ void BIF_File::Process(Options& options)
                     LOG_WARNING("Unknown idcode (0x%08X) for versal_2vp arch. Defaulting to versal_2vp native PDI generation.", idCode);
                 }
                 currentbi = std::make_unique<Versal_2vpBootImage>(options, index);
-            #endif    
             }
 
             currentbi->pmcDataAesFile = (*bifoptions)->GetPmcDataAesFile();
@@ -833,12 +825,18 @@ void BootImage::GenerateAuthenticationKeys(void)
             }
             Key::GenerateLmsKeys(keygen.get(), bifOptions->GetPrimaryLmsParams(), bifOptions->GetSecondaryLmsParams());
         }
-#ifndef SKIP_VERSAL_2VP_NATIVE
         else if (keygen->format == GenAuthKeys::MLDSA)
         {
             Key::GenerateMldsaKeys(keygen.get());
         }
-#endif
+        else if (keygen->format == GenAuthKeys::SLH_SHAKE256)
+        {
+            if (options.archType != Arch::VERSAL_2VP)
+            {
+                LOG_ERROR("'-generate_keys <slhdsa>' is not supported with the mentioned '-arch'.");
+            }
+            Key::GenerateSlhdsaKeys(keygen.get());
+        }
     }
 }
 

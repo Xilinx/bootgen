@@ -350,6 +350,7 @@ key_type        : AUTH  auth_key_options
                 | ECDSAP521                         { options.SetAuthKeyGeneration(GenAuthKeys::ECDSAP521); }
                 | LMS                               { options.SetAuthKeyGeneration(GenAuthKeys::LMS); }
                 | MLDSA                             { options.SetAuthKeyGeneration(GenAuthKeys::MLDSA); }
+                | SLHDSA                            { options.SetAuthKeyGeneration(GenAuthKeys::SLH_SHAKE256); }
                 ;
 
 auth_key_options: PEM                               { options.SetAuthKeyGeneration(GenAuthKeys::PEM); }

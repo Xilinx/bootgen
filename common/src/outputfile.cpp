@@ -142,9 +142,7 @@ void OutputFile::Output(Options& options, Binary& cache)
         }
         else
         {
-#ifndef SKIP_VERSAL_2VP_NATIVE
             OutputVersal_2vp(options, cache);
-#endif
         }
     }
 

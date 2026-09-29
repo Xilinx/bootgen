@@ -341,9 +341,8 @@ public:
     static void GenerateRsaKeys(KeyGenerationStruct*);
     static void GenerateEcdsaKeys(KeyGenerationStruct*);
     static void GenerateLmsKeys(KeyGenerationStruct* keygen, std::vector<LmsKeyParam>, std::vector<LmsKeyParam>);
-#ifndef SKIP_VERSAL_2VP_NATIVE
     static void GenerateMldsaKeys(KeyGenerationStruct*);
-#endif
+    static void GenerateSlhdsaKeys(KeyGenerationStruct*);
 
     bool Loaded;
     bool isSecret;
@@ -368,6 +367,8 @@ protected:
     uint8_t ParseOpenSSLKey(FILE* f);
     static void WriteRsaFile(std::string file, const RSA* rsa, bool secret, uint16_t keyLength);
     static void WritePemFile(std::string file, RSA* rsa, EC_KEY* eckey, bool secret);
+    static void WriteMldsaFile(const std::string& filename, const uint8_t* key, size_t keyLength);
+    static void WriteSlhdsaFile(const std::string& filename, const uint8_t* key, size_t keyLength);
 
     std::unique_ptr<uint8_t[]> P;
     std::unique_ptr<uint8_t[]> Q;

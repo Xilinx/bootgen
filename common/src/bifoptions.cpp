@@ -73,7 +73,6 @@ namespace DeviceSpecificKmd
 // Forward declarations
 void InitializeDeviceSpecificKmdFunctions(Arch::Type arch);
 
-#ifndef SKIP_VERSAL_2VP_NATIVE
 // Device-specific namespace declarations (included only when needed)
 namespace BifOptionsVersal2VP
 {
@@ -87,7 +86,6 @@ namespace BifOptionsVersal2VP
     extern bool HybridMaskContainsClassical(uint32_t hybridMask);
     extern bool HybridMaskContainsPQC(uint32_t hybridMask);
 }
-#endif
 
 /* Forward Class Declaration */
 class BootImage;
@@ -3093,7 +3091,6 @@ void InitializeDeviceSpecificKmdFunctions(Arch::Type arch)
     
     LOG_TRACE("Initializing device-specific KMD functions for architecture: %d", (int)arch);
     
-#ifndef SKIP_VERSAL_2VP_NATIVE
     if (arch == Arch::VERSAL_2VP) {
         DeviceSpecificKmd::ConvertAlgorithmStringToHeaderValue = 
             BifOptionsVersal2VP::ConvertAlgorithmStringToHeaderValue;
@@ -3116,9 +3113,7 @@ void InitializeDeviceSpecificKmdFunctions(Arch::Type arch)
         
         LOG_INFO("Loaded Versal 2VP device-specific KMD functions");
     }
-    else
-#endif
-    if (arch == Arch::VERSAL || arch == Arch::VERSALGEN2 || arch == Arch::SPARTANUP) {
+    else if (arch == Arch::VERSAL || arch == Arch::VERSALGEN2 || arch == Arch::SPARTANUP) {
         // Future: Add device-specific implementations for other architectures
         // For now, set to NULL (will error only if .kmd parsing is actually attempted)
         LOG_TRACE("Architecture '%s' does not have device-specific KMD functions implemented yet", Arch::ToString(arch));
