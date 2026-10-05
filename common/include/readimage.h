@@ -67,6 +67,9 @@ public:
         aCs.clear();
         readType = ReadImageOption::NONE;
         dumpType = DumpOption::NONE;
+        versalNetSeries = false;
+        dl9Series = false;
+        versal_2vp = false;
     }
     virtual ~ReadImage() { }
 

@@ -57,19 +57,19 @@ Versal_2vpReadImage::~Versal_2vpReadImage()
 {
     if (bH != NULL)
     {
-        delete[] bH;
+        delete bH;
     }
     if (iH != NULL)
     {
-        delete[] iH;
+        delete iH;
     }
     if (iHT != NULL)
     {
-        delete[] iHT;
+        delete iHT;
     }
     if (pHT != NULL)
     {
-        delete[] pHT;
+        delete pHT;
     }
 }
 void Versal_2vpReadImage::DumpPlainPartition(uint8_t *buffer,uint32_t length, std::string partition_name, bool isBootloader, uint32_t id, uint32_t index)
@@ -410,6 +410,22 @@ void Versal_2vpReadImage::ReadHeaderTableDetails()
         LOG_ERROR("Cannot read file %s", binFilename.c_str());
     }
 
+    uint64_t pdiSize = 0;
+    if (!fseek(binFile, 0, SEEK_END))
+    {
+        const long end = ftell(binFile);
+        if (end > 0)
+        {
+            pdiSize = static_cast<uint64_t>(end);
+        }
+    }
+    fseek(binFile, 0, SEEK_SET);
+
+    auto FitsInFile = [&](uint64_t start, uint64_t length) -> bool
+    {
+        return (length > 0) && (start <= pdiSize) && (length <= (pdiSize - start));
+    };
+
     // Boot Header Table Extraction
     bH = new Versal_2vpBootHeaderStructure;
     result = fread(bH, 1, sizeof(Versal_2vpBootHeaderStructure), binFile);
@@ -468,6 +484,11 @@ void Versal_2vpReadImage::ReadHeaderTableDetails()
 
         if (bH->hashBlockLength1 > 0)
         {
+            if (!FitsInFile(offset, bH->hashBlockLength1))
+            {
+                LOG_ERROR("Hash block length %u at offset %u extends past the end of %s.",
+                          bH->hashBlockLength1, static_cast<unsigned>(offset), binFilename.c_str());
+            }
             hash_block = new uint8_t[bH->hashBlockLength1];
             if (!(fseek(binFile, offset, SEEK_SET)))
             {
@@ -488,6 +509,11 @@ void Versal_2vpReadImage::ReadHeaderTableDetails()
             if (plmAuthType != Authentication::None)
             {
                 Aclength = GetACLength(plmAcOffset, 0);
+                if (!FitsInFile(plmAcOffset, Aclength))
+                {
+                    LOG_ERROR("Authentication certificate at offset %u extends past the end of %s.",
+                              plmAcOffset, binFilename.c_str());
+                }
                 uint8_t* plm_ac = new uint8_t[Aclength];
                 if (!(fseek(binFile, plmAcOffset, SEEK_SET)))
                 {

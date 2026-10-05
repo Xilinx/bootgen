@@ -60,7 +60,9 @@ public:
     {
         binFilename = filename;
         bH = NULL;
+        iH = NULL;
         iHT = NULL;
+        pHT = NULL;
         iHs.clear();
         pHTs.clear();
         aCs.clear();

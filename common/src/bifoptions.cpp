@@ -171,6 +171,9 @@ BifOptions::BifOptions(Arch::Type architecture, bool versalNet, bool dl9, const 
     metaHdrAttributes.ppk = metaHdrAttributes.spk = metaHdrAttributes.psk = metaHdrAttributes.ssk = "";
     metaHdrAttributes.presign = metaHdrAttributes.spkSignature = "";
     metaHdrAttributes.spkRevokeId = 0;
+    metaHdrAttributes.partitionRevokeId = 0;
+    metaHdrAttributes.defEncrBlockSize = 0;
+    metaHdrAttributes.lmsOnly = false;
     metaHdrAttributes.checksum = Checksum::None;
     metaHdrAttributes.dpaCM = DpaCM::DpaCMDisable;
     metaHdrAttributes.pufHdLoc = PufHdLoc::PUFinEFuse;
@@ -3076,6 +3079,14 @@ static bool HybridMaskContainsPQC(uint32_t hybridMask)
 }
 
 /******************************************************************************/
+/* Report whether this architecture provides key metadata (.kmd) support    */
+/******************************************************************************/
+static bool IsKmdSupported()
+{
+    return (DeviceSpecificKmd::ConvertAlgorithmStringToHeaderValue != NULL);
+}
+
+/******************************************************************************/
 /* Initialize device-specific KMD function pointers based on architecture   */
 /* Must be called before any .kmd file parsing operations                   */
 /******************************************************************************/
@@ -3766,6 +3777,19 @@ void PartitionBifOptions::AutoDetectAndPopulateKeys()
         LOG_ERROR("Please use either simplified OR explicit syntax, not both");
         return;
     }
+
+    /* Only versal_2vp carries the key metadata machinery that the simplified
+       syntax and the post-quantum algorithms are built on. Devices whose idcode
+       selects the Versal format have none of it, so reject that here instead of
+       letting the KMD dispatchers report an internal error. */
+    if (hasPartitionSimplifiedSyntax && !IsKmdSupported()) {
+        LOG_ERROR("Simplified key syntax (pkfile/skfile) needs key metadata (.kmd) support, "
+                  "which the '%s' format does not provide. Post-quantum and hybrid "
+                  "authentication are unavailable for this device - use explicit key "
+                  "attributes (ppkfile/pskfile/spkfile/sskfile) with a classical algorithm.",
+                  Arch::ToString(arch));
+        return;
+    }
     
     // If no partition-level keys specified, check if global keys exist
     if (!hasPartitionSimplifiedSyntax && !hasPartitionExplicitSyntax) {
@@ -4391,6 +4415,16 @@ void BifOptions::AutoDetectAndPopulateKeys()
     if (hasSimplifiedSyntax && hasExplicitSyntax) {
         LOG_ERROR("Cannot mix simplified syntax (pkfile/skfile) with explicit syntax (ppkfile/pskfile/spkfile/sskfile)");
         LOG_ERROR("Please use either simplified OR explicit syntax, not both");
+        return;
+    }
+
+    /* See the matching guard in PartitionBifOptions::AutoDetectAndPopulateKeys. */
+    if (hasSimplifiedSyntax && !IsKmdSupported()) {
+        LOG_ERROR("Simplified key syntax (pkfile/skfile) needs key metadata (.kmd) support, "
+                  "which the '%s' format does not provide. Post-quantum and hybrid "
+                  "authentication are unavailable for this device - use explicit key "
+                  "attributes (ppkfile/pskfile/spkfile/sskfile) with a classical algorithm.",
+                  Arch::ToString(arch));
         return;
     }
     

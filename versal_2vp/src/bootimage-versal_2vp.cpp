@@ -408,6 +408,12 @@ void Versal_2vpBootImage::ParseBootImage(PartitionBifOptions* it)
         LOG_ERROR("Parsing mcs format file is not supported : %s", baseFile.c_str());
     }
 
+    uint32_t idCode = options.bifOptions->GetIdCode();
+    if (IdCodeManager::IsVersal2vpNativeIdCode(idCode) && IsVersalFmtPdi(it->filename))
+    {
+        LOG_ERROR("Base PDI %s belongs to Versal, which is not supported for versal_2vp native (idcode 0x%08X).", baseFile.c_str(), idCode);
+    }
+
     FILE *binFile = fopen(it->filename.c_str(), "rb");
 
     if (!binFile)

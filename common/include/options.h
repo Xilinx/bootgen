@@ -25,6 +25,7 @@
 ***********************************************   H E A D E R   F I L E S   ***
 -------------------------------------------------------------------------------
 */
+#include <algorithm>
 #include <vector>
 #include <string>
 
@@ -149,6 +150,7 @@ public:
         , authOptimizationEnabled(false)
         , generateTlBin(false)
         , versalFmtVariant(false)
+        , basePdiIdCode(0)
     {
         cmdEncryptOptions = std::make_unique<CommndLineEncryptOptions>();
     };
@@ -272,9 +274,12 @@ public:
     std::string GetOverlayCDOFileName (void);
     bool IsSsitBif(void);
     bool IsVersalNetSeries(void) { return versalNetSeries; }
+    void SetVersalNetSeries(bool flag) { versalNetSeries = flag; }
     bool IsDl9Series(void) { return dl9Series; }
     bool IsVersalFmtVariant(void) { return versalFmtVariant; }
     void SetVersalFmtVariant(bool flag) { versalFmtVariant = flag; }
+    uint32_t GetBasePdiIdCode(void) { return basePdiIdCode; }
+    void SetBasePdiIdCode(uint32_t id) { basePdiIdCode = id; }
 	File::Type GetOutType (void);
 
     uint32_t totalHeadersSize;
@@ -342,6 +347,8 @@ private:
     bool dl9Series;
     bool versal_2vp;
     bool versalFmtVariant;
+    /* Id from a bootimage PDI named in the BIF, read before parsing. 0 if none. */
+    uint32_t basePdiIdCode;
 };
 
 #endif
@@ -355,14 +362,28 @@ public:
         return std::find(idCodes.begin(), idCodes.end(), idCode) != idCodes.end();
     }
 
+    /* 0x04C68093 and 0x04C69093 both use the versal_2vp native PDI. */
     static bool IsVersal2vpNativeIdCode(uint32_t idCode) {
-        return (idCode == IDCODE_VERSAL_2VP_NATIVE);
+        return (idCode == IDCODE_VERSAL_2VP_NATIVE) || (idCode == 0x04C69093);
     }
 
+    /* versal_2vp devices whose PDI uses the Versal format */
     static bool IsVersalFmtIdCode(uint32_t idCode) {
-        return (idCode == IDCODE_VERSAL_2VP_VERSAL_FMT);
+        static const std::vector<uint32_t> versalFmtIdCodes = {
+            0x04C60093, IDCODE_VERSAL_2VP_VERSAL_FMT, 0x04C75093, 0x04C76093
+        };
+        return std::find(versalFmtIdCodes.begin(), versalFmtIdCodes.end(), idCode)
+               != versalFmtIdCodes.end();
     }
 
 private:
     std::vector<int> idCodes;
 };
+
+/* Image-header-table idcode of a PDI, or 0 when the table cannot be read.
+   Used by -read and by generation when the BIF points at a base PDI. */
+uint32_t ReadPdiTableIdCode(const std::string& fileName);
+
+/* A versal_2vp PDI whose image header table carries one of the Versal-format
+   idcodes. Used by -read and by base-PDI import. */
+bool IsVersalFmtPdi(const std::string& fileName);

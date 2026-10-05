@@ -22,6 +22,10 @@
 */
 #include <fstream>
 #include <algorithm>
+#include <cctype>
+#include <cstdlib>
+#include <cstring>
+#include <limits>
 #include <string>
 
 #include "bootimage.h"
@@ -166,6 +170,14 @@ void BIF_File::Process(Options& options)
             (*bifoptions)->SetSmapWidth(0);
         }
 
+        /* A bootimage PDI supplies the id, including when the BIF also has one.
+           The image-header build copies GetIdCode() into the table, so the
+           probed value has to be stored before that copy. */
+        if (options.GetBasePdiIdCode() != 0)
+        {
+            (*bifoptions)->SetIdCode(options.GetBasePdiIdCode());
+        }
+
         if (options.archType == Arch::ZYNQMP)
         {
             currentbi = std::make_unique<ZynqMpBootImage>(options, index);
@@ -193,7 +205,17 @@ void BIF_File::Process(Options& options)
         else if (options.archType == Arch::VERSAL_2VP)
         {
             uint32_t idCode = (*bifoptions)->GetIdCode();
-            
+            /* The base PDI was probed before parsing. Use that id for the flow
+               and, when the BIF omitted one, for the image as well. */
+            if (options.GetBasePdiIdCode() != 0)
+            {
+                idCode = options.GetBasePdiIdCode();
+                if ((*bifoptions)->GetIdCode() == 0)
+                {
+                    (*bifoptions)->SetIdCode(idCode);
+                }
+            }
+
             if (IdCodeManager::IsVersalFmtIdCode(idCode))
             {
                 LOG_INFO("Versal-format variant detected (idcode: 0x%08X).", idCode);
@@ -966,8 +988,262 @@ void BootImage::InsertEncryptionKeyFile(std::string filename)
 }
 
 /******************************************************************************/
+static bool IsBifTokenBoundary(const std::string& code, size_t pos, size_t end)
+{
+    const bool validBefore = (pos == 0) ||
+        (!isalnum(static_cast<unsigned char>(code[pos - 1])) && (code[pos - 1] != '_') &&
+         (code[pos - 1] != '/') && (code[pos - 1] != '.'));
+    const bool validAfter = (end >= code.size()) ||
+        (!isalnum(static_cast<unsigned char>(code[end])) && (code[end] != '_') &&
+         (code[end] != '.'));
+    return validBefore && validAfter;
+}
+
+/******************************************************************************/
+/* Comment-stripped BIF text. The architecture must be selected before the
+   real parser runs, so generation looks at this text for id_code and for the
+   bootimage file. */
+static std::string ReadBifWithoutComments(const std::string& bifFileName)
+{
+    std::ifstream bif(bifFileName.c_str());
+    if (!bif)
+    {
+        return "";
+    }
+
+    bool inBlockComment = false;
+    std::string line;
+    std::string code;
+    while (std::getline(bif, line))
+    {
+        for (size_t i = 0; i < line.size(); ++i)
+        {
+            if (inBlockComment)
+            {
+                if ((line[i] == '*') && (i + 1 < line.size()) && (line[i + 1] == '/'))
+                {
+                    inBlockComment = false;
+                    ++i;
+                }
+                continue;
+            }
+            if ((line[i] == '/') && (i + 1 < line.size()) && (line[i + 1] == '*'))
+            {
+                inBlockComment = true;
+                ++i;
+                continue;
+            }
+            if ((line[i] == '/') && (i + 1 < line.size()) && (line[i + 1] == '/'))
+            {
+                break;
+            }
+            code += line[i];
+        }
+        code += '\n';
+    }
+    return code;
+}
+
+/******************************************************************************/
+/* Pick the first active id_code out of the BIF text. */
+static uint32_t ScanBifForIdCode(const std::string& code)
+{
+    size_t pos = 0;
+    while ((pos = code.find("id_code", pos)) != std::string::npos)
+    {
+        const size_t end = pos + strlen("id_code");
+        if (IsBifTokenBoundary(code, pos, end))
+        {
+            size_t equal = end;
+            while ((equal < code.size()) &&
+                   isspace(static_cast<unsigned char>(code[equal])))
+            {
+                ++equal;
+            }
+            if ((equal < code.size()) && (code[equal] == '='))
+            {
+                ++equal;
+                while ((equal < code.size()) &&
+                       isspace(static_cast<unsigned char>(code[equal])))
+                {
+                    ++equal;
+                }
+                char* valueEnd = NULL;
+                const unsigned long value = strtoul(code.c_str() + equal, &valueEnd, 0);
+                if ((valueEnd != (code.c_str() + equal)) &&
+                    (value <= std::numeric_limits<uint32_t>::max()))
+                {
+                    return static_cast<uint32_t>(value);
+                }
+            }
+        }
+        pos = end;
+    }
+    return 0;
+}
+
+/******************************************************************************/
+static std::string BifPathAfterFileToken(const std::string& code, size_t filePos)
+{
+    size_t equal = filePos + strlen("file");
+    while ((equal < code.size()) && isspace(static_cast<unsigned char>(code[equal])))
+    {
+        ++equal;
+    }
+    if ((equal >= code.size()) || (code[equal] != '='))
+    {
+        return "";
+    }
+    ++equal;
+    while ((equal < code.size()) && isspace(static_cast<unsigned char>(code[equal])))
+    {
+        ++equal;
+    }
+    if (equal >= code.size())
+    {
+        return "";
+    }
+
+    char quote = 0;
+    if ((code[equal] == '"') || (code[equal] == '\''))
+    {
+        quote = code[equal];
+        ++equal;
+    }
+    size_t end = equal;
+    if (quote != 0)
+    {
+        while ((end < code.size()) && (code[end] != quote))
+        {
+            ++end;
+        }
+    }
+    else
+    {
+        while ((end < code.size()) &&
+               !isspace(static_cast<unsigned char>(code[end])) &&
+               (code[end] != ',') && (code[end] != '}') && (code[end] != '{'))
+        {
+            ++end;
+        }
+    }
+    return code.substr(equal, end - equal);
+}
+
+/******************************************************************************/
+static std::string ResolveBifPath(const std::string& bifFileName, const std::string& path)
+{
+    if (path.empty() || (path[0] == '/'))
+    {
+        return path;
+    }
+    const size_t slash = bifFileName.find_last_of('/');
+    if (slash == std::string::npos)
+    {
+        return path;
+    }
+    return bifFileName.substr(0, slash + 1) + path;
+}
+
+/******************************************************************************/
+/* First bootimage partition file in the BIF. Its table id selects the flow
+   when the BIF itself has no id_code, and it wins when both are present. */
+static std::string ScanBifForBootImageFile(const std::string& bifFileName, const std::string& code)
+{
+    size_t pos = 0;
+    while ((pos = code.find("bootimage", pos)) != std::string::npos)
+    {
+        const size_t end = pos + strlen("bootimage");
+        if (!IsBifTokenBoundary(code, pos, end))
+        {
+            pos = end;
+            continue;
+        }
+
+        const size_t blockStart = code.rfind('{', pos);
+        size_t blockEnd = code.size();
+        if (blockStart != std::string::npos)
+        {
+            int depth = 0;
+            for (size_t i = blockStart; i < code.size(); ++i)
+            {
+                if (code[i] == '{')
+                {
+                    ++depth;
+                }
+                else if (code[i] == '}')
+                {
+                    --depth;
+                    if (depth == 0)
+                    {
+                        blockEnd = i;
+                        break;
+                    }
+                }
+            }
+        }
+        const size_t searchFrom = (blockStart == std::string::npos) ? pos : blockStart;
+        size_t filePos = searchFrom;
+        while ((filePos = code.find("file", filePos)) != std::string::npos && (filePos < blockEnd))
+        {
+            const size_t fileEnd = filePos + strlen("file");
+            if (IsBifTokenBoundary(code, filePos, fileEnd))
+            {
+                const std::string path = BifPathAfterFileToken(code, filePos);
+                if (!path.empty())
+                {
+                    return ResolveBifPath(bifFileName, path);
+                }
+            }
+            filePos = fileEnd;
+        }
+        pos = end;
+    }
+    return "";
+}
+
+/******************************************************************************/
 void BIF_File::ParseBifFile(Options& options)
 {
+    /* Versal-format variants use the regular Versal PDI flow. Switch the
+       architecture before parsing so all downstream validation follows it.
+       A bootimage file's table id wins over id_code written in the BIF, which
+       matches the later "taken from base PDI" import. */
+    if (options.GetArchType() == Arch::VERSAL_2VP)
+    {
+        const std::string bifText = ReadBifWithoutComments(biffilename);
+        uint32_t idCode = 0;
+        const std::string basePdi = ScanBifForBootImageFile(biffilename, bifText);
+        bool idFromBasePdi = false;
+        if (!basePdi.empty())
+        {
+            idCode = ReadPdiTableIdCode(basePdi);
+            if (idCode != 0)
+            {
+                options.SetBasePdiIdCode(idCode);
+                idFromBasePdi = true;
+            }
+        }
+        if (idCode == 0)
+        {
+            idCode = ScanBifForIdCode(bifText);
+        }
+        if (IdCodeManager::IsVersalFmtIdCode(idCode))
+        {
+            if (idFromBasePdi)
+            {
+                LOG_INFO("Versal-format variant idcode found in base PDI. Using the Versal flow.");
+            }
+            else
+            {
+                LOG_INFO("Versal-format variant idcode found in BIF. Using the Versal flow.");
+            }
+            options.SetArchType(Arch::VERSAL);
+            options.SetVersalNetSeries(false);
+            options.SetVersalFmtVariant(true);
+        }
+    }
+
     std::string basefile = StringUtils::BaseName(biffilename);
 
     LOG_TRACE("Parsing BIF file - %s", basefile.c_str());

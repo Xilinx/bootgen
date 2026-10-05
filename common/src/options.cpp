@@ -20,7 +20,9 @@
 ***********************************************   H E A D E R   F I L E S   ***
 -------------------------------------------------------------------------------
 */
+#include <cstddef>
 #include <iostream>
+#include <fstream>
 #include <sstream>
 #include <string> 
 #include <sys/stat.h>
@@ -33,6 +35,10 @@
 #include "readimage-versal_2vp.h"
 #include "readimage-spartanup.h"
 #include "readimage-versal.h"
+#include "bootheader-versal.h"
+#include "bootheader-versal_2vp.h"
+#include "imageheadertable-versal.h"
+#include "imageheadertable.h"
 #include "logger.h"
 #include "encryption.h"
 
@@ -112,6 +118,95 @@ void Options::ProcessVerifyKDF()
 }
 
 /******************************************************************************/
+/* The image header table carries the idcode at offset 0x18. A Versal-format
+   image keeps the table offset in the Versal boot header; a native image keeps
+   it in the versal_2vp boot header. The remaining candidates mirror what
+   VersalReadImage falls back to when the boot header is unusable. Take the
+   first candidate whose identification string reads back as a PDI. File offset
+   0x18 is the boot-header encryption key source, not this id. */
+uint32_t ReadPdiTableIdCode(const std::string& fileName)
+{
+    std::ifstream file(fileName.c_str(), std::ios::binary);
+    if (!file)
+    {
+        return 0;
+    }
+
+    file.seekg(0, std::ios::end);
+    const std::streamoff fileSize = file.tellg();
+    if (fileSize < 0)
+    {
+        return 0;
+    }
+
+    /* Any short read leaves the image to the regular parser, which reports the
+       error with the context this probe does not have. */
+    auto ReadWord = [&](std::streamoff offset, uint32_t& value) -> bool
+    {
+        if ((offset < 0) || (offset + static_cast<std::streamoff>(sizeof(value)) > fileSize))
+        {
+            return false;
+        }
+        file.clear();
+        file.seekg(offset, std::ios::beg);
+        return static_cast<bool>(file.read(reinterpret_cast<char*>(&value), sizeof(value)));
+    };
+
+    std::streamoff ihtOffsets[4];
+    int count = 0;
+    uint32_t word = 0;
+    auto AddOffset = [&](std::streamoff offset)
+    {
+        if (count >= 4)
+        {
+            return;
+        }
+        for (int i = 0; i < count; ++i)
+        {
+            if (ihtOffsets[i] == offset)
+            {
+                return;
+            }
+        }
+        ihtOffsets[count++] = offset;
+    };
+
+    if (ReadWord(static_cast<std::streamoff>(offsetof(VersalBootHeaderStructure, imageHeaderByteOffset)), word))
+    {
+        AddOffset(static_cast<std::streamoff>(word));
+    }
+    if (ReadWord(static_cast<std::streamoff>(offsetof(Versal_2vpBootHeaderStructure, imageHeaderByteOffset)), word))
+    {
+        AddOffset(static_cast<std::streamoff>(word));
+    }
+    /* Images with no valid boot header. */
+    AddOffset(static_cast<std::streamoff>(sizeof(VersalSmapWidthTable)));
+    AddOffset(0);
+
+    for (int i = 0; i < count; ++i)
+    {
+        const std::streamoff ihtOffset = ihtOffsets[i];
+        if (!ReadWord(ihtOffset + static_cast<std::streamoff>(offsetof(VersalImageHeaderTableStructure, identificationString)), word) || (word != FPDI))
+        {
+            continue;
+        }
+        if (ReadWord(ihtOffset + static_cast<std::streamoff>(offsetof(VersalImageHeaderTableStructure, idCode)), word))
+        {
+            return word;
+        }
+        break;
+    }
+
+    return 0;
+}
+
+/******************************************************************************/
+bool IsVersalFmtPdi(const std::string& fileName)
+{
+    return IdCodeManager::IsVersalFmtIdCode(ReadPdiTableIdCode(fileName));
+}
+
+/******************************************************************************/
 void Options::ProcessReadImage()
 {
     std::string readFile = GetReadImageFile();
@@ -138,7 +233,19 @@ void Options::ProcessReadImage()
         }
         else if (archType == Arch::VERSAL_2VP)
         {
-            readImage = std::make_unique<Versal_2vpReadImage>(readFile);
+            if (IsVersalFmtPdi(readFile))
+            {
+                LOG_INFO("Versal-format variant PDI detected. Using Versal read flow.");
+                /* Match generation, which drops the Versal NET series for these
+                   devices and follows the plain Versal flow. */
+                SetVersalNetSeries(false);
+                readImage = std::make_unique<VersalReadImage>(readFile);
+                readImage->versalNetSeries = versalNetSeries;
+            }
+            else
+            {
+                readImage = std::make_unique<Versal_2vpReadImage>(readFile);
+            }
         }
         else if (archType == Arch::SPARTANUP)
         {
