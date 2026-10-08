@@ -352,6 +352,8 @@ void Versal_2ve_2vmBootHeader::LinkPrebuiltBH(BootImage& bi)
             uint32_t acSize = sizeof(AuthCertificate4096Sha3PaddingHBStructure);
             if(authTypeLocal == Authentication::ECDSA)
                 acSize = sizeof(AuthCertificateECDSAHBStructure);
+            else if(authTypeLocal == Authentication::ECDSAP384Padded)
+                acSize = sizeof(AuthCertificateECDSAP384PaddedHBStructure);
             else if(authTypeLocal == Authentication::ECDSAp521)
                 acSize = sizeof(AuthCertificateECDSAp521HBStructure);
 

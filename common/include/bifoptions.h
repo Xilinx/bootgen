@@ -209,6 +209,7 @@ public:
     bool bootImage;
     bool pmuFwImage;
     bool pmcData;
+    bool pldata;
     std::string presignFile;
     std::string acFile;
     std::string udfDataFile;
@@ -432,6 +433,9 @@ private:
 };
 
 /******************************************************************************/
+/* Once per process. Legacy ecdsa-p384 on versal_2ve_2vm keeps the 96-byte PPK. */
+void WarnLegacyEcdsaP384Format(Arch::Type arch, Authentication::Type type);
+
 class BifOptions
 {
 public:
@@ -481,7 +485,7 @@ public:
     void SetPmcdataFile(const std::string & filename);
     void ClearPmcCdoFileList();
     void SetPmcCdoFileList(const std::string & filename);
-    void SetPdiId(uint32_t id);
+    void SetPdiId(uint64_t id);
     void SetGroupName(std::string name);
     void SetParentId(uint32_t id);
     void SetBhRsa(BhRsa::Type value);
@@ -649,6 +653,7 @@ public:
     std::vector<uint32_t> pmcdataBlocks;
     uint8_t slrNum;
 private:
+    void AddPmcDataOrPldataPartition(PartitionBifOptions* currentPartitionBifOptions, ImageBifOptions* currentImageBifOptions, bool isPldata);
     std::string pmcDataAesFile;
     std::string regInitFile;
     std::string udfBhFile;

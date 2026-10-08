@@ -25,8 +25,10 @@
 #include "bootimage.h"
 #include "bootheader-versal_2ve_2vm.h"
 #include "elftools.h"
+#include "ospi_rx_tuning.h"
 #include <string.h>
 #include <sstream>
+#include <set>
 #include "stringutils.h"
 #include "fileutils.h"
 #include "bitutils.h"
@@ -48,6 +50,7 @@ extern "C" {
 
 static uint8_t bufferIndex = 0;
 std::list<std::unique_ptr<CdoCommandDmaWrite>> Versal_2ve_2vmImageHeader::cdoSections;  // Smart pointers
+static bool OptionalDataContainsId(uint32_t* data, uint32_t size, uint32_t id);
 
 /*
 -------------------------------------------------------------------------------
@@ -279,7 +282,39 @@ void Versal_2ve_2vmImageHeaderTable::Build(BootImage& bi, Binary& cache)
         }
     }
 
-    bi.imageHeaderTable->SetUserOptionalData(bi.bifOptions->metaHdrAttributes.ihtOptionalDataInfo, bi.numHashTableEntries);
+    /* Emit an ASU STRUCT_INFO (Data ID 0x04) block for any partition whose ELF carried a
+       .struct_info_asu section (captured in ImportElf). Dedupe on ImageHeader* so a
+       multi-segment ELF contributes its block once. Slot checks: core=asu without that
+       section is a warning (old ASUFW must still generate a PDI); bootloader ELF must
+       not carry it (ASUFW in PLM slot). */
+    std::set<Versal_2ve_2vmImageHeader*> asuStructInfoEmittedFor;
+    for (std::list<PartitionHeader*>::iterator partHdr = bi.partitionHeaderList.begin(); partHdr != bi.partitionHeaderList.end(); partHdr++)
+    {
+        Versal_2ve_2vmImageHeader* imageHeader = static_cast<Versal_2ve_2vmImageHeader*>((*partHdr)->imageHeader);
+        if (asuStructInfoEmittedFor.insert(imageHeader).second)
+        {
+            bool hasAsuStructInfo = OptionalDataContainsId(imageHeader->GetStructInfoOptData(),
+                                                           imageHeader->GetStructInfoOptDataSize(),
+                                                           DATA_ID_ASU_STRUCT_INFO);
+            if (imageHeader->WasImportedAsElf() &&
+                (imageHeader->GetDestCpu() == DestinationCPU::PMU) &&
+                !hasAsuStructInfo)
+            {
+                LOG_WARNING("Partition '%s' with 'core=asu' is not a supported ASU firmware image.\n\t  PDI will be generated without the ASU optional-data block. Use a supported ASUFW ELF for full ASU support.",
+                          imageHeader->GetFilename().c_str());
+            }
+            if (imageHeader->WasImportedAsElf() &&
+                imageHeader->IsBootloader() &&
+                hasAsuStructInfo)
+            {
+                LOG_ERROR("BIF attribute error !!!\n\t  Bootloader partition '%s' is not a valid PLM image.\n\t  ASU firmware cannot be placed in the PLM slot.",
+                          imageHeader->GetFilename().c_str());
+            }
+            AppendAsuStructInfo(imageHeader->GetStructInfoOptData(), imageHeader->GetStructInfoOptDataSize());
+        }
+    }
+
+    bi.imageHeaderTable->SetUserOptionalData(bi, bi.bifOptions->metaHdrAttributes.ihtOptionalDataInfo, bi.numHashTableEntries);
     bi.iht_optional_data_length = iht_optional_data_length;
     bi.copied_iht_optional_data_length = copied_iht_optional_data_length;
     bi.iht_optional_data = std::make_unique<uint32_t[]>(bi.iht_optional_data_length / sizeof(uint32_t));
@@ -700,12 +735,164 @@ void Versal_2ve_2vmImageHeaderTable::SetOptionalData(uint32_t * data, uint32_t s
 }
 
 /******************************************************************************/
-void Versal_2ve_2vmImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t numHashTableEntries, uint32_t isCorePsm)
+static bool OptionalDataContainsId(uint32_t* data, uint32_t size, uint32_t id)
 {
+    if (data == nullptr || size == 0)
+    {
+        return false;
+    }
+    uint32_t total_words = size / sizeof(uint32_t);
+    uint32_t pos = 0;
+    while (pos < total_words)
+    {
+        uint32_t block_words = data[pos] >> 16;
+        uint32_t data_id = data[pos] & 0xFFFF;
+        if (block_words == 0 || pos + block_words > total_words)
+        {
+            break;
+        }
+        if (data_id == id)
+        {
+            return true;
+        }
+        pos += block_words;
+    }
+    return false;
+}
+
+/******************************************************************************/
+void Versal_2ve_2vmImageHeaderTable::AppendAsuStructInfo(uint32_t* structInfo, uint32_t size)
+{
+    /* Emit the ASU STRUCT_INFO optional-data block (Data ID = 0x04). The block is already
+       tagged 0x04 and checksummed by elftools.cpp when it parsed the ELF's .struct_info_asu
+       section, so it is simply copied through as-is - the trigger is the section name alone,
+       independent of the partition's role/core. Any other block type captured alongside it
+       (e.g. PLM's own 0x02 .struct_info) is skipped here. */
+    if (structInfo == nullptr || size == 0)
+    {
+        return;
+    }
+    uint32_t total_words = size / sizeof(uint32_t);
+    uint32_t pos = 0;
+    while (pos < total_words)
+    {
+        uint32_t block_words = structInfo[pos] >> 16;
+        uint32_t data_id = structInfo[pos] & 0xFFFF;
+        if (block_words == 0 || pos + block_words > total_words)
+        {
+            break;
+        }
+        if (data_id == DATA_ID_ASU_STRUCT_INFO)
+        {
+            uint32_t block_bytes = block_words * sizeof(uint32_t);
+            auto new_data = std::make_unique<uint32_t[]>((iht_optional_data_length + block_bytes) / sizeof(uint32_t));
+            if (iht_optional_data)
+            {
+                memcpy(new_data.get(), iht_optional_data.get(), iht_optional_data_length);
+            }
+            uint32_t* block = (uint32_t*)((uint8_t*)new_data.get() + iht_optional_data_length);
+            memcpy(block, &structInfo[pos], block_bytes);
+            iht_optional_data = std::move(new_data);
+            iht_optional_data_length += block_bytes;
+            LOG_INFO("Emitting ASUFW STRUCT_INFO optional-data block (Data ID 0x%02x, %u bytes) in the IHT", DATA_ID_ASU_STRUCT_INFO, block_bytes);
+        }
+        pos += block_words;
+    }
+}
+
+/******************************************************************************/
+void Versal_2ve_2vmImageHeaderTable::SetUserOptionalData(BootImage& bi, std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t numHashTableEntries, uint32_t isCorePsm)
+{
+    /* Compact optional data carried in from an imported PDI:
+       - Drop the OSPI RX tuning section (ID=0x05) so that regenerating it
+         below cannot leave two copies behind.
+       - Drop the trailing 0xFF region padding, otherwise any section appended
+         after this point sits behind the padding and a forward walk of the
+         region stops before reaching it. The padding is put back once every
+         section has been added.
+       Freshly built optional data is already compact, so nothing is rewritten
+       in that case. */
+    if (iht_optional_data_length > 0)
+    {
+        uint32_t parsed_length = 0;
+        uint32_t filtered_length = 0;
+        std::vector<uint8_t> filtered_data;
+
+        while (parsed_length < iht_optional_data_length)
+        {
+            uint32_t* buffer = iht_optional_data.get() + (parsed_length / 4);
+            uint32_t opData_id = buffer[0] & 0x0000FFFF;
+
+            if (opData_id == 0x0000FFFF)
+            {
+                break;
+            }
+
+            uint32_t section_length = (((buffer[0] & 0xFFFF0000) >> 16) * 4);
+
+            /* Safety check to prevent infinite loop */
+            if (section_length == 0)
+            {
+                LOG_TRACE("Optional data section has zero length - unable to parse further");
+                break;
+            }
+
+            if (opData_id == OSPI_RX_TUNING_SECTION_ID)
+            {
+                /* Skip OSPI RX tuning data - will regenerate */
+                LOG_TRACE("Filtering out OSPI RX tuning data (ID=0x05) from imported PDI");
+            }
+            else
+            {
+                filtered_data.resize(filtered_length + section_length);
+                memcpy(filtered_data.data() + filtered_length, (uint8_t*)buffer, section_length);
+                filtered_length += section_length;
+            }
+
+            parsed_length += section_length;
+        }
+
+        /* Replace only when the walk actually dropped something, so that
+           freshly built optional data stays byte identical. */
+        if (filtered_length != iht_optional_data_length)
+        {
+            if (filtered_length != 0)
+            {
+                auto new_data = std::make_unique<uint32_t[]>(filtered_length / sizeof(uint32_t));
+                memcpy(new_data.get(), filtered_data.data(), filtered_length);
+                iht_optional_data = std::move(new_data);
+            }
+            else if (iht_optional_data != nullptr)
+            {
+                iht_optional_data.reset();
+            }
+            iht_optional_data_length = filtered_length;
+        }
+    }
+
     for (size_t i = 0; i < optionalDataInfo.size(); i++)
     {
+        if (optionalDataInfo[i].second == OSPI_RX_TUNING_SECTION_ID)
+        {
+            LOG_WARNING("Optional Data ID 0x%x is reserved for the OSPI RX tuning pattern, which bootgen embeds automatically. Ignoring the user supplied file '%s'.", OSPI_RX_TUNING_SECTION_ID, optionalDataInfo[i].first.c_str());
+            continue;
+        }
+
         size_t size = 0;
-        void *data = file_to_buf((char *)optionalDataInfo[i].first.c_str(), &size);
+        uint8_t* tempData = (uint8_t*)file_to_buf((char *)optionalDataInfo[i].first.c_str(), &size);
+        if (tempData == NULL)
+        {
+            LOG_ERROR("Cannot read optional data file: %s", optionalDataInfo[i].first.c_str());
+        }
+
+        /* Optional data sections are word aligned */
+        uint32_t optional_data_padLength = (size % sizeof(uint32_t) != 0) ? sizeof(uint32_t) - (size % sizeof(uint32_t)) : 0;
+        auto data = std::make_unique<uint8_t[]>(size + optional_data_padLength);
+        memset(data.get(), 0, size + optional_data_padLength);
+        memcpy(data.get(), tempData, size);
+        free(tempData);
+        size += optional_data_padLength;
+
         if (size != 0)
         {
             uint32_t sectn_size_id = 0;
@@ -713,12 +900,12 @@ void Versal_2ve_2vmImageHeaderTable::SetUserOptionalData(std::vector<std::pair<s
             uint16_t sectn_length = sizeof(uint32_t) + size + sizeof(uint32_t);
             sectn_size_id = (uint32_t)((sectn_length / 4) << 16) | (optionalDataInfo[i].second);
 
-            auto new_data = std::make_unique<uint32_t[]>((iht_optional_data_length + sectn_length) / sizeof(uint32_t));
+            auto new_data = std::make_unique<uint32_t[]>((iht_optional_data_length + sectn_length + sizeof(uint32_t) - 1) / sizeof(uint32_t));
             if (iht_optional_data) {
                 memcpy(new_data.get(), iht_optional_data.get(), iht_optional_data_length);
             }
             memcpy(new_data.get() + (iht_optional_data_length / 4), &sectn_size_id, sizeof(uint32_t));
-            memcpy(new_data.get() + (iht_optional_data_length / 4) + sizeof(uint32_t) / 4, data, size);
+            memcpy(new_data.get() + (iht_optional_data_length / 4) + sizeof(uint32_t) / 4, data.get(), size);
 
             uint32_t checksum = ComputeWordChecksum(new_data.get() + (iht_optional_data_length / 4), sectn_length - sizeof(uint32_t));
             memcpy(new_data.get() + (iht_optional_data_length / 4) + (sectn_length - sizeof(uint32_t)) / 4, &checksum, sizeof(uint32_t));
@@ -727,11 +914,33 @@ void Versal_2ve_2vmImageHeaderTable::SetUserOptionalData(std::vector<std::pair<s
         }
     }
 
+    if (ShouldEmbedOspiRxTuningPattern(bi))
+    {
+        /*  Section id = 5 is reserved for the OSPI RX tuning pattern. */
+        uint32_t sectn_size_id = 0;
+        /* Optional Data Header + Pattern + Checksum */
+        uint16_t sectn_length = sizeof(uint32_t) + OSPI_RX_TUNING_PATTERN_SIZE + sizeof(uint32_t);
+        sectn_size_id = (uint32_t)((sectn_length / 4) << 16) | OSPI_RX_TUNING_SECTION_ID;
+
+        auto new_data = std::make_unique<uint32_t[]>((iht_optional_data_length + sectn_length + sizeof(uint32_t) - 1) / sizeof(uint32_t));
+        if (iht_optional_data) {
+            memcpy(new_data.get(), iht_optional_data.get(), iht_optional_data_length);
+        }
+        memcpy(new_data.get() + (iht_optional_data_length / 4), &sectn_size_id, sizeof(uint32_t));
+        memcpy(new_data.get() + (iht_optional_data_length / 4) + sizeof(uint32_t) / 4, OspiRxTuningPattern, OSPI_RX_TUNING_PATTERN_SIZE);
+
+        uint32_t checksum = ComputeWordChecksum(new_data.get() + (iht_optional_data_length / 4), sectn_length - sizeof(uint32_t));
+        memcpy(new_data.get() + (iht_optional_data_length / 4) + (sectn_length - sizeof(uint32_t)) / 4, &checksum, sizeof(uint32_t));
+        iht_optional_data = std::move(new_data);
+        iht_optional_data_length += sectn_length;
+        LOG_TRACE("Added OSPI RX tuning pattern: iht_optional_data_length = 0x%x", iht_optional_data_length);
+    }
+
     copied_iht_optional_data_length = iht_optional_data_length;
     if (iht_optional_data_length != 0)
     {
         uint32_t padLength = (iht_optional_data_length % 64 != 0) ? 64 - (iht_optional_data_length % 64) : 0;
-        auto new_data = std::make_unique<uint32_t[]>((iht_optional_data_length + padLength) / sizeof(uint32_t));
+        auto new_data = std::make_unique<uint32_t[]>((iht_optional_data_length + padLength + sizeof(uint32_t) - 1) / sizeof(uint32_t));
         if (iht_optional_data) {
             memcpy(new_data.get(), iht_optional_data.get(), iht_optional_data_length);
         }
@@ -1523,11 +1732,11 @@ void Versal_2ve_2vmImageHeader::ParseFileToImport(BootImage& bi)
                 getline(stream, line);
             }
 
-            if (IsElf(line) && (partitionType != PartitionType::RAW))
+            if (IsElf(line) && (partitionType != PartitionType::RAW) && (partitionType != PartitionType::TL))
             {
                 ImportElf(bi);
             }
-            else if (!IsElf(line) && (partitionType == PartitionType::RAW))
+            else if (!IsElf(line) && ((partitionType == PartitionType::RAW) || (partitionType == PartitionType::TL)))
             {
                 ImportBin(bi);
             }
@@ -1755,6 +1964,7 @@ void Versal_2ve_2vmImageHeader::ImportElf(BootImage& bi)
 
     domain = Domain::PS;
     SetPartitionType(PartitionType::ELF);
+    importedAsElf = true;
 
     /* Convert the file into array of bytes */
     ByteFile data(Filename);
@@ -1782,6 +1992,16 @@ void Versal_2ve_2vmImageHeader::ImportElf(BootImage& bi)
     if (non_zero_elf_sec_count == 0)
     {
         LOG_ERROR("No non-empty program sections in %s", Filename.c_str());
+    }
+
+    /* Retain this partition's parsed optional data (e.g. .struct_info) on the image
+       header so the optional-data path can emit it later. The ELF object is local to
+       this function, so the bytes must be captured here. */
+    if (elf->iht_optional_data_size != 0)
+    {
+        structInfoOptDataSize = elf->iht_optional_data_size;
+        structInfoOptData = std::make_unique<uint32_t[]>(structInfoOptDataSize / sizeof(uint32_t));
+        memcpy(structInfoOptData.get(), elf->iht_optional_data, structInfoOptDataSize);
     }
 
     // Variables for combining sections
@@ -3114,7 +3334,7 @@ void Versal_2ve_2vmImageHeader::CheckIdsInCdo(CdoSequence * seq, std::string cdo
             char* marker_arch = (char*)cmd->buf;
             if (cmd->value == MARKER_ARCHITECTURE)
             {
-               if (strstr(marker_arch,"versalaiedge2") == 0)
+               if (strstr(marker_arch,"versalaiedge2") == 0 && strstr(marker_arch, "versalprime2")==0)
                {
                   LOG_WARNING("The architecture(%s) in '%s' does not match '-arch versal_2ve_2vm'", marker_arch, cdo_filename.c_str());
                }

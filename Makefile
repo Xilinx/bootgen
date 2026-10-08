@@ -21,6 +21,11 @@
 #    'make "LIBS=<openssl/lib/libssl.a> <openssl/lib/libcrypto.a> -ldl
 #           -lpthread" "INCLUDE_USER=-I<openssl/include>"'
 #
+# bison/flex: default `make` compiles checked-in bisonflex/ and does not
+# invoke bison or flex. To regenerate from parser/, export BISON_HOME and
+# FLEX_HOME (and optionally M4_HOME) to the tool prefixes. Do not hardcode
+# those paths in this file.
+#
 # Building Bootgen for ARM v8:
 #    'make "CROSS_COMPILE=aarch64-linux-gnu-" "LIBS=<opensslarm/lib/libssl.a> \
 #           <opensslarm/lib/libcrypto.a> -ldl -lpthread"
@@ -104,8 +109,52 @@ OBJECTS+=$(patsubst %.cpp,build/obj/%.o,$(notdir $(CXXFILES)))
 CFILES=$(shell find common/src spartanup/src versal/src versal_2ve_2vm/src zynq/src zynqmp/src utils/src ${SLH_DSA_DIR} -name "*.c")
 OBJECTS+=$(patsubst %.c,build/obj/%.o,$(notdir $(CFILES)))
 
-${OBJDIR}/%.${OBJ} : bisonflex/%.cpp 
+BF_GENDIR = bisonflex
+
+# Optional generate: only when both homes come from the environment.
+ifneq ($(and $(BISON_HOME),$(FLEX_HOME)),)
+BISON = $(BISON_HOME)/bin/bison
+FLEX = $(FLEX_HOME)/bin/flex
+BISON_PKGDATADIR = $(BISON_HOME)/share/bison
+ifneq ($(M4_HOME),)
+M4 = $(M4_HOME)/bin/m4
+endif
+export BISON FLEX M4 BISON_PKGDATADIR
+BF_BIN_PATH = $(BISON_HOME)/bin:$(FLEX_HOME)/bin
+ifneq ($(M4_HOME),)
+BF_BIN_PATH = $(BISON_HOME)/bin:$(FLEX_HOME)/bin:$(M4_HOME)/bin
+endif
+BF_PATH = export BISON=$(BISON); export FLEX=$(FLEX); export M4=$(M4); export BISON_PKGDATADIR=$(BISON_PKGDATADIR); export PATH=$(BF_BIN_PATH):$(PATH);
+
+%/.dir :
+	mkdir -p $*
+	touch $@
+
+CPP_BISON = ${BF_GENDIR}/bif.yy.cpp ${BF_GENDIR}/cmdoptions.yy.cpp ${BF_GENDIR}/reginit.yy.cpp
+CPP_FLEX = ${BF_GENDIR}/bif.tab.cpp ${BF_GENDIR}/cmdoptions.tab.cpp ${BF_GENDIR}/reginit.tab.cpp
+
+${BF_GENDIR}/%.tab.cpp : parser/%.y ${BF_GENDIR}/%/.dir
+	${BF_PATH} cd ${BF_GENDIR}/$*; ${BISON} --report=state --file-prefix=$* --output=$*.tab.cpp -d ../../$<
+	sed 's/stack</BIF::stack</g' ${BF_GENDIR}/$*/$*.tab.hpp > ${BF_GENDIR}/$*.tab.hpp
+	sed 's/slice</BIF::slice</g' ${BF_GENDIR}/$*/$*.tab.cpp > ${BF_GENDIR}/$*.tab.cpp
+
+${BF_GENDIR}/bif.tab.cpp : parser/bif.y ${BF_GENDIR}/.dir \
+								${BF_GENDIR}/cmdoptions.yy.cpp \
+								${BF_GENDIR}/reginit.yy.cpp ${BF_GENDIR}/.dir
+	${BF_PATH} ${BISON} --report=state --file-prefix=bif --output=$@ -d $<
+
+${BF_GENDIR}/%.yy.cpp : parser/%.l
+	${BF_PATH} ${FLEX} --prefix=$* --outfile=$@ $<
+	sed -i 's|#include <FlexLexer.h>|#include "../win_include/FlexLexer.h"|g' $@
+
+${OBJDIR}/%.${OBJ} : bisonflex/%.cpp ${CPP_BISON} ${CPP_FLEX}
 	${CXX} -c ${CXXFLAGS} $(OPTIONS) ${INCLUDE} $< -o $@
+
+.PRECIOUS: %/.dir ${BF_GENDIR}/%.yy.cpp ${BF_GENDIR}/%.tab.cpp
+else
+${OBJDIR}/%.${OBJ} : bisonflex/%.cpp
+	${CXX} -c ${CXXFLAGS} $(OPTIONS) ${INCLUDE} $< -o $@
+endif
 
 ${OBJDIR}/%.${OBJ} : */src/%.cpp 
 	${CXX} -c ${CXXFLAGS} $(OPTIONS) ${INCLUDE} $< -o $@

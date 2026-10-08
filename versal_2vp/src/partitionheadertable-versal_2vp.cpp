@@ -1390,8 +1390,25 @@ void Versal_2vpPartitionHeaderTable::Build(BootImage & bi, Binary & cache)
         }
     }
 
+    /* A PL-only PDI has no bootloader to inherit from, but its partitions may still be
+       authenticated. The meta header has to be authenticated in that case too, otherwise
+       metaHdrAuthCtx stays null, no partition matches it, and Hash Block 1 is sized for the
+       meta-header entry alone while every partition hash still gets written into it. */
+    ImageHeader* authenticatedImage = nullptr;
+    if (bootloaderImage == nullptr)
+    {
+        for (std::list<ImageHeader*>::iterator image = bi.imageList.begin(); image != bi.imageList.end(); image++)
+        {
+            if (!(*image)->IsBootloader() && (*image)->GetAuthenticationType() != Authentication::None)
+            {
+                authenticatedImage = *image;
+                break;
+            }
+        }
+    }
+
     /* If bootloader is authenticated but metaheader auth is not explicitly set, inherit from bootloader */
-    bool shouldAuthenticateMetaHeader = bi.bifOptions->GetHeaderAC() || bootloaderAuthenticated || 
+    bool shouldAuthenticateMetaHeader = bi.bifOptions->GetHeaderAC() || bootloaderAuthenticated || authenticatedImage != nullptr ||
                                         bi.bifOptions->metaHdrAttributes.authenticate != Authentication::None;
     
     /* Step 1: Configure Meta Header authentication context first (needed for HB1 size calculation) */
@@ -1401,13 +1418,16 @@ void Versal_2vpPartitionHeaderTable::Build(BootImage & bi, Binary & cache)
                  bootloaderAuthenticated, bootloaderHybridAuth);
         
         /* If metaHdrAttributes.authenticate is None but bootloader is authenticated, 
-           inherit the bootloader's authentication type */
+           inherit the bootloader's authentication type. With no bootloader present, take it
+           from the authenticated partition instead. */
+        ImageHeader* authTypeSource = (bootloaderImage != nullptr) ? bootloaderImage : authenticatedImage;
         if (bi.options.bifOptions->metaHdrAttributes.authenticate == Authentication::None && 
-            bootloaderImage != nullptr)
+            authTypeSource != nullptr)
         {
-            bi.options.bifOptions->metaHdrAttributes.authenticate = bootloaderImage->GetAuthenticationType();
-            LOG_INFO("Meta Header: Inherited authentication type from bootloader: %d", 
-                     (int)bootloaderImage->GetAuthenticationType());
+            bi.options.bifOptions->metaHdrAttributes.authenticate = authTypeSource->GetAuthenticationType();
+            LOG_INFO("Meta Header: Inherited authentication type from %s: %d", 
+                     (bootloaderImage != nullptr) ? "bootloader" : "partition",
+                     (int)authTypeSource->GetAuthenticationType());
         }
         
         if (bootloaderHybridAuth)

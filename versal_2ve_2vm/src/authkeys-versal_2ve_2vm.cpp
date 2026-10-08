@@ -294,6 +294,11 @@ uint8_t Versal_2ve_2vmKey::ParseECDSAOpenSSLKey(const std::string& filename)
     if (isSecret)
     {
         eckey = PEM_read_ECPrivateKey(file, NULL, NULL, NULL);
+        if (authType == Authentication::ECDSAP384Padded &&
+            (!eckey || EC_GROUP_get_curve_name(EC_KEY_get0_group(eckey)) != NID_secp384r1))
+        {
+            LOG_ERROR("ecdsa-p384-padded requires an ECDSA P-384 key: %s", filename.c_str());
+        }
         if (!EC_KEY_check_key(eckey))
         {
             LOG_TRACE("Failed to check EC Key\n");
@@ -369,6 +374,11 @@ uint8_t Versal_2ve_2vmKey::ParseECDSAOpenSSLKey(const std::string& filename)
     else
     {
         eckey = PEM_read_EC_PUBKEY(file, NULL, NULL, NULL);
+        if (authType == Authentication::ECDSAP384Padded &&
+            (!eckey || EC_GROUP_get_curve_name(EC_KEY_get0_group(eckey)) != NID_secp384r1))
+        {
+            LOG_ERROR("ecdsa-p384-padded requires an ECDSA P-384 key: %s", filename.c_str());
+        }
         if (!EC_KEY_check_key(eckey))
         {
             LOG_TRACE("Failed to check EC Key\n");
@@ -604,6 +614,8 @@ void Versal_2ve_2vmKey::Parse(const std::string& filename, bool isSecret0)
             }
             else
             {
+                if (authType == Authentication::ECDSAP384Padded)
+                    LOG_ERROR("ecdsa-p384-padded requires an ECDSA P-384 key: %s", filename.c_str());
                 LOG_ERROR("RSA keys are specified for ECDSAp384/ECDSAp521 authentication. Keyname is -%s",filename.c_str());
             }
         }
@@ -727,6 +739,8 @@ void Versal_2ve_2vmKey::Parse(const std::string& filename, bool isSecret0)
             }
             else
             {
+                if (authType == Authentication::ECDSAP384Padded)
+                    LOG_ERROR("ecdsa-p384-padded requires an ECDSA P-384 key: %s", filename.c_str());
                 LOG_ERROR("RSA keys are specified for ECDSAp384/ECDSAp521 authentication. Keyname is -%s",filename.c_str());
             }
         }

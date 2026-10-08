@@ -55,6 +55,15 @@
 #define BBRAM_GRY_KEY                           0x3A5C3C57
 #define BBRAM_BLK_KEY                           0x3A5C3C59
 
+#define BH_USER_KEY0                            0xBD858201
+#define BH_USER_KEY1                            0xBD858202
+#define BH_USER_KEY2                            0xBD858204
+#define BH_USER_KEY3                            0xBD858208
+#define BH_USER_KEY4                            0xBD858210
+#define BH_USER_KEY5                            0xBD858220
+#define BH_USER_KEY6                            0xBD858240
+#define BH_USER_KEY7                            0xBD858280
+
 /* Bit shifts for BH attribute/config parameters */
 #define DPA_CM_BIT_SHIFT                        10
 #define DPA_CM_BIT_MASK                         3

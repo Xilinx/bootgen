@@ -41,6 +41,7 @@
 #include "imageheadertable.h"
 #include "logger.h"
 #include "encryption.h"
+#include "pqc_openssl_req.h"
 
 
 /*
@@ -88,6 +89,15 @@ void Options::ParseArgs(int argc, const char * argv[])
     
     LOG_TRACE("Command: %s", merged.c_str());
     LOG_INFO("Command line parsing completed successfully");
+
+    /* Padded authenticated JTAG is a versal_2ve_2vm image format. Reject it
+       as soon as the whole command line is known, before BIF processing or
+       any output file is created. Option order must not matter. */
+    if (GetSecureDebugAuthType() == Authentication::ECDSAP384Padded &&
+        GetArchType() != Arch::VERSALGEN2)
+    {
+        LOG_ERROR("ecdsa-p384-padded authenticated JTAG is supported only for versal_2ve_2vm");
+    }
 }
 
 /******************************************************************************/
@@ -342,6 +352,14 @@ void Options::SetOutputFillByte(uint8_t byte)
 /******************************************************************************/
 void Options::SetSecureDebugAuthType(Authentication::Type type)
 {
+    if (type == Authentication::MLDSA)
+    {
+        RequirePqcOpenSsl("mldsa");
+    }
+    if (type == Authentication::SLH_SHAKE256)
+    {
+        RequirePqcOpenSsl("slhdsa");
+    }
     secureDebugAuthType = type;
 }
 

@@ -82,6 +82,8 @@ typedef enum
     v2phtPartitionTypeShift = 24,
     v2phtPartitionTypeMask = 0x7,
 
+    v2phtPartitionTypeTl = 6,
+
     v2phtDpaCMShift = 27,
     v2phtDpaCMMask = 0x3,
 

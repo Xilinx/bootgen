@@ -58,116 +58,137 @@ VersalReadImage::~VersalReadImage()
 /**********************************************************************************************/
 void VersalReadImage::DisplayOptionalData()
 {
-    //Return without displaying anything if optional data size in IHT is 0
-    if(iHT->optionalDataSize == 0){
+    if (iHT->optionalDataSize == 0)
+    {
         LOG_INFO("Optional data does not exist");
         return;
     }
- 
-    size_t result;
-    uint32_t read_opData = 0;
-    uint32_t opData_total_length = 0;
-    uint32_t opData_length = 0;
-    uint32_t opData_id = 0;
-    uint32_t opData_hdr_length = sizeof(uint32_t);
-    uint32_t opData_checksum_length = sizeof(uint32_t);
-    uint32_t offset = 0;
-    int cnt_opData = 0;
 
-    //Opening PDI to read optional data
     FILE *binFile = fopen(binFilename.c_str(), "rb");
     if (!binFile)
     {
         LOG_ERROR("Cannot read file %s", binFilename.c_str());
+        return;
     }
 
-    //Creating text file to dump optional data
-    FILE* filePtr;
-    std::string fName = StringUtils::FolderPath(binFilename);
+    std::string outDir = StringUtils::FolderPath(binFilename);
     if (dumpPath != "")
     {
-        fName = dumpPath;
-    }
-    fName = fName + "/" + "optional_data.txt";
-    filePtr = fopen(fName.c_str(), "wb");
-    if (!filePtr)
-    {
-        LOG_ERROR("Cannot create file %s", fName.c_str());
+        outDir = dumpPath;
     }
 
-    if(bH)
+    const std::string txtPath = outDir + "/optional_data.txt";
+    FILE* filePtr = fopen(txtPath.c_str(), "wb");
+    if (!filePtr)
+    {
+        LOG_ERROR("Cannot create file %s", txtPath.c_str());
+        fclose(binFile);
+        return;
+    }
+
+    uint32_t offset = 0;
+    if (bH)
     {
         offset = bH->imageHeaderByteOffset;
     }
-    else
+    else if (smap_header_found)
     {
-        if(smap_header_found)
-            offset += sizeof(VersalSmapWidthTable);
+        offset = sizeof(VersalSmapWidthTable);
     }
-
     offset += sizeof(VersalImageHeaderTableStructure);
 
-    while(!feof(binFile))
+    const uint32_t optionalDataBytes = iHT->optionalDataSize * 4;
+    const uint32_t opDataHdrLength = sizeof(uint32_t);
+    const uint32_t opDataChecksumLength = sizeof(uint32_t);
+    uint32_t read_opData = 0;
+    int cnt_opData = 0;
+
+    while (read_opData < optionalDataBytes)
     {
-        if(read_opData == (iHT->optionalDataSize * 4))
-            break;
-
-        //Extracting optional data header
-        if (!(fseek(binFile, offset, SEEK_SET)))
-        {
-            auto buffer = std::make_unique<uint32_t[]>(opData_hdr_length);
-            size_t result = fread(buffer.get(), 1, opData_hdr_length, binFile);
-            if (result != opData_hdr_length)
-            {
-                LOG_ERROR("Error parsing Optional Data Header from PDI file");
-            }
-
-            opData_total_length = ((buffer[0] & 0xFFFF0000) >> 16) * 4;
-            opData_id = buffer[0] & 0x0000FFFF;
-            opData_length = opData_total_length - opData_hdr_length - opData_checksum_length;
-        }
-        else
+        if (fseek(binFile, offset, SEEK_SET) != 0)
         {
             LOG_ERROR("Error parsing Optional Data Header from PDI file");
+            break;
         }
 
-        if(0x00 <= opData_id && opData_id <= 0x20){
+        uint32_t headerWord = 0;
+        if (fread(&headerWord, sizeof(headerWord), 1, binFile) != 1)
+        {
+            LOG_ERROR("Error parsing Optional Data Header from PDI file");
+            break;
+        }
+
+        const uint32_t opData_total_length = ((headerWord & 0xFFFF0000) >> 16) * 4;
+        const uint32_t opData_id = headerWord & 0x0000FFFF;
+        const uint32_t opData_length = opData_total_length - opDataHdrLength - opDataChecksumLength;
+
+        if (opData_total_length == 0)
+        {
+            LOG_ERROR("Error parsing Optional Data Header from PDI file");
+            break;
+        }
+
+        if (opData_id == 0xFFFF)
+        {
+            break;
+        }
+
+        if (opData_id <= 0x20)
+        {
             read_opData += opData_total_length;
             offset += opData_total_length;
             continue;
         }
 
-        if(opData_id == 0xFFFF){
+        fprintf(filePtr, "Optional Data %d\n", ++cnt_opData);
+        fprintf(filePtr, "Length %u\n", opData_length);
+        fprintf(filePtr, "ID %u\n", opData_id);
+        fprintf(filePtr, "Data\n");
+
+        auto opData_buffer_owner = std::make_unique<uint8_t[]>(opData_length);
+        if (fread(opData_buffer_owner.get(), 1, opData_length, binFile) != opData_length)
+        {
+            LOG_ERROR("Error parsing Optional Data from PDI file");
             break;
         }
 
-        fprintf(filePtr, "Optional Data %d\n", ++cnt_opData);
-        fprintf(filePtr, "Length %d\n", opData_length);
-        fprintf(filePtr, "ID %d\n", opData_id);
-    
-        fprintf(filePtr, "Data\n");
-        auto opData_buffer_owner = std::make_unique<char[]>(opData_length);
-        char* opData_buffer = opData_buffer_owner.get();
-        result = fread(opData_buffer, 1, opData_length, binFile);
-        if (result != opData_length)
+        for (uint32_t i = 0; i < opData_length; i++)
         {
-                LOG_ERROR("Error parsing Optional Data from PDI file");
+            fprintf(filePtr, "%02x", opData_buffer_owner[i]);
         }
-
-        for(uint32_t i=0; i < opData_length; i++)
-        {
-            char c1 = (*opData_buffer);
-            opData_buffer++;
-            fprintf(filePtr, "%x", c1);
-        }
-
-        offset += opData_total_length;
-        read_opData += opData_total_length;
         fprintf(filePtr, "\n\n");
+
+        uint32_t writeLength = opData_length;
+        while (writeLength > 0 && opData_buffer_owner[writeLength - 1] == 0)
+        {
+            writeLength--;
+        }
+
+        char rawFileName[64];
+        snprintf(rawFileName, sizeof(rawFileName), "optional_data_0x%x", opData_id);
+        const std::string rawPath = outDir + "/" + rawFileName;
+        FILE* rawFile = fopen(rawPath.c_str(), "wb");
+        if (!rawFile)
+        {
+            LOG_ERROR("Cannot create file %s", rawPath.c_str());
+        }
+        else
+        {
+            if (writeLength > 0 &&
+                fwrite(opData_buffer_owner.get(), 1, writeLength, rawFile) != writeLength)
+            {
+                LOG_ERROR("Error writing optional data to file %s", rawPath.c_str());
+            }
+            fclose(rawFile);
+            LOG_INFO("%s generated successfully", StringUtils::BaseName(rawPath).c_str());
+        }
+
+        read_opData += opData_total_length;
+        offset += opData_total_length;
     }
 
     fclose(filePtr);
-    LOG_INFO("%s generated successfully", StringUtils::BaseName(fName).c_str());
+    LOG_INFO("%s generated successfully", StringUtils::BaseName(txtPath).c_str());
     fclose(binFile);
 }
 
@@ -701,10 +722,7 @@ void VersalReadImage::DisplayImageHeaders(void)
         DisplayValue("id (0x18) : ", (*iH)->imageId, "unique_id (0x24) : ", (*iH)->uniqueId);
         DisplayValue("parent_unique_id (0x28) : ", (*iH)->parentUniqueId, "function_id (0x2c) : ", (*iH)->functionId);
         DisplayValue("memcpy_address_lo (0x30) : ", (*iH)->memcpyAddressLo, "memcpy_address_hi (0x34) : ", (*iH)->memcpyAddressHi);
-        if (versalNetSeries)
-        {
-            DisplayValue("pcr_value (0x38) : ", (*iH)->pcrNumber, "pcr_mindex (0x3A) : ", (*iH)->pcrMeasurementIndex);
-        }
+        DisplayValue("pcr_value (0x38) : ", (*iH)->pcrNumber, "pcr_mindex (0x3A) : ", (*iH)->pcrMeasurementIndex);
         DisplayValue("checksum (0x3c) : ", (*iH)->ihChecksum);
         std::cout << " attribute list -" << std::endl;
         DisplayIhAttributes((*iH)->imageAttributes);

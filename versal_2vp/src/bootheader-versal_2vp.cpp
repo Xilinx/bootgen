@@ -826,25 +826,33 @@ void Versal_2vpBootHeader::SetPufPDIIdentificationWord()
 void Versal_2vpBootHeader::SetPufData(BootImage &bi)
 {
     SetPufHDLength(0);
-    uint32_t actualPufHDDataLength = bi.bootHeader->GetPufDataLength();
+    uint32_t pufDataLength = bi.bootHeader->GetPufDataLength();
 
-    uint8_t* pufDataTemp = new uint8_t[bi.bootHeader->GetPufDataLength()];
-    memset(pufDataTemp, 0, bi.bootHeader->GetPufDataLength());
+    /* BH PUF slot stays PUF_DATA_LENGTH (1544). A shorter puf_file is zero-padded. */
+    auto pufDataTemp = std::make_unique<uint8_t[]>(pufDataLength);
+    memset(pufDataTemp.get(), 0, pufDataLength);
     if (bi.bifOptions->GetPufHdLoc() == PufHdLoc::PUFinBH || bi.bifOptions->GetPufHdinBHFlag())
     {
         if (bi.bifOptions->GetPufHelperFile() != "")
         {
             FileImport fileReader;
-            if (!fileReader.LoadHexData(bi.bifOptions->GetPufHelperFile(), pufDataTemp, actualPufHDDataLength))
+            int actualBytes = 0;
+            if (!fileReader.LoadHexDataVariable(bi.bifOptions->GetPufHelperFile(),
+                                                pufDataTemp.get(),
+                                                static_cast<int>(pufDataLength),
+                                                actualBytes))
             {
-                LOG_ERROR("Invalid no. of data bytes for PUF Helper Data.\n           Expected length for PUF Helper Data is %d bytes", actualPufHDDataLength);
+                return;
+            }
+            if (static_cast<uint32_t>(actualBytes) < pufDataLength)
+            {
+                LOG_INFO("versal_2vp: PUF Helper Data is %d bytes; zero-padding to %u bytes",
+                         actualBytes, pufDataLength);
             }
         }
     }
-    uint32_t pufLoc = GetBootHeaderSize() - sizeof(uint32_t) - bi.bootHeader->GetPufDataLength();
-    memcpy((uint8_t*)bHTable + pufLoc, pufDataTemp, bi.bootHeader->GetPufDataLength());
-
-    delete[] pufDataTemp;
+    uint32_t pufLoc = GetBootHeaderSize() - sizeof(uint32_t) - pufDataLength;
+    memcpy((uint8_t*)bHTable + pufLoc, pufDataTemp.get(), pufDataLength);
 }
 
 /******************************************************************************/

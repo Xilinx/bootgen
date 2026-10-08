@@ -124,12 +124,12 @@ class Key;
 class ECDSAHBAuthenticationAlgorithm : public AuthenticationAlgorithm
 {
 public:
-    ECDSAHBAuthenticationAlgorithm();
+    ECDSAHBAuthenticationAlgorithm(Authentication::Type type = Authentication::ECDSA);
     ~ECDSAHBAuthenticationAlgorithm();
 
     Authentication::Type Type()
     {
-        return Authentication::ECDSA;
+        return authType;
     }
 
     int KeySize()
@@ -255,8 +255,9 @@ public:
     void GenerateBHHash(BootImage& bi, uint8_t* sha_hash_padded);
     void GenerateSPKHash(uint8_t * sha_hash_padded);
     void GeneratePPKHash(const std::string& filename);
-    void CopyPartitionSignature(BootImage& bi, std::list<Section*> sections, size_t hashBlockLength, uint8_t* signatureBlock, Section* acSection);
-    void CopyPartitionSignature(BootImage& bi, std::list<Section*> sections, uint8_t* signatureBlock, Section* acSection);
+    void GeneratePPKHashWithMetadata(const std::string& filename, const KeyMetadata& metadata, const std::string& keyFile = "");
+    virtual void CopyPartitionSignature(BootImage& bi, std::list<Section*> sections, size_t hashBlockLength, uint8_t* signatureBlock, Section* acSection);
+    virtual void CopyPartitionSignature(BootImage& bi, std::list<Section*> sections, uint8_t* signatureBlock, Section* acSection);
     static void GetPresign(const std::string& presignFilename, uint16_t signatureLength, uint8_t* signature, uint32_t index);
     static void GetPresign(const std::string& presignFilename, uint8_t* signature, uint32_t index);
     void SetSPKSignatureFile(const std::string& filename);
@@ -267,6 +268,7 @@ public:
     void CreateSPKSignature(BootImage& bi);
     void CreateAuthJtagImage(Options& options, uint8_t * buffer, AuthJtagInfo authJtagAttributes);
     uint32_t GetAuthJtagImageSize(void) const;
+    virtual uint32_t GetAuthJtagSpkEnableMask(void) { return 0; }
     void SetKeyLength(Authentication::Type type);
     std::unique_ptr<AuthenticationAlgorithm> GetAuthenticationAlgorithm(Authentication::Type type);
     uint32_t GetCertificateSize();

@@ -26,6 +26,7 @@
 #include <sys/stat.h>
 #include "bifoptions.h"
 #include "authkeys.h"
+#include "pqc_openssl_req.h"
 #include "bifscanner.h"
 #include "encryptutils.h"
 #include "cdo-command.h"
@@ -91,6 +92,17 @@ namespace BifOptionsVersal2VP
 class BootImage;
 static bool delay_load_warning_given;
 static bool delay_handoff_warning_given;
+static bool ecdsa_p384_legacy_warning_given;
+
+void WarnLegacyEcdsaP384Format(Arch::Type arch, Authentication::Type type)
+{
+    if (type == Authentication::ECDSA && arch == Arch::VERSALGEN2 &&
+        !ecdsa_p384_legacy_warning_given)
+    {
+        LOG_WARNING("Legacy ECDSA PPK format selected. Keep this format for devices provisioned with the matching digest; use ecdsa-p384-padded for new provisioning.");
+        ecdsa_p384_legacy_warning_given = true;
+    }
+}
 
 /*
 -------------------------------------------------------------------------------
@@ -197,6 +209,7 @@ PartitionBifOptions::PartitionBifOptions()
     , bootImage(false)
     , pmuFwImage(false)
     , pmcData(false)
+    , pldata(false)
     , presignFile("")
     , acFile("")
     , udfDataFile("")
@@ -269,6 +282,53 @@ void BifOptions::SetHeaderEncryption(bool flag)
 }
 
 /******************************************************************************/
+void BifOptions::AddPmcDataOrPldataPartition(PartitionBifOptions* currentPartitionBifOptions,
+    ImageBifOptions* currentImageBifOptions, bool isPldata)
+{
+    SetPmcdataFile(currentPartitionBifOptions->filename);
+    SetPmcCdoFileList(currentPartitionBifOptions->filename);
+    currentPartitionBifOptions->filename = currentPartitionBifOptions->filelist.at(0);
+    if (currentPartitionBifOptions->load.Value() != 0)
+    {
+        pmcCdoLoadAddress = currentPartitionBifOptions->load.Value();
+    }
+    if (currentPartitionBifOptions->aesKeyFile != "")
+    {
+        SetPmcDataAesFile(currentPartitionBifOptions->aesKeyFile);
+    }
+    else
+    {
+        SetPmcDataAesFile(StringUtils::RemoveExtension(StringUtils::BaseName(currentPartitionBifOptions->filename)) + ".nky");
+    }
+
+    if ((currentImageBifOptions != NULL) && (parentId != 0))
+    {
+        currentPartitionBifOptions->partitionType = PartitionType::CONFIG_DATA_OBJ;
+        currentImageBifOptions->partitionBifOptionsList.push_back(currentPartitionBifOptions);
+    }
+    else if ((currentImageBifOptions != NULL) && (currentPartitionBifOptions->arch == Arch::SPARTANUP) &&
+             (currentImageBifOptions->partitionBifOptionsList.size() == 0))
+    {
+        currentPartitionBifOptions->partitionType = PartitionType::CONFIG_DATA_OBJ;
+        currentPartitionBifOptions->bootloader = true;
+        if (isPldata)
+            currentPartitionBifOptions->pldata = true;
+        else
+            currentPartitionBifOptions->pmcData = true;
+        currentImageBifOptions->partitionBifOptionsList.push_back(currentPartitionBifOptions);
+    }
+    else
+    {
+        if (!currentPartitionBifOptions->pmcData && !currentPartitionBifOptions->pldata)
+            partitionBifOptionList.push_back(currentPartitionBifOptions);
+        if (isPldata)
+            currentPartitionBifOptions->pldata = true;
+        else
+            currentPartitionBifOptions->pmcData = true;
+    }
+}
+
+/******************************************************************************/
 void BifOptions::Add(PartitionBifOptions* currentPartitionBifOptions, ImageBifOptions* currentImageBifOptions)
 {
     //filespec->Dump();
@@ -335,42 +395,11 @@ void BifOptions::Add(PartitionBifOptions* currentPartitionBifOptions, ImageBifOp
         break;
 
     case BIF::BisonParser::token::PMCDATA:
-        SetPmcdataFile(currentPartitionBifOptions->filename);
-        SetPmcCdoFileList(currentPartitionBifOptions->filename);
-        currentPartitionBifOptions->filename = currentPartitionBifOptions->filelist.at(0);
-        if ((currentPartitionBifOptions)->load.Value() != 0)
-        {
-            pmcCdoLoadAddress = (currentPartitionBifOptions)->load.Value();
-        }
-        if ((currentPartitionBifOptions)->aesKeyFile != "")
-        {
-            SetPmcDataAesFile((currentPartitionBifOptions)->aesKeyFile);
-        }
-        //If no key file found in partition specific attributes - Generate aeskeyfile with partition_name.nky
-        else
-        {
-            SetPmcDataAesFile(StringUtils::RemoveExtension(StringUtils::BaseName((currentPartitionBifOptions)->filename)) + ".nky");
-        }
+        AddPmcDataOrPldataPartition(currentPartitionBifOptions, currentImageBifOptions, false);
+        break;
 
-        if ((currentImageBifOptions != NULL) && (parentId != 0))
-        {
-            currentPartitionBifOptions->partitionType = PartitionType::CONFIG_DATA_OBJ;
-            currentImageBifOptions->partitionBifOptionsList.push_back(currentPartitionBifOptions);
-        }
-        else if ((currentImageBifOptions != NULL) && (currentPartitionBifOptions->arch == Arch::SPARTANUP) && 
-                 (currentImageBifOptions->partitionBifOptionsList.size() == 0))
-        {
-            currentPartitionBifOptions->partitionType = PartitionType::CONFIG_DATA_OBJ;
-            currentPartitionBifOptions->bootloader = true;
-            currentPartitionBifOptions->pmcData = true;
-            currentImageBifOptions->partitionBifOptionsList.push_back(currentPartitionBifOptions);
-        }
-        else
-        {
-            if(!(currentPartitionBifOptions->pmcData))
-                partitionBifOptionList.push_back(currentPartitionBifOptions);
-            currentPartitionBifOptions->pmcData = true;
-        }
+    case BIF::BisonParser::token::PLDATA:
+        AddPmcDataOrPldataPartition(currentPartitionBifOptions, currentImageBifOptions, true);
         break;
 
     case 0:
@@ -1288,6 +1317,12 @@ void BifOptions::SetMetaHeaderEncryptionKeyFile(std::string file)
 /******************************************************************************/
 void BifOptions::SetMetaHeaderAuthType(Authentication::Type type)
 {
+    if (type == Authentication::ECDSAP384Padded && arch != Arch::VERSALGEN2)
+    {
+        LOG_ERROR("BIF attribute error !!!\n\t\t'authentication=ecdsa-p384-padded' is supported only with '-arch versal_2ve_2vm'.");
+    }
+    WarnLegacyEcdsaP384Format(arch, type);
+
     if (type == Authentication::LMS_SHA2_256 || type == Authentication::LMS_SHAKE256)
     {
         metaHdrAttributes.lmsOnly = true;
@@ -1319,16 +1354,32 @@ void BifOptions::SetPufHdinBHFlag()
 }
 
 /******************************************************************************/
+/* The number of revocation IDs available in eFUSEs is device dependent. */
+static uint32_t GetMaxRevokeId(Arch::Type arch)
+{
+    switch (arch)
+    {
+    case Arch::SPARTANUP:
+        return 0x5F;
+    default:
+        return 0xFF;
+    }
+}
+
+/******************************************************************************/
+static void ValidateRevokeId(Arch::Type arch, const char* attribute, uint32_t id)
+{
+    uint32_t maxRevokeId = GetMaxRevokeId(arch);
+    if (id > maxRevokeId)
+    {
+        LOG_ERROR("%s can only take values from 0x0 to 0x%X for '-arch %s'.", attribute, maxRevokeId, Arch::ToString(arch));
+    }
+}
+
+/******************************************************************************/
 void BifOptions::SetAuthJtagRevokeID(uint32_t value)
 {
-    if (arch == Arch::SPARTANUP && value > 95)
-    {
-        LOG_ERROR("revoke_id can only take values from 0x0 to 0x5F for spartanup.");
-    }
-    else if (value > 0xFF)
-    {
-        LOG_ERROR("revoke_id can only take values from 0x0 to 0xFF.");
-    }
+    ValidateRevokeId(arch, "revoke_id", value);
     authJtagInfo.partitionRevokeId = value;
     authJtagInfo.userRevokeId = true;
 }
@@ -1336,14 +1387,7 @@ void BifOptions::SetAuthJtagRevokeID(uint32_t value)
 /******************************************************************************/
 void BifOptions::SetAuthJtagSPKRevokeID(uint32_t value)
 {
-    if (arch == Arch::SPARTANUP && value > 95)
-    {
-        LOG_ERROR("spk_revoke_id can only take values from 0x0 to 0x5F for spartanup.");
-    }
-    else if (value > 0xFF)
-    {
-        LOG_ERROR("revoke_id can only take values from 0x0 to 0xFF.");
-    }
+    ValidateRevokeId(arch, "spk_revoke_id", value);
     authJtagInfo.spkRevokeId = value;
     authJtagInfo.userRevokeId = true;
 }
@@ -1503,6 +1547,12 @@ void PartitionBifOptions::SetDestDevice(DestinationDevice::Type type)
 /******************************************************************************/
 void PartitionBifOptions::SetAuthType(Authentication::Type type)
 {
+    if (type == Authentication::ECDSAP384Padded && arch != Arch::VERSALGEN2)
+    {
+        LOG_ERROR("BIF attribute error !!!\n\t\t'authentication=ecdsa-p384-padded' is supported only with '-arch versal_2ve_2vm'.");
+    }
+    WarnLegacyEcdsaP384Format(arch, type);
+
     if (((arch == Arch::SPARTANUP) && IsDl9Series()) && (type != Authentication::LMS_SHAKE256 && type != Authentication::HSS_SHAKE256 && type != Authentication::ECDSA))
     {
         LOG_ERROR("BIF attribute error !!!\n           'authentication= lms-shake256/hss-shake256/ecdsa-p384' is not supported with the mentioned -arch.");
@@ -1511,6 +1561,15 @@ void PartitionBifOptions::SetAuthType(Authentication::Type type)
     if ((arch == Arch::SPARTANUP) && !IsDl9Series() && type != Authentication::HSS_SHAKE256)
     {
         LOG_ERROR("BIF attribute error !!!\n           'authentication=hss-shake256' only is supported with the mentioned -arch..");
+    }
+
+    if (type == Authentication::MLDSA)
+    {
+        RequirePqcOpenSsl("mldsa");
+    }
+    if (type == Authentication::SLH_SHAKE256)
+    {
+        RequirePqcOpenSsl("slhdsa");
     }
 
     if (type == Authentication::HSS_SHA2_256 || type == Authentication::HSS_SHAKE256)
@@ -1640,6 +1699,18 @@ void PartitionBifOptions::SetHybridAuthType(std::string hybridSpec)
         lmsOnly = true;
     }
     
+    for (size_t i = 0; i < hybridAlgorithms.size(); i++)
+    {
+        if (hybridAlgorithms[i] == Authentication::MLDSA)
+        {
+            RequirePqcOpenSsl("mldsa");
+        }
+        if (hybridAlgorithms[i] == Authentication::SLH_SHAKE256)
+        {
+            RequirePqcOpenSsl("slhdsa");
+        }
+    }
+
     // Validate hybrid combination
     if (hybridAlgorithms.size() != 2) 
     {
@@ -1839,28 +1910,14 @@ void PartitionBifOptions::SetHivec(bool flag)
 /******************************************************************************/
 void PartitionBifOptions::SetSPKRevokeId(uint32_t id)
 {
-    if (arch == Arch::SPARTANUP && id > 95)
-    {
-        LOG_ERROR("spk_revoke_id can only take values from 0x0 to 0x5F for spartanup.");
-    }
-    else if (id > 0xFF)
-    {
-        LOG_ERROR("revoke_id can only take values from 0x0 to 0xFF.");
-    }
+    ValidateRevokeId(arch, "spk_revoke_id", id);
     spkRevokeId = id;
 }
 
 /******************************************************************************/
 void PartitionBifOptions::SetPartitionRevokeId(uint32_t id)
 {
-    if (arch == Arch::SPARTANUP && id > 95)
-    {
-        LOG_ERROR("partition_revoke_id can only take values from 0x0 to 0x5F for spartanup.");
-    }
-    else if (id > 0xFF)
-    {
-        LOG_ERROR("partition_revoke_id can only take values from 0x0 to 0xFF.");
-    }
+    ValidateRevokeId(arch, "partition_revoke_id", id);
     partitionRevokeId = id;
 }
 
@@ -1898,14 +1955,7 @@ void PartitionBifOptions::SetClusterNum(uint8_t id)
 /******************************************************************************/
 void BifOptions::SetRevokeId(uint32_t id)
 {
-    if (arch == Arch::SPARTANUP && id > 95)
-    {
-        LOG_ERROR("revoke_id can only take values from 0x0 to 0x5F for spartanup.");
-    }
-    else if (id > 0xFF)
-    {
-        LOG_ERROR("revoke_id can only take values from 0x0 to 0xFF.");
-    }
+    ValidateRevokeId(arch, "revoke_id", id);
     spkRevokeId = id;
 }
 
@@ -1929,7 +1979,7 @@ void BifOptions::SetLmsParameters(LmsKeyTypeParam param)
     std::string item;
     
     int i = 0;
-    LmsKeyParam temp;
+    LmsKeyParam temp = {HashFunction::SHA2_256, 0, 0};
     while (std::getline(ss, item, '_'))
     {
         switch (i++)
@@ -2591,9 +2641,14 @@ void BifOptions::SetAuthOnly(AuthOnly::Type type)
 }
 
 /******************************************************************************/
-void BifOptions::SetPdiId(uint32_t id)
+void BifOptions::SetPdiId(uint64_t id)
 {
-    pdiId = id;
+    if (id > 0xFFFFFFFFULL)
+    {
+        LOG_ERROR("PDI id 0x%llX exceeds the 32-bit maximum value 0xFFFFFFFF",
+                  static_cast<unsigned long long>(id));
+    }
+    pdiId = static_cast<uint32_t>(id);
 }
 
 /******************************************************************************/
@@ -2872,7 +2927,8 @@ const KeyMetadata& BifOptions::GetSecondaryMetadata1(void) const
 static bool IsClassicalAlgorithm(Authentication::Type alg)
 {
     return (alg == Authentication::RSA || 
-            alg == Authentication::ECDSA || 
+            alg == Authentication::ECDSA ||
+            alg == Authentication::ECDSAP384Padded ||
             alg == Authentication::ECDSAp521);
 }
 

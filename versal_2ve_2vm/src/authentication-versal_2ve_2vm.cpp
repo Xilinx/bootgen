@@ -36,6 +36,7 @@
 #include "Keccak-compact-versal_2ve_2vm.h"
 #include "encryptutils.h"
 #include <openssl/rand.h>
+#include <cstddef>
 
 #include "bootheader-versal_2ve_2vm.h"
 
@@ -43,6 +44,11 @@ extern "C" {
 #include "lms-utils.h"
 #include "hss_verify.h"
 };
+
+static bool IsEcdsaP384(Authentication::Type type)
+{
+    return type == Authentication::ECDSA || type == Authentication::ECDSAP384Padded;
+}
 /*
 -------------------------------------------------------------------------------
 *****************************************************   F U N C T I O N S   ***
@@ -69,14 +75,16 @@ Versal_2ve_2vmAuthenticationContext::Versal_2ve_2vmAuthenticationContext(Authent
         certSize = sizeof(AuthCertificate4096Sha3PaddingHBStructure);
         signatureLength = SIGN_LENGTH_VERSAL;
     }
-    else if (type == Authentication::ECDSA)
+    else if (IsEcdsaP384(type))
     {
         primaryKey = std::make_unique<KeyECDSA_versal_2ve_2vm>("Primary Key");
         secondaryKey = std::make_unique<KeyECDSA_versal_2ve_2vm>("Secondary Key");
-        primaryKey->authType = Authentication::ECDSA;
-        secondaryKey->authType = Authentication::ECDSA;
+        primaryKey->authType = type;
+        secondaryKey->authType = type;
 
-        certSize = sizeof(AuthCertificateECDSAHBStructure);
+        certSize = (type == Authentication::ECDSAP384Padded)
+            ? sizeof(AuthCertificateECDSAP384PaddedHBStructure)
+            : sizeof(AuthCertificateECDSAHBStructure);
         signatureLength = EC_P384_KEY_LENGTH * 2;
     }
     else if (type == Authentication::ECDSAp521)
@@ -119,6 +127,7 @@ Versal_2ve_2vmAuthenticationContext::Versal_2ve_2vmAuthenticationContext(Authent
 
 /******************************************************************************/
 Versal_2ve_2vmAuthenticationContext::Versal_2ve_2vmAuthenticationContext(const AuthenticationContext* refAuthContext, Authentication::Type authtype)
+    : certSize(0)
 {
     // Don't allocate bHsignature here - will be allocated with correct size below
     // after signatureLength is determined for the specific authentication type
@@ -153,19 +162,21 @@ Versal_2ve_2vmAuthenticationContext::Versal_2ve_2vmAuthenticationContext(const A
         certSize = sizeof(AuthCertificate4096Sha3PaddingHBStructure);
         signatureLength = SIGN_LENGTH_VERSAL;
     }
-    else if(authtype == Authentication::ECDSA)
+    else if(IsEcdsaP384(authtype))
     {
         primaryKey = std::make_unique<KeyECDSA_versal_2ve_2vm>("Primary Key");
         secondaryKey = std::make_unique<KeyECDSA_versal_2ve_2vm>("Secondary Key");
-        primaryKey->authType = Authentication :: ECDSA;
-        secondaryKey->authType = Authentication :: ECDSA;
+        primaryKey->authType = authtype;
+        secondaryKey->authType = authtype;
         
         // ECDSA doesn't create its own hash - will use bi.hash
         hash = nullptr;
         ownsHash = false;
         hashLength = 48;  // SHA3-384
 
-        certSize = sizeof(AuthCertificateECDSAHBStructure);
+        certSize = (authtype == Authentication::ECDSAP384Padded)
+            ? sizeof(AuthCertificateECDSAP384PaddedHBStructure)
+            : sizeof(AuthCertificateECDSAHBStructure);
         signatureLength = EC_P384_KEY_LENGTH * 2;
     }
     else if (authtype == Authentication::ECDSAp521)
@@ -306,6 +317,7 @@ Versal_2ve_2vmAuthenticationContext::Versal_2ve_2vmAuthenticationContext(const A
 
 /******************************************************************************/
 Versal_2ve_2vmAuthenticationContext::Versal_2ve_2vmAuthenticationContext(const AuthCertificate4096Sha3PaddingHBStructure* existingCert, Authentication::Type authtype)
+    : certSize(0)
 {
     signatureLength = SIGN_LENGTH_VERSAL;
     spkSignLoaded = true;
@@ -323,14 +335,16 @@ Versal_2ve_2vmAuthenticationContext::Versal_2ve_2vmAuthenticationContext(const A
         certSize = sizeof(AuthCertificate4096Sha3PaddingHBStructure);
         signatureLength = SIGN_LENGTH_VERSAL;
     }
-    else if (authtype == Authentication::ECDSA)
+    else if (IsEcdsaP384(authtype))
     {
         primaryKey = std::make_unique<KeyECDSA_versal_2ve_2vm>("Primary Key");
         secondaryKey = std::make_unique<KeyECDSA_versal_2ve_2vm>("Secondary Key");
-        primaryKey->authType = Authentication::ECDSA;
-        secondaryKey->authType = Authentication::ECDSA;
+        primaryKey->authType = authtype;
+        secondaryKey->authType = authtype;
 
-        certSize = sizeof(AuthCertificateECDSAHBStructure);
+        certSize = (authtype == Authentication::ECDSAP384Padded)
+            ? sizeof(AuthCertificateECDSAP384PaddedHBStructure)
+            : sizeof(AuthCertificateECDSAHBStructure);
         signatureLength = EC_P384_KEY_LENGTH * 2;
     }
     else if (authtype == Authentication::ECDSAp521)
@@ -394,10 +408,10 @@ Versal_2ve_2vmAuthenticationContext::Versal_2ve_2vmAuthenticationContext(const A
 /******************************************************************************/
 std::unique_ptr<AuthenticationAlgorithm> Versal_2ve_2vmAuthenticationContext::GetAuthenticationAlgorithm(Authentication::Type type)
 {
-    if (type == Authentication::ECDSA)
+    if (IsEcdsaP384(type))
     {
         SetAuthenticationKeyLength(EC_P384_KEY_LENGTH);
-        return std::make_unique<ECDSAHBAuthenticationAlgorithm>();
+        return std::make_unique<ECDSAHBAuthenticationAlgorithm>(type);
     }
     else if (type == Authentication::ECDSAp521)
     {
@@ -474,6 +488,15 @@ uint32_t Versal_2ve_2vmAuthenticationContext::GetCertificateSize(void)
     }
 }
 
+static_assert(sizeof(AuthenticatedJtagECP384PaddedImageStructure) == 0x590,
+    "padded authenticated JTAG image size");
+static_assert(offsetof(AuthenticatedJtagECP384PaddedImageStructure, acPpk) == 0x40,
+    "padded authenticated JTAG PPK offset");
+static_assert(sizeof(AuthenticatedJtagECP384PaddedImageStructure::acPpk) == TELLURIDE_EC_P384_PADDED_PPK_SIZE,
+    "padded authenticated JTAG PPK slot");
+static_assert(offsetof(AuthenticatedJtagECP384PaddedImageStructure, totalspkSize) == 0x450,
+    "padded authenticated JTAG SPK header offset");
+
 /******************************************************************************/
 uint32_t Versal_2ve_2vmAuthenticationContext::GetAuthJtagImageSize(void) const
 {
@@ -481,7 +504,11 @@ uint32_t Versal_2ve_2vmAuthenticationContext::GetAuthJtagImageSize(void) const
     {
         return sizeof(AuthenticatedJtagRSAImageStructure);
     }
-    else if (authAlgorithm->Type() == Authentication::ECDSA)
+    else if (authAlgorithm->Type() == Authentication::ECDSAP384Padded)
+    {
+        return sizeof(AuthenticatedJtagECP384PaddedImageStructure);
+    }
+    else if (IsEcdsaP384(authAlgorithm->Type()))
     {
         return sizeof(AuthenticatedJtagECP384ImageStructure);
     }
@@ -527,10 +554,12 @@ Versal_2ve_2vmAuthenticationContext::~Versal_2ve_2vmAuthenticationContext()
 }
 
 /******************************************************************************/
-ECDSAHBAuthenticationAlgorithm::ECDSAHBAuthenticationAlgorithm()
+ECDSAHBAuthenticationAlgorithm::ECDSAHBAuthenticationAlgorithm(Authentication::Type type)
 {
-    certSize = sizeof(AuthCertificateECDSAHBStructure);
-    authType = Authentication::ECDSA;
+    certSize = (type == Authentication::ECDSAP384Padded)
+        ? sizeof(AuthCertificateECDSAP384PaddedHBStructure)
+        : sizeof(AuthCertificateECDSAHBStructure);
+    authType = type;
 }
 
 /******************************************************************************/
@@ -708,7 +737,11 @@ Section* Versal_2ve_2vmAuthenticationContext::CreateCertificate(BootImage& bi, B
     }
     // Calculate final certSize BEFORE creating Section
     uint32_t x = sizeof(AuthCertificate4096Sha3PaddingHBStructure);
-    if (authAlgorithm->Type() == Authentication::ECDSA)
+    if (authAlgorithm->Type() == Authentication::ECDSAP384Padded)
+    {
+        x = certSize = sizeof(AuthCertificateECDSAP384PaddedHBStructure);
+    }
+    else if (authAlgorithm->Type() == Authentication::ECDSA)
     {
         x = certSize = sizeof(AuthCertificateECDSAHBStructure);
     }
@@ -760,7 +793,7 @@ Section* Versal_2ve_2vmAuthenticationContext::CreateCertificate(BootImage& bi, B
     {
         LoadUdfData(udfFile, udf_data);
         authAlgorithm->RearrangeEndianess(udf_data, sizeof(udf_data));
-        memcpy(headerData + BH_UDF_OFFSET_TELLURIDE, udf_data, UDF_BH_TELLURIDE);
+        memcpy(headerData + BH_UDF_OFFSET_TELLURIDE, udf_data, sizeof(udf_data));
     }
 
     if(isBootloader || name == "MetaHeader")
@@ -796,6 +829,27 @@ Section* Versal_2ve_2vmAuthenticationContext::CreateCertificate(BootImage& bi, B
         authAlgorithm->RearrangeEndianess(authCert + TELLURIDE_RSA_AC_SPK_OFFSET + RSA_4096_E, RSA_4096_E_SIZE);
 
         CopySPKSignature(bi, authCert + TELLURIDE_RSA_AC_SPK_SIGN_OFFSET);
+    }
+    else if (authAlgorithm->Type() == Authentication::ECDSAP384Padded)
+    {
+        if(isBootloader || name == "MetaHeader")
+        {
+            WriteLittleEndian32(headerData + totalppkkSize1Offset, TELLURIDE_EC_P384_PADDED_TOTAL_PPK_SIZE);
+            WriteLittleEndian32(headerData + actualppkSize1Offset, TELLURIDE_EC_P384_PADDED_PPK_SIZE);
+            WriteLittleEndian32(headerData + totalHashBlockSignatureSize1Offset, EC_P384_KEY_LENGTH * 2);
+            WriteLittleEndian32(headerData + actualSignatureSize1Offset, EC_P384_KEY_LENGTH * 2);
+        }
+
+        primaryKey->Export(authCert + TELLURIDE_EC_P384_PADDED_AC_PPK_OFFSET);
+
+        WriteLittleEndian32(authCert + TELLURIDE_EC_P384_PADDED_AC_TOTAL_SPK_SIZE_OFFSET, EC_P384_KEY_LENGTH * 2);
+        WriteLittleEndian32(authCert + TELLURIDE_EC_P384_PADDED_AC_ACTUAL_SPK_SIZE_OFFSET, EC_P384_KEY_LENGTH * 2);
+        WriteLittleEndian32(authCert + TELLURIDE_EC_P384_PADDED_AC_TOTAL_SPK_SIGN_SIZE_OFFSET, EC_P384_KEY_LENGTH * 2);
+        WriteLittleEndian32(authCert + TELLURIDE_EC_P384_PADDED_AC_ACTUAL_SPK_SIGN_SIZE_OFFSET, EC_P384_KEY_LENGTH * 2);
+        WriteLittleEndian32(authCert + TELLURIDE_EC_P384_PADDED_AC_SPK_ID_OFFSET, spkIdentification);
+
+        secondaryKey->Export(authCert + TELLURIDE_EC_P384_PADDED_AC_SPK_OFFSET);
+        CopySPKSignature(bi, authCert + TELLURIDE_EC_P384_PADDED_AC_SPK_SIGN_OFFSET);
     }
     else if (authAlgorithm->Type() == Authentication::ECDSA)
     {
@@ -1106,12 +1160,12 @@ void Versal_2ve_2vmAuthenticationContext::CopyIHTSignature(BootImage & bi, uint8
         }
         else
         {
-            if (authAlgorithm->Type() != Authentication::ECDSA)
+            if (!IsEcdsaP384(authAlgorithm->Type()))
             {
                 authAlgorithm->RearrangeEndianess(sha_hash_padded.get(), signatureLength);
             }
             authAlgorithm->CreateSignature(sha_hash_padded.get(), (uint8_t*)secondaryKey.get(), signaturetmp.get());
-            if (authAlgorithm->Type() != Authentication::ECDSA)
+            if (!IsEcdsaP384(authAlgorithm->Type()))
             {
                 authAlgorithm->RearrangeEndianess(signaturetmp.get(), signatureLength);
             }
@@ -1313,7 +1367,7 @@ void Versal_2ve_2vmAuthenticationContext::GenerateSPKHash(uint8_t* sha_hash_padd
         totalKeySize = VERSAL_ACKEY_STRUCT_SIZE + TELLURIDE_RSA_AC_PPK_SPK_ALIGNMENT;
         actualKeySize = VERSAL_ACKEY_STRUCT_SIZE;
     }
-    else if (authAlgorithm->Type() == Authentication::ECDSA)
+    else if (IsEcdsaP384(authAlgorithm->Type()))
     {
         totalKeySize = actualKeySize = 2 * EC_P384_KEY_LENGTH;
     }
@@ -1447,7 +1501,7 @@ void Versal_2ve_2vmAuthenticationContext::CopySPKSignature(BootImage& bi, uint8_
                  auto& cached = bi.spkFileAndSpkSignature.find(std::make_tuple(spkFile, ppkFile, spkIdentification))->second;
                  memcpy(spksignature.get(), cached.data(), signatureLength);
         }
-        else if ((authAlgorithm->Type() == Authentication::RSA || authAlgorithm->Type() == Authentication::ECDSA)
+        else if ((authAlgorithm->Type() == Authentication::RSA || IsEcdsaP384(authAlgorithm->Type()))
             && bi.spkFileAndSpkSignature.find(std::make_tuple(sskFile, pskFile, spkIdentification)) != bi.spkFileAndSpkSignature.end())
         {
             auto& cached = bi.spkFileAndSpkSignature.find(std::make_tuple(sskFile, pskFile, spkIdentification))->second;
@@ -1483,6 +1537,8 @@ void Versal_2ve_2vmAuthenticationContext::GeneratePPKHash(const std::string& fil
 
 	if (authAlgorithm->Type() == Authentication::ECDSA)
         ppkSize = 2 * EC_P384_KEY_LENGTH;
+    if (authAlgorithm->Type() == Authentication::ECDSAP384Padded)
+        ppkSize = TELLURIDE_EC_P384_PADDED_PPK_SIZE;
     if (authAlgorithm->Type() == Authentication::ECDSAp521)
         ppkSize = 2 * EC_P521_KEY_LENGTH2;
     if ((authAlgorithm->Type() == Authentication::LMS_SHA2_256) || (authAlgorithm->Type() == Authentication::LMS_SHAKE256))
@@ -1525,6 +1581,23 @@ void Versal_2ve_2vmAuthenticationContext::GeneratePPKHash(const std::string& fil
     LOG_INFO("Efuse PPK bits written to file %s successfully", filename.c_str());
 
     
+}
+
+/******************************************************************************/
+void Versal_2ve_2vmAuthenticationContext::GeneratePPKHashWithMetadata(
+    const std::string& filename, const KeyMetadata& metadata, const std::string& keyFile)
+{
+    if (authAlgorithm->Type() == Authentication::ECDSAP384Padded &&
+        metadata.Algorithm != AUTH_HDR_TELLURIDE_ECDSA_P384)
+    {
+        LOG_ERROR("Key metadata algorithm 0x%x is not ECDSA-P384 for ecdsa-p384-padded", metadata.Algorithm);
+    }
+
+    if (!keyFile.empty())
+    {
+        ppkFile = keyFile;
+    }
+    GeneratePPKHash(filename);
 }
 
 /******************************************************************************/
@@ -2409,7 +2482,7 @@ void Versal_2ve_2vmAuthenticationContext::CreateSPKSignature(BootImage& bi)
 
         if(bi.options.DoGenerateHashes())
         {
-            std::string hashfilename = bi.bifOptions->GetSPKFileName() + hash->GetHashFileExtension();
+            std::string hashfilename = (!spkFile.empty() ? spkFile : bi.bifOptions->GetSPKFileName()) + hash->GetHashFileExtension();
             WritePaddedSHAFile(tempBuffer.get(), actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH, hashfilename);
         }
         else
@@ -2446,7 +2519,7 @@ void Versal_2ve_2vmAuthenticationContext::CreateSPKSignature(BootImage& bi)
 
         if(bi.options.DoGenerateHashes())
         {
-            std::string hashfilename = bi.bifOptions->GetSPKFileName() + hash->GetHashFileExtension();
+            std::string hashfilename = (!spkFile.empty() ? spkFile : bi.bifOptions->GetSPKFileName()) + hash->GetHashFileExtension();
             WritePaddedSHAFile(shaHashPadded.get(), hashfilename);
         }
         else
@@ -2635,6 +2708,113 @@ void Versal_2ve_2vmAuthenticationContext::CreateAuthJtagImage(Options& options, 
         else
         {
             LOG_ERROR("Authentication Error !!!\n          PSK must be specified to generate Authenticated Jtag Image");
+        }
+    }
+    else if (authAlgorithm->Type() == Authentication::ECDSAP384Padded)
+    {
+        AuthenticatedJtagECP384PaddedImageStructure* authJtagImage = (AuthenticatedJtagECP384PaddedImageStructure*)buffer;
+        if (primaryKey->Loaded)
+        {
+            authJtagImage->idWord = AUTH_JTAG_IMAGE_IDENTIFICATION_WORD;
+            WriteLittleEndian32(&authJtagImage->authJtagImageLength, sizeof(AuthenticatedJtagECP384PaddedImageStructure));
+
+            hashLength = hash->GetHashLength();
+            auto shaHash = std::make_unique<uint8_t[]>(hashLength);
+            auto shaHashPadded = std::make_unique<uint8_t[]>(signatureLength);
+            memset(shaHash.get(), 0, hashLength);
+            memset(shaHashPadded.get(), 0, signatureLength);
+
+            uint32_t acHdr = authAlgorithm->GetAuthHeader();
+            acHdr |= GetAuthJtagSpkEnableMask();
+
+            WriteLittleEndian32(&authJtagImage->acHeader, acHdr);
+            WriteLittleEndian32(&authJtagImage->totalppkSize, TELLURIDE_EC_P384_PADDED_TOTAL_PPK_SIZE);
+            WriteLittleEndian32(&authJtagImage->actualppkSize, TELLURIDE_EC_P384_PADDED_PPK_SIZE);
+
+            WriteLittleEndian32(&authJtagImage->totalAuthJtagSignSize, signatureLength);
+            WriteLittleEndian32(&authJtagImage->actualAuthJtagSignSize, signatureLength);
+
+            if (!authJtagAttributes.userRevokeId)
+            {
+                LOG_WARNING("revoke_id is not specified in BIF, default revoke id is assigned as '0'.");
+            }
+            WriteLittleEndian32(&authJtagImage->authJtagMsgrevokeId, authJtagAttributes.partitionRevokeId);
+
+            if (authJtagAttributes.userDeviceDNA)
+            {
+                WriteLittleEndian32(&authJtagImage->attributes, authJtagMessagenMask << authJtagMessageShift);
+            }
+            SetDeviceDNA(authJtagAttributes.deviceDNA, (uint32_t*)authJtagImage->deviceDNA);
+            WriteLittleEndian32(&authJtagImage->jtagTimeOut, authJtagAttributes.jtagTimeout);
+
+            primaryKey->Export(authJtagImage->acPpk);
+            authAlgorithm->RearrangeEndianess(authJtagImage->acPpk + RSA_4096_N, RSA_4096_N_SIZE);
+            authAlgorithm->RearrangeEndianess(authJtagImage->acPpk + RSA_4096_N_EXT, RSA_4096_N_EXT_SIZE);
+            authAlgorithm->RearrangeEndianess(authJtagImage->acPpk + RSA_4096_E, RSA_4096_E_SIZE);
+
+            WriteLittleEndian32(&authJtagImage->totalspkSize, 2 * EC_P384_KEY_LENGTH);
+            WriteLittleEndian32(&authJtagImage->actualspkSize, 2 * EC_P384_KEY_LENGTH);
+
+            WriteLittleEndian32(&authJtagImage->totalspkSignSize, signatureLength);
+            WriteLittleEndian32(&authJtagImage->actualspkSignSize, signatureLength);
+            WriteLittleEndian32(&authJtagImage->spkRevokeId, authJtagAttributes.spkRevokeId);
+
+            secondaryKey->Export(authJtagImage->acSpk);
+            authAlgorithm->RearrangeEndianess(authJtagImage->acSpk + RSA_4096_N, RSA_4096_N_SIZE);
+            authAlgorithm->RearrangeEndianess(authJtagImage->acSpk + RSA_4096_N_EXT, RSA_4096_N_EXT_SIZE);
+            authAlgorithm->RearrangeEndianess(authJtagImage->acSpk + RSA_4096_E, RSA_4096_E_SIZE);
+
+            hash->CalculateHash(true, (uint8_t*)authJtagImage + offsetof(AuthenticatedJtagECP384PaddedImageStructure, totalspkSize), 0x20 + 2 * EC_P384_KEY_LENGTH, shaHash.get());
+            authAlgorithm->CreatePadding(shaHashPadded.get(), shaHash.get(), hashLength);
+
+            if (primaryKey->isSecret)
+            {
+                authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
+                authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)primaryKey.get(), authJtagImage->spkSignature);
+                authAlgorithm->RearrangeEndianess(authJtagImage->spkSignature, signatureLength);
+            }
+            else
+            {
+                if (spkSignLoaded)
+                {
+                    uint32_t index = 0;
+                    GetPresign(spkSignFile, signatureLength, authJtagImage->spkSignature, index);
+                }
+                else
+                {
+                    if(options.DoGenerateHashes())
+                    {
+                        std::string hashfilename = "spk" + hash->GetHashFileExtension();
+                        WritePaddedSHAFile(shaHashPadded.get(), hashfilename);
+                    }
+                }
+            }
+
+            hash->CalculateHash(true, (uint8_t*)authJtagImage, sizeof(AuthenticatedJtagECP384PaddedImageStructure) - signatureLength, shaHash.get());
+            authAlgorithm->CreatePadding(shaHashPadded.get(), shaHash.get(), hashLength);
+
+            if (secondaryKey->isSecret)
+            {
+                authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
+                authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)secondaryKey.get(), authJtagImage->authJtagSignature);
+                authAlgorithm->RearrangeEndianess(authJtagImage->authJtagSignature, signatureLength);
+            }
+            else
+            {
+                if (authJtagAttributes.jtagSignatureFile != "")
+                {
+                    uint32_t index = 0;
+                    GetPresign(authJtagAttributes.jtagSignatureFile, signatureLength, authJtagImage->authJtagSignature, index);
+                }
+                else
+                {
+                    if(options.DoGenerateHashes())
+                    {
+                        std::string hashfilename = "authJtag" + hash->GetHashFileExtension();
+                        WritePaddedSHAFile(shaHashPadded.get(), hashfilename);
+                    }
+                }
+            }
         }
     }
     else if (authAlgorithm->Type() == Authentication::ECDSA)
@@ -2976,7 +3156,7 @@ void Versal_2ve_2vmAuthenticationContext::SetKeyLength(Authentication::Type type
     {
         AuthenticationContext::authKeyLength = RSA_4096_KEY_LENGTH;
     }
-    else if (type == Authentication::ECDSA)
+    else if (IsEcdsaP384(type))
     {
         AuthenticationContext::authKeyLength = EC_P384_KEY_LENGTH;
     }

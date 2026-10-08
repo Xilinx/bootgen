@@ -9,6 +9,10 @@ extern int GetLmsSignLengthFromPubKey(const char *keyname, bool lmsOnly);
 extern int GetLmsSignLengthFromPubKeyParam(int *keyParam, int keyParamSize);
 extern int GetLmsSignatureLength(int *keyParam,  int keyParamSize, const char *secretKey, const char *publicKey, bool lmsOnly);
 extern bool update_private_key(unsigned char *private_key, size_t len_private_key, void *filename);
+/* Implemented in C++ (common/src/lms-log.cpp) so this C library can reach bootgen's trace log */
+extern void LmsLogTrace(const char *format, ...);
+/* Release the private keys LmsSign keeps loaded; also runs automatically at exit */
+extern void LmsSignCleanup(void);
 //extern int LmsKeyGeneration(const char *keyname, const char *parm_set);
 extern int LmsKeyGeneration(const char *keyname, int* hash, int* h, int* w, int levels);
 

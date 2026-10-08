@@ -31,7 +31,8 @@
  * The internal structure of a private key
  */
 #define PRIVATE_KEY_INDEX 0
-#define PRIVATE_KEY_INDEX_LEN 8  /* 2**64 signatures should be enough for */
+#define PRIVATE_KEY_INDEX_LEN HSS_PRIVATE_KEY_INDEX_LEN
+                                 /* 2**64 signatures should be enough for */
                                  /* everyone */
 #define PRIVATE_KEY_PARAM_SET (PRIVATE_KEY_INDEX + PRIVATE_KEY_INDEX_LEN)
 #define PRIVATE_KEY_PARAM_SET_LEN (PARAM_SET_COMPRESS_LEN * MAX_HSS_LEVELS)

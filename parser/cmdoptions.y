@@ -78,7 +78,7 @@ void ShowCommonHelp(int,bool);
 %token _W ON OFF
 %token _NOAUTHBLOCKS _ZYNQMPES1 _OVERLAYCDO
 %token _EFUSEPPKBITS _GENERATE_HASHES _PADIMAGEHEADER _SPKSIGNATURE _GENERATE_KEYS PEM RSA ECDSAP521 AUTH GREY METAL LMS MLDSA _EFUSEPUFBITS
-%token _SECUREDEBUG ECDSA _AUTHJTAG LMS_SHA256 LMS_SHAKE256 HSS_SHA256 HSS_SHAKE256 SLHDSA
+%token _SECUREDEBUG ECDSA ECDSAP384PADDED _AUTHJTAG LMS_SHA256 LMS_SHAKE256 HSS_SHA256 HSS_SHAKE256 SLHDSA
 %token _ENCRYPT BBRAM EFUSE _P_TOK
 %token _READ READ_BH READ_IHT READ_IH READ_PHT READ_AC
 %token _VERIFY _VERIFYKDF _AUTH_OPTIMIZATION
@@ -347,6 +347,7 @@ key_type        : AUTH  auth_key_options
                 | PEM                               { options.SetAuthKeyGeneration(GenAuthKeys::PEM); }
                 | RSA                               { options.SetAuthKeyGeneration(GenAuthKeys::RSA); }
                 | ECDSA                             { options.SetAuthKeyGeneration(GenAuthKeys::ECDSA); }
+                | ECDSAP384PADDED                   { options.SetAuthKeyGeneration(GenAuthKeys::ECDSA); }
                 | ECDSAP521                         { options.SetAuthKeyGeneration(GenAuthKeys::ECDSAP521); }
                 | LMS                               { options.SetAuthKeyGeneration(GenAuthKeys::LMS); }
                 | MLDSA                             { options.SetAuthKeyGeneration(GenAuthKeys::MLDSA); }
@@ -367,6 +368,8 @@ authJtagOptions : authJtagType filename             { options.SetSecureDebugImag
 
 authJtagType    : ECDSAP521                         { options.SetSecureDebugAuthType(Authentication::ECDSAp521);
                                                       options.SetSecureDebugImageFile("authenticatedJtagImage-ecdsa-p521.bin"); }
+                | ECDSAP384PADDED                   { options.SetSecureDebugAuthType(Authentication::ECDSAP384Padded);
+                                                      options.SetSecureDebugImageFile("authenticatedJtagImage-ecdsa-p384-padded.bin"); }
                 | ECDSA                             { options.SetSecureDebugAuthType(Authentication::ECDSA);
                                                       options.SetSecureDebugImageFile("authenticatedJtagImage-ecdsa.bin"); }
                 | RSA                               { options.SetSecureDebugAuthType(Authentication::RSA);

@@ -244,6 +244,7 @@ struct command_info {
     { "em_set_action", CdoCmdEmSetAction },
     { "ldr_set_image_info", CdoCmdLdrSetImageInfo },
     { "cframe_clear_check", CdoCmdLdrCframeClearCheck },
+    { "i2c_handshake", CdoCmdLdrI2cHandshake },
     { "sem_npi_table", CdoCmdSemNpiTable },
     { NULL, 0 }
 };
@@ -401,7 +402,6 @@ static void check_redundant_markers(char * marker_string)
 
 CdoSequence * cdoseq_from_source(FILE * f) {
     CdoSequence * seq = cdocmd_create_sequence();
-    memset(marker_count, 0, sizeof(marker_count));
     uint32_t cap = 2;
     char * line = (char *)malloc(cap * sizeof *line);
     uint32_t first = 1;
@@ -1435,6 +1435,22 @@ CdoSequence * cdoseq_from_source(FILE * f) {
             cdocmd_add_ldr_cframe_clear_check(seq, id);
             break;
         }
+        case CdoCmdLdrI2cHandshake: {
+            uint32_t arg0;
+            uint32_t arg1;
+            uint32_t count;
+            uint32_t * buf;
+            if (parse_u32(&s, &arg0)) goto syntax_error;
+            if (parse_u32(&s, &arg1)) goto syntax_error;
+            if (parse_buf(&s, &buf, &count)) goto syntax_error;
+            if (((arg0 >> 16) & 0xf) != count) {
+                free(buf);
+                goto syntax_error;
+            }
+            cdocmd_add_ldr_i2c_handshake(seq, arg0, arg1, count, buf, is_be_host());
+            free(buf);
+            break;
+        }
         case CdoCmdSemNpiTable: {
             uint32_t id;
             uint32_t flags;
@@ -2239,6 +2255,14 @@ void cdoseq_to_source(FILE * f, CdoSequence * seq) {
 	case CdoCmdLdrCframeClearCheck:
             fprintf(f, "cframe_clear_check ");
             print_x64(f, cmd->id);
+            fprintf(f, "\n");
+            break;
+        case CdoCmdLdrI2cHandshake:
+            fprintf(f, "i2c_handshake ");
+            print_x64(f, cmd->id);
+            fprintf(f, " ");
+            print_x64(f, cmd->flags);
+            print_buf(f, cmd->buf, cmd->count);
             fprintf(f, "\n");
             break;
         case CdoCmdSemNpiTable:

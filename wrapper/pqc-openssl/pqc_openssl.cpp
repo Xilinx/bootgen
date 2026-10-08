@@ -1,17 +1,23 @@
 #include "pqc_openssl.h"
 #include "ml_dsa_api.h"
 
-#include <openssl/core_names.h>
-#include <openssl/evp.h>
-#include <openssl/params.h>
+#include <openssl/opensslv.h>
 #include <openssl/rand.h>
 
 #include <algorithm>
 #include <climits>
 #include <cstddef>
 #include <cstdint>
-#include <memory>
 
+#if OPENSSL_VERSION_NUMBER >= 0x30500000L
+#include <openssl/core_names.h>
+#include <openssl/crypto.h>
+#include <openssl/evp.h>
+#include <openssl/params.h>
+#include <memory>
+#endif
+
+#if OPENSSL_VERSION_NUMBER >= 0x30500000L
 namespace {
 
 using PkeyPtr = std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)>;
@@ -137,8 +143,32 @@ bool Verify(EVP_PKEY* key,
 }
 
 } // namespace
+#endif /* OPENSSL_VERSION_NUMBER >= 0x30500000L */
 
 extern "C" {
+
+int bootgen_pqc_openssl_available(void)
+{
+#if OPENSSL_VERSION_NUMBER < 0x30500000L
+    return 0;
+#else
+    return OpenSSL_version_num() >= 0x30500000L ? 1 : 0;
+#endif
+}
+
+void mldsa_random_bytes(uint8_t* out, size_t len)
+{
+    while (out && len != 0) {
+        const size_t chunk = std::min(len, static_cast<size_t>(INT_MAX));
+        if (RAND_bytes(out, static_cast<int>(chunk)) != 1) {
+            return;
+        }
+        out += chunk;
+        len -= chunk;
+    }
+}
+
+#if OPENSSL_VERSION_NUMBER >= 0x30500000L
 
 void mldsa87_keygen(const uint8_t* seed, uint8_t* pubkey, uint8_t* seckey)
 {
@@ -192,18 +222,6 @@ int mldsa87_verify(const uint8_t* pubkey,
     const OSSL_PARAM parameters[] = { OSSL_PARAM_construct_end() };
     return Verify(key.get(), "ML-DSA-87", parameters, msg, msg_len,
                   sig, MLDSA87_SIG_LEN) ? 1 : 0;
-}
-
-void mldsa_random_bytes(uint8_t* out, size_t len)
-{
-    while (out && len != 0) {
-        const size_t chunk = std::min(len, static_cast<size_t>(INT_MAX));
-        if (RAND_bytes(out, static_cast<int>(chunk)) != 1) {
-            return;
-        }
-        out += chunk;
-        len -= chunk;
-    }
 }
 
 int openssl_slhdsa_keygen(const char* algorithm,
@@ -290,5 +308,96 @@ int openssl_slhdsa_verify(const char* algorithm,
     return Verify(key.get(), algorithm, parameters, message, message_len,
                   signature, signature_len) ? 1 : 0;
 }
+
+#else /* OpenSSL < 3.5: compile, but PQC crypto is unavailable */
+
+void mldsa87_keygen(const uint8_t* seed, uint8_t* pubkey, uint8_t* seckey)
+{
+    (void)seed;
+    (void)pubkey;
+    (void)seckey;
+}
+
+int mldsa87_sign(const uint8_t* rnd,
+                 const uint8_t* seckey,
+                 const uint8_t* msg,
+                 size_t msg_len,
+                 uint8_t* sig)
+{
+    (void)rnd;
+    (void)seckey;
+    (void)msg;
+    (void)msg_len;
+    (void)sig;
+    return 0;
+}
+
+int mldsa87_verify(const uint8_t* pubkey,
+                   const uint8_t* msg,
+                   size_t msg_len,
+                   const uint8_t* sig)
+{
+    (void)pubkey;
+    (void)msg;
+    (void)msg_len;
+    (void)sig;
+    return 0;
+}
+
+int openssl_slhdsa_keygen(const char* algorithm,
+                          const uint8_t* seed,
+                          size_t seed_len,
+                          uint8_t* public_key,
+                          size_t public_key_len,
+                          uint8_t* private_key,
+                          size_t private_key_len)
+{
+    (void)algorithm;
+    (void)seed;
+    (void)seed_len;
+    (void)public_key;
+    (void)public_key_len;
+    (void)private_key;
+    (void)private_key_len;
+    return 0;
+}
+
+size_t openssl_slhdsa_sign(const char* algorithm,
+                           const uint8_t* private_key,
+                           size_t private_key_len,
+                           const uint8_t* message,
+                           size_t message_len,
+                           uint8_t* signature,
+                           size_t signature_capacity)
+{
+    (void)algorithm;
+    (void)private_key;
+    (void)private_key_len;
+    (void)message;
+    (void)message_len;
+    (void)signature;
+    (void)signature_capacity;
+    return 0;
+}
+
+int openssl_slhdsa_verify(const char* algorithm,
+                          const uint8_t* public_key,
+                          size_t public_key_len,
+                          const uint8_t* message,
+                          size_t message_len,
+                          const uint8_t* signature,
+                          size_t signature_len)
+{
+    (void)algorithm;
+    (void)public_key;
+    (void)public_key_len;
+    (void)message;
+    (void)message_len;
+    (void)signature;
+    (void)signature_len;
+    return 0;
+}
+
+#endif /* OPENSSL_VERSION_NUMBER >= 0x30500000L */
 
 } // extern "C"

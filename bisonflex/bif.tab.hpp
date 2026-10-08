@@ -42,7 +42,7 @@
 
 /* "%code requires" blocks.  */
 /* Line 33 of lalr1.cc  */
-#line 37 "parser/bif.y"
+#line 39 "parser/bif.y"
 
        namespace BIF {
         class BisonScanner;
@@ -82,7 +82,7 @@ namespace BIF {
     union semantic_type
     {
 /* Line 33 of lalr1.cc  */
-#line 81 "parser/bif.y"
+#line 89 "parser/bif.y"
 
     uint32_t token;
     uint64_t number;
@@ -249,65 +249,66 @@ namespace BIF {
      EFUSE_USER_KEK1_IV = 378,
      USER_KEYS = 379,
      PMCDATA = 380,
-     BOOTIMAGE = 381,
-     UDF_BH = 382,
-     INIT = 383,
-     PMUFW_IMAGE = 384,
-     AES_KEY_FILE = 385,
-     FAMILY_KEY = 386,
-     PPK_FILE = 387,
-     PSK_FILE = 388,
-     SPK_FILE = 389,
-     SSK_FILE = 390,
-     PPK_FILE1 = 391,
-     PSK_FILE1 = 392,
-     SPK_FILE1 = 393,
-     SSK_FILE1 = 394,
-     PK_FILE = 395,
-     SK_FILE = 396,
-     PK_FILE1 = 397,
-     SK_FILE1 = 398,
-     SPK_SIGNATURE_FILE = 399,
-     BH_SIGNATURE_FILE = 400,
-     HEADER_SIGNATURE_FILE = 401,
-     AUTHVALUE = 402,
-     HYBRID_AUTHVALUE = 403,
-     ENCRVALUE = 404,
-     CHECKSUMVALUE = 405,
-     POWNERVALUE = 406,
-     PTYPEVALUE = 407,
-     KEY_SRC = 408,
-     CORE = 409,
-     BH_RSA = 410,
-     AUTH_HASH = 411,
-     INT_HASH = 412,
-     PUFHD_LOC = 413,
-     OPT_KEY = 414,
-     AUTH_ONLY = 415,
-     BOOT_DEVICE_TYPE = 416,
-     DEST_DEVICE_TYPE = 417,
-     DEST_CPU_TYPE = 418,
-     EXCEPTION_LEVEL_TYPE = 419,
-     TRUSTZONE_TYPE = 420,
-     SPLITMODE = 421,
-     DPA_CM = 422,
-     SPKSELECT = 423,
-     HASH_FUNCTION = 424,
-     AUTH_KEY_LEVEL = 425,
-     OR = 426,
-     XOR = 427,
-     AND = 428,
-     MULT = 429,
-     DIVIDE = 430,
-     MODULO = 431,
-     PLUS = 432,
-     MINUS = 433,
-     LSHIFT = 434,
-     RSHIFT = 435,
-     NEGATION = 436,
-     LPAREN = 437,
-     RPAREN = 438,
-     ASTERISK = 439
+     PLDATA = 381,
+     BOOTIMAGE = 382,
+     UDF_BH = 383,
+     INIT = 384,
+     PMUFW_IMAGE = 385,
+     AES_KEY_FILE = 386,
+     FAMILY_KEY = 387,
+     PPK_FILE = 388,
+     PSK_FILE = 389,
+     SPK_FILE = 390,
+     SSK_FILE = 391,
+     PPK_FILE1 = 392,
+     PSK_FILE1 = 393,
+     SPK_FILE1 = 394,
+     SSK_FILE1 = 395,
+     PK_FILE = 396,
+     SK_FILE = 397,
+     PK_FILE1 = 398,
+     SK_FILE1 = 399,
+     SPK_SIGNATURE_FILE = 400,
+     BH_SIGNATURE_FILE = 401,
+     HEADER_SIGNATURE_FILE = 402,
+     AUTHVALUE = 403,
+     HYBRID_AUTHVALUE = 404,
+     ENCRVALUE = 405,
+     CHECKSUMVALUE = 406,
+     POWNERVALUE = 407,
+     PTYPEVALUE = 408,
+     KEY_SRC = 409,
+     CORE = 410,
+     BH_RSA = 411,
+     AUTH_HASH = 412,
+     INT_HASH = 413,
+     PUFHD_LOC = 414,
+     OPT_KEY = 415,
+     AUTH_ONLY = 416,
+     BOOT_DEVICE_TYPE = 417,
+     DEST_DEVICE_TYPE = 418,
+     DEST_CPU_TYPE = 419,
+     EXCEPTION_LEVEL_TYPE = 420,
+     TRUSTZONE_TYPE = 421,
+     SPLITMODE = 422,
+     DPA_CM = 423,
+     SPKSELECT = 424,
+     HASH_FUNCTION = 425,
+     AUTH_KEY_LEVEL = 426,
+     OR = 427,
+     XOR = 428,
+     AND = 429,
+     MULT = 430,
+     DIVIDE = 431,
+     MODULO = 432,
+     PLUS = 433,
+     MINUS = 434,
+     LSHIFT = 435,
+     RSHIFT = 436,
+     NEGATION = 437,
+     LPAREN = 438,
+     RPAREN = 439,
+     ASTERISK = 440
    };
 
     };
@@ -484,7 +485,7 @@ namespace BIF {
 #line 24 "parser/bif.y"
 } // BIF
 /* Line 33 of lalr1.cc  */
-#line 488 "bisonflex/bif.tab.hpp"
+#line 489 "bisonflex/bif.tab.hpp"
 
 
 

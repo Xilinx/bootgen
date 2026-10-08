@@ -26,6 +26,7 @@
 #include "stringutils.h"
 #include "binary.h"
 #include "bootimage.h"
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include "string.h"
@@ -513,6 +514,18 @@ void VersalAuthenticationContext::SetHashinOptionalData(BootImage& bi)
 
     memcpy(bi.iht_optional_data.get() + (bi.copied_iht_optional_data_length / 4), &sectn_size_id, sizeof(uint32_t));
     bi.copied_iht_optional_data_length += sizeof(uint32_t);
+
+    std::ofstream hashblockFile("Hashblock.txt", std::ios::out | std::ios::trunc);
+    if (!hashblockFile.is_open())
+    {
+        LOG_ERROR("Cannot create file Hashblock.txt");
+    }
+    else
+    {
+        hashblockFile << "Hash Block Content\n";
+        hashblockFile << "Entries: " << bi.hashTable.size() << "\n\n";
+    }
+
     for (size_t i = 0; i < bi.hashTable.size(); i++)
     {
         uint32_t partition_num = bi.hashTable[i].first;
@@ -526,6 +539,19 @@ void VersalAuthenticationContext::SetHashinOptionalData(BootImage& bi)
         bi.copied_iht_optional_data_length += sizeof(uint32_t);
         memcpy(bi.iht_optional_data.get() + (bi.copied_iht_optional_data_length / 4), bi.hashTable[i].second.get(), SHA3_LENGTH_BYTES);
         bi.copied_iht_optional_data_length += SHA3_LENGTH_BYTES;
+
+        if (hashblockFile.is_open())
+        {
+            hashblockFile << "Entry " << i << " - Partition Number: " << partition_num << "\n";
+            hashblockFile << "Hash: ";
+            const uint8_t* hashBytes = bi.hashTable[i].second.get();
+            for (uint32_t j = 0; j < SHA3_LENGTH_BYTES; j++)
+            {
+                hashblockFile << std::hex << std::setw(2) << std::setfill('0')
+                              << static_cast<uint32_t>(hashBytes[j]);
+            }
+            hashblockFile << std::dec << "\n\n";
+        }
     }
 
     uint32_t checksum = ComputeWordChecksum(bi.iht_optional_data.get() + ((bi.copied_iht_optional_data_length - sectn_length + checksumSize) / 4),

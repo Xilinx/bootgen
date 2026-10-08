@@ -36,6 +36,7 @@ struct OverlayAction {
     LINK children;
     CdoCommand * start;
     CdoCommand * end;
+    int applied;
     char name[1];
 };
 
@@ -333,6 +334,7 @@ int cdooverlay_apply(CdoSequence * seq, CdoOverlayInfo * ovl) {
                 if (end == NULL) return 1;
                 OverlayAction * action = find_action(&ovl->actions, cmd->buf);
                 if (action != NULL) {
+                    action->applied = 1;
                     if (action->start != NULL) {
                         remove_commands_between(cmd, end);
                         insert_overlay_commands(end, action->start, action->end);
@@ -351,4 +353,17 @@ int cdooverlay_apply(CdoSequence * seq, CdoOverlayInfo * ovl) {
 
 error:
     return 1;
+}
+
+const char * cdooverlay_get_unapplied_marker(CdoOverlayInfo * ovl, unsigned int index) {
+    LINK * l = ovl->actions.next;
+    while (l != &ovl->actions) {
+        OverlayAction * action = all2action(l);
+        l = l->next;
+        if (!action->applied) {
+            if (index == 0) return action->name;
+            index--;
+        }
+    }
+    return NULL;
 }

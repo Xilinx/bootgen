@@ -170,6 +170,29 @@ bool hss_generate_child_seed_I_value( unsigned char *seed, unsigned char *I,
     return true;
 }
 
+/*
+ * Copy out the state index this working key last wrote to secure storage.
+ * A caller that holds on to a working key between signatures can compare this
+ * against the index in the stored private key to detect that the stored state
+ * moved without this key knowing about it.
+ */
+bool hss_get_private_key_index( const struct hss_working_key *w,
+                                unsigned char *index, size_t len_index ) {
+    if (!w || !index || len_index > PRIVATE_KEY_INDEX_LEN) return false;
+    memcpy( index, w->private_key + PRIVATE_KEY_INDEX, len_index );
+    return true;
+}
+
+/*
+ * Report whether this working key can still be used to sign.  A key that has
+ * handed out its last signature stays around in an expired state, so a caller
+ * that holds on to working keys needs to drop those rather than keep offering
+ * them to hss_generate_signature.
+ */
+bool hss_working_key_is_usable( const struct hss_working_key *w ) {
+    return w && w->status == hss_error_none;
+}
+
 void hss_init_extra_info( struct hss_extra_info *p ) {
     if (p) memset( p, 0, sizeof *p );
 }

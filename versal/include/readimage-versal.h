@@ -64,7 +64,7 @@ public:
         pHTs.clear();
         partitionBuffers.clear();
         aCs.clear();
-        authenticationVerified = true;
+        authenticationVerified = false;
         versalNetSeries = false;
         smap_header_found = false;
     }

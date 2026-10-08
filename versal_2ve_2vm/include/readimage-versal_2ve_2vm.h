@@ -80,6 +80,7 @@ public:
     void DisplayPartitionHeaderTable(void);
     void DisplayAuthenicationCertificates(void);
     void DisplayACFields(uint8_t* rsa_ac, Authentication::Type auth_type);
+    void DisplayACFields(uint8_t* rsa_ac, Authentication::Type auth_type, uint32_t acLen);
     void DisplayBhAttributes(uint32_t value, Authentication::Type authType);
     void DisplayIhtAttributes(uint32_t value);
     void DisplayIhAttributes(uint32_t value);
@@ -87,7 +88,13 @@ public:
     void DisplaySmapVectors(void);
     void VerifyAuthentication(bool);
     void VerifyHeaderTableSignature();
-    void VerifySPKSignature(uint8_t* aC);
+    void VerifySPKSignature(uint8_t* aC, uint32_t authType, uint32_t acLen);
+    bool VerifyHashBlockSignature(FILE* binFile, uint8_t* aC, uint32_t authType,
+                                  uint64_t hashBlockOffset, uint32_t hashBlockLength,
+                                  uint64_t sigOffset, uint32_t acLen);
+    Authentication::Type SelectEcdsaP384Layout(Authentication::Type type, uint32_t actualPpkSize,
+                                                uint32_t totalPpkSize, const uint8_t* ac, uint32_t acLen);
+    void RequireCertificateExtent(uint32_t acLen, uint32_t need, const char* layout);
     void VerifyPartitionSignature(void);
     bool VerifySignature(bool nist, uint8_t * data, size_t dataLength, ACKey4096Sha3Padding * acKey, uint8_t* signature);
     bool VerifyECDSASignature(bool nist, uint8_t * data, size_t dataLength,  ACKeyECDSA *eckey, uint8_t* signature);
@@ -115,6 +122,7 @@ protected:
     std::list<Versal_2ve_2vmImageHeaderStructure*> iHs;
     std::list<Versal_2ve_2vmPartitionHeaderTableStructure*> pHTs;
     std::list<uint8_t*> aCs;
+    std::list<uint32_t> acLengths;
     std::list<std::pair<uint8_t*, uint32_t>> Hashblock_record;  
     std::list<uint32_t> authtype;  
     std::list<uint8_t*> partitionBuffers;

@@ -167,6 +167,30 @@ struct hss_working_key *hss_load_private_key(
 void hss_free_working_key( struct hss_working_key * );
 
 /*
+ * Length of the state index the private key format keeps at its front
+ */
+#define HSS_PRIVATE_KEY_INDEX_LEN 8
+
+/*
+ * Copy out the first len_index bytes of the state index that this working key
+ * last wrote to secure storage (len_index may be no larger than
+ * HSS_PRIVATE_KEY_INDEX_LEN).  A caller that keeps a working key alive
+ * between signatures can compare this against the index in the stored private
+ * key to detect that the stored state has moved on its own, and that the
+ * in-memory key must be reloaded rather than reused.
+ */
+bool hss_get_private_key_index( const struct hss_working_key *w,
+                                unsigned char *index, size_t len_index );
+
+/*
+ * Report whether this working key can still be used to sign.  A key that has
+ * handed out its last signature stays around in an expired state, so a caller
+ * that keeps working keys alive between signatures needs to drop those instead
+ * of offering them to hss_generate_signature again.
+ */
+bool hss_working_key_is_usable( const struct hss_working_key *w );
+
+/*
  * This will actually generate a signature
  *
  * working_key is the key that has been allocated by allocate_working_key and

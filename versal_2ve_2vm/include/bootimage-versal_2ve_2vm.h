@@ -45,6 +45,8 @@ public:
     ~Versal_2ve_2vmBootImage();
 
     void BuildAndLink(Binary* cache);
+    Authentication::Type ResolveEcdsaP384Format(void);
+    bool ImageSelectsEcdsaP384Format(Authentication::Type& format);
     void Add(BifOptions* bifoptions);
     void ReplaceImages(void);
     void ReplaceImagesNoSubSys(void);

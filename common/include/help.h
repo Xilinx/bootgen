@@ -241,10 +241,15 @@ efuseppkbits
  SUPPORTED   | zynq, zynqmp, versal, versal_2ve_2vm, spartanup                |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | This option specifies the name of the efuse file to be written |\n\
-             | to contain the PPK hash. This option generates a direct hash   |\n\
-             | without any padding.                                           |\n\
+             | to contain the PPK hash. Most devices use a direct hash of the |\n\
+             | natural PPK. Existing ecdsa / ecdsa-p384 configurations retain |\n\
+             | the 96-byte PPK format. ecdsa-p384-padded selects the 1028-byte|\n\
+             | padded PPK format. Use the format matching the device's        |\n\
+             | provisioned PPK digest.                                        |\n\
              | Zynq - Hashing done by SHA2                                    |\n\
              | ZynqMP & Versal - Hashing done by SHA3                         |\n\
+             | Versal_2ve_2vm ecdsa-p384-padded hashes the complete 1028-byte |\n\
+             | PPK slot (Qx || Qy || zero padding) using SHA3-384.            |\n\
 -------------+----------------------------------------------------------------+\n\
  SYNOPSIS    | -efuseppkbits <filename>                                       |\n\
 -------------+----------------------------------------------------------------+\n\
@@ -378,6 +383,7 @@ generate_keys
              |   rsa          : RSA format keys                               |\n\
              |   pem          : PEM format keys                               |\n\
              |   ecdsa-p384   : ECDSA P-384 keys                              |\n\
+             |   ecdsa-p384-padded : ECDSA P-384 keys for padded PPK layout   |\n\
              |   ecdsa-p521   : ECDSA P-521 keys                              |\n\
              |   lms          : LMS keys (parameters from BIF)                |\n\
              |   mldsa        : ML-DSA keys (OpenSSL 3.5+)                    |\n\
@@ -738,6 +744,7 @@ securedebugimage
 -------------+----------------------------------------------------------------+\n\
  ARGUMENTS   | rsa   : Image created using RSA                                |\n\
              | ecdsa : Image created using ECDSA                              |\n\
+             | ecdsa-p384-padded : 1028-byte PPK on versal_2ve_2vm            |\n\
 -------------+----------------------------------------------------------------+\n\
  USAGE       | bootgen -arch versal -image test.bif -authenticatedjtag rsa    |\n\
 -------------+----------------------------------------------------------------+\n"
@@ -3257,8 +3264,9 @@ authentication
              |     Zynq & FPGA    : RSA-2048                                  |\n\
              |     ZynqMP         : RSA-4096                                  |\n\
              |     Versal         : RSA-4096 & ECDSA                          |\n\
-             |     Versal_2ve_2vm : RSA-4096, ECDSA-P384, LMS-SHA256,         |\n\
-             |                      LMS-SHAKE256, HSS-SHA256, HSS-SHAKE256    |\n\
+             |     Versal_2ve_2vm : RSA-4096, ECDSA-P384,                     |\n\
+             |                      ECDSA-P384-PADDED, LMS-SHA256,            |\n\
+             |                      HSS-SHA256, LMS-SHAKE256, HSS-SHAKE256    |\n\
              |     Spartanup      : ECDSA-P521, LMS-SHAKE256, HSS-SHAKE256    |\n\
              | Note : p384 and p521 curves are supported for ECDSA            |\n\
 -------------+----------------------------------------------------------------+\n\
@@ -3271,6 +3279,9 @@ authentication
  OPTIONS     | *none         : Partition not authenticated                    |\n\
              |  rsa          : Partition authenticated using RSA              |\n\
              |  ecdsa-p384   : Partition authenticated using ECDSA(P384 Curve)|\n\
+             |  ecdsa-p384-padded : opt-in 1028-byte PPK on versal_2ve_2vm.   |\n\
+             |                      PDI and fuse digest must use that format. |\n\
+             |                      ecdsa / ecdsa-p384 keep the 96-byte PPK.  |\n\
              |  ecdsa-p521   : Partition authenticated using ECDSA(P521 Curve)|\n\
              |  lms-sha256   : Partition authenticated using LMS-SHA256       |\n\
              |  lms-shake256 : Partition authenticated using LMS-SHAKE256     |\n\

@@ -228,7 +228,7 @@ bh_keyfile          yylval->number = tok::BH_KEY_FILE;              return tok::
 puf_file            yylval->number = tok::PUF_HELPER_FILE;          return tok::PUF_HELPER_FILE;
 pmufw_image         yylval->number = tok::PMUFW_IMAGE;              return tok::PMUFW_IMAGE;
 pmcdata             yylval->number = tok::PMCDATA;                  return tok::PMCDATA;
-pldata              yylval->number = tok::PMCDATA;                  return tok::PMCDATA;
+pldata              yylval->number = tok::PLDATA;                   return tok::PLDATA;
 bh_key_iv           yylval->number = tok::BH_KEY_IV;                return tok::BH_KEY_IV;
 uid                 yylval->number = tok::UNIQUE_ID;                return tok::UNIQUE_ID;
 parent_uid          yylval->number = tok::PARENT_UNIQUE_ID;         return tok::PARENT_UNIQUE_ID;
@@ -258,6 +258,7 @@ authentication                                                      return tok::
     rsa             yylval->number = Authentication::RSA;           return tok::AUTHVALUE;
     ecdsa           yylval->number = Authentication::ECDSA;         return tok::AUTHVALUE;
     ecdsa-p384      yylval->number = Authentication::ECDSA;         return tok::AUTHVALUE;
+    ecdsa-p384-padded yylval->number = Authentication::ECDSAP384Padded; return tok::AUTHVALUE;
     ecdsa-p521      yylval->number = Authentication::ECDSAp521;     return tok::AUTHVALUE;
     lms-sha256      yylval->number = Authentication::LMS_SHA2_256;  return tok::AUTHVALUE;
     lms-shake256    yylval->number = Authentication::LMS_SHAKE256;  return tok::AUTHVALUE;
@@ -285,6 +286,7 @@ partition_type                                                                 r
 type                                                                           return tok::PARTITION_TYPE;
     cdo                     yylval->number = PartitionType::CONFIG_DATA_OBJ;   return tok::PTYPEVALUE;
     raw                     yylval->number = PartitionType::RAW;               return tok::PTYPEVALUE;
+    tl                      yylval->number = PartitionType::TL;                return tok::PTYPEVALUE;
     cfi                     yylval->number = PartitionType::CFI;               return tok::PTYPEVALUE;
     cfi-gsc                 yylval->number = PartitionType::CFI_GSC;           return tok::PTYPEVALUE;
     slr-boot                yylval->number = PartitionType::SLR_BOOT;          return tok::PTYPEVALUE;

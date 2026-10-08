@@ -4,13 +4,14 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <openssl/opensslv.h>
-#if OPENSSL_VERSION_NUMBER < 0x30500000L
-#error Bootgen ML-DSA/SLH-DSA require OpenSSL 3.5 or newer
-#endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/* 1 if this bootgen was built with OpenSSL 3.5+ headers and the loaded
+ * libcrypto is also 3.5 or newer. Otherwise 0. */
+int bootgen_pqc_openssl_available(void);
 
 int openssl_slhdsa_keygen(const char *algorithm,
                           const uint8_t *seed,

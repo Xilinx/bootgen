@@ -27,6 +27,7 @@
 #include "stringutils.h"
 //#include "binary.h"
 #include "bootimage.h"
+#include <algorithm>
 #include <iomanip>
 #include <iostream>
 #include "string.h"
@@ -46,6 +47,7 @@ extern "C" {
 };
 
 #include "ml_dsa/ml_dsa_87.hpp"
+#include "pqc_openssl_req.h"
 #include <span>  // For variable-length ML-DSA message signing
 
 #include "slh_dsa.h"
@@ -523,7 +525,7 @@ Versal_2vpAuthenticationContext::Versal_2vpAuthenticationContext(const AuthCerti
     authAlgorithm->RearrangeEndianess(secondaryKey->N.get(), sizeof(existingCert->acSpk.N));
     authAlgorithm->RearrangeEndianess(secondaryKey->N_ext.get(), sizeof(existingCert->acSpk.N_extension));
     authAlgorithm->RearrangeEndianess(secondaryKey->E.get(), sizeof(existingCert->acSpk.E));
-    memcpy(spksignature.get(), existingCert->acSpkSignature.Signature, signatureLength);
+    memcpy(spksignature.get(), existingCert->acSpkSignature.Signature, std::min<size_t>(signatureLength, sizeof(existingCert->acSpkSignature.Signature)));
     //memcpy(bHsignature, existingCert->acHeaderSignature.Signature, signatureLength);
     //memcpy(udf_data, existingCert->acUdf, UDF_DATA_SIZE);
     //spkIdentification = existingCert->spkId;
@@ -566,10 +568,12 @@ std::unique_ptr<AuthenticationAlgorithm> Versal_2vpAuthenticationContext::GetAut
     }
     else if(type == Authentication::MLDSA)
     {
+        RequirePqcOpenSsl("mldsa");
         return std::make_unique<MLDSAAuthenticationAlgorithm_versal_2vp>(type);
     }
     else if (type == Authentication::SLH_SHAKE256)
     {
+        RequirePqcOpenSsl("slhdsa");
         hashType = AuthHash::Shake256;
         return std::make_unique<SLHAuthenticationAlgorithm_versal_2vp>(type);
     }
@@ -1049,7 +1053,9 @@ Section* Versal_2vpAuthenticationContext::CreateCertificate(BootImage& bi, Binar
     uint32_t acHdr = authAlgorithm->GetAuthHeader();
   
     // Remove PPK header from being updated in boot header as it moved to AC for versal_2vp
-    uint8_t* headerData = bi.bootHeader->section->Data.get();
+    /* A PL-only PDI has no boot header section. The MetaHeader branch below resolves this
+    from the image header table instead, so leave it null rather than dereferencing. */
+    uint8_t* headerData = (bi.bootHeader != nullptr && bi.bootHeader->section != nullptr) ? bi.bootHeader->section->Data.get() : nullptr;
    /*
     uint32_t authHeader1Offset = BH_AC_HEADER_OFFSET_V2;
     uint32_t totalppkkSize1Offset = BH_TOTAL_PPK_SIZE1_OFFSET_V2;
@@ -1076,7 +1082,7 @@ Section* Versal_2vpAuthenticationContext::CreateCertificate(BootImage& bi, Binar
     {
         LoadUdfData(udfFile, udf_data);
         authAlgorithm->RearrangeEndianess(udf_data, sizeof(udf_data));
-        memcpy(headerData + BH_UDF_OFFSET_TELLURIDE, udf_data, UDF_BH_VERSAL_2VP);
+        memcpy(headerData + BH_UDF_OFFSET_TELLURIDE, udf_data, sizeof(udf_data));
     }
 
    // WriteLittleEndian32(headerData + authHeader1Offset, acHdr);
@@ -4409,7 +4415,9 @@ uint32_t Versal_2vpAuthenticationContext::GetAuthJtagImageSize(void) const
     else if (authAlgorithm->Type() == Authentication::LMS_SHA2_256 || authAlgorithm->Type() == Authentication::LMS_SHAKE256)
     {
         size_t actualppkSize = GetLmsPublicKeyLength(ppkFile.c_str(), lmsOnly);
-        size_t authJtagSignLength = GetLmsSignLength(pskFile.c_str(), lmsOnly);
+        size_t authJtagSignLength = primaryKey->isSecret
+                                       ? GetLmsSignLength(pskFile.c_str(), lmsOnly)
+                                       : GetLmsSignLengthFromPubKey(ppkFile.c_str(), lmsOnly);
 
         size_t totalSize = AUTH_JTAG_V2VP_FIXED_HEADER_SIZE
             + sizeof(HeaderAuthCert_versal_2vp)
@@ -4600,7 +4608,9 @@ void Versal_2vpAuthenticationContext::CreateAuthJtagImage(Options& options, uint
         if (primaryKey->Loaded)
         {
             size_t actualppkSize = GetLmsPublicKeyLength(ppkFile.c_str(), lmsOnly);
-            size_t authJtagSignLength = GetLmsSignLength(pskFile.c_str(), lmsOnly);
+            size_t authJtagSignLength = primaryKey->isSecret
+                                           ? GetLmsSignLength(pskFile.c_str(), lmsOnly)
+                                           : GetLmsSignLengthFromPubKey(ppkFile.c_str(), lmsOnly);
 
             if (actualppkSize > AUTH_JTAG_LMS_PUBLIC_KEY_SIZE)
             {

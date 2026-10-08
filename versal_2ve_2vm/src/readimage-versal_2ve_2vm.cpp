@@ -342,6 +342,51 @@ uint32_t Versal_2ve_2vmReadImage::GetACLength(uint32_t AuthOffset, uint32_t ppks
 }
 
 /******************************************************************************/
+void Versal_2ve_2vmReadImage::RequireCertificateExtent(uint32_t acLen, uint32_t need, const char* layout)
+{
+    if (acLen < need)
+    {
+        LOG_ERROR("Authentication certificate extent (%u bytes) is smaller than the %s layout (%u bytes)",
+                  acLen, layout, need);
+    }
+}
+
+/******************************************************************************/
+Authentication::Type Versal_2ve_2vmReadImage::SelectEcdsaP384Layout(Authentication::Type type,
+                                                                     uint32_t actualPpkSize,
+                                                                     uint32_t totalPpkSize,
+                                                                     const uint8_t* ac,
+                                                                     uint32_t acLen)
+{
+    if (type != Authentication::ECDSA || actualPpkSize != TELLURIDE_EC_P384_PADDED_PPK_SIZE)
+    {
+        return type;
+    }
+
+    const uint32_t keyBytes = 2 * EC_P384_KEY_LENGTH;
+    const uint32_t spkHdr = TELLURIDE_EC_P384_PADDED_AC_TOTAL_SPK_SIZE_OFFSET;
+    const uint32_t need = TELLURIDE_EC_P384_PADDED_AC_SPK_SIGN_OFFSET + keyBytes;
+    bool spkOk = false;
+
+    if (ac != NULL && acLen >= need && totalPpkSize == TELLURIDE_EC_P384_PADDED_TOTAL_PPK_SIZE &&
+        acLen >= spkHdr + sizeof(spkheaderstructure))
+    {
+        spkheaderstructure hdr;
+        memcpy(&hdr, ac + spkHdr, sizeof(hdr));
+        spkOk = hdr.acTotalSpkSize == keyBytes &&
+                hdr.acActualSpkSize == keyBytes &&
+                hdr.acSpkTotalSignatureSize == keyBytes &&
+                hdr.acSpkActualSignatureSize == keyBytes;
+    }
+
+    if (!spkOk)
+    {
+        LOG_ERROR("Malformed ECDSA-P384 authentication certificate: actual PPK size claims the padded layout, but the PPK, SPK, or signature lengths do not fit the certificate");
+    }
+    return Authentication::ECDSAP384Padded;
+}
+
+/******************************************************************************/
 void Versal_2ve_2vmReadImage::ReadHeaderTableDetails()
 {
     size_t result;
@@ -414,12 +459,16 @@ void Versal_2ve_2vmReadImage::ReadHeaderTableDetails()
                     LOG_ERROR("Error parsing Authentication Certificates for PLM from PDI file");
                 }
             }
+            Authentication::Type type = (Authentication::Type)IdentifyAuthtype(bH->authHeader1);
+            type = SelectEcdsaP384Layout(type, bH->actualppkSize1, bH->totalppkkSize1, plm_ac.get(), Aclength);
             aCs.push_back(plm_ac.release());
-            authtype.push_back(IdentifyAuthtype(bH->authHeader1));
+            acLengths.push_back(Aclength);
+            authtype.push_back(type);
         }
         else
         {
             aCs.push_back(NULL);
+            acLengths.push_back(0);
             authtype.push_back(Authentication::None);
         } 
     }
@@ -522,12 +571,16 @@ void Versal_2ve_2vmReadImage::ReadHeaderTableDetails()
                     LOG_ERROR("Error parsing Header Authentication Certificate from PDI file");
                 }
             }
-            aCs.push_back(header_ac.release());  
-            authtype.push_back(IdentifyAuthtype(iHT->authHeader1));
+            Authentication::Type type = (Authentication::Type)IdentifyAuthtype(iHT->authHeader1);
+            type = SelectEcdsaP384Layout(type, iHT->actualppkSize1, iHT->totalppkkSize1, header_ac.get(), Aclength);
+            aCs.push_back(header_ac.release());
+            acLengths.push_back(Aclength);
+            authtype.push_back(type);
     }
     else 
     {
-        aCs.push_back(NULL);  
+        aCs.push_back(NULL);
+        acLengths.push_back(0);
     }
          //Record hashblock1
        if((iHT->hashBlockLength1)*4 != 0)
@@ -624,8 +677,11 @@ void Versal_2ve_2vmReadImage::ReadHeaderTableDetails()
                         LOG_ERROR("Error parsing Authentication Certificates from PDI file");
                     }
                 }
+                Authentication::Type type = (Authentication::Type)IdentifyAuthtype((*partitionHdr)->authHeader1);
+                type = SelectEcdsaP384Layout(type, (*partitionHdr)->actualppkSize1, (*partitionHdr)->totalppkkSize1, aC.get(), Aclength);
                 aCs.push_back(aC.release());
-                authtype.push_back(IdentifyAuthtype((*partitionHdr)->authHeader1));
+                acLengths.push_back(Aclength);
+                authtype.push_back(type);
                 //delete[] aC;
                // aC = NULL;
 
@@ -1022,9 +1078,16 @@ void Versal_2ve_2vmReadImage::DisplayAuthenicationCertificates(void)
     }
  
         uint32_t index=0;
+        std::list<uint32_t>::iterator acLenIt = acLengths.begin();
         for(std::list<uint8_t*>::iterator aC_iterator = aCs.begin(); aC_iterator != aCs.end(); aC_iterator++,++index)
         {
             auth_type = Authentication::None; //resetting auth type to reinit auth type based on config in PDI for each paritition
+            uint32_t acLen = 0;
+            if (acLenIt != acLengths.end())
+            {
+                acLen = *acLenIt;
+                ++acLenIt;
+            }
             if ((*aC_iterator) != NULL)
             {
                     Separator();
@@ -1038,7 +1101,7 @@ void Versal_2ve_2vmReadImage::DisplayAuthenicationCertificates(void)
                     {
                         auth_type = (Authentication::Type)*authcheck; 
                     }
-                    DisplayACFields(*aC_iterator, auth_type);    //print AC for each partition 
+                    DisplayACFields(*aC_iterator, auth_type, acLen); 
 
             }
 
@@ -1095,6 +1158,21 @@ void Versal_2ve_2vmReadImage::DisplayAuthenicationCertificates(void)
 /******************************************************************************/
 void Versal_2ve_2vmReadImage::DisplayACFields(uint8_t* aC, Authentication::Type auth_type)
 {
+    DisplayACFields(aC, auth_type, 0);
+}
+
+/******************************************************************************/
+void Versal_2ve_2vmReadImage::DisplayACFields(uint8_t* aC, Authentication::Type auth_type, uint32_t acLen)
+{
+    if (auth_type == Authentication::ECDSAP384Padded)
+    {
+        RequireCertificateExtent(acLen, TELLURIDE_EC_P384_PADDED_AC_SPK_SIGN_OFFSET + (2 * EC_P384_KEY_LENGTH), "padded ECDSA-P384");
+    }
+    else if (auth_type == Authentication::ECDSA)
+    {
+        RequireCertificateExtent(acLen, TELLURIDE_EC_P384_AC_SPK_SIGN_OFFSET + (2 * EC_P384_KEY_LENGTH), "ECDSA-P384");
+    }
+
     if (auth_type == Authentication::RSA)
     {
         AuthCertificate4096Sha3PaddingHBStructure* auth_cert = (AuthCertificate4096Sha3PaddingHBStructure*)(aC);
@@ -1112,6 +1190,17 @@ void Versal_2ve_2vmReadImage::DisplayACFields(uint8_t* aC, Authentication::Type 
         DisplayLongValues("spk_signature (0x860) : ", (uint8_t*)(&auth_cert->acSpkSignature), 512);
         //DisplayLongValues("bh_signature (0xa60) : ", (uint8_t*)(&auth_cert->acHeaderSignature), 512);
         //DisplayLongValues("part_signature (0xc60) : ", (uint8_t*)(&auth_cert->acHashBlockSignature), 512);
+    }
+    else if(auth_type == Authentication::ECDSAP384Padded)
+    {
+        AuthCertificateECDSAP384PaddedHBStructure* auth_cert = (AuthCertificateECDSAP384PaddedHBStructure*)(aC);
+        DisplayLongValues("ppk_x (0x000) : ", (uint8_t*)auth_cert->acPpk.x, 48);
+        DisplayLongValues("ppk_y (0x030) : ", (uint8_t*)auth_cert->acPpk.y, 48);
+        DisplayLongValues("ppk_padding (0x060) : ", auth_cert->acPpkPadding, sizeof(auth_cert->acPpkPadding));
+        DisplayLongValues("spk_x (0x430) : ", (uint8_t*)auth_cert->acSpk.x, 48);
+        DisplayLongValues("spk_y (0x460) : ", (uint8_t*)auth_cert->acSpk.y, 48);
+        DisplayLongValues("spk_signature (r) (0x490) : ", (uint8_t*)(&auth_cert->acSpkSignature), 48);
+        DisplayLongValues("(s) (0x4C0) : ", ((uint8_t*)(&auth_cert->acSpkSignature) + 48), 48);
     }
     else if(auth_type == Authentication::ECDSA)
     {
@@ -1610,8 +1699,7 @@ void Versal_2ve_2vmReadImage::DisplayPhtAttributes(uint32_t value)
         case 3: val = "[cfi]";              break;
         case 4: val = "[raw]";              break;
         case 5: val = "[raw-elf]";          break;
-        case 6: val = "[cfi-gsc-mask]";     break;
-        case 7: val = "[cfi-gsc-unmask]";   break;
+        case 6: val = "[tl]";               break;
         default: val = "[invalid]";         break;
     }
 
@@ -1674,8 +1762,7 @@ std::string Versal_2ve_2vmReadImage::GetPartitionType(uint32_t value)
         case 3: val = "cfi";              break;
         case 4: val = "raw";              break;
         case 5: val = "raw-elf";          break;
-        case 6: val = "cfi-gsc-mask";     break;
-        case 7: val = "cfi-gsc-unmask";   break;
+        case 6: val = "tl";               break;
         default: val = "invalid";         break;
     }
     return val;

@@ -207,7 +207,7 @@ size_t Versal_2vpPartition::GetTotalDataChunks(Binary::Length_t partitionSize, s
 /******************************************************************************/
 size_t Versal_2vpPartition::GetBootloaderTotalDataChunks(Binary::Length_t partitionSize, std::vector<uint32_t>& dataChunks, bool encryptionFlag)
 {
-    size_t newSectionLength;
+    size_t newSectionLength = 0;
 
     if(!header->imageHeader->GetPrebuilt()){
         newSectionLength = partitionSize;

@@ -197,7 +197,10 @@ ElfFormat32::ElfFormat32(uint8_t* start, size_t fileSize)
         {
             stringTableSection = (StringTableSectionTbl *)(start + sectionHdrTbl[header.e_shstrndx].sh_offset);
             std::string sectn_name = (char*)stringTableSection + sectionHdrTbl[index].sh_name;
-            if (sectn_name == ".struct_info" || sectn_name == ".xplm_modules")
+            /* .struct_info (PLM) and .struct_info_asu (ASUFW) are distinct ELF sections that
+               map to distinct IHT optional-data ids (0x02 / 0x04) purely by section name -
+               independent of the partition's role/core. */
+            if (sectn_name == ".struct_info" || sectn_name == ".struct_info_asu" || sectn_name == ".xplm_modules")
             {
                 uint32_t sectn_size_id = 0;
                 /* Optional Data Header + Optional Data Actual size + Checksum */
@@ -214,6 +217,10 @@ ElfFormat32::ElfFormat32(uint8_t* start, size_t fileSize)
                 if (sectn_name == ".struct_info")
                 {
                     sectn_size_id = (uint32_t)((sectn_length / 4) << 16) | DATA_ID_STRUCT_INFO;
+                }
+                if (sectn_name == ".struct_info_asu")
+                {
+                    sectn_size_id = (uint32_t)((sectn_length / 4) << 16) | DATA_ID_ASU_STRUCT_INFO;
                 }
 
                 iht_optional_data = (uint32_t*) realloc(iht_optional_data, iht_optional_data_size + sectn_length);

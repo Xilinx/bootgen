@@ -21,6 +21,7 @@
 -------------------------------------------------------------------------------
 */
 #include "bootimage-versal_2ve_2vm.h"
+#include <vector>
 #include "partitionheadertable-versal_2ve_2vm.h"
 #include "binary-versal_2ve_2vm.h"
 #include "checksum-versal_2ve_2vm.h"
@@ -194,6 +195,7 @@ void Versal_2ve_2vmBootImage::ConfigureAuthenticationContext(ImageHeader * image
     {
     case Authentication::RSA:
     case Authentication::ECDSA:
+    case Authentication::ECDSAP384Padded:
     case Authentication::ECDSAp521:
     case Authentication::LMS_SHA2_256:
     case Authentication::LMS_SHAKE256:
@@ -254,7 +256,7 @@ void Versal_2ve_2vmBootImage::ConfigureAuthenticationContext(ImageHeader * image
 
         if (authType == Authentication::RSA)
             currentAuthCtx->signatureLength = SIGN_LENGTH_VERSAL;
-        else if (authType == Authentication::ECDSA)
+        else if (authType == Authentication::ECDSA || authType == Authentication::ECDSAP384Padded)
             currentAuthCtx->signatureLength = EC_P384_KEY_LENGTH * 2;
         else if (authType == Authentication::ECDSAp521)
             currentAuthCtx->signatureLength = EC_P521_KEY_LENGTH2 * 2;
@@ -271,7 +273,7 @@ void Versal_2ve_2vmBootImage::ConfigureAuthenticationContext(ImageHeader * image
         }
 
         AuthenticationContext::SetAuthenticationKeyLength(RSA_4096_KEY_LENGTH);
-        if (authType == Authentication::ECDSA)
+        if (authType == Authentication::ECDSA || authType == Authentication::ECDSAP384Padded)
         {
             AuthenticationContext::SetAuthenticationKeyLength(EC_P384_KEY_LENGTH);
         }
@@ -819,6 +821,7 @@ void Versal_2ve_2vmBootImage::ValidateSecureAttributes(ImageHeader * image, BifO
     {
     case Authentication::RSA:
     case Authentication::ECDSA:
+    case Authentication::ECDSAP384Padded:
     case Authentication::ECDSAp521:
     case Authentication::LMS_SHA2_256:
     case Authentication::LMS_SHAKE256:
@@ -1157,6 +1160,20 @@ void Versal_2ve_2vmBootImage::OutputOptionalSecureDebugImage()
     if (options.GetSecureDebugAuthType() != Authentication::None)
     {
         Authentication::Type authType = options.GetSecureDebugAuthType();
+        if (authType == Authentication::ECDSA || authType == Authentication::ECDSAP384Padded)
+        {
+            Authentication::Type imageFormat = Authentication::None;
+            if (ImageSelectsEcdsaP384Format(imageFormat) && imageFormat != authType)
+            {
+                const char* imageName = (imageFormat == Authentication::ECDSAP384Padded) ? "ecdsa-p384-padded" : "ecdsa-p384";
+                const char* jtagName = (authType == Authentication::ECDSAP384Padded) ? "ecdsa-p384-padded" : "ecdsa-p384";
+                LOG_ERROR("BIF attribute error !!!\n\t\tAuthenticated JTAG ECDSA-P384 PPK format must match the image format used for the same provisioning digest.\n\t\tImage uses %s\n\t\tAuthenticated JTAG uses %s", imageName, jtagName);
+            }
+            if (authType == Authentication::ECDSA)
+            {
+                WarnLegacyEcdsaP384Format(options.archType, Authentication::ECDSA);
+            }
+        }
         bool isHss = (authType == Authentication::HSS_SHA2_256 || authType == Authentication::HSS_SHAKE256);
         if (isHss) {
             authType = (authType == Authentication::HSS_SHA2_256) ? Authentication::LMS_SHA2_256 : Authentication::LMS_SHAKE256;
@@ -1484,8 +1501,17 @@ void Versal_2ve_2vmBootImage::Add(BifOptions* bifoptions)
     {
         LOG_TRACE("Parsing SPK Signature File");
 
-        if(options.GetSecureDebugAuthType() == Authentication::LMS_SHA2_256 || options.GetSecureDebugAuthType() == Authentication::LMS_SHAKE256
-           || options.GetSecureDebugAuthType() == Authentication::HSS_SHA2_256 || options.GetSecureDebugAuthType() == Authentication::HSS_SHAKE256)
+        /* The shared context is still the RSA default (512-byte signatures)
+           when a standalone JTAG image loads its offline SPK signature. Both
+           P-384 JTAG formats use a 96-byte signature; set that length before
+           the buffer is allocated and the file is read. */
+        Authentication::Type jtagAuth = options.GetSecureDebugAuthType();
+        if (jtagAuth == Authentication::ECDSA || jtagAuth == Authentication::ECDSAP384Padded)
+        {
+            currentAuthCtx->signatureLength = 2 * EC_P384_KEY_LENGTH;
+        }
+        else if(jtagAuth == Authentication::LMS_SHA2_256 || jtagAuth == Authentication::LMS_SHAKE256
+           || jtagAuth == Authentication::HSS_SHA2_256 || jtagAuth == Authentication::HSS_SHAKE256)
         {
             currentAuthCtx->signatureLength = GetLmsSignatureLength(currentAuthCtx->primaryLmsParams, currentAuthCtx->primaryLmsParamsSize,
                 currentAuthCtx->pskFile.c_str(), currentAuthCtx->ppkFile.c_str(), currentAuthCtx->lmsOnly);
@@ -1871,6 +1897,8 @@ void Versal_2ve_2vmBootImage::OutputOptionalEfuseHash()
     std::string primaryKeyFile;
     if (hashFile != "")
     {
+        Authentication::Type p384Type = ResolveEcdsaP384Format();
+
         if (bifOptions->GetPPKFileName() != "")
         {
             if (currentAuthCtx)
@@ -1916,7 +1944,11 @@ void Versal_2ve_2vmBootImage::OutputOptionalEfuseHash()
 
                     if (ecCurveNID == NID_secp384r1)
                     {
-                        authCtx = std::make_unique<Versal_2ve_2vmAuthenticationContext>(currentAuthCtx.get(), Authentication::ECDSA);
+                        if (p384Type == Authentication::ECDSA)
+                        {
+                            WarnLegacyEcdsaP384Format(options.archType, Authentication::ECDSA);
+                        }
+                        authCtx = std::make_unique<Versal_2ve_2vmAuthenticationContext>(currentAuthCtx.get(), p384Type);
                     }
                     else if (ecCurveNID == NID_secp521r1)
                     {
@@ -1972,7 +2004,11 @@ void Versal_2ve_2vmBootImage::OutputOptionalEfuseHash()
 
                     if (ecCurveNID == NID_secp384r1)
                     {
-                        authCtx = std::make_unique<Versal_2ve_2vmAuthenticationContext>(currentAuthCtx.get(), Authentication::ECDSA);
+                        if (p384Type == Authentication::ECDSA)
+                        {
+                            WarnLegacyEcdsaP384Format(options.archType, Authentication::ECDSA);
+                        }
+                        authCtx = std::make_unique<Versal_2ve_2vmAuthenticationContext>(currentAuthCtx.get(), p384Type);
                     }
                     else if (ecCurveNID == NID_secp521r1)
                     {
@@ -2114,8 +2150,134 @@ void Versal_2ve_2vmBootImage::AppendImagesInSubsystems(void)
     }
 }
 /******************************************************************************/
+static bool IsEcdsaP384Family(Authentication::Type type)
+{
+    return type == Authentication::ECDSA || type == Authentication::ECDSAP384Padded;
+}
+
+/******************************************************************************/
+bool Versal_2ve_2vmBootImage::ImageSelectsEcdsaP384Format(Authentication::Type& format)
+{
+    bool sawLegacy = false;
+    bool sawPadded = false;
+
+    Authentication::Type metaAuth = bifOptions->metaHdrAttributes.authenticate;
+    if (IsEcdsaP384Family(metaAuth))
+    {
+        sawLegacy = metaAuth == Authentication::ECDSA;
+        sawPadded = metaAuth == Authentication::ECDSAP384Padded;
+    }
+
+    for (ImageHeader* image : imageList)
+    {
+        Authentication::Type type = image->GetAuthenticationType();
+        if (type == Authentication::ECDSA)
+        {
+            sawLegacy = true;
+        }
+        else if (type == Authentication::ECDSAP384Padded)
+        {
+            sawPadded = true;
+        }
+    }
+
+    if (sawLegacy && sawPadded)
+    {
+        format = Authentication::ECDSA;
+        return false;
+    }
+    if (sawPadded)
+    {
+        format = Authentication::ECDSAP384Padded;
+        return true;
+    }
+    if (sawLegacy)
+    {
+        format = Authentication::ECDSA;
+        return true;
+    }
+    return false;
+}
+
+/******************************************************************************/
+Authentication::Type Versal_2ve_2vmBootImage::ResolveEcdsaP384Format(void)
+{
+    struct FormatUser
+    {
+        std::string name;
+        Authentication::Type type;
+    };
+    std::vector<FormatUser> users;
+
+    Authentication::Type metaAuth = bifOptions->metaHdrAttributes.authenticate;
+    if (IsEcdsaP384Family(metaAuth))
+    {
+        users.push_back(FormatUser{"metaheader", metaAuth});
+    }
+
+    for (ImageHeader* image : imageList)
+    {
+        Authentication::Type type = image->GetAuthenticationType();
+        if (!IsEcdsaP384Family(type))
+        {
+            continue;
+        }
+        std::string file = image->GetFilename();
+        if (file.empty())
+        {
+            file = image->GetName();
+        }
+        file = StringUtils::BaseName(file);
+        std::string name = image->IsBootloader() ? ("bootloader " + file) : ("partition " + file);
+        users.push_back(FormatUser{name, type});
+    }
+
+    Authentication::Type jtagAuth = options.GetSecureDebugAuthType();
+    if (IsEcdsaP384Family(jtagAuth))
+    {
+        users.push_back(FormatUser{"authenticated-JTAG", jtagAuth});
+    }
+
+    bool sawLegacy = false;
+    bool sawPadded = false;
+    for (const FormatUser& user : users)
+    {
+        if (user.type == Authentication::ECDSA)
+        {
+            sawLegacy = true;
+        }
+        else if (user.type == Authentication::ECDSAP384Padded)
+        {
+            sawPadded = true;
+        }
+    }
+
+    if (sawLegacy && sawPadded)
+    {
+        std::string message = "BIF attribute error !!!\n\t\tECDSA-P384 PPK format must be the same for the bootloader, authenticated partitions, the authenticated metaheader, and authenticated JTAG.\n\t\tConflicting components:";
+        for (const FormatUser& user : users)
+        {
+            const char* formatName = (user.type == Authentication::ECDSAP384Padded) ? "ecdsa-p384-padded" : "ecdsa-p384";
+            message += "\n\t\t  ";
+            message += user.name;
+            message += " uses ";
+            message += formatName;
+        }
+        LOG_ERROR("%s", message.c_str());
+    }
+
+    if (sawPadded)
+    {
+        return Authentication::ECDSAP384Padded;
+    }
+    return Authentication::ECDSA;
+}
+
+/******************************************************************************/
 void Versal_2ve_2vmBootImage::BuildAndLink(Binary* cache)
 {
+    ResolveEcdsaP384Format();
+
     if (imageList.size() == 0 && options.GetSecureDebugAuthType() == Authentication::None)
     {
         LOG_WARNING("No partition images given");
@@ -2175,6 +2337,7 @@ void Versal_2ve_2vmBootImage::BuildAndLink(Binary* cache)
     /* all static fields within the header tables are populated here */
     bootHeader->Build(*this, *cache);
     imageHeaderTable->Build(*this, *cache);
+    WarnUnappliedOverlayMarkers();
     partitionHeaderTable->Build(*this, *cache);
     checksumTable->Build(*this, *cache);
     partitionHeaderTable->BuildPartitions(*this, *cache);
@@ -2346,6 +2509,7 @@ void Versal_2ve_2vmBootImage::GenerateTlBin(BifOptions* bifoptions)
     if (dtbPartition != nullptr)
     {
         dtbPartition->filename = tlbinOutputPath;
+        dtbPartition->SetPartitionType(PartitionType::TL);
+        LOG_INFO("Replaced %s with %s in the BIF", dtbFilepath.c_str(), dtbPartition->filename.c_str());
     }
-    LOG_INFO("Replaced %s with %s in the BIF", dtbFilepath.c_str(), dtbPartition->filename.c_str());
 }

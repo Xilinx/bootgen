@@ -29,6 +29,9 @@
 #include <iostream>
 #include <fstream>
 #include <stdint.h>
+#include <string.h>
+#include "stringutils.h"
+#include "logger.h"
 
 /*
 -------------------------------------------------------------------------------
@@ -137,6 +140,53 @@ public:
         fclose(f);
         return true;
     }
+
+    bool LoadHexDataVariable(const std::string& fileName, uint8_t* dataArray, int maxCount, int& actualCount)
+    {
+        FILE* f = fopen(fileName.c_str(), "r");
+        if (!f)
+        {
+            LOG_ERROR("Unable to open file - %s", fileName.c_str());
+            return false;
+        }
+
+        int datum, ret, nbytes = 0;
+        memset(dataArray, 0, maxCount);
+
+        while ((ret = fscanf(f, "%2X", &datum)) != EOF)
+        {
+            if (ret != 1)
+            {
+                fclose(f);
+                LOG_ERROR("Unable to read hex characters from file - %s", fileName.c_str());
+                return false;
+            }
+            if (datum < 0 || datum > 255)
+            {
+                fclose(f);
+                LOG_ERROR("Bad hex character %x in file - %s", datum, fileName.c_str());
+                return false;
+            }
+            if (nbytes >= maxCount)
+            {
+                fclose(f);
+                LOG_ERROR("PUF Helper Data exceeds maximum length of %d bytes in file - %s",
+                          maxCount, fileName.c_str());
+                return false;
+            }
+            dataArray[nbytes++] = static_cast<uint8_t>(datum);
+        }
+        fclose(f);
+
+        if (nbytes == 0)
+        {
+            LOG_ERROR("File is empty - %s", fileName.c_str());
+            return false;
+        }
+
+        actualCount = nbytes;
+        return true;
+    }
 };
 
 class FileUtils
@@ -158,6 +208,50 @@ public:
         }
         fclose(p_file);
         return size;
+    }
+
+    static bool Exists(const std::string& filename)
+    {
+        std::ifstream f(filename.c_str(), std::ios::binary);
+        return f.good();
+    }
+    
+    static std::string ResolveInputPath(const std::string& filename, const std::string& bifFilename)
+    {
+        if (filename.empty() || Exists(filename))
+        {
+            return filename;
+        }
+
+        /* Absolute paths and Windows drive letters are never re-anchored */
+        if (filename[0] == '/' || filename[0] == '\\')
+        {
+            return filename;
+        }
+        if (filename.size() > 2 && filename[1] == ':')
+        {
+            return filename;
+        }
+
+        std::string folder = StringUtils::FolderPath(bifFilename);
+        if (folder.empty())
+        {
+            return filename;
+        }
+        if (folder[folder.size() - 1] != '/' && folder[folder.size() - 1] != '\\')
+        {
+            folder += "/";
+        }
+
+        std::string candidate = folder + filename;
+        if (!Exists(candidate))
+        {
+            return filename;
+        }
+
+        LOG_TRACE("File '%s' not found relative to the current directory. Using '%s' from the BIF directory.",
+                    filename.c_str(), candidate.c_str());
+        return candidate;
     }
 };
 #endif

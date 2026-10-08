@@ -51,6 +51,7 @@ extern "C" {
 */
 /******************************************************************************/
 SpartanupAuthenticationContext::SpartanupAuthenticationContext(Authentication::Type type)
+    : certSize(0)
 {
     signatureLength = SIGN_LENGTH_VERSAL;
     //spksignature = std::make_unique<uint8_t[]>(signatureLength);
@@ -122,6 +123,7 @@ SpartanupAuthenticationContext::SpartanupAuthenticationContext(Authentication::T
 
 /******************************************************************************/
 SpartanupAuthenticationContext::SpartanupAuthenticationContext(const AuthenticationContext* refAuthContext, Authentication::Type authtype)
+    : certSize(0)
 {
     signatureLength = SIGN_LENGTH_VERSAL;
     //spksignature = std::make_unique<uint8_t[]>(signatureLength);
@@ -275,6 +277,7 @@ SpartanupAuthenticationContext::SpartanupAuthenticationContext(const Authenticat
 
 /******************************************************************************/
 SpartanupAuthenticationContext::SpartanupAuthenticationContext(const AuthCertificate4096Sha3PaddingHBStructure* existingCert, Authentication::Type authtype)
+    : certSize(0)
 {
     signatureLength = SIGN_LENGTH_VERSAL;
     //spksignature = std::make_unique<uint8_t[]>(signatureLength);

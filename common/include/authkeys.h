@@ -190,7 +190,24 @@ typedef struct
 } AuthCertificateECDSAHBStructure;              //(0x1A0)
 
 typedef struct
-{ // struct only specific for telluride and lassen 
+{
+    ACKeyECDSA          acPpk;                    // (0x000) Qx || Qy
+    uint8_t             acPpkPadding[932];        // (0x060) zero-filled to 0x404
+    uint32_t            acPpkAlignment[3];        // (0x404)
+
+    uint32_t            acTotalSpkSize;           // (0x410)
+    uint32_t            acActualSpkSize;          // (0x414)
+    uint32_t            acSpkTotalSignatureSize;  // (0x418)
+    uint32_t            acSpkActualSignatureSize; // (0x41C)
+    uint32_t            acSpkId;                  // (0x420)
+    uint32_t            acSpkHdrAlignment[3];     // (0x424)
+
+    ACKeyECDSA          acSpk;                    // (0x430)
+    ACSignatureECDSA    acSpkSignature;           // (0x490)
+} AuthCertificateECDSAP384PaddedHBStructure;      // (0x4F0)
+
+typedef struct
+{ // ECDSA P-384 padded SPK header fields 
     uint32_t            acTotalSpkSize;
     uint32_t            acActualSpkSize;
     uint32_t            acSpkTotalSignatureSize;
@@ -284,6 +301,38 @@ typedef struct
 
     uint8_t       authJtagSignature[2 * EC_P384_KEY_LENGTH]; //0x180
 } AuthenticatedJtagECP384ImageStructure; //0x1E0
+
+/* Padded ECDSA-P384 authenticated JTAG: 1028-byte PPK slot, 96-byte SPK and signatures. */
+typedef struct
+{
+    uint32_t      idWord;                             //0x00
+    uint32_t      authJtagImageLength;                //0x04
+    uint32_t      acHeader;                           //0x08
+    uint32_t      totalppkSize;                       //0x0C
+    uint32_t      actualppkSize;                      //0x10
+    uint32_t      totalAuthJtagSignSize;              //0x14
+    uint32_t      actualAuthJtagSignSize;             //0x18
+    uint32_t      authJtagMsgrevokeId;                //0x1C
+    uint32_t      attributes;                         //0x20
+    uint8_t       deviceDNA[16];                      //0x24
+    uint32_t      jtagTimeOut;                        //0x34
+    uint32_t      alignment[2];                       //0x38
+
+    uint8_t       acPpk[0x404];                       //0x40, Qx || Qy || zero padding
+    uint32_t      ppkAlignment[3];                    //0x444
+
+    uint32_t      totalspkSize;                       //0x450
+    uint32_t      actualspkSize;                      //0x454
+    uint32_t      totalspkSignSize;                   //0x458
+    uint32_t      actualspkSignSize;                  //0x45C
+    uint32_t      spkRevokeId;                        //0x460
+    uint32_t      acSpkHdrAlignment[3];               //0x464
+
+    uint8_t       acSpk[2 * EC_P384_KEY_LENGTH];      //0x470
+
+    uint8_t       spkSignature[2 * EC_P384_KEY_LENGTH];      //0x4D0
+    uint8_t       authJtagSignature[2 * EC_P384_KEY_LENGTH]; //0x530
+} AuthenticatedJtagECP384PaddedImageStructure; //0x590
 
 /* LMS/HSS Authenticated-Jtag Image - layout is variable; PPK/SPK/sign offsets computed at runtime from key/sign sizes */
 #define AUTH_JTAG_LMS_PUBLIC_KEY_SIZE       60   /* sizeof(HssPublicKey), max PPK/SPK size */

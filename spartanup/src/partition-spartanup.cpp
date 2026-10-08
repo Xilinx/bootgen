@@ -22,6 +22,7 @@
 */
 #include <string.h>
 #include <memory>
+#include <cstdlib>
 
 #include "bootimage.h"
 #include "binary.h"
@@ -831,12 +832,12 @@ void SpartanupPartition::Build(BootImage& bi, Binary& cache)
         search_for_sync_points();
 
         uint8_t* buffer = (uint8_t*)cdoseq_to_binary(cdo_seq, &buffer_size, 0);
-        std::unique_ptr<uint8_t[]> buffer_owner(buffer);
+        std::unique_ptr<uint8_t, decltype(&std::free)> buffer_owner(buffer, std::free);
 
         /* Get no. of sync points and sync points offsets */
         num_of_sync_points = get_num_of_sync_points();
         syncpt_offsets = get_slr_sync_point_offsets();
-        std::unique_ptr<uint32_t[]> syncpt_offsets_owner(syncpt_offsets);
+        std::unique_ptr<uint32_t, decltype(&std::free)> syncpt_offsets_owner(syncpt_offsets, std::free);
 
         for (int i = 0; i < num_of_sync_points; i++)
         {

@@ -37,5 +37,6 @@ struct CdoOverlayInfo {
 CdoOverlayInfo * cdooverlay_open(CdoSequence * seq);
 void cdooverlay_close(CdoOverlayInfo * info);
 int cdooverlay_apply(CdoSequence * seq, CdoOverlayInfo * ovl);
+const char * cdooverlay_get_unapplied_marker(CdoOverlayInfo * ovl, unsigned int index);
 
 #endif /* D_cdo_overlay */

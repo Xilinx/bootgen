@@ -115,6 +115,7 @@
     familykey               return tok::METAL;
     ecdsa                   return tok::ECDSA;
     ecdsa-p384              return tok::ECDSA;
+    ecdsa-p384-padded       return tok::ECDSAP384PADDED;
     ecdsa-p521              return tok::ECDSAP521;
     lms                     return tok::LMS;
     mldsa                   return tok::MLDSA;

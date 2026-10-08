@@ -1430,7 +1430,26 @@ void Versal_2vpBootImage::Add(BifOptions* bifoptions)
         {
             currentAuthCtx->SetSPKeyFile(bifoptions->GetSPKFileName());
             std::unique_ptr<Versal_2vpAuthenticationContext> authCtx;
-            if (currentAuthCtx)
+            Authentication::Type authType = options.GetSecureDebugAuthType();
+            bool isHss = (authType == Authentication::HSS_SHA2_256 ||
+                          authType == Authentication::HSS_SHAKE256);
+
+            if (isHss)
+            {
+                authType = (authType == Authentication::HSS_SHA2_256)
+                               ? Authentication::LMS_SHA2_256
+                               : Authentication::LMS_SHAKE256;
+            }
+
+            if (currentAuthCtx && authType != Authentication::None)
+            {
+                authCtx = std::make_unique<Versal_2vpAuthenticationContext>(currentAuthCtx.get(), authType);
+                if (isHss)
+                {
+                    authCtx->lmsOnly = false;
+                }
+            }
+            else if (currentAuthCtx)
             {
                 std::string filename = bifoptions->GetSPKFileName();
                 FILE* f;
@@ -1462,7 +1481,11 @@ void Versal_2vpBootImage::Add(BifOptions* bifoptions)
 
             if (options.DoGenerateHashes())
             {
-                authCtx->hash = hash.get();
+                if (authCtx == nullptr)
+                {
+                    LOG_ERROR("Cannot determine the authentication type for SPK public key file - %s.",
+                              bifoptions->GetSPKFileName().c_str());
+                }
                 authCtx->spkIdentification = bifOptions->GetRevokeId();
                 LOG_INFO("Generating SPK Hash File");
                 authCtx->GenerateSPKHashFile(bifoptions->GetSPKFileName(), hash.get());

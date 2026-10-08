@@ -107,7 +107,8 @@ struct Authentication
         HSS_SHA2_256,
         HSS_SHAKE256,
         MLDSA,
-        SLH_SHAKE256
+        SLH_SHAKE256,
+        ECDSAP384Padded
     } Type;
 };
 
@@ -486,7 +487,8 @@ struct PartitionType
         SLR_SLAVE,
         SLR_SLAVE_BOOT,
         SLR_SLAVE_CONFIG,
-        IMAGE_STORE_PDI
+        IMAGE_STORE_PDI,
+        TL
     } Type;
 };
 
