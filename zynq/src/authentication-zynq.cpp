@@ -140,14 +140,10 @@ ZynqAuthenticationContext::ZynqAuthenticationContext(const AuthenticationContext
     spkSignLoaded = refAuthContext->spkSignLoaded;
     
     // Deep copy keys to avoid use-after-free (don't share pointers between contexts)
-    primaryKey = std::make_unique<Key2048>("Primary Key");
-    if (refAuthContext->primaryKey && refAuthContext->primaryKey->Loaded) {
-        // Copy key data (Key2048 = 2048 bits = 256 bytes)
-        memcpy(primaryKey->N.get(), refAuthContext->primaryKey->N.get(), RSA_2048_KEY_LENGTH / 8);
-        memcpy(primaryKey->N_ext.get(), refAuthContext->primaryKey->N_ext.get(), RSA_2048_KEY_LENGTH / 8);
-        memcpy(primaryKey->E.get(), refAuthContext->primaryKey->E.get(), RSA_2048_KEY_LENGTH / 8);
-        primaryKey->Loaded = true;
-        primaryKey->isSecret = refAuthContext->primaryKey->isSecret;
+    if (refAuthContext->primaryKey) {
+        primaryKey = std::make_unique<Key2048>(*dynamic_cast<Key2048*>(refAuthContext->primaryKey.get()));
+    } else {
+        primaryKey = std::make_unique<Key2048>("Primary Key");
     }
     ownsPrimaryKey = true;    // We own this copy
     
@@ -294,8 +290,9 @@ Section* ZynqAuthenticationContext::CreateCertificate(BootImage& bi, Binary& cac
     acSection->isCertificate = true;
     acSection->index = dataSection->index;
     AuthCertificate2048Structure* authCert = (AuthCertificate2048Structure*)acSection->Data.get();
-    cache.Sections.push_back(std::move(acSection));
+    Section* acSectionPtr = acSection.get();
     LOG_TRACE("Creating new section for certificate - %s", acSection->Name.c_str());
+    cache.Sections.push_back(std::move(acSection));
     uint32_t x = sizeof(AuthCertificate2048Structure);
     if (x != certSize)
     {
@@ -315,7 +312,7 @@ Section* ZynqAuthenticationContext::CreateCertificate(BootImage& bi, Binary& cac
     primaryKey->Export(&authCert->acPpk);
     secondaryKey->Export(&authCert->acSpk);
     CopySPKSignature(&authCert->acSpkSignature);
-    return acSection.release();
+    return acSectionPtr;
 }
 
 /******************************************************************************/

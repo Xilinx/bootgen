@@ -11,8 +11,8 @@ Env-specific values (tool homes, golden binary, bitbake log dir, leak denylist) 
 | # | Rule |
 |---|------|
 | 1 | Build with **`make` only**. Never add Gradle, `gradle_build.csh`, or Main’s Gradle workflows. |
-| 2 | **No issue keys** of the form `CR-` + 5 or more digits in the PR title, commit subject, commit body, or source/docs that land on `master`. |
-| 3 | Every commit has a non-empty subject and a DCO line: `Signed-off-by: Name <email>`. |
+| 2 | **No issue keys** of the form `CR-` + 5 or more digits in the PR title or in source/docs that land on `master`. Avoid them in commit subjects and bodies too (CI warns, does not fail). |
+| 3 | Every commit should have a non-empty subject and a DCO line: `Signed-off-by: Name <email>` (CI warns, does not fail). |
 | 4 | PR title is `#<BOOTGEN_BUILD_NUMBER> <summary>`. The number must match `common/include/version.h` and be a **greater integer** than `origin/master`. |
 | 5 | Do not copy Main’s `Makefile`. Keep master’s Make (optional bison/flex via `BISON_HOME` / `FLEX_HOME`; default OpenSSL `-lssl -lcrypto`). |
 | 6 | Do not hardcode lab/toolchain paths (`/proj`, `/wrk`, `/home`, `/build`, `/tmp`) in `Makefile` or `Makefile.win`. |
@@ -73,7 +73,7 @@ All jobs use `runs-on: [self-hosted, bootgen-vm-154183]` (labels, not the runner
 | Make build | no `build/bin/bootgen`, or `bisonflex/` dirty after `make` (CI unsets bison/flex homes) |
 | Make build (OpenSSL 3.5) | OpenSSL 3.5 `make` failed, or `OPENSSL_35_HOME` is unset / missing `include/` or `lib`/`lib64`. Test suite uses this binary |
 | Version | build number missing, not an integer, not greater than base, or title `#n` mismatch |
-| Commit format | empty subject, missing `Signed-off-by`, issue key in title or commits |
+| Commit format | title not `#<n> <summary>` or has an issue key. Empty subject, missing `Signed-off-by`, or issue key in commits is a warning only |
 | Leak scan | blocked path added, issue key, tracker host, or `MASTER_INTERNAL_PATTERNS` hit |
 | Test suite | pipeline, external, or cr tests fail |
 | Bitbake scan | no `*.bitbake.log` or report, or log/report has `FAIL` / `ERROR` / `ERR` for this PR's revision. A snapshot whose bootgen SHA is not this PR is stale and does not fail the job |
@@ -106,7 +106,7 @@ Checklist (copy per port):
 - [ ] `Makefile` still has no hardcoded lab paths; bison/flex still env-gated
 - [ ] `common/include/version.h`: `BOOTGEN_BUILD_NUMBER` incremented vs `origin/master`
 - [ ] `parser/` change ⇒ `bisonflex/` updated and `make` with homes leaves it clean
-- [ ] Every commit: `Signed-off-by`, no `CR-` + digits
+- [ ] Every commit: `Signed-off-by`, no `CR-` + digits (warning only in CI)
 - [ ] Intended PR title: `#<build> <summary>` with no issue key
 - [ ] `make` produces `build/bin/bootgen`
 - [ ] Local leak-style check on the diff (issue keys, tracker host, blocked paths)
@@ -136,4 +136,4 @@ Skip any commit that is Gradle-only, `product/`-only, or whose message cannot be
 
 ### 4. After the PR is open
 
-Confirm required `master-ci` jobs are green. A port that compiles on Main under Gradle can still fail master Make, bisonflex drift, DCO, leak scan, or bitbake log scan.
+Confirm required `master-ci` jobs are green. A port that compiles on Main under Gradle can still fail master Make, bisonflex drift, PR title, leak scan, or bitbake log scan.

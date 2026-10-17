@@ -281,6 +281,84 @@ void VersalBootImage::ConfigureChecksumContext(ImageHeader * image, Checksum::Ty
 }
 
 /******************************************************************************/
+static void RestoreImportedChecksumContext(VersalBootImage& bi, ImageHeader* image)
+{
+    if (image == NULL)
+    {
+        return;
+    }
+
+    Checksum::Type importedType = Checksum::None;
+    std::list<PartitionHeader*> headers = image->GetPartitionHeaderList();
+    for (std::list<PartitionHeader*>::iterator ph = headers.begin(); ph != headers.end(); ph++)
+    {
+        if ((*ph) != NULL && (*ph)->checksumType != Checksum::None)
+        {
+            importedType = (Checksum::Type)(*ph)->checksumType;
+            break;
+        }
+    }
+
+    /* The outer type=bootimage partition has no checksum attribute. Keep the
+       algorithm recorded in the imported partition header. */
+    if (importedType != Checksum::None)
+    {
+        bi.ConfigureChecksumContext(image, importedType);
+    }
+}
+
+/******************************************************************************/
+static void ImportPmcCdoSlice(Options& options, VersalBootHeader* importedBh, ImageHeader* newImage)
+{
+    if (importedBh == NULL || newImage == NULL)
+    {
+        return;
+    }
+    if (importedBh->GetTotalPmcCdoLength() == 0 || options.bifOptions->GetPmcdataFile() != "")
+    {
+        return;
+    }
+
+    std::list<PartitionHeader*> headers = newImage->GetPartitionHeaderList();
+    if (headers.empty() || headers.front() == NULL || headers.front()->partition == NULL ||
+        headers.front()->partition->section == NULL)
+    {
+        return;
+    }
+
+    Section* blSection = headers.front()->partition->section;
+    uint32_t plmLen = importedBh->GetTotalPmcFwLength();
+    uint32_t pmcLen = importedBh->GetPmcCdoLength();
+    uint32_t totalPmc = importedBh->GetTotalPmcCdoLength();
+    if (blSection->Data == NULL || (uint64_t)plmLen >= blSection->Length)
+    {
+        LOG_ERROR("PMC CDO extract starts past the end of the bootloader section");
+    }
+    uint32_t available = (uint32_t)(blSection->Length - plmLen);
+    if (totalPmc > available)
+    {
+        totalPmc = available;
+    }
+    /* SHA3 pad and digest sit after the PMC CDO and are included in pmccdo_total_length.
+       Copy the CDO only. Keep the on-disk total so the boot header still covers the digest
+       that remains in the bootloader section. */
+    uint32_t copyLen = totalPmc;
+    if (pmcLen != 0 && pmcLen < totalPmc)
+    {
+        copyLen = pmcLen;
+    }
+
+    options.bifOptions->pmcdataSize = pmcLen;
+    options.bifOptions->SetTotalpmcdataSize(totalPmc);
+    auto pmcDataBuffer_owner = std::make_unique<uint8_t[]>(totalPmc);
+    memset(pmcDataBuffer_owner.get(), 0, totalPmc);
+    memcpy(pmcDataBuffer_owner.get(), blSection->Data.get() + plmLen, copyLen);
+    options.bifOptions->pmcDataBuffer = pmcDataBuffer_owner.release();
+    newImage->SetPmcDataSizeIh(pmcLen);
+    newImage->SetTotalPmcDataSizeIh(totalPmc);
+}
+
+/******************************************************************************/
 void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
 {
     LOG_INFO("Importing BootImage...");
@@ -466,6 +544,7 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
 
                 /* Commenting this func for now, check while doing the HSM mode */
                 ConfigureProcessingStages(image.get(), it);
+                RestoreImportedChecksumContext(*this, image.get());
                 subsys->imgList.push_back(image.release());
 
                 /* Image is just temporary, we need to get a pointer back to the copied object and relink */
@@ -477,16 +556,7 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
                 {
                     newImage->SetTotalFsblFwSizeIh(importedBh->GetTotalPmcFwLength());  // Use newImage after release()
                     newImage->SetFsblFwSizeIh(importedBh->GetPmcFwLength());
-                    if (importedBh->GetTotalPmcCdoLength() != 0 && options.bifOptions->GetPmcdataFile() == "")
-                    {
-                        options.bifOptions->SetTotalpmcdataSize(importedBh->GetTotalPmcCdoLength());
-                        options.bifOptions->pmcdataSize = importedBh->GetPmcCdoLength();
-                        auto pmcDataBuffer_owner = std::make_unique<uint8_t[]>(options.bifOptions->GetTotalpmcdataSize());
-                        memcpy(pmcDataBuffer_owner.get(), newImage->GetPartitionHeaderList().front()->partition->section->Data.get() + importedBh->GetTotalPmcFwLength(), options.bifOptions->totalpmcdataSize);
-                        options.bifOptions->pmcDataBuffer = pmcDataBuffer_owner.release();  // Transfer ownership to bifOptions
-                        newImage->SetPmcDataSizeIh(options.bifOptions->pmcdataSize);
-                        newImage->SetTotalPmcDataSizeIh(options.bifOptions->GetTotalpmcdataSize());
-                    }
+                    ImportPmcCdoSlice(options, importedBh.get(), newImage);
                 }
 
                 /* Determine if we need to load in previous RSAAuthentication Information */
@@ -600,6 +670,7 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
             image->SetBhSignFile(options.bifOptions->GetBHSignFileName());
 
             ConfigureProcessingStages(image.get(), it);
+            RestoreImportedChecksumContext(*this, image.get());
             imageList.push_back(image.release());
 
             /* Image is just temporary, we need to get a pointer back to the copied object and relink */
@@ -611,16 +682,7 @@ void VersalBootImage::ParseBootImage(PartitionBifOptions* it)
             {
                 newImage->SetTotalFsblFwSizeIh(importedBh->GetTotalPmcFwLength());  // Use newImage after release()
                 newImage->SetFsblFwSizeIh(importedBh->GetPmcFwLength());
-                if (importedBh->GetTotalPmcCdoLength() != 0 && options.bifOptions->GetPmcdataFile() == "")
-                {
-                    options.bifOptions->SetTotalpmcdataSize(importedBh->GetTotalPmcCdoLength());
-                    options.bifOptions->pmcdataSize = importedBh->GetPmcCdoLength();
-                    auto pmcDataBuffer_owner = std::make_unique<uint8_t[]>(options.bifOptions->GetTotalpmcdataSize());
-                    memcpy(pmcDataBuffer_owner.get(), newImage->GetPartitionHeaderList().front()->partition->section->Data.get() + importedBh->GetTotalPmcFwLength(), options.bifOptions->totalpmcdataSize);
-                    options.bifOptions->pmcDataBuffer = pmcDataBuffer_owner.release();  // Transfer ownership to bifOptions
-                    newImage->SetPmcDataSizeIh(options.bifOptions->pmcdataSize);
-                    newImage->SetTotalPmcDataSizeIh(options.bifOptions->GetTotalpmcdataSize());
-                }
+                ImportPmcCdoSlice(options, importedBh.get(), newImage);
             }
 
             /* Determine if we need to load in previous RSAAuthentication Information */
@@ -1734,10 +1796,10 @@ void VersalBootImage::OutputOptionalEfuseHash()
                 EC_KEY *eckeyLocal = PEM_read_EC_PUBKEY(f, NULL, NULL, NULL);
                 fclose(f);
 
-                VersalAuthenticationContext* authCtx = NULL;
+                std::unique_ptr<VersalAuthenticationContext> authCtx;
                 if (rsa != NULL)
                 {
-                    auto authCtx = std::make_unique<VersalAuthenticationContext>(currentAuthCtx.get(), Authentication::RSA);
+                    authCtx = std::make_unique<VersalAuthenticationContext>(currentAuthCtx.get(), Authentication::RSA);
                 }
                 else if (eckeyLocal != NULL)
                 {
@@ -1755,11 +1817,11 @@ void VersalBootImage::OutputOptionalEfuseHash()
 
                     if (ecCurveNID == NID_secp384r1)
                     {
-                        auto authCtx = std::make_unique<VersalAuthenticationContext>(currentAuthCtx.get(), Authentication::ECDSA);
+                        authCtx = std::make_unique<VersalAuthenticationContext>(currentAuthCtx.get(), Authentication::ECDSA);
                     }
                     else if (ecCurveNID == NID_secp521r1)
                     {
-                        auto authCtx = std::make_unique<VersalAuthenticationContext>(currentAuthCtx.get(), Authentication::ECDSAp521);
+                        authCtx = std::make_unique<VersalAuthenticationContext>(currentAuthCtx.get(), Authentication::ECDSAp521);
                     }
                     else
                     {

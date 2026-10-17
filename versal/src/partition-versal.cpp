@@ -530,7 +530,9 @@ void VersalPartition::Build(BootImage& bi, Binary& cache)
     }
 
     /*******************************************************************************/
-    if ((imageHeader.GetPartitionType() == PartitionType::CONFIG_DATA_OBJ) && !header->preencrypted && !header->presigned) //&& (encryptCtx->Type() != Encryption::None))
+    /* Imported SHA3 partitions already contain chunk hashes. Parsing them as a raw CDO fails. */
+    bool alreadyChecksummed = header->prealigned && (header->checksumType != Checksum::None);
+    if ((imageHeader.GetPartitionType() == PartitionType::CONFIG_DATA_OBJ) && !header->preencrypted && !header->presigned && !alreadyChecksummed) //&& (encryptCtx->Type() != Encryption::None))
     {
         size_t buffer_size = 0;
         uint32_t* syncpt_offsets = NULL;
@@ -539,6 +541,10 @@ void VersalPartition::Build(BootImage& bi, Binary& cache)
 
         CdoSequence * cdo_seq;
         cdo_seq = decode_cdo_binary(header->partition->section->Data.get(), header->partition->section->Length);
+        if (cdo_seq == NULL)
+        {
+            LOG_ERROR("Failed to decode CDO partition %s", section->Name.c_str());
+        }
 
         /* Enable the search for sync points - only needs to be done for SSIT devices */
         search_for_sync_points();
@@ -604,7 +610,9 @@ void VersalPartition::Build(BootImage& bi, Binary& cache)
     else
     {
         header->transferSize = section->Length;
-        if ((imageHeader.GetChecksumContext()->Type() == Checksum::SHA3) || (currentAuthCtx->authAlgorithm->Type() != Authentication::None))
+        ChecksumContext* cksumCtx = imageHeader.GetChecksumContext();
+        bool applyChecksum = (cksumCtx != NULL) && (cksumCtx->Type() == Checksum::SHA3);
+        if ((applyChecksum || (currentAuthCtx->authAlgorithm->Type() != Authentication::None)) && !alreadyChecksummed)
         {
             /* No chunking on bootloader for versal - Data should be alligned to 104 bytes before calculating the hash */
             if (imageHeader.IsBootloader() && !(versalNetSeries))
@@ -723,11 +731,11 @@ void VersalPartition::Build(BootImage& bi, Binary& cache)
             }
         }
 
-        if((imageHeader.IsBootloader() && imageHeader.GetChecksumContext()->Type() != Checksum::None))
+        if (imageHeader.IsBootloader() && applyChecksum)
         {
-            if (!versalNetSeries)
+            if (!versalNetSeries && !alreadyChecksummed)
             {
-                padLength = imageHeader.GetChecksumContext()->Size();
+                padLength = cksumCtx->Size();
             }
             /* Don't add checksum length here, as the checksum calculation and insertion happen in ChunkifyAndHash() for VersalNet */
         }

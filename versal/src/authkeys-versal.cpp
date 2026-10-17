@@ -513,6 +513,12 @@ void VersalKey::Parse(const std::string& filename, bool isSecret0)
                     /* Calculate the modulus extension, i.e. Montgomery Reduction term RR
                     and some sanity check for the keys passed */
                     {
+#ifdef _MSC_VER
+                        /* On Windows/MSVC, direct BIGNUM struct field access (d, dmax, top)
+                           causes BN_MONT_CTX_set to fail due to struct layout differences
+                           between GCC and MSVC OpenSSL builds. Use public API instead. */
+                        ComputeModulusExtension(N.get(), N_ext.get(), keySize);
+#else
                         BIGNUM m; // modulus
                         m.d = (BN_ULONG*)N.get();
                         m.dmax = keySize / sizeof(BN_ULONG);
@@ -525,6 +531,7 @@ void VersalKey::Parse(const std::string& filename, bool isSecret0)
 
                         montClass.Set(m);
                         montClass.GetModulusExtension(N_ext.get(), m, keySize);
+#endif
                     }
                     Loaded = true;
                 }
@@ -626,6 +633,12 @@ void VersalKey::Parse(const std::string& filename, bool isSecret0)
                     /* Calculate the modulus extension, i.e. Montgomery Reduction term RR
                     and some sanity check for the keys passed */
                     {
+#ifdef _MSC_VER
+                        /* On Windows/MSVC, direct BIGNUM struct field access (d, dmax, top)
+                           causes BN_MONT_CTX_set to fail due to struct layout differences
+                           between GCC and MSVC OpenSSL builds. Use public API instead. */
+                        ComputeModulusExtension(N.get(), N_ext.get(), keySize);
+#else
                         BIGNUM m; // modulus
                         m.d = (BN_ULONG*)N.get();
                         m.dmax = keySize / sizeof(BN_ULONG);
@@ -638,6 +651,7 @@ void VersalKey::Parse(const std::string& filename, bool isSecret0)
 
                         montClass.Set(m);
                         montClass.GetModulusExtension(N_ext.get(), m, keySize);
+#endif
                     }
                     Loaded = true;
                 }

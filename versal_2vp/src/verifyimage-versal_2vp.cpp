@@ -22,6 +22,9 @@
 */
 #include <iomanip>
 #include <iostream>
+#include <climits>
+#include <memory>
+#include <vector>
 #include "readimage-versal_2vp.h"
 #include "authkeys-versal_2vp.h"
 #include "Keccak-compact.h"
@@ -239,11 +242,162 @@ bool Versal_2vpReadImage::VerifySignature(bool nist, uint8_t * data, size_t data
     return !compare;
 }
 
+static bool IsRsaCertificate(uint8_t* authCert)
+{
+    return authCert != NULL &&
+        (reinterpret_cast<HeaderAuthCert_versal_2vp*>(
+            authCert)->Algorithm & 0xFF) == AUTH_HDR_TELLURIDE_RSA_4096;
+}
+
+static bool VerifyRsaSpkSignature(Versal_2vpReadImage* reader,
+    uint8_t* authCert)
+{
+    AuthCertificate4096Sha3PaddingHBStructure_versal2vp* cert =
+        reinterpret_cast<AuthCertificate4096Sha3PaddingHBStructure_versal2vp*>(
+            authCert);
+    return reader->VerifySignature(true,
+        reinterpret_cast<uint8_t*>(&cert->spkheader),
+        sizeof(cert->spkheader) + sizeof(cert->acSpk),
+        &cert->acPpk,
+        reinterpret_cast<uint8_t*>(&cert->acSpkSignature));
+}
+
+static bool VerifyRsaHashBlockSignature(Versal_2vpReadImage* reader,
+    uint8_t* authCert, uint8_t* hashBlock, uint32_t hashBlockLength)
+{
+    AuthCertificate4096Sha3PaddingHBStructure_versal2vp* cert =
+        reinterpret_cast<AuthCertificate4096Sha3PaddingHBStructure_versal2vp*>(
+            authCert);
+    return reader->VerifySignature(true, hashBlock, hashBlockLength,
+        &cert->acSpk,
+        reinterpret_cast<uint8_t*>(&cert->acHashblockSignature));
+}
+
+static bool IsEcdsaP384Certificate(uint8_t* authCert)
+{
+    return authCert != NULL &&
+        (reinterpret_cast<HeaderAuthCert_versal_2vp*>(
+            authCert)->Algorithm & 0xFF) == AUTH_HDR_TELLURIDE_ECDSA_P384;
+}
+
+static bool VerifyEcdsaP384SpkSignature(Versal_2vpReadImage* reader,
+    uint8_t* authCert)
+{
+    AuthCertificateECDSAHBStructure_versal2vp* cert =
+        reinterpret_cast<AuthCertificateECDSAHBStructure_versal2vp*>(authCert);
+    return reader->VerifyECDSASignature(true,
+        reinterpret_cast<uint8_t*>(&cert->spkheader),
+        sizeof(cert->spkheader) + sizeof(cert->acSpk),
+        &cert->acPpk,
+        reinterpret_cast<uint8_t*>(&cert->acSpkSignature));
+}
+
+static bool VerifyEcdsaP384HashBlockSignature(
+    Versal_2vpReadImage* reader, uint8_t* authCert,
+    uint8_t* hashBlock, uint32_t hashBlockLength)
+{
+    AuthCertificateECDSAHBStructure_versal2vp* cert =
+        reinterpret_cast<AuthCertificateECDSAHBStructure_versal2vp*>(authCert);
+    return reader->VerifyECDSASignature(true,
+        hashBlock, hashBlockLength, &cert->acSpk,
+        reinterpret_cast<uint8_t*>(&cert->acHashblockSignature));
+}
+
+static bool IsEcdsaP521Certificate(uint8_t* authCert)
+{
+    return authCert != NULL &&
+        (reinterpret_cast<HeaderAuthCert_versal_2vp*>(
+            authCert)->Algorithm & 0xFF) == AUTH_HDR_TELLURIDE_ECDSA_P521;
+}
+
+static bool VerifyEcdsaP521SpkSignature(Versal_2vpReadImage* reader,
+    uint8_t* authCert)
+{
+    AuthCertificateECDSAp521HBStructure_versal2vp* cert =
+        reinterpret_cast<AuthCertificateECDSAp521HBStructure_versal2vp*>(
+            authCert);
+    return reader->VerifyECDSAP521Signature(true,
+        reinterpret_cast<uint8_t*>(&cert->spkheader),
+        sizeof(cert->spkheader) + sizeof(cert->acSpk),
+        &cert->acPpk,
+        reinterpret_cast<uint8_t*>(&cert->acSpkSignature));
+}
+
+static bool VerifyEcdsaP521HashBlockSignature(
+    Versal_2vpReadImage* reader, uint8_t* authCert,
+    uint8_t* hashBlock, uint32_t hashBlockLength)
+{
+    AuthCertificateECDSAp521HBStructure_versal2vp* cert =
+        reinterpret_cast<AuthCertificateECDSAp521HBStructure_versal2vp*>(
+            authCert);
+    return reader->VerifyECDSAP521Signature(true,
+        hashBlock, hashBlockLength, &cert->acSpk,
+        reinterpret_cast<uint8_t*>(&cert->acHashblockSignature));
+}
+
 /*******************************************************************************/
 void Versal_2vpReadImage::VerifyHeaderTableSignature()
 {
     Separator();
     LOG_MSG("Verifying Header Authentication Certificate");
+    std::list<uint8_t*>::iterator rsaAuthCert = aCs.begin();
+    std::list<std::pair<uint8_t*, uint32_t> >::iterator rsaHashBlock =
+        Hashblock_record.begin();
+    if (bH != NULL)
+    {
+        if (rsaAuthCert != aCs.end())
+        {
+            ++rsaAuthCert;
+        }
+        if (rsaHashBlock != Hashblock_record.end())
+        {
+            ++rsaHashBlock;
+        }
+    }
+    if (rsaAuthCert != aCs.end() &&
+        rsaHashBlock != Hashblock_record.end() &&
+        IsRsaCertificate(*rsaAuthCert))
+    {
+        if (!VerifyRsaSpkSignature(this, *rsaAuthCert))
+        {
+            authenticationVerified = false;
+            LOG_ERROR("SPK Signature Verification Failed");
+        }
+        LOG_MSG("    SPK Signature Verified");
+
+        if (!VerifyRsaHashBlockSignature(this, *rsaAuthCert,
+                rsaHashBlock->first, rsaHashBlock->second))
+        {
+            authenticationVerified = false;
+            LOG_ERROR("Image Header Table Signature Verification Failed");
+        }
+        LOG_MSG("    Image Header Table Signature Verified");
+        return;
+    }
+    if (rsaAuthCert != aCs.end() &&
+        rsaHashBlock != Hashblock_record.end() &&
+        IsEcdsaP384Certificate(*rsaAuthCert))
+    {
+        if (!VerifyEcdsaP384SpkSignature(this, *rsaAuthCert))
+        {
+            authenticationVerified = false;
+            LOG_ERROR("SPK Signature Verification Failed");
+        }
+        LOG_MSG("    SPK Signature Verified");
+
+        if (!VerifyEcdsaP384HashBlockSignature(this, *rsaAuthCert,
+                rsaHashBlock->first, rsaHashBlock->second))
+        {
+            authenticationVerified = false;
+            LOG_ERROR("Image Header Table Signature Verification Failed");
+        }
+        LOG_MSG("    Image Header Table Signature Verified");
+        return;
+    }
+    if (rsaAuthCert != aCs.end() && IsEcdsaP521Certificate(*rsaAuthCert))
+    {
+        LOG_ERROR("Authentication verification of Meta Header cannot be done with ECDSA-P521 algorithm");
+    }
     uint64_t offset = 0;
     size_t result;
     FILE *binFile;
@@ -463,6 +617,119 @@ void Versal_2vpReadImage::VerifySPKSignature(uint8_t* aC)
 /*******************************************************************************/
 void Versal_2vpReadImage::VerifyPartitionSignature(void)
 {
+    std::unique_ptr<FILE, int (*)(FILE*)> p521File(
+        fopen(binFilename.c_str(), "rb"), fclose);
+    if (!p521File)
+    {
+        LOG_ERROR("Cannot read file %s", binFilename.c_str());
+    }
+    for (std::list<Versal_2vpPartitionHeaderTableStructure*>::iterator
+             partition = pHTs.begin(); partition != pHTs.end(); ++partition)
+    {
+        uint64_t authOffset =
+            (uint64_t)(*partition)->authCertificateOffset * 4;
+        if (authOffset == 0 || authOffset > UINT32_MAX ||
+            DetectAuthTypeFromAC((uint32_t)authOffset) !=
+                Authentication::ECDSAp521)
+        {
+            continue;
+        }
+
+        uint32_t authLength = GetACLength((uint32_t)authOffset, 0);
+        uint64_t hashBlockOffset =
+            (uint64_t)(*partition)->hashBlockOffset * 4;
+        uint64_t hashBlockLength =
+            (uint64_t)(*partition)->hashBlockLength * 4;
+        bool isBootloader = bH != NULL &&
+            (uint64_t)(*partition)->partitionWordOffset * 4 ==
+                bH->sourceOffset;
+        if (isBootloader)
+        {
+            LOG_ERROR("Authentication verification of bootloader cannot be done with ECDSA-P521 algorithm");
+        }
+        if (authLength == 0 || hashBlockOffset == 0 ||
+            hashBlockLength == 0 || authOffset > LONG_MAX ||
+            hashBlockOffset > LONG_MAX || hashBlockLength > UINT32_MAX)
+        {
+            LOG_ERROR("Invalid ECDSA P-521 Authentication Certificate or Hash Block");
+        }
+
+        std::vector<uint8_t> authCert(authLength);
+        std::vector<uint8_t> hashBlock((size_t)hashBlockLength);
+        if (fseek(p521File.get(), (long)authOffset, SEEK_SET) != 0 ||
+            fread(authCert.data(), 1, authCert.size(), p521File.get()) !=
+                authCert.size() ||
+            fseek(p521File.get(), (long)hashBlockOffset, SEEK_SET) != 0 ||
+            fread(hashBlock.data(), 1, hashBlock.size(), p521File.get()) !=
+                hashBlock.size())
+        {
+            LOG_ERROR("Error reading ECDSA P-521 verification data");
+        }
+
+        Separator();
+        LOG_MSG("Verifying ECDSA P-521 Partition Authentication Certificate");
+        if (!VerifyEcdsaP521SpkSignature(this, authCert.data()))
+        {
+            authenticationVerified = false;
+            LOG_ERROR("ECDSA P-521 SPK Signature Verification Failed");
+        }
+        LOG_MSG("    SPK Signature Verified");
+
+        if (!VerifyEcdsaP521HashBlockSignature(this, authCert.data(),
+                hashBlock.data(), (uint32_t)hashBlock.size()))
+        {
+            authenticationVerified = false;
+            LOG_ERROR("ECDSA P-521 Hash Block Signature Verification Failed");
+        }
+        LOG_MSG("    Partition Hash Block Signature Verified");
+    }
+
+    if (bH != NULL && !aCs.empty() && !Hashblock_record.empty() &&
+        IsRsaCertificate(aCs.front()))
+    {
+        Separator();
+        LOG_MSG("Verifying PLM Authentication Certificate");
+        if (!VerifyRsaSpkSignature(this, aCs.front()))
+        {
+            authenticationVerified = false;
+            LOG_ERROR("SPK Signature Verification Failed");
+        }
+        LOG_MSG("    SPK Signature Verified");
+
+        if (!VerifyRsaHashBlockSignature(this, aCs.front(),
+                Hashblock_record.front().first,
+                Hashblock_record.front().second))
+        {
+            authenticationVerified = false;
+            LOG_ERROR("Hash Block 0 Signature Verification Failed");
+        }
+        LOG_MSG("    Hash Block 0 Signature Verified");
+        Separator();
+        return;
+    }
+    if (bH != NULL && !aCs.empty() && !Hashblock_record.empty() &&
+        IsEcdsaP384Certificate(aCs.front()))
+    {
+        Separator();
+        LOG_MSG("Verifying PLM Authentication Certificate");
+        if (!VerifyEcdsaP384SpkSignature(this, aCs.front()))
+        {
+            authenticationVerified = false;
+            LOG_ERROR("SPK Signature Verification Failed");
+        }
+        LOG_MSG("    SPK Signature Verified");
+
+        if (!VerifyEcdsaP384HashBlockSignature(this, aCs.front(),
+                Hashblock_record.front().first,
+                Hashblock_record.front().second))
+        {
+            authenticationVerified = false;
+            LOG_ERROR("Hash Block 0 Signature Verification Failed");
+        }
+        LOG_MSG("    Hash Block 0 Signature Verified");
+        Separator();
+        return;
+    }
     size_t result;
     uint64_t offset = 0;
     bool signatureVerified = false;

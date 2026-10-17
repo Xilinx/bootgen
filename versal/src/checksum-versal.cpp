@@ -53,7 +53,22 @@ Section* VersalSHA3ChecksumContext::Build(std::string name)
 
 /******************************************************************************/
 void VersalSHA3ChecksumContext::Link(bool bootloader, const uint8_t* data, const Binary::Length_t length, Section* section) {
+    if (section == NULL || section->Data == NULL || data == NULL)
+    {
+        return;
+    }
     uint32_t size = Size();
+    if (bootloader)
+    {
+        if ((uint64_t)length + size > section->Length)
+        {
+            return;
+        }
+    }
+    else if (section->Length < size)
+    {
+        return;
+    }
     auto cksum_data = std::make_unique<uint8_t[]>(size);
     Versalcrypto_hash(cksum_data.get(), data, length, !bootloader);
 
@@ -75,10 +90,24 @@ void VersalChecksumTable::Build(BootImage& bi, Binary& cache)
     for (std::list<ImageHeader*>::iterator i = bi.imageList.begin(); i != bi.imageList.end(); i++)
     {
         ImageHeader* hdr = *i;
+        ChecksumContext* cksum = hdr->GetChecksumContext();
+        if (cksum == NULL)
+        {
+            continue;
+        }
         std::list<PartitionHeader*> pHList = hdr->GetPartitionHeaderList();
         for (std::list<PartitionHeader*>::iterator j = pHList.begin(); j != pHList.end(); j++)
         {
             PartitionHeader& partHdr(**j);
+            /* Imported partitions already contain a checksum. Do not grow them or allocate a second section. */
+            if (partHdr.prealigned && partHdr.checksumType != Checksum::None)
+            {
+                continue;
+            }
+            if (partHdr.partition == NULL || partHdr.partition->section == NULL)
+            {
+                continue;
+            }
             /* Do not calculate checksum on entire partition for VersalNet bootloader - hashing is calculated on the first chunk + hash of previous chunk in VersalNet
             This is handled while doing the chunking of the partition. So need need to calculate again */
             if (partHdr.IsBootloader())
@@ -86,13 +115,13 @@ void VersalChecksumTable::Build(BootImage& bi, Binary& cache)
                 if (!bi.options.IsVersalNetSeries())
                 {
                     // For FSBL, checksum should be like Bootimage Integrity, the checksum should be attached right at the end of the FSBL
-                    partHdr.partition->section->IncreaseLengthAndPadTo(partHdr.partition->section->Length + hdr->GetChecksumContext()->Size(), 0);
+                    partHdr.partition->section->IncreaseLengthAndPadTo(partHdr.partition->section->Length + cksum->Size(), 0);
                 }
             }
             else
             {
                     // For other partitions, a new checksum section is created and added at the end of image.
-                    Section* s = hdr->GetChecksumContext()->Build(partHdr.partition->section->Name);
+                    Section* s = cksum->Build(partHdr.partition->section->Name);
                     partHdr.checksumSection = s;
             }
         }
@@ -118,12 +147,25 @@ void VersalChecksumTable::Link(BootImage& bi)
             {
                 continue;
             }
+            /* Digest was copied from the source PDI. Do not recompute it. */
+            if (partHdr.prealigned && partHdr.checksumType != Checksum::None)
+            {
+                continue;
+            }
             if (partHdr.IsBootloader())
             {
                 if (!bi.options.IsVersalNetSeries())
                 {
-                    hdr->GetChecksumContext()->Link(partHdr.IsBootloader(), partHdr.partition->section->Data.get(), partHdr.partition->section->Length - hdr->GetChecksumContext()->Size(), partHdr.partition->section);
+                    ChecksumContext* cksum = hdr->GetChecksumContext();
+                    if (cksum != NULL && partHdr.partition->section->Length >= cksum->Size())
+                    {
+                        cksum->Link(partHdr.IsBootloader(), partHdr.partition->section->Data.get(), partHdr.partition->section->Length - cksum->Size(), partHdr.partition->section);
+                    }
                 }
+            }
+            else if (partHdr.checksumSection == NULL)
+            {
+                continue;
             }
             else
             {

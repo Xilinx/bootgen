@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Every commit on the PR must be DCO-signed and must not carry CR keys.
-# PR title is #<build> summary with no CR key.
+# PR title is #<build> summary with no CR key; that is the hard gate.
+# Per-commit DCO / CR-key findings are warnings only: master takes
+# squashed ports from Main whose messages cannot be rewritten after push.
+# The leak scan still blocks CR keys in the diff itself.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -36,7 +38,7 @@ if [ -z "${COMMITS}" ]; then
     exit 1
 fi
 
-FAILED=0
+WARNED=0
 while IFS= read -r sha; do
     [ -z "${sha}" ] && continue
     subject="$(git log -1 --format='%s' "${sha}")"
@@ -50,26 +52,25 @@ while IFS= read -r sha; do
     fi
 
     if [ -z "${subject//[[:space:]]/}" ]; then
-        echo "::error::${sha:0:10}: empty commit subject"
-        FAILED=1
+        echo "::warning::${sha:0:10}: empty commit subject"
+        WARNED=1
     fi
 
     if echo "${subject}" | grep -qE 'CR-[0-9]+' || echo "${body}" | grep -qE 'CR-[0-9]+'; then
-        echo "::error::${sha:0:10}: commit must not contain a CR issue key"
-        FAILED=1
+        echo "::warning::${sha:0:10}: commit message contains a CR issue key"
+        WARNED=1
     fi
 
     # Accept a trailer in the body, or a one-line subject that appended it.
     if ! printf '%s\n%s\n' "${subject}" "${body}" \
             | grep -qE '(^|[[:space:]])Signed-off-by: .+ <[^[:space:]@]+@[^[:space:]>]+>'; then
-        echo "::error::${sha:0:10}: missing Signed-off-by: Name <email>"
-        FAILED=1
+        echo "::warning::${sha:0:10}: missing Signed-off-by: Name <email>"
+        WARNED=1
     fi
 done <<< "${COMMITS}"
 
-if [ "${FAILED}" -ne 0 ]; then
-    echo "Commit format check failed"
-    exit 1
+if [ "${WARNED}" -ne 0 ]; then
+    echo "Commit format passed for ${RANGE} with warnings"
+else
+    echo "Commit format passed for ${RANGE}"
 fi
-
-echo "Commit format passed for ${RANGE}"

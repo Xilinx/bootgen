@@ -132,8 +132,9 @@ void Options::ProcessVerifyKDF()
    image keeps the table offset in the Versal boot header; a native image keeps
    it in the versal_2vp boot header. The remaining candidates mirror what
    VersalReadImage falls back to when the boot header is unusable. Take the
-   first candidate whose identification string reads back as a PDI. File offset
-   0x18 is the boot-header encryption key source, not this id. */
+   first candidate whose identification string reads back as a full (FPDI) or
+   partial (PPDI) PDI. File offset 0x18 is the boot-header encryption key
+   source, not this id. */
 uint32_t ReadPdiTableIdCode(const std::string& fileName)
 {
     std::ifstream file(fileName.c_str(), std::ios::binary);
@@ -196,7 +197,9 @@ uint32_t ReadPdiTableIdCode(const std::string& fileName)
     for (int i = 0; i < count; ++i)
     {
         const std::streamoff ihtOffset = ihtOffsets[i];
-        if (!ReadWord(ihtOffset + static_cast<std::streamoff>(offsetof(VersalImageHeaderTableStructure, identificationString)), word) || (word != FPDI))
+        /* FPDI is a full PDI. PPDI is a partial PDI with no boot header. */
+        if (!ReadWord(ihtOffset + static_cast<std::streamoff>(offsetof(VersalImageHeaderTableStructure, identificationString)), word)
+            || ((word != FPDI) && (word != PPDI)))
         {
             continue;
         }
