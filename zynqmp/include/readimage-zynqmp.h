@@ -75,6 +75,7 @@ public:
     void VerifyAuthentication(bool);
     void VerifyHeaderTableSignature();
     void VerifySPKSignature(AuthCertificate4096Structure * auth_cert);
+    void VerifyBootHeaderSignature(FILE * binFile, AuthCertificate4096Structure * auth_cert);
     void VerifyPartitionSignature(void);
     bool VerifySignature(bool nist, uint8_t * data, size_t dataLength, ACKey4096 * acKey, uint8_t * signature);
 
