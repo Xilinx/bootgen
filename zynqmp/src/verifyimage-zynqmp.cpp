@@ -196,7 +196,15 @@ void ZynqMpReadImage::VerifyHeaderTableSignature()
     size_t headersSize = bH->sourceOffset - bH->imageHeaderByteOffset - RSA_4096_KEY_LENGTH;
     if(bH->sourceOffset == 0)
     {
-        headersSize = (pHT->partitionWordOffset * 4) - bH->imageHeaderByteOffset - RSA_4096_KEY_LENGTH;
+        /* With no bootloader partition, the boot header carries no source offset
+           to mark the end of the signed header block, so use the first partition's
+           data offset instead. Read it from the pHTs list: ReadHeaderTableDetails
+           releases each table into pHTs, leaving the pHT member null. */
+        if (pHTs.empty())
+        {
+            LOG_ERROR("No partition headers found in bootimage file %s", binFilename.c_str());
+        }
+        headersSize = (pHTs.front()->partitionWordOffset * 4) - bH->imageHeaderByteOffset - RSA_4096_KEY_LENGTH;
     }
     auto tempBuffer = std::make_unique<uint8_t[]>(headersSize);
     memset(tempBuffer.get(), 0, headersSize);
