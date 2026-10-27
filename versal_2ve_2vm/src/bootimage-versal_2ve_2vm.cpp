@@ -2175,6 +2175,7 @@ void Versal_2ve_2vmBootImage::BuildAndLink(Binary* cache)
     /* all static fields within the header tables are populated here */
     bootHeader->Build(*this, *cache);
     imageHeaderTable->Build(*this, *cache);
+    WarnUnappliedOverlayMarkers();
     partitionHeaderTable->Build(*this, *cache);
     checksumTable->Build(*this, *cache);
     partitionHeaderTable->BuildPartitions(*this, *cache);
@@ -2346,6 +2347,7 @@ void Versal_2ve_2vmBootImage::GenerateTlBin(BifOptions* bifoptions)
     if (dtbPartition != nullptr)
     {
         dtbPartition->filename = tlbinOutputPath;
+        dtbPartition->SetPartitionType(PartitionType::TL);
+        LOG_INFO("Replaced %s with %s in the BIF", dtbFilepath.c_str(), dtbPartition->filename.c_str());
     }
-    LOG_INFO("Replaced %s with %s in the BIF", dtbFilepath.c_str(), dtbPartition->filename.c_str());
 }

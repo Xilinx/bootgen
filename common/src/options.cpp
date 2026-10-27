@@ -41,6 +41,7 @@
 #include "imageheadertable.h"
 #include "logger.h"
 #include "encryption.h"
+#include "pqc_openssl_req.h"
 
 
 /*
@@ -342,6 +343,14 @@ void Options::SetOutputFillByte(uint8_t byte)
 /******************************************************************************/
 void Options::SetSecureDebugAuthType(Authentication::Type type)
 {
+    if (type == Authentication::MLDSA)
+    {
+        RequirePqcOpenSsl("mldsa");
+    }
+    if (type == Authentication::SLH_SHAKE256)
+    {
+        RequirePqcOpenSsl("slhdsa");
+    }
     secureDebugAuthType = type;
 }
 

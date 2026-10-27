@@ -254,10 +254,17 @@ void cdocmd_add_random_command(CdoSequence * seq, uint32_t * levelp) {
         cmd->type == CdoCmdPmSetNodeAccess ||
         cmd->type == CdoCmdPmNocClockEnable ||
         cmd->type == CdoCmdListSet ||
+        cmd->type == CdoCmdLdrI2cHandshake ||
         cmd->type == CdoCmdSemNpiTable) {
         uint32_t * p;
         uint32_t i;
-        cmd->count = (cmd->count & 15) + 1;
+        if (cmd->type == CdoCmdLdrI2cHandshake) {
+            /* the parser requires the address count in bits 16-19 of arg0 */
+            cmd->count = (cmd->count % 15) + 1;
+            cmd->id = (cmd->id & ~0x000f0000U) | (cmd->count << 16);
+        } else {
+            cmd->count = (cmd->count & 15) + 1;
+        }
         cmd->buf = p = (uint32_t *)myalloc(cmd->count * 4);
         for (i = 0; i < cmd->count; i++) {
             p[i] = randu32();
@@ -1187,6 +1194,17 @@ void cdocmd_add_ldr_set_image_info(CdoSequence * seq, uint32_t nodeid, uint32_t 
 void cdocmd_add_ldr_cframe_clear_check(CdoSequence * seq, uint32_t block_type) {
     CdoCommand * cmd = cdocmd_alloc(CdoCmdLdrCframeClearCheck);
     cmd->id = block_type;
+    add_command(seq, cmd);
+}
+
+void cdocmd_add_ldr_i2c_handshake(CdoSequence * seq, uint32_t arg0,
+                                  uint32_t arg1, uint32_t count, void * buf,
+                                  uint32_t be) {
+    CdoCommand * cmd = cdocmd_alloc(CdoCmdLdrI2cHandshake);
+    cmd->id = arg0;
+    cmd->flags = arg1;
+    cmd->count = count;
+    cmd->buf = copy_buf(buf, count, be);
     add_command(seq, cmd);
 }
 

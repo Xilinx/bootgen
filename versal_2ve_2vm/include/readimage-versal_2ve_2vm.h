@@ -87,7 +87,10 @@ public:
     void DisplaySmapVectors(void);
     void VerifyAuthentication(bool);
     void VerifyHeaderTableSignature();
-    void VerifySPKSignature(uint8_t* aC);
+    void VerifySPKSignature(uint8_t* aC, uint32_t authType);
+    bool VerifyHashBlockSignature(FILE* binFile, uint8_t* aC, uint32_t authType,
+                                  uint64_t hashBlockOffset, uint32_t hashBlockLength,
+                                  uint64_t sigOffset);
     void VerifyPartitionSignature(void);
     bool VerifySignature(bool nist, uint8_t * data, size_t dataLength, ACKey4096Sha3Padding * acKey, uint8_t* signature);
     bool VerifyECDSASignature(bool nist, uint8_t * data, size_t dataLength,  ACKeyECDSA *eckey, uint8_t* signature);

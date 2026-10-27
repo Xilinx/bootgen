@@ -175,6 +175,7 @@ public:
     std::string fsblFilename;
     std::string bitFilename;    
     void * overlayCDO;
+    void WarnUnappliedOverlayMarkers(void);
     virtual uint64_t GetSecureChunkSize(bool isBootloader) { return 0; }
     Arch::Type GetDeviceArchitecture(void) { return arch; }
 

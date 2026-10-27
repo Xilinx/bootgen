@@ -31,6 +31,8 @@
 {
        // Initialize the initial location.
        @$.begin.filename = @$.end.filename = &scanner.filename;
+       inImageScope = false;
+       inPartitionScope = false;
 };
 
 
@@ -58,6 +60,7 @@
 #include "checksum.h"
 #include "bifscanner.h"
 #include "parsing.h"
+#include "fileutils.h"
 #include "imageheadertable-versal.h"
 #include "imageheadertable-spartanup.h"
 #include "imageheadertable-versal_2ve_2vm.h"
@@ -69,6 +72,13 @@ BifOptions* currentBifOptions;
 PartitionBifOptions* currentPartitionBifOptions ;
 ImageBifOptions* currentImageBifOptions;
 LmsKeyTypeParam lmsParams;
+
+/* Block being parsed, so that a bison "syntax error" can be reported as an
+   attribute that is not allowed in that block. */
+static bool inImageScope = false;
+static bool inPartitionScope = false;
+
+// BIF Integrity verification - now stored in Options class
 %}
 
 
@@ -142,7 +152,7 @@ LmsKeyTypeParam lmsParams;
 %token <number>         PUF4KMODE PUFROSWAP SHUTTER SPLIT SMAP_WIDTH
 %token <number>         PUF_HELPER_FILE BH_KEY_FILE BH_KEY_IV
 %token <number>         BH_KEK_IV BBRAM_KEK_IV EFUSE_KEK_IV EFUSE_USER_KEK0_IV EFUSE_USER_KEK1_IV USER_KEYS
-%token <number>         PMCDATA BOOTIMAGE UDF_BH INIT PMUFW_IMAGE
+%token <number>         PMCDATA PLDATA BOOTIMAGE UDF_BH INIT PMUFW_IMAGE
 %token <number>         AES_KEY_FILE FAMILY_KEY
 %token <number>         PPK_FILE PSK_FILE SPK_FILE SSK_FILE PPK_FILE1 PSK_FILE1 SPK_FILE1 SSK_FILE1
 %token <number>         PK_FILE SK_FILE PK_FILE1 SK_FILE1
@@ -320,8 +330,10 @@ image_spec              :   image_list
                         |   image_spec image_list
                         ;
 
-image_list              :   IMAGE OBRACE                                        { currentImageBifOptions = new ImageBifOptions(); }
-                            image_content EBRACE                                { currentBifOptions->imageBifOptionList.push_back(currentImageBifOptions);
+image_list              :   IMAGE OBRACE                                        { currentImageBifOptions = new ImageBifOptions();
+                                                                                  inImageScope = true; }
+                            image_content EBRACE                                { inImageScope = false;
+                                                                                  currentBifOptions->imageBifOptionList.push_back(currentImageBifOptions);
                                                                                   if((options.archType == Arch::SPARTANUP) && (currentBifOptions->imageBifOptionList.size() > 1))
                                                                                   {
                                                                                       LOG_ERROR("'-arch spartanup' cannot accomodate more than one Sub-System.");
@@ -332,6 +344,7 @@ image_list              :   IMAGE OBRACE                                        
 image_content           :   /* empty */
                         |   image_content image_attributes_list
                         |   image_content file_spec
+                        |   image_content new_file_spec
                         |   image_content partition_spec
                         ;
 
@@ -396,10 +409,10 @@ image_attributes        :   ID EQUAL expression                                 
                         ;
 
 partition_spec          :   PARTITION partition_content
-                        |   partition_content
                         ;
 
-partition_content       :   /* empty */
+partition_content       :   file_spec
+                        |   new_file_spec
                         |   partition_content file_spec
                         |   partition_content new_file_spec
                         ;
@@ -487,21 +500,24 @@ fsbl_attr               :   core                                                
                         ;
 
 file_spec               :   OBRACKET                                            { currentPartitionBifOptions = new PartitionBifOptions();
-                                                                                  currentPartitionBifOptions->SetArchType(options.GetArchType(),options.IsVersalNetSeries(),  currentBifOptions->GetIdCode()); }
+                                                                                  currentPartitionBifOptions->SetArchType(options.GetArchType(),options.IsVersalNetSeries(),  currentBifOptions->GetIdCode());
+                                                                                  inPartitionScope = true; }
                             attribute_list EBRACKET 
-                            filename                                            { currentPartitionBifOptions->filename = $5;
-                                                                                  currentPartitionBifOptions->filelist.push_back($5);
+                            filename                                            { inPartitionScope = false;
+                                                                                  currentPartitionBifOptions->filename = FileUtils::ResolveInputPath($5, scanner.filename);
+                                                                                  currentPartitionBifOptions->filelist.push_back(currentPartitionBifOptions->filename);
                                                                                   currentBifOptions->Add(currentPartitionBifOptions, currentImageBifOptions);
                                                                                 }
                         |   filename                                            { currentPartitionBifOptions = new PartitionBifOptions();
                                                                                   currentPartitionBifOptions->SetArchType(options.GetArchType(), options.IsVersalNetSeries(),  currentBifOptions->GetIdCode());
-                                                                                  currentPartitionBifOptions->filename = $1; 
-                                                                                  currentPartitionBifOptions->filelist.push_back($1);
+                                                                                  currentPartitionBifOptions->filename = FileUtils::ResolveInputPath($1, scanner.filename);
+                                                                                  currentPartitionBifOptions->filelist.push_back(currentPartitionBifOptions->filename);
                                                                                   currentBifOptions->Add(currentPartitionBifOptions, currentImageBifOptions);
                                                                                 };
 new_file_spec           :   OBRACE                                              { currentPartitionBifOptions = new PartitionBifOptions();
-                                                                                  currentPartitionBifOptions->SetArchType(options.GetArchType(), options.IsVersalNetSeries(),  currentBifOptions->GetIdCode()); }
-                            new_attribute_list EBRACE
+                                                                                  currentPartitionBifOptions->SetArchType(options.GetArchType(), options.IsVersalNetSeries(),  currentBifOptions->GetIdCode());
+                                                                                  inPartitionScope = true; }
+                            new_attribute_list EBRACE                           { inPartitionScope = false; }
                         ;
 
 
@@ -513,16 +529,33 @@ new_attribute_list      :   attribute
                         |   attribute new_attribute_list
                         ;
 
-new_attribute           :   PFILE EQUAL filename                                { currentPartitionBifOptions->filename = $3;
-                                                                                  currentPartitionBifOptions->filelist.push_back($3);
+new_attribute           :   PFILE EQUAL filename                                { currentPartitionBifOptions->filename = FileUtils::ResolveInputPath($3, scanner.filename);
+                                                                                  currentPartitionBifOptions->filelist.push_back(currentPartitionBifOptions->filename);
                                                                                   currentBifOptions->Add(currentPartitionBifOptions, currentImageBifOptions); }
                         |   ID EQUAL expression                                 { currentPartitionBifOptions->partitionId = $3; }
                         |   IMAGE_STORE EQUAL expression                        { currentPartitionBifOptions->imageStoreId = $3;
                                                                                   currentPartitionBifOptions->SetPartitionType(PartitionType::IMAGE_STORE_PDI); }
                         |   PARTITION_TYPE EQUAL boolattr
                         |   PARTITION_TYPE EQUAL PMCDATA                        { currentPartitionBifOptions->fileType = $3; }
+                        |   PARTITION_TYPE EQUAL PLDATA                         { currentPartitionBifOptions->fileType = $3; }
                         |   BIF_SECTION EQUAL WORD                              { currentPartitionBifOptions->bifSection = $3;
-                                                                                  currentPartitionBifOptions->filename = currentPartitionBifOptions->GetOutputFileFromBifSection(options.GetOutputFileNames().front(), $3, currentImageBifOptions->GetImageType());
+                                                                                  /* front() on an empty list is undefined. -efuseppkbits
+                                                                                     often omits -o, and libstdc++ then builds a string
+                                                                                     from a null pointer. Fall back to the BIF name. */
+                                                                                  std::string sectionOutFile = "";
+                                                                                  if (!options.GetOutputFileNames().empty())
+                                                                                  {
+                                                                                      sectionOutFile = options.GetOutputFileNames().front();
+                                                                                  }
+                                                                                  else if (!options.GetBifFilename().empty())
+                                                                                  {
+                                                                                      sectionOutFile = StringUtils::RemoveExtension(options.GetBifFilename()) + ".bin";
+                                                                                  }
+                                                                                  else
+                                                                                  {
+                                                                                      LOG_ERROR("Output file name is required to resolve BIF 'section'");
+                                                                                  }
+                                                                                  currentPartitionBifOptions->filename = currentPartitionBifOptions->GetOutputFileFromBifSection(sectionOutFile, $3, currentImageBifOptions->GetImageType());
                                                                                   currentPartitionBifOptions->filelist.push_back(currentPartitionBifOptions->filename);
                                                                                   currentBifOptions->Add(currentPartitionBifOptions, currentImageBifOptions); }
                         ;
@@ -736,6 +769,7 @@ rsa_key_file            :   PPK_FILE
 
 other_files             :   PMUFW_IMAGE 
                         |   PMCDATA
+                        |   PLDATA
                         |   UDF_BH
                         ;
 
@@ -850,7 +884,15 @@ expression              :   xor_expression
 
 %%
 void BIF::BisonParser::error(const BIF::BisonParser::location_type &loc, const std::string &msg) {
-        Parsing::Error(loc,msg);
+        if (inImageScope && !inPartitionScope && (msg.find("syntax error") != std::string::npos))
+        {
+                Parsing::Error(loc, "BIF attribute error !!!\n\t   '" + std::string(scanner.YYText()) +
+                                    "' is not supported at image level.\n\t   Refer 'bootgen -bif_help' for more details");
+        }
+        else
+        {
+                Parsing::Error(loc,msg);
+        }
 }
 
 static int yylex(BIF::BisonParser::semantic_type * yylval, BIF::BisonParser::location_type* loc, BIF::FlexScanner &scanner) {

@@ -117,7 +117,26 @@ void SpartanupBootHeader::Build(BootImage& bi, Binary& cache)
 
     SetWidthDetectionWord();
     SetIdentificationWord();
-    SetEncryptionKeySource(bi.options.GetEncryptedKeySource(), bi.bifOptions);
+    KeySource::Type keyType = bi.options.GetEncryptedKeySource();
+    if (keyType == KeySource::None)
+    {
+        keyType = bi.bifOptions->GetEncryptionKeySource();
+    }
+    /* Partial PDI (no bootloader): propagate partition key source to boot header */
+    if (keyType == KeySource::None && !bi.bootloaderFound)
+    {
+        for (std::list<ImageHeader*>::iterator image = bi.imageList.begin();
+             image != bi.imageList.end(); ++image)
+        {
+            KeySource::Type imageKeySrc = (*image)->GetEncryptionKeySrc();
+            if (imageKeySrc != KeySource::None)
+            {
+                keyType = imageKeySrc;
+                break;
+            }
+        }
+    }
+    SetEncryptionKeySource(keyType, bi.bifOptions);
     SetPmcCdoLoadAddress(bi.bifOptions->GetPmcCdoLoadAddress());
     SetShutterValue(bi.bifOptions->GetShutterValue());
     SetPufRingOscilltorSwapConfigValue(bi.bifOptions->GetPufRingOscilltorSwapConfigValue());
@@ -519,6 +538,38 @@ void SpartanupBootHeader::SetEncryptionKeySource(KeySource::Type keyType, BifOpt
         kekIvMust = true;
         break;
 
+    case KeySource::UserKey0:
+        bHTable->encryptionKeySource = BH_USER_KEY0;
+        break;
+
+    case KeySource::UserKey1:
+        bHTable->encryptionKeySource = BH_USER_KEY1;
+        break;
+
+    case KeySource::UserKey2:
+        bHTable->encryptionKeySource = BH_USER_KEY2;
+        break;
+
+    case KeySource::UserKey3:
+        bHTable->encryptionKeySource = BH_USER_KEY3;
+        break;
+
+    case KeySource::UserKey4:
+        bHTable->encryptionKeySource = BH_USER_KEY4;
+        break;
+
+    case KeySource::UserKey5:
+        bHTable->encryptionKeySource = BH_USER_KEY5;
+        break;
+
+    case KeySource::UserKey6:
+        bHTable->encryptionKeySource = BH_USER_KEY6;
+        break;
+
+    case KeySource::UserKey7:
+        bHTable->encryptionKeySource = BH_USER_KEY7;
+        break;
+
     case KeySource::None:
     default:
         bHTable->encryptionKeySource = 0;
@@ -868,6 +919,38 @@ KeySource::Type SpartanupBootHeader::GetEncryptionKeySource(void)
 
     case BBRAM_GRY_KEY:
         return KeySource::BbramGryKey;
+        break;
+
+    case BH_USER_KEY0:
+        return KeySource::UserKey0;
+        break;
+
+    case BH_USER_KEY1:
+        return KeySource::UserKey1;
+        break;
+
+    case BH_USER_KEY2:
+        return KeySource::UserKey2;
+        break;
+
+    case BH_USER_KEY3:
+        return KeySource::UserKey3;
+        break;
+
+    case BH_USER_KEY4:
+        return KeySource::UserKey4;
+        break;
+
+    case BH_USER_KEY5:
+        return KeySource::UserKey5;
+        break;
+
+    case BH_USER_KEY6:
+        return KeySource::UserKey6;
+        break;
+
+    case BH_USER_KEY7:
+        return KeySource::UserKey7;
         break;
 
     default:

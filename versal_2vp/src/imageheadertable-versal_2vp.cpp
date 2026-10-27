@@ -274,7 +274,7 @@ void Versal_2vpImageHeaderTable::Build(BootImage& bi, Binary& cache)
         }
     }
 
-    bi.imageHeaderTable->SetUserOptionalData(bi.bifOptions->metaHdrAttributes.ihtOptionalDataInfo);
+    bi.imageHeaderTable->SetUserOptionalData(bi, bi.bifOptions->metaHdrAttributes.ihtOptionalDataInfo);
     bi.iht_optional_data_length = iht_optional_data_length;
     bi.copied_iht_optional_data_length = copied_iht_optional_data_length;
     bi.iht_optional_data = std::make_unique<uint32_t[]>(bi.iht_optional_data_length / sizeof(uint32_t));
@@ -709,12 +709,25 @@ void Versal_2vpImageHeaderTable::SetOptionalData(uint32_t * data, uint32_t size)
 }
 
 /******************************************************************************/
-void Versal_2vpImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t numHashTableEntries, uint32_t isCorePsm)
+void Versal_2vpImageHeaderTable::SetUserOptionalData(BootImage& bi, std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t numHashTableEntries, uint32_t isCorePsm)
 {
     for (size_t i = 0; i < optionalDataInfo.size(); i++)
     {
         size_t size = 0;
-        void *data = file_to_buf((char *)optionalDataInfo[i].first.c_str(), &size);
+        uint8_t* tempData = (uint8_t*)file_to_buf((char *)optionalDataInfo[i].first.c_str(), &size);
+        if (tempData == NULL)
+        {
+            LOG_ERROR("Cannot read optional data file: %s", optionalDataInfo[i].first.c_str());
+        }
+
+        /* Optional data sections are word aligned */
+        uint32_t optional_data_padLength = (size % sizeof(uint32_t) != 0) ? sizeof(uint32_t) - (size % sizeof(uint32_t)) : 0;
+        auto data = std::make_unique<uint8_t[]>(size + optional_data_padLength);
+        memset(data.get(), 0, size + optional_data_padLength);
+        memcpy(data.get(), tempData, size);
+        free(tempData);
+        size += optional_data_padLength;
+
         if (size != 0)
         {
             uint32_t sectn_size_id = 0;
@@ -727,7 +740,7 @@ void Versal_2vpImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::
                 memcpy(new_data.get(), iht_optional_data.get(), iht_optional_data_length);
             iht_optional_data = std::move(new_data);
             memcpy(iht_optional_data.get() + (iht_optional_data_length / 4), &sectn_size_id, sizeof(uint32_t));
-            memcpy(iht_optional_data.get() + (iht_optional_data_length / 4) + sizeof(uint32_t) / 4, data, size);
+            memcpy(iht_optional_data.get() + (iht_optional_data_length / 4) + sizeof(uint32_t) / 4, data.get(), size);
 
             uint32_t checksum = ComputeWordChecksum(iht_optional_data.get() + (iht_optional_data_length / 4), sectn_length - sizeof(uint32_t));
             memcpy(iht_optional_data.get() + (iht_optional_data_length / 4) + (sectn_length - sizeof(uint32_t)) / 4, &checksum, sizeof(uint32_t));

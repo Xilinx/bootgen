@@ -159,7 +159,8 @@ public:
     void SetChecksum(void);
     void SetOptionalDataSize(void);
     void SetOptionalData(uint32_t*, uint32_t);
-    void SetUserOptionalData(std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t hashTableSize = 0, uint32_t isCorePsm = 0);
+    void SetUserOptionalData(BootImage& bi, std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t hashTableSize = 0, uint32_t isCorePsm = 0);
+    void AppendAsuStructInfo(uint32_t* structInfo, uint32_t size);
     void SetXplmModulesData(BootImage& bi, uint32_t*, uint32_t);
 
     uint32_t GetImageHeaderTableVersion(void);
@@ -201,6 +202,9 @@ public:
     ~Versal_2ve_2vmImageHeader();
     
     void ImportElf(BootImage& bi);
+    uint32_t* GetStructInfoOptData(void) { return structInfoOptData.get(); }
+    uint32_t GetStructInfoOptDataSize(void) { return structInfoOptDataSize; }
+    bool WasImportedAsElf(void) { return importedAsElf; }
     void Build(BootImage& bi, Binary& cache);
     void Link(BootImage &bi, PartitionHeader* partitionHeader, ImageHeader* nextImageheader);
     void SetMetaHdrRevokeId(uint32_t revocId);
@@ -262,6 +266,13 @@ private:
     
     Versal_2ve_2vmImageHeaderStructure *imageHeader;
     std::unique_ptr<VersalCdoHeader> cdoHeader;
+
+    /* Retains this partition's parsed optional-data blocks (e.g. .struct_info /
+       .struct_info_asu, captured in ImportElf) so the ASU STRUCT_INFO (0x04) block can be
+       emitted from the Build flow. Slot checks (ASU vs PLM) use importedAsElf. */
+    std::unique_ptr<uint32_t[]> structInfoOptData;
+    uint32_t structInfoOptDataSize = 0;
+    bool importedAsElf = false;
  
     uint64_t aie_array_base_address;
     Binary::Address_t coreBaseAddr;

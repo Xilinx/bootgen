@@ -288,6 +288,7 @@ enum {
     /* Loader Commands */
     CMD2_LDR_SET_IMAGE_INFO	 = 0x704U,
     CMD2_LDR_CFRAME_CLEAR_CHECK	 = 0x70cU,
+    CMD2_LDR_I2C_HANDSHAKE       = 0x710U,
 
     /* EM Commands */
     CMD2_EM_SET_ACTION		 = 0x801U,
@@ -1075,6 +1076,10 @@ static uint32_t decode_v2_cmd(CdoSequence * seq, uint32_t * p, uint32_t * ip, ui
         case CMD2_LDR_CFRAME_CLEAR_CHECK:
             if (args != 1) goto unexpected;
             cdocmd_add_ldr_cframe_clear_check(seq, u32xe(p[i+0]));
+            break;
+        case CMD2_LDR_I2C_HANDSHAKE:
+            if (args < 2) goto unexpected;
+            cdocmd_add_ldr_i2c_handshake(seq, u32xe(p[i+0]), u32xe(p[i+1]), args - 2, &p[i+2], be);
             break;
 
         case CMD2_SEM_NPI_TABLE:
@@ -2525,6 +2530,14 @@ static void * encode_v2_cmd(uint32_t version, LINK * l, LINK * lh, uint32_t * po
         case CdoCmdLdrCframeClearCheck:
             hdr2(&p, &pos, CMD2_LDR_CFRAME_CLEAR_CHECK, 1, be);
             p[pos++] = u32xe(cmd->id);
+            break;
+        case CdoCmdLdrI2cHandshake:
+            hdr2(&p, &pos, CMD2_LDR_I2C_HANDSHAKE, 2 + cmd->count, be);
+            p[pos++] = u32xe(cmd->id);
+            p[pos++] = u32xe(cmd->flags);
+            memcpy(p + pos, cmd->buf, cmd->count * sizeof(uint32_t));
+            byte_swap_buffer(p + pos, cmd->count, be);
+            pos += cmd->count;
             break;
 
         case CdoCmdSemNpiTable:

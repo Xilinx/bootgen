@@ -1585,7 +1585,7 @@ void VersalBootImage::ReplaceImages(void)
                 tempindx++;
                 if ((*img)->IsBootloader())
                 {
-                    (*subsys)->imgList.erase(it1);
+                    (*subsys)->imgList.erase(img);
                     (*subsys)->imgList.push_front((img1));
                     break;
                 }
@@ -1606,7 +1606,7 @@ void VersalBootImage::ReplaceImages(void)
                 tempindx++;
                 if ((*img)->GetDestCpu() == DestinationCPU::PMU)
                 {
-                    (*subsys)->imgList.erase(it2);
+                    (*subsys)->imgList.erase(img);
                     (*subsys)->imgList.push_back(PSMimg);
                     break;
                     

@@ -1,0 +1,407 @@
+name: Master PR CI
+
+on:
+  pull_request:
+    branches:
+      - master
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+# BASE_REF / PR_TITLE come from the event. Environment master-ci values are
+# read with ${{ vars.* }} only on jobs that set environment: master-ci.
+# That is GHE's Environment API, not repository Actions variables. Put the
+# values on Settings → Environments → master-ci and delete the same names
+# from the repo Actions Variables tab so repo vars cannot win. Make CI
+# does not map bison/flex; it compiles checked-in bisonflex/.
+env:
+  BASE_REF: ${{ github.base_ref }}
+  PR_TITLE: ${{ github.event.pull_request.title }}
+
+jobs:
+  makefile-hygiene:
+    name: Make hygiene
+    environment: master-ci
+    runs-on:
+      - self-hosted
+      - bootgen-vm-154183
+    env:
+      GOLDEN_BOOTGEN_PATH: ${{ vars.GOLDEN_BOOTGEN_PATH }}
+      LD_LIBRARY_PATH_BOOTGEN: ${{ vars.LD_LIBRARY_PATH_BOOTGEN }}
+      MASTER_BITBAKE_LOG_DIR: ${{ vars.MASTER_BITBAKE_LOG_DIR }}
+      MASTER_BITBAKE_CMD: ${{ vars.MASTER_BITBAKE_CMD }}
+      MASTER_INTERNAL_PATTERNS: ${{ vars.MASTER_INTERNAL_PATTERNS }}
+      MASTER_RUN_INTERNAL_TESTS: ${{ vars.MASTER_RUN_INTERNAL_TESTS }}
+      OPENSSL_35_HOME: ${{ vars.OPENSSL_35_HOME }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Print master-ci env
+        run: bash .github/scripts/print_master_ci_env.sh
+      - name: Fetch base branch
+        run: git fetch origin "${{ github.base_ref }}"
+      - name: Check Makefile has no hardcoded lab paths
+        run: bash .github/scripts/check_makefile_hygiene.sh
+
+  make-build:
+    name: Make build
+    environment: master-ci
+    runs-on:
+      - self-hosted
+      - bootgen-vm-154183
+    env:
+      GOLDEN_BOOTGEN_PATH: ${{ vars.GOLDEN_BOOTGEN_PATH }}
+      LD_LIBRARY_PATH_BOOTGEN: ${{ vars.LD_LIBRARY_PATH_BOOTGEN }}
+      MASTER_BITBAKE_LOG_DIR: ${{ vars.MASTER_BITBAKE_LOG_DIR }}
+      MASTER_BITBAKE_CMD: ${{ vars.MASTER_BITBAKE_CMD }}
+      MASTER_INTERNAL_PATTERNS: ${{ vars.MASTER_INTERNAL_PATTERNS }}
+      MASTER_RUN_INTERNAL_TESTS: ${{ vars.MASTER_RUN_INTERNAL_TESTS }}
+      OPENSSL_35_HOME: ${{ vars.OPENSSL_35_HOME }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Print master-ci env
+        run: bash .github/scripts/print_master_ci_env.sh
+      - name: Build with Make
+        run: |
+          set -euo pipefail
+          unset BISON_HOME FLEX_HOME M4_HOME
+          make -j"$(nproc)"
+          if [ ! -x build/bin/bootgen ]; then
+            echo "::error::Make did not produce build/bin/bootgen"
+            exit 1
+          fi
+          if ! git diff --exit-code -- bisonflex/; then
+            echo "::error::make regenerated bisonflex/; commit the generated files"
+            exit 1
+          fi
+          build/bin/bootgen -help | head -5 || true
+          echo "### Make build" >> "${GITHUB_STEP_SUMMARY}"
+          echo "- Executable: \`build/bin/bootgen\`" >> "${GITHUB_STEP_SUMMARY}"
+          echo "- Size: $(du -h build/bin/bootgen | cut -f1)" >> "${GITHUB_STEP_SUMMARY}"
+      - name: Upload Make binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: bootgen-make-bin
+          path: build/bin/bootgen
+          retention-days: 7
+
+  make-openssl35:
+    name: Make build (OpenSSL 3.5)
+    environment: master-ci
+    runs-on:
+      - self-hosted
+      - bootgen-vm-154183
+    env:
+      GOLDEN_BOOTGEN_PATH: ${{ vars.GOLDEN_BOOTGEN_PATH }}
+      LD_LIBRARY_PATH_BOOTGEN: ${{ vars.LD_LIBRARY_PATH_BOOTGEN }}
+      MASTER_BITBAKE_LOG_DIR: ${{ vars.MASTER_BITBAKE_LOG_DIR }}
+      MASTER_BITBAKE_CMD: ${{ vars.MASTER_BITBAKE_CMD }}
+      MASTER_INTERNAL_PATTERNS: ${{ vars.MASTER_INTERNAL_PATTERNS }}
+      MASTER_RUN_INTERNAL_TESTS: ${{ vars.MASTER_RUN_INTERNAL_TESTS }}
+      OPENSSL_35_HOME: ${{ vars.OPENSSL_35_HOME }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Print master-ci env
+        run: bash .github/scripts/print_master_ci_env.sh
+      - name: Build with OpenSSL 3.5
+        run: |
+          set -euo pipefail
+          if [ -z "${OPENSSL_35_HOME:-}" ]; then
+            echo "::error::OPENSSL_35_HOME is not set; Test suite needs the OpenSSL 3.5 binary"
+            exit 1
+          fi
+          if [ ! -d "${OPENSSL_35_HOME}/include" ]; then
+            echo "::error::OpenSSL 3.5 headers not found under OPENSSL_35_HOME"
+            exit 1
+          fi
+          OPENSSL_LIBDIR=""
+          if [ -d "${OPENSSL_35_HOME}/lib64" ]; then
+            OPENSSL_LIBDIR="${OPENSSL_35_HOME}/lib64"
+          elif [ -d "${OPENSSL_35_HOME}/lib" ]; then
+            OPENSSL_LIBDIR="${OPENSSL_35_HOME}/lib"
+          else
+            echo "::error::OpenSSL 3.5 libraries not found under OPENSSL_35_HOME"
+            exit 1
+          fi
+          unset BISON_HOME FLEX_HOME M4_HOME
+          make -j"$(nproc)" \
+            "INCLUDE_USER=-I${OPENSSL_35_HOME}/include" \
+            "LIBS=-L${OPENSSL_LIBDIR} -lssl -lcrypto -ldl -lpthread -Wl,-rpath,${OPENSSL_LIBDIR}"
+          if [ ! -x build/bin/bootgen ]; then
+            echo "::error::OpenSSL 3.5 make did not produce build/bin/bootgen"
+            exit 1
+          fi
+          echo "### Make build (OpenSSL 3.5)" >> "${GITHUB_STEP_SUMMARY}"
+          echo "- Executable: \`build/bin/bootgen\`" >> "${GITHUB_STEP_SUMMARY}"
+          echo "- Size: $(du -h build/bin/bootgen | cut -f1)" >> "${GITHUB_STEP_SUMMARY}"
+      - name: Upload OpenSSL 3.5 binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: bootgen-make-bin-openssl35
+          path: build/bin/bootgen
+          retention-days: 7
+
+  version-check:
+    name: Version check
+    environment: master-ci
+    runs-on:
+      - self-hosted
+      - bootgen-vm-154183
+    env:
+      GOLDEN_BOOTGEN_PATH: ${{ vars.GOLDEN_BOOTGEN_PATH }}
+      LD_LIBRARY_PATH_BOOTGEN: ${{ vars.LD_LIBRARY_PATH_BOOTGEN }}
+      MASTER_BITBAKE_LOG_DIR: ${{ vars.MASTER_BITBAKE_LOG_DIR }}
+      MASTER_BITBAKE_CMD: ${{ vars.MASTER_BITBAKE_CMD }}
+      MASTER_INTERNAL_PATTERNS: ${{ vars.MASTER_INTERNAL_PATTERNS }}
+      MASTER_RUN_INTERNAL_TESTS: ${{ vars.MASTER_RUN_INTERNAL_TESTS }}
+      OPENSSL_35_HOME: ${{ vars.OPENSSL_35_HOME }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Print master-ci env
+        run: bash .github/scripts/print_master_ci_env.sh
+      - name: Fetch base branch
+        run: git fetch origin "${{ github.base_ref }}"
+      - name: Validate build number and PR title
+        run: bash .github/scripts/check_version.sh
+
+  commit-format:
+    name: Commit format
+    environment: master-ci
+    runs-on:
+      - self-hosted
+      - bootgen-vm-154183
+    env:
+      GOLDEN_BOOTGEN_PATH: ${{ vars.GOLDEN_BOOTGEN_PATH }}
+      LD_LIBRARY_PATH_BOOTGEN: ${{ vars.LD_LIBRARY_PATH_BOOTGEN }}
+      MASTER_BITBAKE_LOG_DIR: ${{ vars.MASTER_BITBAKE_LOG_DIR }}
+      MASTER_BITBAKE_CMD: ${{ vars.MASTER_BITBAKE_CMD }}
+      MASTER_INTERNAL_PATTERNS: ${{ vars.MASTER_INTERNAL_PATTERNS }}
+      MASTER_RUN_INTERNAL_TESTS: ${{ vars.MASTER_RUN_INTERNAL_TESTS }}
+      OPENSSL_35_HOME: ${{ vars.OPENSSL_35_HOME }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Print master-ci env
+        run: bash .github/scripts/print_master_ci_env.sh
+      - name: Fetch base branch
+        run: git fetch origin "${{ github.base_ref }}"
+      - name: Validate Signed-off-by and title
+        run: bash .github/scripts/check_commit_format.sh
+
+  opensource-scan:
+    name: Open-source leak scan
+    environment: master-ci
+    runs-on:
+      - self-hosted
+      - bootgen-vm-154183
+    env:
+      GOLDEN_BOOTGEN_PATH: ${{ vars.GOLDEN_BOOTGEN_PATH }}
+      LD_LIBRARY_PATH_BOOTGEN: ${{ vars.LD_LIBRARY_PATH_BOOTGEN }}
+      MASTER_BITBAKE_LOG_DIR: ${{ vars.MASTER_BITBAKE_LOG_DIR }}
+      MASTER_BITBAKE_CMD: ${{ vars.MASTER_BITBAKE_CMD }}
+      MASTER_INTERNAL_PATTERNS: ${{ vars.MASTER_INTERNAL_PATTERNS }}
+      MASTER_RUN_INTERNAL_TESTS: ${{ vars.MASTER_RUN_INTERNAL_TESTS }}
+      OPENSSL_35_HOME: ${{ vars.OPENSSL_35_HOME }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Print master-ci env
+        run: bash .github/scripts/print_master_ci_env.sh
+      - name: Fetch base branch
+        run: git fetch origin "${{ github.base_ref }}"
+      - name: Scan PR diff
+        run: bash .github/scripts/scan_opensource_leaks.sh
+
+  tests:
+    name: Test suite
+    needs: make-openssl35
+    environment: master-ci
+    runs-on:
+      - self-hosted
+      - bootgen-vm-154183
+    env:
+      GOLDEN_BOOTGEN_PATH: ${{ vars.GOLDEN_BOOTGEN_PATH }}
+      LD_LIBRARY_PATH_BOOTGEN: ${{ vars.LD_LIBRARY_PATH_BOOTGEN }}
+      MASTER_BITBAKE_LOG_DIR: ${{ vars.MASTER_BITBAKE_LOG_DIR }}
+      MASTER_BITBAKE_CMD: ${{ vars.MASTER_BITBAKE_CMD }}
+      MASTER_INTERNAL_PATTERNS: ${{ vars.MASTER_INTERNAL_PATTERNS }}
+      MASTER_RUN_INTERNAL_TESTS: ${{ vars.MASTER_RUN_INTERNAL_TESTS }}
+      OPENSSL_35_HOME: ${{ vars.OPENSSL_35_HOME }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Print master-ci env
+        run: bash .github/scripts/print_master_ci_env.sh
+      - name: Download OpenSSL 3.5 Make binary
+        uses: actions/download-artifact@v3
+        with:
+          name: bootgen-make-bin-openssl35
+          path: build/bin
+      - name: Make bootgen executable
+        run: |
+          chmod +x build/bin/bootgen
+          if [ -d "${OPENSSL_35_HOME:-}/lib64" ]; then
+            echo "OPENSSL_35_LIBDIR=${OPENSSL_35_HOME}/lib64" >> "${GITHUB_ENV}"
+          elif [ -d "${OPENSSL_35_HOME:-}/lib" ]; then
+            echo "OPENSSL_35_LIBDIR=${OPENSSL_35_HOME}/lib" >> "${GITHUB_ENV}"
+          fi
+      - name: Require test-suite vars
+        run: |
+          source .github/scripts/require_env.sh
+          require_var GOLDEN_BOOTGEN_PATH
+      - name: Checkout test suite
+        uses: actions/checkout@v3
+        with:
+          ref: master_test_suit
+          path: test_suite_checkout
+          sparse-checkout: test_suite
+          sparse-checkout-cone-mode: true
+      - name: Set paths
+        id: paths
+        run: |
+          echo "bootgen_exe=${GITHUB_WORKSPACE}/build/bin/bootgen" >> "$GITHUB_OUTPUT"
+          echo "test_suite_dir=${GITHUB_WORKSPACE}/test_suite_checkout/test_suite" >> "$GITHUB_OUTPUT"
+      - name: Run pipeline tests
+        id: pipeline
+        run: |
+          export LD_LIBRARY_PATH="${GITHUB_WORKSPACE}/build/bin${OPENSSL_35_LIBDIR:+:${OPENSSL_35_LIBDIR}}:${LD_LIBRARY_PATH_BOOTGEN:-}"
+          python3 "${{ steps.paths.outputs.test_suite_dir }}/bootgen_pipeline/testAll.py" \
+            "${{ steps.paths.outputs.bootgen_exe }}" \
+            --golden "${GOLDEN_BOOTGEN_PATH}" \
+            --per-arch-jobs 4
+      - name: Run external tests
+        id: external
+        if: always() && steps.paths.outcome == 'success'
+        run: |
+          export LD_LIBRARY_PATH="${GITHUB_WORKSPACE}/build/bin${OPENSSL_35_LIBDIR:+:${OPENSSL_35_LIBDIR}}:${LD_LIBRARY_PATH_BOOTGEN:-}"
+          python3 "${{ steps.paths.outputs.test_suite_dir }}/external_tests/testAll.py" \
+            "${{ steps.paths.outputs.bootgen_exe }}"
+      - name: Run cr tests
+        id: cr
+        if: always() && steps.paths.outcome == 'success'
+        run: |
+          export LD_LIBRARY_PATH="${GITHUB_WORKSPACE}/build/bin${OPENSSL_35_LIBDIR:+:${OPENSSL_35_LIBDIR}}:${LD_LIBRARY_PATH_BOOTGEN:-}"
+          python3 "${{ steps.paths.outputs.test_suite_dir }}/cr_tests/testAll.py" \
+            "${{ steps.paths.outputs.bootgen_exe }}" \
+            --golden "${GOLDEN_BOOTGEN_PATH}"
+      - name: Extra-test flag
+        id: extra
+        if: always()
+        run: echo "run=${MASTER_RUN_INTERNAL_TESTS:-}" >> "$GITHUB_OUTPUT"
+      - name: Run extra tests
+        id: internal
+        if: always() && steps.paths.outcome == 'success' && steps.extra.outputs.run == 'true'
+        run: |
+          export LD_LIBRARY_PATH="${GITHUB_WORKSPACE}/build/bin${OPENSSL_35_LIBDIR:+:${OPENSSL_35_LIBDIR}}:${LD_LIBRARY_PATH_BOOTGEN:-}"
+          python3 "${{ steps.paths.outputs.test_suite_dir }}/internal_tests/testAll.py" \
+            "${{ steps.paths.outputs.bootgen_exe }}"
+      - name: Generate consolidated report
+        if: always()
+        run: |
+          cd "${{ steps.paths.outputs.test_suite_dir }}"
+          python3 generate_report.py \
+            --bootgen "${{ steps.paths.outputs.bootgen_exe }}" \
+            --golden "${GOLDEN_BOOTGEN_PATH}" \
+            --out report.md || true
+      - name: Display report in job summary
+        if: always()
+        run: |
+          {
+            echo "### Test results"
+            echo ""
+            echo "| Suite | Result |"
+            echo "|-------|--------|"
+            echo "| Pipeline | ${{ steps.pipeline.outcome }} |"
+            echo "| External | ${{ steps.external.outcome }} |"
+            echo "| CR | ${{ steps.cr.outcome }} |"
+            if [ "${MASTER_RUN_INTERNAL_TESTS:-}" = "true" ]; then
+              echo "| Extra | ${{ steps.internal.outcome }} |"
+            else
+              echo "| Extra | skipped |"
+            fi
+            echo ""
+            if [ -f "${{ steps.paths.outputs.test_suite_dir }}/report.md" ]; then
+              echo "---"
+              echo ""
+              cat "${{ steps.paths.outputs.test_suite_dir }}/report.md"
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-reports
+          path: |
+            test_suite_checkout/test_suite/report.md
+            test_suite_checkout/test_suite/**/summary.txt
+            test_suite_checkout/test_suite/**/results.json
+            test_suite_checkout/test_suite/**/junit.xml
+          retention-days: 30
+      - name: Check for failures
+        if: always()
+        run: |
+          FAILED=false
+          if [ "${{ steps.pipeline.outcome }}" = "failure" ]; then
+            echo "::error::Pipeline tests failed"
+            FAILED=true
+          fi
+          if [ "${{ steps.external.outcome }}" = "failure" ]; then
+            echo "::error::External tests failed"
+            FAILED=true
+          fi
+          if [ "${{ steps.cr.outcome }}" = "failure" ]; then
+            echo "::error::CR tests failed"
+            FAILED=true
+          fi
+          if [ "${MASTER_RUN_INTERNAL_TESTS:-}" = "true" ] && \
+             [ "${{ steps.internal.outcome }}" = "failure" ]; then
+            echo "::error::Extra tests failed"
+            FAILED=true
+          fi
+          if [ "${FAILED}" = "true" ]; then
+            exit 1
+          fi
+          echo "Selected test suites passed"
+
+  bitbake-logs:
+    name: Bitbake log scan
+    environment: master-ci
+    runs-on:
+      - self-hosted
+      - bootgen-vm-154183
+    env:
+      GOLDEN_BOOTGEN_PATH: ${{ vars.GOLDEN_BOOTGEN_PATH }}
+      LD_LIBRARY_PATH_BOOTGEN: ${{ vars.LD_LIBRARY_PATH_BOOTGEN }}
+      MASTER_BITBAKE_LOG_DIR: ${{ vars.MASTER_BITBAKE_LOG_DIR }}
+      MASTER_BITBAKE_CMD: ${{ vars.MASTER_BITBAKE_CMD }}
+      MASTER_INTERNAL_PATTERNS: ${{ vars.MASTER_INTERNAL_PATTERNS }}
+      MASTER_RUN_INTERNAL_TESTS: ${{ vars.MASTER_RUN_INTERNAL_TESTS }}
+      OPENSSL_35_HOME: ${{ vars.OPENSSL_35_HOME }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Print master-ci env
+        run: bash .github/scripts/print_master_ci_env.sh
+      - name: Scan bitbake log and report
+        run: bash .github/scripts/scan_bitbake_logs.sh

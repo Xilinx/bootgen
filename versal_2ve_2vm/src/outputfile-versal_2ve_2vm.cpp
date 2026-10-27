@@ -103,6 +103,10 @@ void OutputFile::OutputVersal_2ve_2vm(Options& options, Binary& cache)
             Write(section.Address, section.Length, section.Data.get());
             unalignedRunningAddress = section.Address + section.Length;
             runningAddress = (unalignedRunningAddress + (options.GetDefaultAlignment() - 1)) & ~(options.GetDefaultAlignment() - 1);
+            if (runningAddress > unalignedRunningAddress)
+            {
+                Fill(unalignedRunningAddress, runningAddress, options.GetDoFill(), options.GetOutputFillByte());
+            }
         }
     }
 

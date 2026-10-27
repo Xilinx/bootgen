@@ -1610,8 +1610,7 @@ void Versal_2ve_2vmReadImage::DisplayPhtAttributes(uint32_t value)
         case 3: val = "[cfi]";              break;
         case 4: val = "[raw]";              break;
         case 5: val = "[raw-elf]";          break;
-        case 6: val = "[cfi-gsc-mask]";     break;
-        case 7: val = "[cfi-gsc-unmask]";   break;
+        case 6: val = "[tl]";               break;
         default: val = "[invalid]";         break;
     }
 
@@ -1674,8 +1673,7 @@ std::string Versal_2ve_2vmReadImage::GetPartitionType(uint32_t value)
         case 3: val = "cfi";              break;
         case 4: val = "raw";              break;
         case 5: val = "raw-elf";          break;
-        case 6: val = "cfi-gsc-mask";     break;
-        case 7: val = "cfi-gsc-unmask";   break;
+        case 6: val = "tl";               break;
         default: val = "invalid";         break;
     }
     return val;

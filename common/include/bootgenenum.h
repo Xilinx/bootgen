@@ -486,7 +486,8 @@ struct PartitionType
         SLR_SLAVE,
         SLR_SLAVE_BOOT,
         SLR_SLAVE_CONFIG,
-        IMAGE_STORE_PDI
+        IMAGE_STORE_PDI,
+        TL
     } Type;
 };
 

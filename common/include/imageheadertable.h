@@ -451,7 +451,7 @@ public:
     virtual void SetBootDeviceAddress(uint32_t address) {};
     virtual void ValidateSecurityCombinations(Authentication::Type, Encryption::Type, Checksum::Type) = 0;
     virtual void SetOptionalData(uint32_t*, uint32_t) {};
-    virtual void SetUserOptionalData(std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t hashTableSize = 0,uint32_t isCorePsm= 0) {};
+    virtual void SetUserOptionalData(BootImage& bi, std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t hashTableSize = 0,uint32_t isCorePsm= 0) {};
     virtual void SetXplmModulesData(BootImage& bi, uint32_t*, uint32_t) {};
     virtual void SetOptionalDataSize(void) {};
 

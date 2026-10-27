@@ -234,51 +234,54 @@ void Versal_2ve_2vmPartitionHeader::Link(BootImage &bi, PartitionHeader* next_pa
     if (!isBootloader && ((Versal_2ve_2vmPartition*)partition.get())->hashBlockSection != NULL)
     {
         SetAuthCertificateOffset();
-        pHTable->authHeader1 = ac.front()->AuthContext->authAlgorithm->GetAuthHeader();
-        uint32_t hashBlockLength = ((Versal_2ve_2vmPartition*)partition.get())->hashBlockSection->Length;
-        if (ac.front()->AuthContext->authAlgorithm->Type() != Authentication::None)
+        if (!ac.empty())
         {
-            hashBlockLength -= ac.front()->AuthContext->GetTotalHashBlockSignSize();
-        }
-        
-        if (imageHeader->GetEncryptContext()->Type() != Encryption::None && ac.front()->AuthContext->authAlgorithm->Type() == Authentication::None)
-        {
-            hashBlockLength -= AES_GCM_TAG_SZ;
-        }
-        pHTable->hashBlockLength1 = hashBlockLength / 4;
-        pHTable->hashBlockWordOffset = ((Versal_2ve_2vmPartition*)partition.get())->hashBlockSection->WordAddress();
+            pHTable->authHeader1 = ac.front()->AuthContext->authAlgorithm->GetAuthHeader();
+            uint32_t hashBlockLength = ((Versal_2ve_2vmPartition*)partition.get())->hashBlockSection->Length;
+            if (ac.front()->AuthContext->authAlgorithm->Type() != Authentication::None)
+            {
+                hashBlockLength -= ac.front()->AuthContext->GetTotalHashBlockSignSize();
+            }
 
-        if (ac.front()->AuthContext->authAlgorithm->Type() == Authentication::RSA)
-        {
-            pHTable->totalppkkSize1 = VERSAL_ACKEY_STRUCT_SIZE + TELLURIDE_RSA_AC_PPK_SPK_ALIGNMENT;
-            pHTable->actualppkSize1 = VERSAL_ACKEY_STRUCT_SIZE;
-            pHTable->totalHashBlockSignatureSize1 = pHTable->actualSignatureSize1 = ac.front()->AuthContext->GetSignatureLength();
-        }
-        else if (ac.front()->AuthContext->authAlgorithm->Type() == Authentication::ECDSA)
-        {
-            pHTable->totalppkkSize1 = pHTable->actualppkSize1 = 2 * EC_P384_KEY_LENGTH;
-            pHTable->totalHashBlockSignatureSize1 = pHTable->actualSignatureSize1 = ac.front()->AuthContext->GetSignatureLength();
-        }
-        else if (ac.front()->AuthContext->authAlgorithm->Type() == Authentication::ECDSAp521)
-        {
-            pHTable->actualppkSize1 = EC_P521_KEY_LENGTH2 * 2;
-            pHTable->totalppkkSize1 = EC_P521_KEY_LENGTH2 * 2 + PADDING_16B(pHTable->actualppkSize1);
-            pHTable->actualSignatureSize1 = ac.front()->AuthContext->GetSignatureLength();
-            pHTable->totalHashBlockSignatureSize1 = pHTable->actualSignatureSize1 + PADDING_16B(pHTable->actualSignatureSize1);
-            LOG_TRACE("ecdsa521");
-        }
-        else if (ac.front()->AuthContext->authAlgorithm->Type() == Authentication::LMS_SHA2_256 ||
-                 ac.front()->AuthContext->authAlgorithm->Type() == Authentication::LMS_SHAKE256)
-        {
-            pHTable->authHeader1 = ac.front()->AuthContext->authAlgorithm->GetAuthHeader(ac.front()->AuthContext->lmsOnly);
-            size_t actualLmsPpkSize1 = GetLmsPublicKeyLength(ac.front()->AuthContext->ppkFile.c_str(), ac.front()->AuthContext->lmsOnly);
-            size_t actualHashBlockSignatureLength = GetLmsSignLength(ac.front()->AuthContext->sskFile.c_str(), ac.front()->AuthContext->lmsOnly);      
+            if (imageHeader->GetEncryptContext()->Type() != Encryption::None && ac.front()->AuthContext->authAlgorithm->Type() == Authentication::None)
+            {
+                hashBlockLength -= AES_GCM_TAG_SZ;
+            }
+            pHTable->hashBlockLength1 = hashBlockLength / 4;
+            pHTable->hashBlockWordOffset = ((Versal_2ve_2vmPartition*)partition.get())->hashBlockSection->WordAddress();
 
-            pHTable->totalppkkSize1 = actualLmsPpkSize1 + PADDING_16B(actualLmsPpkSize1);
-            pHTable->actualppkSize1 = actualLmsPpkSize1;
-            pHTable->totalHashBlockSignatureSize1 = actualHashBlockSignatureLength + PADDING_16B(actualHashBlockSignatureLength);
-            pHTable->actualSignatureSize1 = actualHashBlockSignatureLength;
-        }       
+            if (ac.front()->AuthContext->authAlgorithm->Type() == Authentication::RSA)
+            {
+                pHTable->totalppkkSize1 = VERSAL_ACKEY_STRUCT_SIZE + TELLURIDE_RSA_AC_PPK_SPK_ALIGNMENT;
+                pHTable->actualppkSize1 = VERSAL_ACKEY_STRUCT_SIZE;
+                pHTable->totalHashBlockSignatureSize1 = pHTable->actualSignatureSize1 = ac.front()->AuthContext->GetSignatureLength();
+            }
+            else if (ac.front()->AuthContext->authAlgorithm->Type() == Authentication::ECDSA)
+            {
+                pHTable->totalppkkSize1 = pHTable->actualppkSize1 = 2 * EC_P384_KEY_LENGTH;
+                pHTable->totalHashBlockSignatureSize1 = pHTable->actualSignatureSize1 = ac.front()->AuthContext->GetSignatureLength();
+            }
+            else if (ac.front()->AuthContext->authAlgorithm->Type() == Authentication::ECDSAp521)
+            {
+                pHTable->actualppkSize1 = EC_P521_KEY_LENGTH2 * 2;
+                pHTable->totalppkkSize1 = EC_P521_KEY_LENGTH2 * 2 + PADDING_16B(pHTable->actualppkSize1);
+                pHTable->actualSignatureSize1 = ac.front()->AuthContext->GetSignatureLength();
+                pHTable->totalHashBlockSignatureSize1 = pHTable->actualSignatureSize1 + PADDING_16B(pHTable->actualSignatureSize1);
+                LOG_TRACE("ecdsa521");
+            }
+            else if (ac.front()->AuthContext->authAlgorithm->Type() == Authentication::LMS_SHA2_256 ||
+                     ac.front()->AuthContext->authAlgorithm->Type() == Authentication::LMS_SHAKE256)
+            {
+                pHTable->authHeader1 = ac.front()->AuthContext->authAlgorithm->GetAuthHeader(ac.front()->AuthContext->lmsOnly);
+                size_t actualLmsPpkSize1 = GetLmsPublicKeyLength(ac.front()->AuthContext->ppkFile.c_str(), ac.front()->AuthContext->lmsOnly);
+                size_t actualHashBlockSignatureLength = GetLmsSignLength(ac.front()->AuthContext->sskFile.c_str(), ac.front()->AuthContext->lmsOnly);
+
+                pHTable->totalppkkSize1 = actualLmsPpkSize1 + PADDING_16B(actualLmsPpkSize1);
+                pHTable->actualppkSize1 = actualLmsPpkSize1;
+                pHTable->totalHashBlockSignatureSize1 = actualHashBlockSignatureLength + PADDING_16B(actualHashBlockSignatureLength);
+                pHTable->actualSignatureSize1 = actualHashBlockSignatureLength;
+            }
+        }
     }
     
     SetChecksum();
@@ -729,6 +732,10 @@ void Versal_2ve_2vmPartitionHeader::SetPartitionAttributes(void)
         endian = 1;
     }
 
+    /* PartitionType::TL is a bootgen-side identity; the PDI encodes it as 6. */
+    uint32_t partitionTypeField = (partitionType == PartitionType::TL) ?
+                                  (uint32_t)v2phtPartitionTypeTl : (uint32_t)partitionType;
+
     pHTable->partitionAttributes = (trustzone << v2phtTrustzoneShift) |
                                    (exceptionLevel << v2phtExceptionLevelShift) |
                                    (execState << v2phtExecStateShift) |
@@ -737,7 +744,7 @@ void Versal_2ve_2vmPartitionHeader::SetPartitionAttributes(void)
                                    (pufHdLoc << v2phtPufHDLocationShift) |
                                    (ownerType <<v2phtPartitionOwnerShift) |
                                    (endian << v2phtEndiannessShift) |
-                                   (partitionType << v2phtPartitionTypeShift) |
+                                   (partitionTypeField << v2phtPartitionTypeShift) |
                                    (hivec << v2phtHivecShift) |
                                    (dpaCM << v2phtDpaCMShift) |
                                    (cluster << v2phtClusterShift) |

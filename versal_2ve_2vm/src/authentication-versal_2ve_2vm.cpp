@@ -119,6 +119,7 @@ Versal_2ve_2vmAuthenticationContext::Versal_2ve_2vmAuthenticationContext(Authent
 
 /******************************************************************************/
 Versal_2ve_2vmAuthenticationContext::Versal_2ve_2vmAuthenticationContext(const AuthenticationContext* refAuthContext, Authentication::Type authtype)
+    : certSize(0)
 {
     // Don't allocate bHsignature here - will be allocated with correct size below
     // after signatureLength is determined for the specific authentication type
@@ -306,6 +307,7 @@ Versal_2ve_2vmAuthenticationContext::Versal_2ve_2vmAuthenticationContext(const A
 
 /******************************************************************************/
 Versal_2ve_2vmAuthenticationContext::Versal_2ve_2vmAuthenticationContext(const AuthCertificate4096Sha3PaddingHBStructure* existingCert, Authentication::Type authtype)
+    : certSize(0)
 {
     signatureLength = SIGN_LENGTH_VERSAL;
     spkSignLoaded = true;
@@ -760,7 +762,7 @@ Section* Versal_2ve_2vmAuthenticationContext::CreateCertificate(BootImage& bi, B
     {
         LoadUdfData(udfFile, udf_data);
         authAlgorithm->RearrangeEndianess(udf_data, sizeof(udf_data));
-        memcpy(headerData + BH_UDF_OFFSET_TELLURIDE, udf_data, UDF_BH_TELLURIDE);
+        memcpy(headerData + BH_UDF_OFFSET_TELLURIDE, udf_data, sizeof(udf_data));
     }
 
     if(isBootloader || name == "MetaHeader")
@@ -2409,7 +2411,7 @@ void Versal_2ve_2vmAuthenticationContext::CreateSPKSignature(BootImage& bi)
 
         if(bi.options.DoGenerateHashes())
         {
-            std::string hashfilename = bi.bifOptions->GetSPKFileName() + hash->GetHashFileExtension();
+            std::string hashfilename = (!spkFile.empty() ? spkFile : bi.bifOptions->GetSPKFileName()) + hash->GetHashFileExtension();
             WritePaddedSHAFile(tempBuffer.get(), actualKeySize + TELLURIDE_AC_SPK_HDR_LENGTH, hashfilename);
         }
         else
@@ -2446,7 +2448,7 @@ void Versal_2ve_2vmAuthenticationContext::CreateSPKSignature(BootImage& bi)
 
         if(bi.options.DoGenerateHashes())
         {
-            std::string hashfilename = bi.bifOptions->GetSPKFileName() + hash->GetHashFileExtension();
+            std::string hashfilename = (!spkFile.empty() ? spkFile : bi.bifOptions->GetSPKFileName()) + hash->GetHashFileExtension();
             WritePaddedSHAFile(shaHashPadded.get(), hashfilename);
         }
         else

@@ -32,6 +32,7 @@
 #include "authentication.h"
 #include "options.h"
 #include "bifoptions.h"
+#include "pqc_openssl_req.h"
 #include "ml_dsa/ml_dsa_87.hpp"
 extern "C" {
 #include "lms-utils.h"
@@ -875,6 +876,7 @@ void Key::GenerateLmsKeys(KeyGenerationStruct* keygen, std::vector<LmsKeyParam> 
 /******************************************************************************/
 void Key::GenerateMldsaKeys(KeyGenerationStruct* keygen)
 {
+    RequirePqcOpenSsl("mldsa");
     if (!(keygen->ppk_file != "" || keygen->psk_file != "" || keygen->spk_file != "" || keygen->ssk_file != ""))
     {
         LOG_ERROR("Failed to generate authentication keys. Please specify the key paths in BIF file");
@@ -934,6 +936,7 @@ static int SlhRandomBytes(uint8_t* x, size_t xlen)
 /******************************************************************************/
 void Key::GenerateSlhdsaKeys(KeyGenerationStruct* keygen)
 {
+    RequirePqcOpenSsl("slhdsa");
     if (!(keygen->ppk_file != "" || keygen->psk_file != "" || keygen->spk_file != "" || keygen->ssk_file != ""))
     {
         LOG_ERROR("Failed to generate authentication keys. Please specify the key paths in BIF file");

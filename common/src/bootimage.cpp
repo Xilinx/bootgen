@@ -47,6 +47,9 @@
 #include "logger.h"
 #include "bitutils.h"
 #include "cdo-command.h"
+extern "C" {
+#include "cdo-overlay.h"
+}
 
 /*
 ------------------------------------------------------------------------------
@@ -391,6 +394,13 @@ void BIF_File::Output(Options& options, uint8_t index)
         {
            outFilename.push_back(fName);
         }
+        else if (outFilename.empty() && options.IsSsitBif())
+        {
+            /* section= names each slave PDI from -o. When -o is omitted,
+               use the BIF name so those files match the parser. */
+            fName = StringUtils::RemoveExtension(biffilename) + ".bin";
+            outFilename.push_back(fName);
+        }
 
         bi->OutputPartitionFiles(options, *bi->cache);
 
@@ -429,9 +439,22 @@ void BIF_File::Output(Options& options, uint8_t index)
                     }
                 }
             }
+            /* Apply dual QSPI/OSPI splitting only to the final stitched image.
+               Intermediate per-SLR PDIs are read back to build the master PDI,
+               so they must be written un-split. */
+            bool isFinalOutput = (index == (options.bifOptionsList.size() - 1));
+            QspiMode::Type savedQspiMode = options.GetDualQspiMode();
+            if (!isFinalOutput)
+            {
+                options.SetDualQspiMode(QspiMode::Unknown);
+            }
             std::unique_ptr<OutputFile> file(OutputFile::Factory(out_filename));  // Smart pointer
             file->Output(options, *bi->cache);
             // Auto-deleted by unique_ptr
+            if (!isFinalOutput)
+            {
+                options.SetDualQspiMode(savedQspiMode);
+            }
         }
 
         /* Efuse PPK hash for burning the efuse */
@@ -681,6 +704,21 @@ void BootImage::BuildAndLink(Binary* cache)
 
     LOG_INFO("After Link ");
     LOG_DUMP_IMAGE(*cache);
+}
+
+/******************************************************************************/
+void BootImage::WarnUnappliedOverlayMarkers(void)
+{
+    if (overlayCDO == NULL)
+    {
+        return;
+    }
+    const char* marker = NULL;
+    for (unsigned int i = 0; (marker = cdooverlay_get_unapplied_marker((CdoOverlayInfo*)overlayCDO, i)) != NULL; i++)
+    {
+        LOG_WARNING("Marker '%s' from overlay CDO '%s' is not found in any CDO partition of the BIF. The overlay content for this marker is not applied.",
+            marker, options.GetOverlayCDOFileName().c_str());
+    }
 }
 
 /******************************************************************************/
@@ -1207,12 +1245,14 @@ void BIF_File::ParseBifFile(Options& options)
 {
     /* Versal-format variants use the regular Versal PDI flow. Switch the
        architecture before parsing so all downstream validation follows it.
-       A bootimage file's table id wins over id_code written in the BIF, which
-       matches the later "taken from base PDI" import. */
+       A bootimage file's table id wins over id_code written in the BIF, except
+       when the BIF is versal_2vp native and the base PDI is Versal-format:
+       that mix is rejected instead of silently following the base. */
     if (options.GetArchType() == Arch::VERSAL_2VP)
     {
         const std::string bifText = ReadBifWithoutComments(biffilename);
         uint32_t idCode = 0;
+        const uint32_t bifIdCode = ScanBifForIdCode(bifText);
         const std::string basePdi = ScanBifForBootImageFile(biffilename, bifText);
         bool idFromBasePdi = false;
         if (!basePdi.empty())
@@ -1224,9 +1264,15 @@ void BIF_File::ParseBifFile(Options& options)
                 idFromBasePdi = true;
             }
         }
+        if (IdCodeManager::IsVersal2vpNativeIdCode(bifIdCode) &&
+            IdCodeManager::IsVersalFmtIdCode(idCode))
+        {
+            LOG_ERROR("Base PDI %s belongs to Versal, which is not supported for versal_2vp native (idcode 0x%08X).",
+                StringUtils::BaseName(basePdi).c_str(), bifIdCode);
+        }
         if (idCode == 0)
         {
-            idCode = ScanBifForIdCode(bifText);
+            idCode = bifIdCode;
         }
         if (IdCodeManager::IsVersalFmtIdCode(idCode))
         {

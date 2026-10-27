@@ -21,6 +21,8 @@
 -------------------------------------------------------------------------------
 */
 #include <memory>
+#include <algorithm>
+#include <iomanip>
 #include "encryption-spartanup.h"
 #include "bootheader-spartanup.h"
 #include "bootimage.h"
@@ -39,6 +41,36 @@
 *****************************************************   F U N C T I O N S   ***
 -------------------------------------------------------------------------------
 */
+
+static std::string ReadEfuseKekIvHex(const std::string& fileName);
+static void ValidateEfuseKekIvAgainstPlmIv0(const std::string& efuseKekIvFile,
+                                             const std::string& plmNkyFile,
+                                             const std::string& plmIv0Hex);
+
+/******************************************************************************/
+/* A Key/IV statement in the key file comes in two forms:
+       IV    <hex digits>;   - the value, with the terminating ';' attached
+       IV 0  <hex digits>;   - an index, with the value read separately
+   Only the value form carries the ';', so that is what distinguishes them. */
+static bool IsKeyIvValueToken(const std::string& token)
+{
+    return (token.size() != 0) && (token[token.size() - 1] == ';');
+}
+
+/******************************************************************************/
+/* Widest token std::stoi is guaranteed to convert without overflowing int. */
+#define MAX_KEY_IV_INDEX_DIGITS         9
+
+static int ParseKeyIvIndex(const std::string& token, const std::string& inputFileName)
+{
+    if ((token.size() == 0) || (token.size() > MAX_KEY_IV_INDEX_DIGITS) ||
+        (token.find_first_not_of("0123456789") != std::string::npos))
+    {
+        LOG_DEBUG(DEBUG_STAMP, "Key/IV index expected, '%s' found instead in %s", token.c_str(), inputFileName.c_str());
+        LOG_ERROR("Error parsing AES key file - %s", inputFileName.c_str());
+    }
+    return std::stoi(token);
+}
 
 /******************************************************************************/
 SpartanupEncryptionContext::SpartanupEncryptionContext()
@@ -233,7 +265,7 @@ void SpartanupEncryptionContext::ReadEncryptionKeyFile(const std::string& inputF
             if (word != "" && isalnum(word[0]))
             {
                 /* Second Word is "0" or "1" or "2" ...*/
-                int index = std::stoi(word);
+                int index = ParseKeyIvIndex(word, inputFileName);
                 if (aesKeyNum != index)
                 {
                     LOG_DEBUG(DEBUG_STAMP, "Key order incorrect.");
@@ -263,7 +295,7 @@ void SpartanupEncryptionContext::ReadEncryptionKeyFile(const std::string& inputF
             keyFile >> word;
             if (word != "")
             {
-                if (word.size() == ((BYTES_PER_IV * 2) + 1))
+                if (IsKeyIvValueToken(word))
                 {
                     c = word[word.size() - 1];
                     word.erase(word.size() - 1);
@@ -271,7 +303,7 @@ void SpartanupEncryptionContext::ReadEncryptionKeyFile(const std::string& inputF
                 }
                 else
                 {
-                    int index = std::stoi(word);
+                    int index = ParseKeyIvIndex(word, inputFileName);
                     if (aesIvNum != index)
                     {
                         LOG_DEBUG(DEBUG_STAMP, "Iv order incorrect.");
@@ -1039,6 +1071,17 @@ void SpartanupEncryptionContext::Process(BootImage& bi, PartitionHeader* partHdr
 
     ReadEncryptionKeyFile(aesFilename);
 
+    {
+        std::string kekIvFile = bi.bifOptions->GetEfuseKekIVFile();
+        if (partHdr->IsBootloader() && !kekIvFile.empty() &&
+            (partHdr->imageHeader->GetEncryptionKeySrc() == KeySource::EfuseBlkKey ||
+             partHdr->imageHeader->GetEncryptionKeySrc() == KeySource::EfuseGryKey))
+        {
+            std::string plmIv0 = (aesIvVec.size() > 0) ? aesIvVec[0] : "";
+            ValidateEfuseKekIvAgainstPlmIv0(kekIvFile, aesFilename, plmIv0);
+        }
+    }
+
     // Create a persistent copy of the key for storing in bi.aesKeyandKeySrc
     // This copy is managed by std::unique_ptr for automatic cleanup
     auto persistentKeyPtr = std::make_unique<uint32_t[]>(AES_GCM_KEY_SZ / sizeof(uint32_t));
@@ -1770,7 +1813,7 @@ static std::string ReadIV0(const std::string& inputFileName)
             if (word != "" && isalnum(word[0]))
             {
                 /* Second Word is "0" or "1" or "2" ...*/
-                int index = std::stoi(word);
+                int index = ParseKeyIvIndex(word, inputFileName);
                 if (aesKeyNum != index)
                 {
                     LOG_DEBUG(DEBUG_STAMP, "Key order incorrect.");
@@ -1795,7 +1838,7 @@ static std::string ReadIV0(const std::string& inputFileName)
             keyFile >> word;
             if (word != "")
             {
-                if (word.size() == ((BYTES_PER_IV * 2) + 1))
+                if (IsKeyIvValueToken(word))
                 {
                     c = word[word.size() - 1];
                     word.erase(word.size() - 1);
@@ -1803,7 +1846,7 @@ static std::string ReadIV0(const std::string& inputFileName)
                 }
                 else
                 {
-                    int index = std::stoi(word);
+                    int index = ParseKeyIvIndex(word, inputFileName);
                     if (aesIvNum != index)
                     {
                         LOG_DEBUG(DEBUG_STAMP, "Iv order incorrect.");
@@ -1877,6 +1920,56 @@ static std::string ReadIV0(const std::string& inputFileName)
     return "";
 }
 
+/******************************************************************************/
+static std::string ReadEfuseKekIvHex(const std::string& fileName)
+{
+    uint8_t ivData[BYTES_PER_IV];
+    FileImport fileReader;
+    if (!fileReader.LoadHexData(fileName, ivData, BYTES_PER_IV))
+    {
+        LOG_ERROR("Invalid no. of data bytes for efuse_kek_iv.\n           Expected length is 12 bytes in %s", fileName.c_str());
+    }
+    std::stringstream ss;
+    for (int i = 0; i < BYTES_PER_IV; i++)
+    {
+        ss << std::setfill('0') << std::setw(2) << std::hex << (unsigned)ivData[i];
+    }
+    return ss.str();
+}
+
+/******************************************************************************/
+static void ValidateEfuseKekIvAgainstPlmIv0(const std::string& efuseKekIvFile,
+                                             const std::string& plmNkyFile,
+                                             const std::string& plmIv0Hex)
+{
+    if (efuseKekIvFile.empty() || plmIv0Hex.empty())
+    {
+        return;
+    }
+
+    std::string kekIvHex = ReadEfuseKekIvHex(efuseKekIvFile);
+
+    if (kekIvHex.size() < 16 || plmIv0Hex.size() < 16)
+    {
+        return;
+    }
+
+    std::string kekUpper = kekIvHex.substr(0, 16);
+    std::string iv0Upper = plmIv0Hex.substr(0, 16);
+
+    std::transform(kekUpper.begin(), kekUpper.end(), kekUpper.begin(), ::toupper);
+    std::transform(iv0Upper.begin(), iv0Upper.end(), iv0Upper.begin(), ::toupper);
+
+    if (kekUpper != iv0Upper)
+    {
+        LOG_ERROR("The IV value provided through the efuse_kek_iv attribute and the IV0 value in %s"
+                  " does not align with IV Range checking rules."
+                  "\n           The most significant 16 hex characters must match."
+                  "\n           efuse_kek_iv upper 64 bits: %s"
+                  "\n           PLM NKY IV0 upper 64 bits:  %s",
+                  plmNkyFile.c_str(), kekUpper.c_str(), iv0Upper.c_str());
+    }
+}
 
 /******************************************************************************/
 void SpartanupEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHeader* partHdr)
@@ -1924,6 +2017,17 @@ void SpartanupEncryptionContext::ChunkifyAndProcess(BootImage& bi, PartitionHead
     CheckForSameAesKeyFiles(bi.GetEncryptionKeyFileVec());
 
     ReadEncryptionKeyFile(aesFilename);
+
+    {
+        std::string kekIvFile = bi.bifOptions->GetEfuseKekIVFile();
+        if (partHdr->IsBootloader() && !kekIvFile.empty() &&
+            (partHdr->imageHeader->GetEncryptionKeySrc() == KeySource::EfuseBlkKey ||
+             partHdr->imageHeader->GetEncryptionKeySrc() == KeySource::EfuseGryKey))
+        {
+            std::string plmIv0 = (aesIvVec.size() > 0) ? aesIvVec[0] : "";
+            ValidateEfuseKekIvAgainstPlmIv0(kekIvFile, aesFilename, plmIv0);
+        }
+    }
 
     // Create a persistent copy of the key for storing in bi.aesKeyandKeySrc
     // This copy is managed by std::unique_ptr for automatic cleanup

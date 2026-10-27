@@ -30,6 +30,7 @@
 #include "bootimage.h"
 #include "bootheader-versal.h"
 #include "elftools.h"
+#include "ospi_rx_tuning.h"
 #include <string.h>
 #include <sstream>
 #include "stringutils.h"
@@ -346,7 +347,7 @@ void VersalImageHeaderTable::Build(BootImage& bi, Binary& cache)
             isCorePsm = true;
     }
 
-    bi.imageHeaderTable->SetUserOptionalData(bi.bifOptions->metaHdrAttributes.ihtOptionalDataInfo, bi.numHashTableEntries, isCorePsm);
+    bi.imageHeaderTable->SetUserOptionalData(bi, bi.bifOptions->metaHdrAttributes.ihtOptionalDataInfo, bi.numHashTableEntries, isCorePsm);
     bi.iht_optional_data_length = iht_optional_data_length;
     bi.copied_iht_optional_data_length = copied_iht_optional_data_length;
     LOG_TRACE("After SetUserOptionalData: iht_optional_data_length = 0x%x, copied = 0x%x", iht_optional_data_length, copied_iht_optional_data_length);
@@ -744,7 +745,7 @@ void VersalImageHeaderTable::SetOptionalData(uint32_t * data, uint32_t size)
 }
 
 /******************************************************************************/
-void VersalImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t numHashTableEntries, uint32_t isCorePsm)
+void VersalImageHeaderTable::SetUserOptionalData(BootImage& bi, std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t numHashTableEntries, uint32_t isCorePsm)
 {
     LOG_TRACE("SetUserOptionalData START: iht_optional_data_length = 0x%x, numHashTableEntries = %d, isCorePsm = %d", iht_optional_data_length, numHashTableEntries, isCorePsm);
     bool foundCosePsm = false;
@@ -787,9 +788,12 @@ void VersalImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::stri
                 break;
             }
             
-            /* Filter out PSM data and hash tables for regeneration.
+            /* Filter out PSM data, hash tables and the OSPI RX tuning pattern
+               for regeneration.
                - PSM data (ID=0x04): Always regenerate for consistency
                - Hash table (ID=0x01): Always regenerate to avoid stale data from imports
+               - OSPI RX tuning (ID=0x05): Always regenerate so a rebuild of an
+                 imported PDI does not end up carrying two copies
                This ensures consistent optional data across all build flows. */
             if(opData_id == 0x04)
             {
@@ -800,6 +804,11 @@ void VersalImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::stri
             {
                 /* Skip hash table - will regenerate */
                 LOG_TRACE("Filtering out hash table (ID=0x01) from imported PDI");
+            }
+            else if(opData_id == OSPI_RX_TUNING_SECTION_ID)
+            {
+                /* Skip OSPI RX tuning data - will regenerate */
+                LOG_TRACE("Filtering out OSPI RX tuning data (ID=0x05) from imported PDI");
             }
             else
             {
@@ -867,8 +876,38 @@ void VersalImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::stri
         LOG_TRACE("After PSM: iht_optional_data_length = 0x%x", iht_optional_data_length);
     }
 
+    if (ShouldEmbedOspiRxTuningPattern(bi))
+    {
+        LOG_TRACE("Adding OSPI RX tuning pattern, iht_optional_data_length before = 0x%x", iht_optional_data_length);
+        /*  Section id = 5 is reserved for the OSPI RX tuning pattern.
+            The payload is a fixed size multiple of 64 bytes, so it is stored
+            as-is without the 64 byte padding applied to user optional data. */
+        uint32_t sectn_size_id = 0;
+        /* Optional Data Header + Pattern + Checksum */
+        uint16_t sectn_length = sizeof(uint32_t) + OSPI_RX_TUNING_PATTERN_SIZE + sizeof(uint32_t);
+        sectn_size_id = (uint32_t)((sectn_length / 4) << 16) | OSPI_RX_TUNING_SECTION_ID;
+
+        auto new_data = std::make_unique<uint32_t[]>((iht_optional_data_length + sectn_length) / sizeof(uint32_t));
+        if (iht_optional_data) {
+            memcpy(new_data.get(), iht_optional_data.get(), iht_optional_data_length);
+        }
+        memcpy((uint8_t*)new_data.get() + iht_optional_data_length, &sectn_size_id, sizeof(uint32_t));
+        memcpy((uint8_t*)new_data.get() + iht_optional_data_length + sizeof(uint32_t), OspiRxTuningPattern, OSPI_RX_TUNING_PATTERN_SIZE);
+        uint32_t checksum = ComputeWordChecksum((uint8_t*)new_data.get() + iht_optional_data_length, sectn_length - sizeof(uint32_t));
+        memcpy((uint8_t*)new_data.get() + iht_optional_data_length + sectn_length - sizeof(uint32_t), &checksum, sizeof(uint32_t));
+        iht_optional_data = std::move(new_data);
+        iht_optional_data_length += sectn_length;
+        LOG_TRACE("After OSPI RX tuning pattern: iht_optional_data_length = 0x%x", iht_optional_data_length);
+    }
+
     for (size_t i = 0; i < optionalDataInfo.size(); i++)
     {
+        if (optionalDataInfo[i].second == OSPI_RX_TUNING_SECTION_ID)
+        {
+            LOG_WARNING("Optional Data ID 0x%x is reserved for the OSPI RX tuning pattern, which bootgen embeds automatically. Ignoring the user supplied file '%s'.", OSPI_RX_TUNING_SECTION_ID, optionalDataInfo[i].first.c_str());
+            continue;
+        }
+
         if ((0x00 <= optionalDataInfo[i].second) && (optionalDataInfo[i].second <= 0x20))
         {
             LOG_WARNING("The Data IDs form 0x0 to 0x20 for Optional Data are reserved for internal use. Please use any ID > 0x20 as User Optional Data ID");
@@ -884,7 +923,7 @@ void VersalImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::stri
             LOG_ERROR("Maximum allowed size for optional data is 0x20000 bytes, including optional data header of 8 bytes. Refer UG1283 for more details");
         }
 
-        uint32_t optional_data_padLength = (size % 64 != 0) ? 64 - (size % 64) : 0;
+        uint32_t optional_data_padLength = (size % sizeof(uint32_t) != 0) ? sizeof(uint32_t) - (size % sizeof(uint32_t)) : 0;
         auto data = std::make_unique<uint8_t[]>(size + optional_data_padLength);
         memset(data.get(), 0, size + optional_data_padLength);
         memcpy(data.get(), tempData, size);

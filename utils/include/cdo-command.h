@@ -190,6 +190,7 @@ typedef enum CdoCmdType {
     CdoCmdEmSetAction,
     CdoCmdLdrSetImageInfo,
     CdoCmdLdrCframeClearCheck,
+    CdoCmdLdrI2cHandshake,
     CdoCmdSemNpiTable,
     CdoCmdListSet,
     CdoCmdListWrite,
@@ -343,6 +344,7 @@ void cdocmd_add_finish_cdo_read(CdoSequence * seq);
 void cdocmd_add_sem_npi_table(CdoSequence * seq, uint32_t nodeid, uint32_t flags, uint32_t count, void * buf, uint32_t be);
 void cdocmd_add_ldr_set_image_info(CdoSequence * seq, uint32_t nodeid, uint32_t uid, uint32_t puid, uint32_t funcid);
 void cdocmd_add_ldr_cframe_clear_check(CdoSequence * seq, uint32_t block_type);
+void cdocmd_add_ldr_i2c_handshake(CdoSequence * seq, uint32_t arg0, uint32_t arg1, uint32_t count, void * buf, uint32_t be);
 void cdocmd_add_em_set_action(CdoSequence * seq, uint32_t nodeid, uint32_t action, uint32_t mask);
 void cdocmd_insert_seq(CdoCommand * cmd, CdoSequence * seq);
 void cdocmd_concat_seq(CdoSequence * seq, CdoSequence * seq2);

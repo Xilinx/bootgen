@@ -21,6 +21,7 @@
 -------------------------------------------------------------------------------
 */
 #include <memory>
+#include <cstdlib>
 #include "imageheadertable-spartanup.h"
 #include "authentication-spartanup.h"
 #include "bootimage.h"
@@ -263,7 +264,7 @@ void SpartanupImageHeaderTable::Build(BootImage& bi, Binary& cache)
         }
     }
 
-    bi.imageHeaderTable->SetUserOptionalData(bi.bifOptions->metaHdrAttributes.ihtOptionalDataInfo, bi.numHashTableEntries);
+    bi.imageHeaderTable->SetUserOptionalData(bi, bi.bifOptions->metaHdrAttributes.ihtOptionalDataInfo, bi.numHashTableEntries);
     bi.iht_optional_data_length = iht_optional_data_length;
     bi.copied_iht_optional_data_length = copied_iht_optional_data_length;
     bi.iht_optional_data = std::make_unique<uint32_t[]>(bi.iht_optional_data_length / sizeof(uint32_t));
@@ -684,12 +685,25 @@ void SpartanupImageHeaderTable::SetOptionalData(uint32_t * data, uint32_t size)
 }
 
 /******************************************************************************/
-void SpartanupImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t numHashTableEntries, uint32_t isCorePsm)
+void SpartanupImageHeaderTable::SetUserOptionalData(BootImage& bi, std::vector<std::pair<std::string, uint32_t>> optionalDataInfo, uint32_t numHashTableEntries, uint32_t isCorePsm)
 {
     for (size_t i = 0; i < optionalDataInfo.size(); i++)
     {
         size_t size = 0;
-        void *data = file_to_buf((char *)optionalDataInfo[i].first.c_str(), &size);
+        uint8_t* tempData = (uint8_t*)file_to_buf((char *)optionalDataInfo[i].first.c_str(), &size);
+        if (tempData == NULL)
+        {
+            LOG_ERROR("Cannot read optional data file: %s", optionalDataInfo[i].first.c_str());
+        }
+
+        /* Optional data sections are word aligned */
+        uint32_t optional_data_padLength = (size % sizeof(uint32_t) != 0) ? sizeof(uint32_t) - (size % sizeof(uint32_t)) : 0;
+        auto data = std::make_unique<uint8_t[]>(size + optional_data_padLength);
+        memset(data.get(), 0, size + optional_data_padLength);
+        memcpy(data.get(), tempData, size);
+        free(tempData);
+        size += optional_data_padLength;
+
         if (size != 0)
         {
             uint32_t sectn_size_id = 0;
@@ -701,11 +715,11 @@ void SpartanupImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::s
             if (iht_optional_data) {
                 memcpy(new_data.get(), iht_optional_data.get(), iht_optional_data_length);
             }
-            memcpy((uint8_t*)new_data.get() + (iht_optional_data_length / 4), &sectn_size_id, sizeof(uint32_t));
-            memcpy((uint8_t*)new_data.get() + (iht_optional_data_length / 4) + sizeof(uint32_t) / 4, data, size);
+            memcpy((uint8_t*)new_data.get() + iht_optional_data_length, &sectn_size_id, sizeof(uint32_t));
+            memcpy((uint8_t*)new_data.get() + iht_optional_data_length + sizeof(uint32_t), data.get(), size);
 
-            uint32_t checksum = ComputeWordChecksum((uint8_t*)new_data.get() + (iht_optional_data_length / 4), sectn_length - sizeof(uint32_t));
-            memcpy((uint8_t*)new_data.get() + (iht_optional_data_length / 4) + (sectn_length - sizeof(uint32_t)) / 4, &checksum, sizeof(uint32_t));
+            uint32_t checksum = ComputeWordChecksum((uint8_t*)new_data.get() + iht_optional_data_length, sectn_length - sizeof(uint32_t));
+            memcpy((uint8_t*)new_data.get() + iht_optional_data_length + sectn_length - sizeof(uint32_t), &checksum, sizeof(uint32_t));
             iht_optional_data = std::move(new_data);
             iht_optional_data_length += sectn_length;
         }
@@ -718,7 +732,7 @@ void SpartanupImageHeaderTable::SetUserOptionalData(std::vector<std::pair<std::s
         if (iht_optional_data) {
             memcpy(new_data.get(), iht_optional_data.get(), iht_optional_data_length);
         }
-        memset((uint8_t*)new_data.get() + (iht_optional_data_length / 4), 0xFF, padLength);
+        memset((uint8_t*)new_data.get() + iht_optional_data_length, 0xFF, padLength);
         iht_optional_data = std::move(new_data);
         iht_optional_data_length += padLength;
 
@@ -1546,7 +1560,7 @@ void SpartanupImageHeader::ImportCdoSource(BootImage& bi)
     uint8_t* buffer = NULL;
     size_t size = 0;
     buffer = DecodeCdo(Filename, &size);
-    std::unique_ptr<uint8_t[]> buffer_ptr(buffer);
+    std::unique_ptr<uint8_t, decltype(&std::free)> buffer_ptr(buffer, std::free);
     //if (PostProcessCdo(buffer, size)) return;
     auto hdr = std::make_unique<SpartanupPartitionHeader>(this, 0);
     hdr->firstValidIndex = true;
@@ -1605,7 +1619,7 @@ void SpartanupImageHeader::ImportCdo(BootImage& bi)
         pmcdataSize = totalpmcdataSize = size;
     }
 
-    std::unique_ptr<uint8_t[]> buffer_ptr(buffer);
+    std::unique_ptr<uint8_t, decltype(&std::free)> buffer_ptr(buffer, std::free);
     hdr.get()->partition = std::make_unique<SpartanupPartition>(hdr.get(), buffer_ptr.get(), size);
     hdr->partitionSize = hdr->transferSize = size;
     SetLoadAndExecAddress(hdr.get());

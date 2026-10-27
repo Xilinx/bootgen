@@ -35,6 +35,84 @@ extern "C" {
 #include "../../lms-hash-sigs/lms-utils.h"
 #include "../../lms-hash-sigs/hss_verify.h"
 };
+
+namespace {
+
+bool IsUserKeySource(KeySource::Type keySrc)
+{
+    return keySrc >= KeySource::UserKey0 && keySrc <= KeySource::UserKey7;
+}
+
+bool IsSinglePldataOnlyBif(BifOptions* bifOptions)
+{
+    if (bifOptions == NULL)
+        return false;
+
+    size_t partitionCount = 0;
+    bool solePartitionIsPldata = false;
+
+    for (std::list<ImageBifOptions*>::iterator imgitr = bifOptions->imageBifOptionList.begin();
+         imgitr != bifOptions->imageBifOptionList.end(); ++imgitr)
+    {
+        for (std::list<PartitionBifOptions*>::iterator partitr = (*imgitr)->partitionBifOptionsList.begin();
+             partitr != (*imgitr)->partitionBifOptionsList.end(); ++partitr)
+        {
+            if ((*partitr)->bootImage)
+                continue;
+            partitionCount++;
+            solePartitionIsPldata = (*partitr)->pldata;
+        }
+    }
+
+    for (std::list<PartitionBifOptions*>::iterator itr = bifOptions->partitionBifOptionList.begin();
+         itr != bifOptions->partitionBifOptionList.end(); ++itr)
+    {
+        if ((*itr)->bootImage)
+            continue;
+        partitionCount++;
+        solePartitionIsPldata = (*itr)->pldata;
+    }
+
+    return partitionCount == 1 && solePartitionIsPldata;
+}
+
+void ValidateSpartanupUserKeyUsage(BifOptions* bifOptions, KeySource::Type keySrc)
+{
+    if (!IsUserKeySource(keySrc))
+        return;
+    if (!IsSinglePldataOnlyBif(bifOptions))
+    {
+        LOG_ERROR("BIF attribute error !!!\n\t\t'user_key' key sources are supported only when the BIF contains a single pldata partition.");
+    }
+}
+
+void ValidateSpartanupUserKeyBif(BifOptions* bifOptions)
+{
+    if (bifOptions == NULL)
+        return;
+
+    ValidateSpartanupUserKeyUsage(bifOptions, bifOptions->GetEncryptionKeySource());
+    ValidateSpartanupUserKeyUsage(bifOptions, bifOptions->metaHdrAttributes.encrKeySource);
+
+    for (std::list<ImageBifOptions*>::iterator imgitr = bifOptions->imageBifOptionList.begin();
+         imgitr != bifOptions->imageBifOptionList.end(); ++imgitr)
+    {
+        for (std::list<PartitionBifOptions*>::iterator partitr = (*imgitr)->partitionBifOptionsList.begin();
+             partitr != (*imgitr)->partitionBifOptionsList.end(); ++partitr)
+        {
+            ValidateSpartanupUserKeyUsage(bifOptions, (*partitr)->GetEncryptionKeySource());
+        }
+    }
+
+    for (std::list<PartitionBifOptions*>::iterator itr = bifOptions->partitionBifOptionList.begin();
+         itr != bifOptions->partitionBifOptionList.end(); ++itr)
+    {
+        ValidateSpartanupUserKeyUsage(bifOptions, (*itr)->GetEncryptionKeySource());
+    }
+}
+
+} // namespace
+
 /*
 -------------------------------------------------------------------------------
 *****************************************************   F U N C T I O N S   ***
@@ -78,6 +156,8 @@ SpartanBootImage::~SpartanBootImage()
 /******************************************************************************/
 void SpartanBootImage::ConfigureEncryptionContext(ImageHeader * image, Encryption::Type encryptType)
 {
+    ValidateSpartanupUserKeyUsage(bifOptions, image->GetEncryptionKeySrc());
+
     /* Configure the encryption context */
     bool aesKeyFileExists = false;
     switch (encryptType)
@@ -96,6 +176,15 @@ void SpartanBootImage::ConfigureEncryptionContext(ImageHeader * image, Encryptio
             case KeySource::BbramGryKey:
             case KeySource::BhGryKey:
             case KeySource::None:
+                break;
+            case KeySource::UserKey0:
+            case KeySource::UserKey1:
+            case KeySource::UserKey2:
+            case KeySource::UserKey3:
+            case KeySource::UserKey4:
+            case KeySource::UserKey5:
+            case KeySource::UserKey6:
+            case KeySource::UserKey7:
                 break;
             default:
                 LOG_ERROR("BIF attribute error !!!\n\t\tInvalid 'keysrc' mentioned for Bootloader.");
@@ -1308,6 +1397,9 @@ void SpartanBootImage::Add(BifOptions* bifoptions)
 {
     uint8_t slr_boot_cnt = 0;
     uint8_t slr_cfg_cnt = 0;
+
+    ValidateSpartanupUserKeyBif(bifoptions);
+
     // Add 'LOG_WARNING("A bootimage cannot be generated on the go, with '-generate_keys'.\n           However, the requested keys will be generated.");'
     if (bifoptions->GetAESKeyFileName() != "")
     {
@@ -1940,8 +2032,16 @@ void SpartanBootImage::OutputOptionalPufPDI()
     {
         FILE* filePtr;
         size_t result;
-        std::string fName = options.GetDumpDirectory(); //StringUtils::RemoveExtension(options.GetOutputFileNames().front());
-        fName += "puf.bin";
+        std::string fName;
+        if (!options.GetPufOutputFileName().empty())
+        {
+            fName = options.GetPufOutputFileName();
+        }
+        else
+        {
+            fName = options.GetDumpDirectory();
+            fName += "puf.bin";
+        }
         filePtr = fopen(fName.c_str(), "wb");
 
         auto pufPDITemp = std::make_unique<uint8_t[]>(bootHeader->section->Length);
