@@ -49,12 +49,6 @@ ifeq ($(origin CC),default)
 CC = gcc
 endif
 
-# lms-hash-sigs defaults to -g, and a recent GCC then hands the assembler a
-# --gdwarf-N option that binutils 2.30 rejects. Drop the debug flag rather than
-# require a newer binutils, which would mean naming another toolchain path. Its
-# Makefile uses a bare "CFLAGS ?=" with no include flags, so overriding is safe.
-LMS_CFLAGS = -Wall -O0
-
 ifeq ($(shell test "$(CXX_MAJOR)" -ge 9 2>/dev/null && echo ok),ok)
 CXXFLAGS += -Wno-aligned-new -Wno-misleading-indentation -Wno-class-memaccess
 endif
@@ -171,7 +165,7 @@ ${OBJDIR}/%.${OBJ} : ${SLH_DSA_DIR}/%.c
 
 ${EXEC}: $(OBJECTS)
 	echo Building executable file: $@...
-	cd ${LMS_HASH_DIR} && $(MAKE) CC="${CC}" CFLAGS="${LMS_CFLAGS}" ${LMS_LIB}
+	cd ${LMS_HASH_DIR} && $(MAKE) CC="${CC}" CFLAGS="${CFLAGS}" ${LMS_LIB}
 	${CXX} $(CXXFLAGS) $(LDFLAGS) $(OPTIONS_USER) -o $@ $(OBJECTS) ${LMS_HASH_DIR}/${LMS_LIB} $(OPTIONS)$(LIBS)
 
 execs: ${EXEC}
