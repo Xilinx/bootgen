@@ -190,6 +190,24 @@ void VersalPartitionHeader::ReadData(std::ifstream& ifs)
     dsection->isPartitionData = true;
     partition = std::make_unique<VersalPartition>(this, dsection);
 
+    /* Non-bootloader SHA3 is a 48-byte section immediately before the partition.
+       Carry those bytes and let link assign the offset in the appended image. */
+    if (checksumType != Checksum::None && GetChecksumOffset() != 0)
+    {
+        std::streampos saved = ifs.tellg();
+        ifs.clear();
+        ifs.seekg((std::streamoff)GetChecksumOffset() * (std::streamoff)sizeof(uint32_t));
+        auto cksum = std::make_unique<Section>(partName + ".sha3checksum", SHA3_LENGTH_BYTES);
+        ifs.read((char*)cksum->Data.get(), SHA3_LENGTH_BYTES);
+        if (!ifs)
+        {
+            LOG_ERROR("Failed to read checksum for partition %s", partName.c_str());
+        }
+        checksumSection = cksum.release();
+        pHTable->checksumWordOffset = 0;
+        ifs.seekg(saved);
+    }
+
     static uint8_t encryptionHeader[] =
     {
         0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xBB,0x00,0x00,0x00,
@@ -606,16 +624,20 @@ void VersalPartitionHeader::SetPartitionAttributes(void)
         }
     }
 
+    ChecksumContext* cksumCtx = imageHeader->GetChecksumContext();
     if (checksumType != Checksum::None)
     {
-        if (imageHeader->GetChecksumContext()->Type() != Checksum::None)
+        /* Same algorithm on an imported partition is the existing digest, not a second checksum. */
+        if (cksumCtx != NULL &&
+            cksumCtx->Type() != Checksum::None &&
+            cksumCtx->Type() != (Checksum::Type)checksumType)
         {
             LOG_ERROR("Cannot rechecksum a partition");
         }
     }
-    else
+    else if (cksumCtx != NULL)
     {
-        checksumType = imageHeader->GetChecksumContext()->Type();
+        checksumType = cksumCtx->Type();
     }
 
     if (authBlock != 0)

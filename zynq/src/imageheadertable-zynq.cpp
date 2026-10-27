@@ -112,8 +112,6 @@ ZynqImageHeader::ZynqImageHeader(std::ifstream& ifs)
         hdr->ReadHeader(ifs);
         hdr->ReadData(ifs);
 
-        partitionHeaderList.push_back(hdr.release());
-
         /* This is just a default value.
         It may be true when the partition load address is compared to the bootheader */
         Bootloader = false;
@@ -146,6 +144,7 @@ ZynqImageHeader::ZynqImageHeader(std::ifstream& ifs)
         }
 
         offset += hdr->GetPartitionHeaderSize();
+        partitionHeaderList.push_back(hdr.release());
     }
 }
 

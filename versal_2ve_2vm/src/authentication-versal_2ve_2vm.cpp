@@ -976,7 +976,7 @@ void Versal_2ve_2vmAuthenticationContext::Link(BootImage& bi, std::list<Section*
         /* Calculate the BH hash with SHA3 rather than LMS hashing algo */
         auto sha_hash = std::make_unique<uint8_t[]>(bi.hash->GetHashLength());
         bi.hash->CalculateVersalHash(true, tmpBh, bi.bootHeader->GetBootHeaderSize() - sizeof(Versal_2ve_2vmSmapWidthTable), sha_hash.get());
-        
+
         /*if (bi.options.DoGenerateHashes())
         {
             std::string hashfilename = "bootheader" + hash->GetHashFileExtension();
@@ -1489,8 +1489,6 @@ void Versal_2ve_2vmAuthenticationContext::GeneratePPKHash(const std::string& fil
         ppkSize = 2 * EC_P521_KEY_LENGTH2;
     if ((authAlgorithm->Type() == Authentication::LMS_SHA2_256) || (authAlgorithm->Type() == Authentication::LMS_SHAKE256))
     {
-        
-        ownsHash = true;  // We own this hash
         ppkSize = GetLmsPublicKeyLength(ppkFile.c_str(), lmsOnly);
     }
     hashLength = hash->GetHashLength();
@@ -1506,7 +1504,7 @@ void Versal_2ve_2vmAuthenticationContext::GeneratePPKHash(const std::string& fil
 
     auto ppkHash = std::make_unique<uint8_t[]>(hashLength);
 
-    hash->CalculateVersalHash(true, ppkTemp.get(), ppkSize, ppkHash.get());
+    hash->CalculateHash(true, ppkTemp.get(), ppkSize, ppkHash.get());
     LOG_TRACE("FULL PPK HASH");
     LOG_DUMP_BYTES(ppkHash.get(), hashLength);
 

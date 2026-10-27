@@ -1636,13 +1636,16 @@ void VersalAuthenticationContext::CreateAuthJtagImage(Options& options, uint8_t*
 
         hash->CalculateVersalHash(false, (uint8_t*)authJtagImage, sizeof(authJtagImage->acHeader) + sizeof(authJtagImage->spkId) + sizeof(authJtagImage->authJtagInfo), shaHash.get());
         authAlgorithm->CreatePadding(shaHashPadded.get(), shaHash.get(), hashLength);
-        authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
 
         if (primaryKey->isSecret)
         {
+            // For RSA, the internal implementation consumes the PSS block in
+            // little-endian order and returns the signature in that order.
+            authAlgorithm->RearrangeEndianess(shaHashPadded.get(), signatureLength);
             authAlgorithm->CreateSignature(shaHashPadded.get(), (uint8_t*)primaryKey.get(), authJtagImage->authJtagSignature);
             LOG_TRACE("authJtag signature");
             LOG_DUMP_BYTES(authJtagImage->authJtagSignature, signatureLength);
+            authAlgorithm->RearrangeEndianess(authJtagImage->authJtagSignature, signatureLength);
         }
         else
         {
@@ -1660,7 +1663,6 @@ void VersalAuthenticationContext::CreateAuthJtagImage(Options& options, uint8_t*
                 }
             }
         }
-        authAlgorithm->RearrangeEndianess(authJtagImage->authJtagSignature, signatureLength);
         memset(authJtagImage->padto2KB, 0, sizeof(authJtagImage->padto2KB));
     }
     else

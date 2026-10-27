@@ -1580,43 +1580,6 @@ bool Versal_2vpAuthenticationContext::IsSectionEncrypted(BootImage& bi, Section*
 }
 
 /*******************************************************************************/
-static void BuildMetaheaderBufferForHash(BootImage& bi, uint8_t*& buffer, size_t& bufferSize) {
-    std::list<Section*> sections;
-    size_t size = 0;
-    ImageHeaderTable* iHT = bi.imageHeaderTable.get();
-
-    // Always add the image header table section
-    sections.push_back(iHT->section);
-    size += iHT->section->Length;
-
-    if (bi.options.bifOptions->GetHeaderEncyption()) {
-        // If encrypted, add the encrypted metaheader section
-        sections.push_back(bi.encryptedHeaders);
-        size += bi.encryptedHeaders->Length;
-    } else {
-        // Otherwise, add all image and partition headers
-        for (auto& image : bi.subSysImageList) {
-            sections.push_back(image->section);
-            size += sizeof(VersalImageHeaderStructure);
-        }
-        for (auto& part : bi.partitionHeaderList) {
-            sections.push_back(part->section);
-            size += sizeof(Versal_2vpPartitionHeaderTableStructure);
-        }
-    }
-
-    buffer = new uint8_t[size];
-    memset(buffer, bi.options.GetOutputFillByte(), size);
-
-    Binary::Address_t start = sections.front()->Address;
-    for (auto& section : sections) {
-        int offset = section->Address - start;
-        memcpy(buffer + offset, section->Data.get(), section->Length);
-    }
-    bufferSize = size;
-}
-
-/*******************************************************************************/
 void PopulateBootloaderHashforBHandMetaheader(BootImage& bi, Section* bootloaderSection, Section* hashBlockSection, ImageHeader* imageHeader, Section* metaSection)
 {
     size_t hashLen = bi.hash->GetHashLength();
@@ -1641,26 +1604,24 @@ void PopulateBootloaderHashforBHandMetaheader(BootImage& bi, Section* bootloader
     // 3. Skip PMC hash (index 2) as it already got populated in parition-versal.cpp Build fun
     offset += sizeof(uint32_t) + hashLen;
 
-    // 4. Metaheader hash (index 3, if present)
-    if (metaSection)
+    /* Index 3 is the Hash Block 1 link. Store SHA3 of the whole Hash Block 1
+       section, the same value the non-secure and encryption-only paths store.
+       Hash Block 1 entry 0 remains the meta-header digest. */
+    Section* hb1Section = (bi.imageHeaderTable != nullptr) ? bi.imageHeaderTable->hashBlockSection : nullptr;
+    if (metaSection && hb1Section != NULL)
     {
-        uint8_t* headersBuffer = nullptr;
-        size_t metaheaderSize = 0;
-        BuildMetaheaderBufferForHash(bi, headersBuffer, metaheaderSize);
+        uint8_t hb1Hash[SHA3_LENGTH_BYTES] = {0};
+        bi.hash->CalculateVersalHash(true, hb1Section->Data.get(),
+                                     bi.imageHeaderTable->hashBlockSectionLength, hb1Hash);
 
-        uint8_t metaHash[SHA3_LENGTH_BYTES] = {0};
-        bi.hash->CalculateVersalHash(true, headersBuffer, metaheaderSize, metaHash);
+        LOG_INFO("Final Hash Block 1 hash:");
+        LOG_DUMP_BYTES(hb1Hash, hashLen);
 
-        LOG_INFO("Final metaheader hash (combined headers):");
-        LOG_DUMP_BYTES(metaHash, hashLen);
-
-        uint32_t metaIndex = HASH_BLOCK_HASHBLOCK1_HASH_INDEX;
-        memcpy(hashBlock + offset, &metaIndex, sizeof(uint32_t));
+        uint32_t hb1Index = HASH_BLOCK_HASHBLOCK1_HASH_INDEX;
+        memcpy(hashBlock + offset, &hb1Index, sizeof(uint32_t));
         offset += sizeof(uint32_t);
-        memcpy(hashBlock + offset, metaHash, hashLen);
+        memcpy(hashBlock + offset, hb1Hash, hashLen);
         offset += hashLen;
-
-        delete[] headersBuffer;
     }
 
     // Pad remaining bytes in hashblock0 with zeros

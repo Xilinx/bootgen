@@ -238,7 +238,7 @@ efuseppkbits
 -------------+----------------------------------------------------------------+\n\
  OPTION      | efuseppkbits                                                   |\n\
 -------------+----------------------------------------------------------------+\n\
- SUPPORTED   | zynq, zynqmp, versal, versal_2ve_2vm, spartanup                |\n\
+ SUPPORTED   | zynq, zynqmp, versal, versal_2ve_2vm, spartanup, versal_2vp    |\n\
 -------------+----------------------------------------------------------------+\n\
  DESCRIPTION | This option specifies the name of the efuse file to be written |\n\
              | to contain the PPK hash. This option generates a direct hash   |\n\

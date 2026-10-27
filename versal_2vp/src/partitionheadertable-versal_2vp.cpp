@@ -221,12 +221,11 @@ void Versal_2vpPartitionHeader::Link(BootImage &bi, PartitionHeader* next_part_h
        Default is Hash Block 1 (meta-header group). A partition assigned to a
        distinct-key owner (hashNumMap.second != 0) instead points at that
        owner's hash block (HBn). Owners resolve to their own block; sharers to
-       their owner's. We also capture the owner's AC section so sharers can
-       reference it in SetAuthCertificateOffset(). */
+       their owner's. Sharers do not copy the owner's AC offset: a nonzero
+       offset makes PLM re-read the certificate, which SBI cannot seek back to. */
     Section*  grpHashBlock    = bi.imageHeaderTable->hashBlockSection;
     uint32_t  grpHashBlockLen = (bi.imageHeaderTable->hashBlockSection != NULL)
                                 ? bi.imageHeaderTable->hashBlockSectionLength : 0;
-    groupAcSection = NULL;
 
     if (!isBootloader && bi.hashNumMap.size() != 0)
     {
@@ -262,8 +261,6 @@ void Versal_2vpPartitionHeader::Link(BootImage &bi, PartitionHeader* next_part_h
                         grpHashBlock    = ovp->GetHashBlockSection();
                         grpHashBlockLen = ovp->GetHashBlockSectionLength();
                     }
-                    if ((*oh)->ac.size() != 0 && (*oh)->ac.front() != NULL)
-                        groupAcSection = (*oh)->ac.front()->section;
                     break;
                 }
             }
@@ -794,29 +791,23 @@ void Versal_2vpPartitionHeader::SetChecksumOffset(void)
 /******************************************************************************/
 void Versal_2vpPartitionHeader::SetAuthCertificateOffset(void)
 {   
-    /* For non-bootloader (PLM loadable) partitions with authentication:
-       No individual AC is created - they use the metaheader's AC via Hash Block 1.
-       So authCertificateOffset should be 0.
-       
-       Note: Skip this for presigned partitions (certificateRelativeByteOffset != 0) 
-       as they have their own embedded AC. */
+    /* For non-bootloader (PLM loadable) partitions with authentication and
+       no AC of their own, authCertificateOffset stays 0. That covers both
+       meta-header sharers (Hash Block 1) and distinct-key group sharers.
+       Copying the owner's AC offset makes PLM re-authenticate that
+       certificate. On SBI the stream cannot seek backward, so the next
+       partition is parsed as a PPK. Hash-block offset and length still point
+       at the authenticated group hash block.
+
+       Skip this for presigned partitions (certificateRelativeByteOffset != 0);
+       they have their own embedded AC. The group owner (ac.size() != 0)
+       keeps its own AC offset in the path below. */
     if (!isBootloader &&
         imageHeader->GetAuthenticationType() != Authentication::None &&
         ac.size() == 0 &&
         certificateRelativeByteOffset == 0)
     {
-        /* grouped sharer has no AC of its own but belongs to an
-           owner's hash block. Point it at the owner's AC. */
-        if (groupAcSection != NULL)
-        {
-            pHTable->authCertificateOffset =
-                (uint32_t)(groupAcSection->Address / sizeof(uint32_t));
-            LOG_TRACE("PLM loadable partition '%s' - grouped sharer, using owner AC at 0x%X.",
-                      imageHeader->GetName().c_str(), pHTable->authCertificateOffset);
-            return;
-        }
-
-        LOG_TRACE("PLM loadable partition '%s' - no individual AC, using metaheader AC via HB1. Setting authCertificateOffset to 0.",
+        LOG_TRACE("PLM loadable partition '%s' - no individual AC. Setting authCertificateOffset to 0.",
                   imageHeader->GetName().c_str());
         pHTable->authCertificateOffset = 0;
         return;
@@ -1486,6 +1477,10 @@ void Versal_2vpPartitionHeaderTable::Build(BootImage & bi, Binary & cache)
                    continue;
    
                ImageHeader* oh = (*owner)->imageHeader;
+               /* An unauthenticated partition builds no hash block or AC, so it
+                  cannot own a later authenticated partition that names the same keys. */
+               if (oh->GetAuthenticationType() == Authentication::None)
+                   continue;
                if (ih->GetPpkFile()         == oh->GetPpkFile() &&
                    ih->GetPskFile()         == oh->GetPskFile() &&
                    ih->GetSpkFile()         == oh->GetSpkFile() &&

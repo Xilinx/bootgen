@@ -362,12 +362,15 @@ public:
         return std::find(idCodes.begin(), idCodes.end(), idCode) != idCodes.end();
     }
 
-    /* 0x04C68093 and 0x04C69093 both use the versal_2vp native PDI. */
+    /* versal_2vp native PDI and versal_2vp PPK hash will be used for the following idcodes:
+       0x04C68093 and 0x04C69093. Each value is not a separate device name. */
     static bool IsVersal2vpNativeIdCode(uint32_t idCode) {
         return (idCode == IDCODE_VERSAL_2VP_NATIVE) || (idCode == 0x04C69093);
     }
 
-    /* versal_2vp devices whose PDI uses the Versal format */
+    /* Versal PDI and classic Versal PPK hash will be used for the following idcodes:
+       0x04C60093, 0x04C74093, 0x04C75093, and 0x04C76093. Each value is not
+       mapped to one device name. */
     static bool IsVersalFmtIdCode(uint32_t idCode) {
         static const std::vector<uint32_t> versalFmtIdCodes = {
             0x04C60093, IDCODE_VERSAL_2VP_VERSAL_FMT, 0x04C75093, 0x04C76093

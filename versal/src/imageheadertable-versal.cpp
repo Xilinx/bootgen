@@ -3276,6 +3276,23 @@ Total SLR boot partition:
 +-------------------+
 */
 
+/******************************************************************************/
+static void SetEndOfPdiSyncAttribute(VersalImageHeaderTableStructure* iHT)
+{
+    iHT->imageHeaderTableAttributes |= (0x1 & vNetihtEndofPDISynckMask) << vNetihtEndofPDISyncShift;
+
+    /* ihtChecksum covers every word ahead of it, so it has to be recomputed -
+       PLM rejects the meta header on a stale checksum. */
+    uint32_t checksum = 0;
+    size_t numChecksumedWords = (sizeof(VersalImageHeaderTableStructure) - sizeof(iHT->ihtChecksum)) / sizeof(uint32_t);
+    for (size_t i = 0; i < numChecksumedWords; i++)
+    {
+        checksum += ((uint32_t*)iHT)[i];
+    }
+    iHT->ihtChecksum = checksum ^ 0xFFFFFFFF;
+}
+
+/******************************************************************************/
 void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
 {
     LOG_INFO("Creating SLR Boot CDO partition");
@@ -3435,6 +3452,16 @@ void VersalImageHeader::CreateSlrBootPartition(BootImage& bi)
                 //if (getenv("BOOTGEN_SPLIT_SSIT_SLAVE_BOOT_PDI") != NULL)
                 {
                     pad_size = p1_size + ((4 - (p1_size & 3)) & 3);
+                }
+
+                if (bi.options.GetSyncFlag())
+                {
+                    if (bh_offset + ih_offset + sizeof(VersalImageHeaderTableStructure) > slr_boot_data.len)
+                    {
+                        LOG_ERROR("Image header table of SLR boot PDI %s lies outside the file", (*slr_id)->file.c_str());
+                    }
+                    LOG_TRACE("SSIT: Sync flag is set - slr-%d boot PDI", (*slr_id)->index);
+                    SetEndOfPdiSyncAttribute((VersalImageHeaderTableStructure*)(slr_boot_data.bytes + bh_offset + ih_offset));
                 }
 
                 if ((device_name != "") && (do_ssit_check != NULL))
@@ -4150,8 +4177,8 @@ void GetPartitionOffsets(SsitConfigSlrInfo* slr_info, uint8_t* data, size_t size
     slr_info->partition_sizes.push_back(sizeof(VersalImageHeaderTableStructure) + (iHT->optionalDataSize * 4) + (iHT->totalMetaHdrLength * 4));
     if (bi != nullptr && bi->options.GetSyncFlag())
     {
-        LOG_TRACE("SSIT: Sync flag is set");
-        iHT->imageHeaderTableAttributes |= (0x1 & vNetihtEndofPDISynckMask) << vNetihtEndofPDISyncShift;
+        LOG_TRACE("SSIT: Sync flag is set - slr-%d config PDI", slr_info->index);
+        SetEndOfPdiSyncAttribute(iHT);
     }
     for (uint8_t index = 0; index < iHT->partitionTotalCount; index++)
     {

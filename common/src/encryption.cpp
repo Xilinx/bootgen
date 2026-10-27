@@ -27,6 +27,7 @@
 #include "bifoptions.h"
 #include "encryptutils.h"
 #include <openssl/rand.h>
+#include <unordered_map>
 
 /*
 -------------------------------------------------------------------------------
@@ -473,78 +474,93 @@ void EncryptionContext::CheckForExtraKeyIVPairs(uint32_t totalencrBlocks, std::s
 }
 
 /******************************************************************************/
+static std::string MakeKeyIvPairId(const std::string& key, const std::string& iv)
+{
+    /* Length-prefixed so the boundary between key and IV cannot alias. */
+    std::string keyLen = std::to_string(key.size());
+    std::string pair;
+    pair.reserve(keyLen.size() + key.size() + iv.size() + 2);
+    pair.append(keyLen);
+    pair.push_back(':');
+    pair.append(key);
+    pair.push_back(':');
+    pair.append(iv);
+    return pair;
+}
+
+/******************************************************************************/
 void EncryptionContext::CheckForRepeatedKeyIVPairs(std::vector<std::string> aesKeyFileVec, bool maskKey0IV0)
 {
-    static std::vector<std::vector<std::string> > aesKeyMasterVec;
-    static std::vector<std::vector<std::string> > aesIvMasterVec;
+    /* seenPairOwner lives for the process, same as the old static key/IV lists.
+       One bootgen run is one image. A repeated key with a different IV, or a
+       repeated IV with a different key, is still allowed. A hit owned by this
+       file is an in-file repeat. A hit owned by an earlier file is cross-file.
+       maskKey0IV0 (zynqmp) compares index 0 with later rows in this file and
+       does not insert it, so other files cannot see it. */
+    static std::vector<std::string> seenFiles;
+    static std::unordered_map<std::string, uint32_t> seenPairOwner;
 
-    aesKeyMasterVec.push_back(aesKeyVec);
-    aesIvMasterVec.push_back(aesIvVec);
-
-    bool repeatedKey = false;
-    bool repeatedIV = false;
-
-    for (uint32_t i = 0; i < aesKeyVec.size(); i++)
+    if (aesKeyVec.size() != aesIvVec.size())
     {
-        for (uint32_t j = i + 1; j < aesKeyVec.size(); j++)
+        LOG_ERROR("Encryption Error !!!\n           Number of Keys in the AES key file are not equal to the number of IVs in %s.", aesFilename.c_str());
+    }
+
+    uint32_t pairCount = static_cast<uint32_t>(aesKeyVec.size());
+
+    std::string currentFile = aesFilename;
+    if (seenFiles.size() < aesKeyFileVec.size())
+    {
+        currentFile = aesKeyFileVec[seenFiles.size()];
+    }
+
+    uint32_t owner = static_cast<uint32_t>(seenFiles.size());
+    seenFiles.push_back(currentFile);
+
+    std::string maskedPair0;
+    bool checkMaskedPair0 = false;
+    if (maskKey0IV0 && (pairCount > 0))
+    {
+        maskedPair0 = MakeKeyIvPairId(aesKeyVec[0], aesIvVec[0]);
+        checkMaskedPair0 = true;
+    }
+
+    uint32_t insertCount = pairCount;
+    if (checkMaskedPair0)
+    {
+        insertCount--;
+    }
+    seenPairOwner.reserve(seenPairOwner.size() + insertCount);
+
+    for (uint32_t i = 0; i < pairCount; i++)
+    {
+        if (checkMaskedPair0 && (i == 0))
         {
-            if (aesKeyVec[i] == aesKeyVec[j])
+            continue;
+        }
+
+        std::string pairId = MakeKeyIvPairId(aesKeyVec[i], aesIvVec[i]);
+        if (checkMaskedPair0 && (pairId == maskedPair0))
+        {
+            LOG_MSG("           Key : %s", aesKeyVec[i].c_str());
+            LOG_MSG("           IV : %s", aesIvVec[i].c_str());
+            LOG_ERROR("Repeated usage of Key/IV pair is observed in %s.\n           Reuse of Key/IV pair creates security vulnerability.", aesFilename.c_str());
+        }
+
+        std::unordered_map<std::string, uint32_t>::iterator found = seenPairOwner.find(pairId);
+        if (found != seenPairOwner.end())
+        {
+            LOG_MSG("           Key : %s", aesKeyVec[i].c_str());
+            LOG_MSG("           IV : %s", aesIvVec[i].c_str());
+            if (found->second == owner)
             {
-                repeatedKey = true;
-            }
-            if (aesIvVec[i] == aesIvVec[j])
-            {
-                repeatedIV = true;
-            }
-            if (repeatedKey && repeatedIV)
-            {
-                LOG_MSG("           Key : %s", aesKeyVec[i].c_str());
-                LOG_MSG("           IV : %s", aesIvVec[i].c_str());
                 LOG_ERROR("Repeated usage of Key/IV pair is observed in %s.\n           Reuse of Key/IV pair creates security vulnerability.", aesFilename.c_str());
             }
             else
             {
-                repeatedKey = repeatedIV = false;
+                LOG_ERROR("Repeated usage of Key/IV pair is observed in %s, %s.\n           Reuse of Key/IV pair creates security vulnerability.", seenFiles[found->second].c_str(), currentFile.c_str());
             }
         }
-    }
-
-    if (maskKey0IV0)
-    {
-        aesKeyMasterVec[aesKeyMasterVec.size() - 1].erase(aesKeyMasterVec[aesKeyMasterVec.size() - 1].begin());
-        aesIvMasterVec[aesIvMasterVec.size() - 1].erase(aesIvMasterVec[aesIvMasterVec.size() - 1].begin());
-    }
-
-    for (uint32_t i = 0; i < aesKeyMasterVec.size(); i++)
-    {
-        uint32_t j = aesKeyMasterVec.size() - 1;
-        if (i != j)
-        {
-            for (uint32_t x = 0; x < aesKeyMasterVec[i].size(); x++)
-            {
-                for (uint32_t y = 0; y < aesKeyMasterVec[j].size(); y++)
-                {
-                    if (aesKeyMasterVec[i][x] == aesKeyMasterVec[j][y])
-                    {
-                        repeatedKey = true;
-                    }
-                    if (aesIvMasterVec[i][x] == aesIvMasterVec[j][y])
-                    {
-                        repeatedIV = true;
-                    }
-                    if (repeatedKey && repeatedIV)
-                    {
-                        LOG_MSG("           Key : %s", aesKeyMasterVec[i][x].c_str());
-                        LOG_MSG("           IV : %s", aesIvMasterVec[j][y].c_str());
-                        LOG_ERROR("Repeated usage of Key/IV pair is observed in %s, %s.\n           Reuse of Key/IV pair creates security vulnerability.", aesKeyFileVec[i].c_str(), aesKeyFileVec[j].c_str());
-                    }
-                    else
-                    {
-                        repeatedKey = repeatedIV = false;
-                    }
-                }
-            }
-        }
+        seenPairOwner.emplace(std::move(pairId), owner);
     }
 }
 

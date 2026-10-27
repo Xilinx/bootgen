@@ -3357,6 +3357,12 @@ static bool ValidateKmdMetadata(
              GetAlgorithmName(primary.Algorithm).c_str(), primary.Algorithm);
     
     if (!isHybrid) {
+        uint32_t kmdHybridMask = primary.Hybrid | secondary.Hybrid;
+        if (kmdHybridMask != 0) {
+            LOG_ERROR("Single signing cannot use a .kmd hybrid field (0x%08x). Add the second key pair to sign a hybrid image, or remove the hybrid field from the .kmd file",
+                      kmdHybridMask);
+            return false;
+        }
         LOG_INFO("✓ Single algorithm mode - validation complete");
         return true;
     }

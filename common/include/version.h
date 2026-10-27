@@ -19,7 +19,7 @@
 #define RDI_VERSION "2026.2"
 #endif
 
-#define BOOTGEN_BUILD_NUMBER "35"
+#define BOOTGEN_BUILD_NUMBER "36"
 
 #define PROGRAMNAME     "Bootgen"
 /*

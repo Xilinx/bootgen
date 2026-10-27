@@ -238,11 +238,19 @@ void BIF_File::Process(Options& options)
                 else if (idCode == 0)
                 {
                     LOG_WARNING("No idcode specified for versal_2vp arch. Defaulting to versal_2vp native (idcode: 0x%08X).", IDCODE_VERSAL_2VP_NATIVE);
+                    if (!options.GetEfuseHashFileName().empty())
+                    {
+                        LOG_WARNING("No idcode specified for versal_2vp arch. Defaulting to versal_2vp native PPK hash for '-efuseppkbits' (idcode: 0x%08X).", IDCODE_VERSAL_2VP_NATIVE);
+                    }
                     (*bifoptions)->SetIdCode(IDCODE_VERSAL_2VP_NATIVE);
                 }
                 else
                 {
                     LOG_WARNING("Unknown idcode (0x%08X) for versal_2vp arch. Defaulting to versal_2vp native PDI generation.", idCode);
+                    if (!options.GetEfuseHashFileName().empty())
+                    {
+                        LOG_WARNING("Unknown idcode (0x%08X) for versal_2vp arch. Defaulting to versal_2vp native PPK hash for '-efuseppkbits'.", idCode);
+                    }
                 }
                 currentbi = std::make_unique<Versal_2vpBootImage>(options, index);
             }

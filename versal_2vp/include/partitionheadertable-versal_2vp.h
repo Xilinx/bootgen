@@ -237,8 +237,6 @@ private:
     PufHdLoc::Type pufHdLoc;
     TcmBoot::Type tcmBoot;
     Versal_2vpPartitionHeaderTableStructure* pHTable;
-
-    Section* groupAcSection = NULL;
 };
 
 /******************************************************************************/

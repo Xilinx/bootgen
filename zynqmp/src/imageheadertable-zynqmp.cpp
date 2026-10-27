@@ -73,7 +73,7 @@ ZynqMpImageHeader::ZynqMpImageHeader(std::ifstream& ifs)
         name[i + 2] = buffer[1];
         name[i + 3] = buffer[0];
         i += 4;
-    } while (buffer[0] && buffer[1] && buffer[2] && buffer[3] && i<sizeof(name));
+    } while (buffer[0] && buffer[1] && buffer[2] && buffer[3] && (i + 4) <= sizeof(name));
 
     if (i >= sizeof(name))
     {
@@ -113,8 +113,6 @@ ZynqMpImageHeader::ZynqMpImageHeader(std::ifstream& ifs)
         hdr->ReadHeader(ifs);
         hdr->ReadData(ifs);
 
-        partitionHeaderList.push_back(hdr.release());
-
         Bootloader = false;
         Alignment = 0;
         Offset = 0;
@@ -149,6 +147,7 @@ ZynqMpImageHeader::ZynqMpImageHeader(std::ifstream& ifs)
                 LOG_ERROR("Failure parsing imported bootimage");
         }
         offset += hdr->GetPartitionHeaderSize();
+        partitionHeaderList.push_back(hdr.release());
     }
 }
 

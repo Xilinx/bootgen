@@ -84,3 +84,4 @@ set `OPENSSL_*` unless you are intentionally overriding that.
 - `BOOTGEN_BUILD_NUMBER` in `common/include/version.h` must be greater than
   the value on the base branch
 - Every commit: non-empty subject, `Signed-off-by: Name <email>`, no CR issue key
+  (reported as warnings; they do not fail the job)
